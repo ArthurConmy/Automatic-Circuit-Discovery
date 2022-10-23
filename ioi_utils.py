@@ -391,11 +391,11 @@ def logit_diff(
     logits = model(ioi_dataset.toks.long()).detach()
 
     # uhhhh, I guess logit sum is constatn, but the constant is -516763 which seems weird (not 0?)
-    # end_logits = logits[torch.arange(ioi_dataset.N), ioi_dataset.word_idx["end"], :]
-    # assert len(end_logits.shape) == 2, end_logits.shape
+    end_logits = logits[torch.arange(ioi_dataset.N), ioi_dataset.word_idx["end"], :]
+    assert len(end_logits.shape) == 2, end_logits.shape
     # assert torch.allclose(end_logits[0], end_logits[0] * 0.0)
-    # for i in range(10):
-    #     print(torch.sum(end_logits[i]))
+    for i in range(10):
+        print(torch.sum(end_logits[i]))
 
     IO_logits = logits[
         torch.arange(len(ioi_dataset)),
