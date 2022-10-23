@@ -134,8 +134,10 @@ def e(mess=""):
 
 
 #%% [markdown] The model, and loads and loads of datasets
-model = EasyTransformer("gpt2", use_attn_result=True).cuda()
-N = 500
+model = EasyTransformer.from_pretrained("gpt2").cuda()
+model.set_use_attn_result(True)
+
+N = 100
 ioi_dataset = IOIDataset(prompt_type="mixed", N=N, tokenizer=model.tokenizer)
 abca_dataset = ioi_dataset.gen_flipped_prompts(
     ("S2", "RAND")
@@ -264,7 +266,6 @@ def direct_patch_and_freeze(
                     alt_act=target_cache[hook_name],
                     idx=head_idx,
                     dim=2 if head_idx is not None else None,
-                    name=hook_name,
                 )
                 model.add_hook(hook_name, hook)
     for hook in extra_hooks:
@@ -282,7 +283,6 @@ def direct_patch_and_freeze(
             alt_act=sender_cache[hook_name],
             idx=head_idx,
             dim=2 if head_idx is not None else None,
-            name=hook_name,
         )
         model.add_hook(hook_name, hook)
 
@@ -305,7 +305,6 @@ def direct_patch_and_freeze(
             alt_act=receiver_cache[hook_name],
             idx=head_idx,
             dim=2 if head_idx is not None else None,
-            name=hook_name,
         )
         hooks.append((hook_name, hook))
 
@@ -726,7 +725,7 @@ for add_hooks in [False, True]:
     cache = {}
     model.cache_some(cache, lambda name: name == attention_hook_name)
 
-    io_logits, s_logits = logit_diff(model, ioi_dataset, all=True)
+    io_logits, s_logits = logit_diff(model, ioi_dataset, all=True, both=True)
     io_logits = io_logits.detach().cpu()
     s_logits = s_logits.detach().cpu()
 

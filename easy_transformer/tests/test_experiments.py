@@ -51,9 +51,8 @@ def test_semantic_ablation():
         S_logits = logits[torch.arange(len(text_prompts)), ioi_end_idx, ioi_s_ids]
         return (IO_logits - S_logits).mean().detach().cpu()
 
-    model = EasyTransformer("gpt2", use_attn_result=True)
-    if torch.cuda.is_available():
-        model.to("cuda")
+    model = EasyTransformer.from_pretrained("gpt2").cuda()
+    model.set_use_attn_result(True)
 
     # compute in the proper way
     metric = ExperimentMetric(

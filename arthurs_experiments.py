@@ -114,7 +114,8 @@ def e(mess=""):
 
 
 #%%
-model = EasyTransformer("gpt2", use_attn_result=True).cuda()
+model = EasyTransformer.from_pretrained("gpt2").cuda()
+model.set_use_attn_result(True)
 N = 100
 ioi_dataset = IOIDataset(prompt_type="mixed", N=N, tokenizer=model.tokenizer)
 abca_dataset = ioi_dataset.gen_flipped_prompts(

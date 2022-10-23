@@ -96,7 +96,8 @@ study = optuna.create_study(
     study_name=f"Check by heads and index @ {ctime()}", storage=storage_name
 )  # ADD!
 # %%
-model = EasyTransformer("gpt2", use_attn_result=True).cuda()
+model = EasyTransformer.from_pretrained("gpt2").cuda()
+model.set_use_attn_result(True)
 N = 200
 ioi_dataset = IOIDataset(prompt_type="mixed", N=N, tokenizer=model.tokenizer)
 
