@@ -73,17 +73,17 @@ solu = EasyTransformer.from_pretrained("solu-10l-old").cuda()
 solu.set_use_attn_result(True)
 
 model_names = ["gpt2", "opt", "neo", "solu"]
-model_name = "neo"
+model_name = "gpt2"
 print(f"USING {model_name}")
 model = eval(model_name)
 
 saved_tensors = []
-#%% [markdown]
+    #%% [markdown]
 # Make induction dataset
 
-seq_len = 10
+seq_len = 100
 batch_size = 20
-interweave = 10  # have this many things before a repeat
+interweave = 100  # have this many things before a repeat
 
 rand_tokens = torch.randint(1000, 10000, (batch_size, seq_len))
 rand_tokens_repeat = torch.zeros(
@@ -118,6 +118,85 @@ def filter_attn_hooks(hook_name):
     return split_name[-1] == "hook_attn"
 
 arrs = []
+
+#%% [markdown]
+# do logit lens
+
+n_heads = model.cfg.n_heads
+n_layers = model.cfg.n_layers
+d_model = model.cfg.d_model
+
+model_unembed = (
+    model.unembed.W_U.detach().cpu()
+)  # note that for GPT2 embeddings and unembeddings are tides such that W_E = Transpose(W_U)
+
+unembed_bias = model.unembed.b_U.detach().cpu()
+
+attn_vals = torch.zeros(size=(n_heads, n_layers)).cuda()
+mlp_vals = torch.zeros(size=(n_layers,)).cuda()
+model.reset_hooks()
+cache = {}
+model.cache_some(cache, lambda x: True)
+logits = model(rand_tokens_repeat) # (model, ioi_dataset, all=True).cpu()
+
+for b in tqdm(range(batch_size)):
+    for i in range(seq_len + 1, 2 * seq_len + 1):
+        # toks = ioi_dataset[i : i + 1].toks.long()
+        tok = rand_tokens_repeat[b, i]
+        dire = model_unembed[:, tok]
+        unembed_b = unembed_bias[tok]
+        dire = dire.to("cuda")
+
+        for lay in range(n_layers):
+            cur_attn = (
+                cache[f"blocks.{lay}.attn.hook_result"][b, i-1, :, :]
+            )
+            cur_mlp = cache[f"blocks.{lay}.hook_mlp_out"][b, i-1, :]
+            attn_vals[lay, :] += torch.einsum("d,hd->h", dire, cur_attn) + unembed_b.to("cuda")
+            mlp_vals[lay] += torch.einsum("h,h->", dire, cur_mlp) + unembed_b.to("cuda")
+
+attn_vals /= (batch_size * seq_len)
+mlp_vals /= (batch_size * seq_len)
+all_figs = []
+
+title = "Hello, world!"
+
+show_pp(
+    attn_vals,
+    xlabel="head no",
+    ylabel="layer no",
+    title=title,
+    # return_fig=True,
+)
+
+#%%
+# plot a bar chart of the top 10 most important heads
+mack_2d = max_2d(attn_vals, k=20)
+x_labels = mack_2d[0]
+x_labels = [f"head {x}" for x in x_labels]
+values = mack_2d[1]
+
+# plot a bar chart of values with x_labels as the x axis
+fig = plt.figure(figsize=(10, 10))
+plt.bar(x_labels, values.cpu())
+plt.title(title)
+plt.xlabel("head no")
+plt.ylabel("value")
+
+# vertical labels
+plt.xticks(rotation=90)
+plt.show()
+#%%
+if return_figs and return_vals:
+    return all_figs, attn_vals, mlp_vals
+if return_vals:
+    return attn_vals, mlp_vals
+if return_figs:
+    return all_figs
+
+logits = model(rand_tokens_repeat)
+logits_on_correct = logits[torch.arange(batch_size), rand_tokens_repeat[:, 1:].argmax(-1)]
+
 #%% [markdown]
 # sweeeeeet plot
 
@@ -242,7 +321,58 @@ for layer, head_idx in all_heads_and_mlps:
     )
 model.reset_hooks()
 
+#%%
 
+for hook_list in [[], [hooks[(9, 9)], hooks[(9, 6)], hooks[(10, 0)]]]:
+    model.reset_hooks()
+    for hook in hook_list:
+        model.add_hook(*hook)
+    losses = model(rand_tokens_repeat, return_type="loss", loss_return_per_token=True)
+    losses2 = losses[:, seq_len+1:]
+    print(losses2.mean().item())
+
+#%% # hmm this seems weird but we
+
+model.reset_hooks()
+initial_loss = model(rand_tokens_repeat, return_type="loss", loss_return_per_token=True)[:, seq_len:].mean().item()
+
+results = []
+labels = []
+
+for head in mack_2d[0]:
+    model.reset_hooks()
+    model.add_hook(*hooks[head])
+    losses = model(rand_tokens_repeat, return_type="loss", loss_return_per_token=True)[:, seq_len:]
+    results.append(losses.mean().item() - initial_loss)
+    labels.append(str(head))
+
+# plot bar chart
+fig = go.Figure(
+    data=[
+        go.Bar(
+            x=labels,
+            y=results,
+            # text=[f"{(loss - initial_loss):.2f}" for loss in results],
+            textposition="auto",
+        )
+    ]
+)
+fig.show()
+
+#%%
+
+for ablate_61 in [False, True]:
+    for ablate_other_6 in [False, True]:
+
+        model.reset_hooks()
+        if ablate_61:
+            model.add_hook(*hooks[(6, 1)])
+        if ablate_other_6:
+            for head_idx in [0, 6, 11]: 
+                model.add_hook(*hooks[(6, head_idx)])
+
+        ans = loss_metric(model, rand_tokens_repeat, seq_len)
+        print(ans, ablate_61, ablate_other_6)
 #%% [markdown]
 # use this cell to get a rough grip on which heads matter the most
 model.reset_hooks()

@@ -73,6 +73,11 @@ neo = EasyTransformer.from_pretrained("EleutherAI/gpt-neo-125M").cuda()
 neo.set_use_attn_result(True)
 
 model = gpt2
+
+#%%
+
+
+
 #%% [markdown]
 # Initialise dataset
 N = 100
