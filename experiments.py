@@ -15,7 +15,6 @@
 from copy import deepcopy
 import torch
 
-assert torch.cuda.device_count() == 1
 from tqdm import tqdm
 import pandas as pd
 import torch
