@@ -8,5 +8,5 @@ numpy
 pandas
 scipy
 sklearn
-tqdm
+tqdm`
 plotly

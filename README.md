@@ -17,7 +17,8 @@ pip install -r requirements.txt
 # In this repo
 
 In this repo, you can find the following notebooks:
-`
+
+TODO sort out where these are reorganised
 * `experiments.py`: a notebook of several of the most interesting experiments of the IOI project.
 * `completeness.py`: a notebook that generate the completeness plots in the paper, and implements the completeness functions.
 * `minimality.py`: as above for minimality.
