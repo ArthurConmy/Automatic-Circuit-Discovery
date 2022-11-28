@@ -21,3 +21,8 @@ _modidx.py
 *.png
 *.pt
 *.pth
+*.pkl
+*.gv
+*.dot
+acronyms.py
+archive/*

@@ -14,8 +14,8 @@ import gc
 import einops
 from easy_transformer.experiments import get_act_hook
 
-from ioi_dataset import IOIDataset
-from ioi_circuit_extraction import do_circuit_extraction
+from easy_transformer.ioi_dataset import IOIDataset
+from easy_transformer.ioi_circuit_extraction import do_circuit_extraction
 
 ALL_COLORS = px.colors.qualitative.Dark2
 CLASS_COLORS = {
@@ -31,7 +31,7 @@ CLASS_COLORS = {
 }
 
 
-from ioi_circuit_extraction import get_extracted_idx
+from easy_transformer.ioi_circuit_extraction import get_extracted_idx
 
 # other utils
 
@@ -87,7 +87,7 @@ def show_pp(
 
     if animate_axis is None:
         fig = px.imshow(
-            m.T,
+            m,
             title=title if title else "",
             color_continuous_scale="RdBu",
             color_continuous_midpoint=0,
@@ -129,12 +129,12 @@ def show_pp(
     fig.update_layout(
         yaxis_title=ylabel,
         xaxis_title=xlabel,
-        xaxis_range=[-0.5, m.shape[0] - 0.5],
+        xaxis_range=[-0.5, m.shape[1] - 0.5],
         showlegend=True,
         legend=dict(x=-0.1),
     )
     if highlight_points is not None:
-        fig.update_yaxes(range=[m.shape[1] - 0.5, -0.5], autorange=False)
+        fig.update_yaxes(range=[m.shape[0] - 0.5, -0.5], autorange=False)
     if show_fig:
         fig.show()
     if return_fig:
@@ -187,7 +187,7 @@ def show_attention_patterns(
 
         for i, text in enumerate(prompts):
             # assert len(list(cache.items())) == 1 + int(mode == "val"), len(list(cache.items()))
-            toks = ioi_dataset.toks[i] # model.tokenizer(text)["input_ids"]
+            toks = ioi_dataset.toks[i]  # model.tokenizer(text)["input_ids"]
             current_length = len(toks)
             words = [model.tokenizer.decode([tok]) for tok in toks]
             attn = cache[good_names[0]].detach().cpu()[i, head, :, :]
@@ -984,14 +984,11 @@ def patch_all(z, source_act, hook):
 
 def path_patching(
     model,
-    source_dataset,
-    target_dataset,
-    ioi_dataset,
+    D_new,
+    D_orig,
     sender_heads,
     receiver_hooks,
-    max_layer,
     positions=["end"],
-    verbose=False,
     return_hooks=False,
     extra_hooks=[],  # when we call reset hooks, we may want to add some extra hooks after this, add these here
     freeze_mlps=False,  # recall in IOI paper we consider these "vital model components"
@@ -999,22 +996,20 @@ def path_patching(
 ):
     """
     Patch in the effect of `sender_heads` on `receiver_hooks` only
-    (though MLPs are "ignored", so are slight confounders. As are intermeditate heads)
+    (though MLPs are "ignored" if `freeze_mlps` is False so are slight confounders in this case - see Appendix B of https://arxiv.org/pdf/2211.00593.pdf)
 
-    If max_layer < model.cfg.n_layers, then let some part of the model do computations (not frozen)
+    TODO fix this: if max_layer < model.cfg.n_layers, then let some part of the model do computations (not frozen)
     """
 
     def patch_positions(z, source_act, hook, positions=["end"], verbose=False):
-        if verbose:
-            print("patching", hook.ctx)
         for pos in positions:
-            z[
-                torch.arange(target_dataset.N), target_dataset.word_idx[pos]
-            ] = source_act[torch.arange(source_dataset.N), source_dataset.word_idx[pos]]
+            z[torch.arange(D_orig.N), D_orig.word_idx[pos]] = source_act[
+                torch.arange(D_new.N), D_new.word_idx[pos]
+            ]
         return z
 
+    # process arguments
     sender_hooks = []
-
     for layer, head_idx in sender_heads:
         if head_idx is None:
             sender_hooks.append((f"blocks.{layer}.hook_mlp_out", None))
@@ -1025,6 +1020,7 @@ def path_patching(
     sender_hook_names = [x[0] for x in sender_hooks]
     receiver_hook_names = [x[0] for x in receiver_hooks]
 
+    # Forward pass A (in https://arxiv.org/pdf/2211.00593.pdf)
     sender_cache = {}
     model.reset_hooks()
     for hook in extra_hooks:
@@ -1032,18 +1028,19 @@ def path_patching(
     model.cache_some(
         sender_cache, lambda x: x in sender_hook_names, suppress_warning=True
     )
-    source_logits = model(
-        source_dataset.toks.long()
-    )  # this should see what the logits are when i) main heads are ablated + ii) we're also ablating (lay, head_idx)
+    source_logits = model(D_new.toks.long())
 
+    # Forward pass B
     target_cache = {}
     model.reset_hooks()
     for hook in extra_hooks:
         model.add_hook(*hook)
     model.cache_all(target_cache, suppress_warning=True)
-    target_logits = model(target_dataset.toks.long())
+    target_logits = model(D_orig.toks.long())
 
-    # measure the receiver heads' values
+    # Forward pass C
+    # Cache the receiver hooks
+    # (adding these hooks first means we save values BEFORE they are overwritten)
     receiver_cache = {}
     model.reset_hooks()
     model.cache_some(
@@ -1053,8 +1050,8 @@ def path_patching(
         verbose=False,
     )
 
-    # for all the Q, K, V things
-    for layer in range(max_layer):
+    # "Freeze" intermediate heads to their D_orig values
+    for layer in range(model.cfg.n_layers):
         for head_idx in range(model.cfg.n_heads):
             for hook_template in [
                 "blocks.{}.attn.hook_q",
@@ -1087,10 +1084,9 @@ def path_patching(
             model.add_hook(hook_name, hook)
 
     for hook in extra_hooks:
-        # ughhh, think that this is what we want, this should override the QKV above
         model.add_hook(*hook)
 
-    # we can override the hooks above for the sender heads, though
+    # These hooks will overwrite the freezing, for the sender heads
     for hook_name, head_idx in sender_hooks:
         assert not torch.allclose(sender_cache[hook_name], target_cache[hook_name]), (
             hook_name,
@@ -1104,31 +1100,21 @@ def path_patching(
             name=hook_name,
         )
         model.add_hook(hook_name, hook)
-    receiver_logits = model(target_dataset.toks.long())
+    receiver_logits = model(D_orig.toks.long())
 
-    # receiver_cache stuff ...
-
-    # patch these values in
+    # Add (or return) all the hooks needed for forward pass D
     model.reset_hooks()
-    for hook in extra_hooks:
-        model.add_hook(
-            *hook
-        )  # ehh probably doesn't actually matter cos end thing hooked
-
     hooks = []
+    for hook in extra_hooks:
+        hooks.append(hook)
+
     for hook_name, head_idx in receiver_hooks:
         for pos in positions:
             if torch.allclose(
-                receiver_cache[hook_name][
-                    torch.arange(target_dataset.N), target_dataset.word_idx[pos]
-                ],
-                target_cache[hook_name][
-                    torch.arange(target_dataset.N), target_dataset.word_idx[pos]
-                ],
+                receiver_cache[hook_name][torch.arange(D_orig.N), D_orig.word_idx[pos]],
+                target_cache[hook_name][torch.arange(D_orig.N), D_orig.word_idx[pos]],
             ):
-                # assert False, (hook_name, head_idx)
-                # print("AAA", hook_name, head_idx)
-                pass
+                warnings.warn("Torch all close for {}".format(hook_name))
         hook = get_act_hook(
             partial(patch_positions, positions=positions),
             alt_act=receiver_cache[hook_name],

@@ -1,38 +1,9 @@
-This repository contains the code for all experiments in the paper "Interpretability in the Wild: a Circuit for Indirect Object Identification in GPT-2 Small" (Wang et al, 2022).
+This repository contains the code for direct path patching experiments as described <a href="https://arthurconmy.github.io/automatic_circuit_discovery/">on my blog</a>.
 
-<img src="https://i.imgur.com/MgObeUE.png">
+<img src="https://i.imgur.com/3ONKQBB.png">
 
-This is intended as a one-time code drop. <b>The authors recommend those interested in mechanistic interpretability using the <a href="https://github.com/neelnanda-io/Easy-Transformer">Easy Transformer</a> library</b>. Contact arthur@rdwrs.com or open an issue or PR for issues with this repository.
+An example of a circuit that can be automatically found.
 
-See the experiments for free on Google Colab: https://colab.research.google.com/drive/1kyMjs10poMaYW5fPMJpwgn7ABIKOET0K?usp=sharing .
+This is different from the <a href="https://github.com/redwoodresearch/Easy-Transformer">code from the IOI paper</a> and from the <a href="https://github.com/neelnanda-io/Easy-Transformer">base EasyTransformer</a> (which should be referred to for learning).
 
-# Setup
-
-## Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-# In this repo
-
-In this repo, you can find the following notebooks:
-`
-* `experiments.py`: a notebook of several of the most interesting experiments of the IOI project.
-* `completeness.py`: a notebook that generate the completeness plots in the paper, and implements the completeness functions.
-* `minimality.py`: as above for minimality.
-* `advex.py`: a notebook that generates adversarial examples as in the paper.
-
-# Easy Transformer
-
-## An implementation of transformers tailored for mechanistic interpretability.
-
-It supports the importation of open sources models, a convenient handling of hooks 
-to get access to intermediate activations and features to perform simple emperiments such as ablations and patching.
-
-A demo notebook can be found [here](https://colab.research.google.com/github/neelnanda-io/Easy-Transformer/blob/main/EasyTransformer_Demo.ipynb) and a more comprehensive description of the library can be found [here](https://colab.research.google.com/drive/1_tH4PfRSPYuKGnJbhC1NqFesOYuXrir_#scrollTo=zs8juArnyuyB)
-
-
-## Installation
-
-`pip install git+https://github.com/neelnanda-io/Easy-Transformer`
+See the notebook at https://colab.research.google.com/github/ArthurConmy/Easy-Transformer/blob/main/AutomaticCircuitDiscovery.ipynb to demo this code, and produce a plot like the one above.

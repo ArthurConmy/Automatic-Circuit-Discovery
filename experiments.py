@@ -11,7 +11,7 @@
 # Reminder of the circuit:
 # <img src="https://i.imgur.com/arokEMj.png">
 #%% [markdown]
-# Setup
+## Setup
 from copy import deepcopy
 import torch
 
@@ -29,6 +29,14 @@ from functools import partial
 import numpy as np
 from tqdm import tqdm
 import pandas as pd
+
+from easy_transformer.experiments import (
+    ExperimentMetric,
+    AblationConfig,
+    EasyAblation,
+    EasyPatching,
+    PatchingConfig,
+)
 import plotly.express as px
 import plotly.io as pio
 import plotly.graph_objects as go
@@ -36,10 +44,10 @@ import random
 import einops
 from IPython import get_ipython
 from copy import deepcopy
-from ioi_dataset import (
+from easy_transformer.ioi_dataset import (
     IOIDataset,
 )
-from ioi_utils import (
+from easy_transformer.ioi_utils import (
     path_patching,
     max_2d,
     CLASS_COLORS,
@@ -48,13 +56,13 @@ from ioi_utils import (
     scatter_attention_and_contribution,
 )
 from random import randint as ri
-from ioi_circuit_extraction import (
+from easy_transformer.ioi_circuit_extraction import (
     do_circuit_extraction,
     get_heads_circuit,
     CIRCUIT,
 )
-from ioi_utils import logit_diff, probs
-from ioi_utils import get_top_tokens_and_probs as g
+from easy_transformer.ioi_utils import logit_diff, probs
+from easy_transformer.ioi_utils import get_top_tokens_and_probs as g
 
 ipython = get_ipython()
 if ipython is not None:
@@ -63,6 +71,7 @@ if ipython is not None:
 #%% [markdown]
 # Initialise model (use larger N or fewer templates for no warnings about in-template ablation)
 model = EasyTransformer.from_pretrained("gpt2").cuda()
+model.set_use_headwise_qkv_input(True)
 model.set_use_attn_result(True)
 #%% [markdown]
 # Initialise dataset
@@ -72,7 +81,7 @@ ioi_dataset = IOIDataset(
     N=N,
     tokenizer=model.tokenizer,
     prepend_bos=False,
-)
+)  # TODO make this a seeded dataset
 
 print(f"Here are two of the prompts from the dataset: {ioi_dataset.sentences[:2]}")
 #%% [markdown]
@@ -88,7 +97,7 @@ print(f"The model gets average IO probs {model_io_probs.item()} over {N} example
 circuit = deepcopy(CIRCUIT)
 
 # we make the ABC dataset in order to knockout other model components
-abc_dataset = (
+abc_dataset = (  # TODO seeded
     ioi_dataset.gen_flipped_prompts(("IO", "RAND"))
     .gen_flipped_prompts(("S", "RAND"))
     .gen_flipped_prompts(("S1", "RAND"))
@@ -108,8 +117,10 @@ print(
     f"The circuit gets average logit difference {circuit_logit_diff.item()} over {N} examples"
 )
 #%% [markdown]
-# Edge patching
-def plot_edge_patching(
+## Path patching
+
+
+def plot_path_patching(
     model,
     ioi_dataset,
     receiver_hooks,  # list of tuples (hook_name, idx). If idx is not None, then at dim 2 index in with idx (used for doing things for specific attention heads)
@@ -125,14 +136,11 @@ def plot_edge_patching(
 
             model = path_patching(
                 model=model,
-                source_dataset=abc_dataset,
-                target_dataset=ioi_dataset,
-                ioi_dataset=ioi_dataset,
+                D_new=abc_dataset,
+                D_orig=ioi_dataset,
                 sender_heads=[(source_layer, source_head_idx)],
                 receiver_hooks=receiver_hooks,
-                max_layer=12,
                 positions=[position],
-                verbose=False,
                 return_hooks=False,
                 freeze_mlps=False,
                 have_internal_interactions=False,
@@ -158,7 +166,7 @@ def plot_edge_patching(
 
                 # show attention head results
                 fig = show_pp(
-                    results.T,
+                    results,
                     title=f"Effect of patching (Heads->Final Residual Stream State) path",
                     return_fig=True,
                     show_fig=False,
@@ -167,20 +175,24 @@ def plot_edge_patching(
                 fig.show()
 
 
-plot_edge_patching(
+plot_path_patching(
     model,
     ioi_dataset,
     receiver_hooks=[(f"blocks.{model.cfg.n_layers-1}.hook_resid_post", None)],
     position="end",
 )
 #%% [markdown]
-# Reproduce writing results (change the layer_no and head_no)
+## Writing direction results
+
+# (change the layer_no and head_no)
 
 scatter_attention_and_contribution(
     model=model, layer_no=9, head_no=9, ioi_dataset=ioi_dataset
 )
 #%% [markdown]
-# Look at the copy score for the Name Mover and Negative heads
+## Copy score
+
+# For NMs and Negative NMs
 
 
 def check_copy_circuit(model, layer, head, ioi_dataset, verbose=False, neg=False):
@@ -191,7 +203,7 @@ def check_copy_circuit(model, layer, head, ioi_dataset, verbose=False, neg=False
         sign = -1
     else:
         sign = 1
-    z_0 = model.blocks[1].ln1(cache["blocks.0.hook_resid_post"])
+    z_0 = model.blocks[1].attn.ln1(cache["blocks.0.hook_resid_post"])
 
     v = torch.einsum("eab,bc->eac", z_0, model.blocks[layer].attn.W_V[head])
     v += model.blocks[layer].attn.b_V[head].unsqueeze(0).unsqueeze(0)
@@ -250,7 +262,7 @@ check_copy_circuit(model, 10, 0, ioi_dataset, neg=neg_sign)
 check_copy_circuit(model, 9, 6, ioi_dataset, neg=neg_sign)
 
 neg_sign = True
-print(" --- Calibration heads --- ")
+print(" --- Negative heads --- ")
 check_copy_circuit(model, 10, 7, ioi_dataset, neg=neg_sign)
 check_copy_circuit(model, 11, 10, ioi_dataset, neg=neg_sign)
 
@@ -266,9 +278,9 @@ check_copy_circuit(
     model, random.randint(0, 11), random.randint(0, 11), ioi_dataset, neg=neg_sign
 )
 #%% [markdown]
-# S-Inhibition patching
+## S-Inhibition patching
 
-plot_edge_patching(
+plot_path_patching(
     model,
     ioi_dataset,
     receiver_hooks=[
@@ -279,7 +291,7 @@ plot_edge_patching(
 )
 
 #%% [markdown]
-# Attention probs of NMs
+## Attention probs of NMs
 
 ys = []
 average_attention = {}
@@ -325,13 +337,108 @@ for idx, dataset in enumerate([ioi_dataset, abc_dataset]):
         )
     fig.show()
 #%% [markdown]
-# See attention patterns on one sentence
+## Visualize attention patterns
 
 model.reset_hooks()
 show_attention_patterns(model, [(9, 9), (9, 6), (10, 0)], ioi_dataset[:1])
 
 #%% [markdown]
-# See the backup NM effect! After ablating several attention heads, we actually an increase in logit difference
+## Token and position signal results
+
+signal_specific_datasets = (
+    {}
+)  # keys are (token signal, positionnal signal) -1: inverted, 0: uncorrelated, 1: same as in ioi_dataset
+
+# if ABB is the original pattern
+
+signal_specific_datasets[(0, 1)] = ioi_dataset.gen_flipped_prompts(
+    ("IO", "RAND")
+).gen_flipped_prompts(
+    ("S", "RAND")
+)  # random name flip S1 and S2 are flipped to the same random name #DCC
+signal_specific_datasets[(0, -1)] = signal_specific_datasets[
+    (0, 1)
+].gen_flipped_prompts(
+    ("IO", "S1")
+)  # CDC
+
+
+signal_specific_datasets[(-1, -1)] = ioi_dataset.gen_flipped_prompts(
+    ("S2", "IO")
+)  # ABA
+signal_specific_datasets[(-1, 1)] = signal_specific_datasets[
+    (-1, -1)
+].gen_flipped_prompts(
+    ("IO", "S1")
+)  # BAA
+
+
+signal_specific_datasets[(1, -1)] = ioi_dataset.gen_flipped_prompts(("IO", "S1"))  # BAB
+signal_specific_datasets[(1, 1)] = ioi_dataset  # ABB original dataset
+
+
+def patch_end(z, source_act, hook):  # we patch at the "to" token
+    z[torch.arange(ioi_dataset.N), ioi_dataset.word_idx["end"]] = source_act[
+        torch.arange(ioi_dataset.N), ioi_dataset.word_idx["end"]
+    ]
+    return z
+
+
+s_inhibition_heads = [(8, 6), (8, 10), (7, 3), (7, 9)]
+
+logit_diff_per_signal = np.zeros((3, 2))
+
+for k, source_dataset in signal_specific_datasets.items():
+
+    config = PatchingConfig(
+        source_dataset=source_dataset.toks.long(),
+        target_dataset=ioi_dataset.toks.long(),
+        target_module="attn_head",
+        head_circuit="result",
+        cache_act=True,
+        verbose=False,
+        patch_fn=patch_end,
+        layers=(0, 9 - 1),
+    )
+    metric = ExperimentMetric(lambda x: x, ioi_dataset)  # dummy metric
+    patching = EasyPatching(model, config, metric)
+
+    model.reset_hooks()
+
+    for l, h in s_inhibition_heads:
+        hk_name, hk = patching.get_hook(
+            l, h
+        )  # we use the EasyPatching as a hook generator without running the experiment
+        model.add_hook(hk_name, hk)
+
+    tok_s, pos_s = k
+    logit_diff_per_signal[tok_s + 1, (pos_s + 1) // 2] = logit_diff(model, ioi_dataset)
+
+
+fig = px.imshow(logit_diff_per_signal)
+
+
+fig.update_layout(
+    yaxis=dict(
+        tickmode="array",
+        tickvals=[0, 1, 2],
+        ticktext=[
+            "Token signal inverted",
+            "Token signal uncorrelated",
+            "Token signal original",
+        ],
+    ),
+    xaxis=dict(
+        tickmode="array",
+        tickvals=[0, 1],
+        ticktext=["Position signal inverted", "Position signal original"],
+    ),
+)
+fig.show()
+
+#%% [markdown]
+## Backup NM results
+# After ablating several attention heads, we actually an increase in logit difference
 
 model.reset_hooks()
 default_logit_diff = logit_diff(model, ioi_dataset)
@@ -383,14 +490,12 @@ for idx, extra_hooks in enumerate([[], the_extra_hooks]):
             receiver_hooks.append(("blocks.11.hook_resid_post", None))
             model = path_patching(
                 model=model,
-                source_dataset=abc_dataset,
-                target_dataset=ioi_dataset,
-                ioi_dataset=ioi_dataset,
+                D_new=abc_dataset,
+                D_orig=ioi_dataset,
+                ioi_dataset=ioi_dataset,  # remove this argument if wrong
                 sender_heads=[(source_layer, source_head_idx)],
                 receiver_hooks=receiver_hooks,
-                max_layer=12,
                 positions=[pos],
-                verbose=False,
                 return_hooks=False,
                 extra_hooks=extra_hooks,
             )
@@ -406,7 +511,7 @@ for idx, extra_hooks in enumerate([[], the_extra_hooks]):
             if source_layer == 11 and source_head_idx == 11:
                 fname = f"svgs/patch_and_freeze_{pos}_{ctime()}_{ri(2134, 123759)}"
                 fig = show_pp(
-                    results.T,
+                    results,
                     title=f"Direct effect of removing heads on logit diff"
                     + ("" if idx == 0 else " (with top 3 name movers knocked out)"),
                     return_fig=True,
@@ -415,10 +520,11 @@ for idx, extra_hooks in enumerate([[], the_extra_hooks]):
 
                 both_results.append(results.clone())
                 fig.show()
+
 #%% [markdown]
 # Plot the two sets of results
 
-from ioi_utils import CLASS_COLORS
+from easy_transformer.ioi_utils import CLASS_COLORS
 
 cc = deepcopy(CLASS_COLORS)
 circuit = deepcopy(CIRCUIT)
@@ -484,6 +590,7 @@ for idx, results in enumerate(both_results):
     fig.show()
 
 #%% [markdown]
+## Validation outside of IOI
 # Are the tasks of looking at previous tokens, inducting, and duplicating tokens performed on the general OWT distribution, rather than just p_IOI? Investigation of identified heads on random tokens
 
 seq_len = 100
@@ -525,3 +632,5 @@ for mode, offset in [
     )
     fig.update_layout(title=f"Attention pattern for {mode} mode")
     fig.show()
+
+# %%
