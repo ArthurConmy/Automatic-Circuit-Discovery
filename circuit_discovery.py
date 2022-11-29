@@ -130,7 +130,7 @@ h = Circuit(
     metric=day_metric,
     orig_data=tokens,
     new_data=baseline_data,
-    threshold=0.25,
+    threshold=0.25, # percentage change
     orig_positions=positions,
     new_positions=positions, # in some datasets we might want to patch from different positions; not here
 )
