@@ -148,6 +148,7 @@ class EasyTransformer(HookedRootModule):
         return_type: Optional[str] = "logits",
         prepend_bos: bool = True,
         past_kv_cache: Optional[EasyTransformerKeyValueCache] = None,
+        per_token: bool = True,
     ) -> Union[
         None,
         TT["batch", "pos", "d_vocab"],
@@ -242,7 +243,7 @@ class EasyTransformer(HookedRootModule):
             if return_type == "logits":
                 return logits
             else:
-                loss = self.loss_fn(logits, tokens)
+                loss = self.loss_fn(logits, tokens, per_token=per_token)
                 if return_type == "loss":
                     return loss
                 elif return_type == "both":
