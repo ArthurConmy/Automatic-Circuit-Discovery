@@ -1,16 +1,4 @@
 #%% [markdown]
-## Interpretability in the Wild: a Circuit for Indirect Object Identification in GPT-2 Small
-# <h1><b>Intro</b></h1>
-
-# This notebook implements all experiments in our paper (which is available on arXiv).
-
-# For background on the task, see the paper.
-
-# Refer to the demo of the <a href="https://github.com/neelnanda-io/Easy-Transformer">Easy-Transformer</a> library here: <a href="https://github.com/neelnanda-io/Easy-Transformer/blob/main/HookedTransformer_Demo.ipynb">demo with ablation and patching</a>.
-#
-# Reminder of the circuit:
-# <img src="https://i.imgur.com/arokEMj.png">
-#%% [markdown]
 ## Setup
 from copy import deepcopy
 import torch
@@ -124,7 +112,7 @@ def single_head_v2(model, prompts, layer, head, correct_ids, correct_mode=False,
 
     def set_out(tensor, hook):  
         # tensor.copy_(saved_head)
-        print(len(arr), [a.shape for a in arr])
+        # print(len(arr), [a.shape for a in arr])
         assert len(arr) == 1
         # tensor.copy_(arr[0])
         tensor[:] = arr[0]
@@ -188,6 +176,4 @@ for layer in tqdm(range(12)):
         
         res[layer, head] = ps[0] # - correct_ps[0]
 
-show_pp(res, title="probs on correct when set to ...")# removing direct effect of head...")
-
-#%%
+show_pp(res, title="Probs on correct when ONLY looking at output from various Heads and MLPs", xlabel="Head (pos 12 is MLP)", ylabel="Layer") # removing direct effect of head...")
