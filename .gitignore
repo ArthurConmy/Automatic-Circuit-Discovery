@@ -13,3 +13,8 @@ _modidx.py
 .ipynb_checkpoints
 env
 dist/
+minGPT/
+archive/
+*.dot
+*.json
+pts/
