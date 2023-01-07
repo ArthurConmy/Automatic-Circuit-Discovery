@@ -127,7 +127,7 @@ def single_head_v2(model, prompts, layer, head, correct_ids, correct_mode=False,
         print(len(arr), [a.shape for a in arr])
         assert len(arr) == 1
         # tensor.copy_(arr[0])
-        tensor -= arr[0]
+        tensor[:] = arr[0]
         return tensor
 
     model.reset_hooks()
@@ -186,8 +186,8 @@ for layer in tqdm(range(12)):
             no_hooks=False,
         )
         
-        res[layer, head] = ps[0] - correct_ps[0]
+        res[layer, head] = ps[0] # - correct_ps[0]
 
-show_pp(res, title="Change in probs on correct when removing direct effect of head...")
+show_pp(res, title="probs on correct when set to ...")# removing direct effect of head...")
 
 #%%
