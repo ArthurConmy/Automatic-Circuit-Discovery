@@ -287,6 +287,7 @@ class Attention(nn.Module):
         if self.cfg.scale_attn_by_inverse_layer_idx:
             self.attn_scale *= self.layer_id + 1
 
+        self.hook_head_input = HookPoint()  # [batch, pos, head_index, d_head]
         self.hook_k = HookPoint()  # [batch, pos, head_index, d_head]
         self.hook_q = HookPoint()  # [batch, pos, head_index, d_head]
         self.hook_v = HookPoint()  # [batch, pos, head_index, d_head]
@@ -308,11 +309,11 @@ class Attention(nn.Module):
             )
             self.register_buffer("rotary_sin", sin)
             self.register_buffer("rotary_cos", cos)
-    
+
     @property
     @lru_cache(maxsize=None)
     def OV(self) -> FactoredMatrix:
-        """ 
+        """
         OV-Circuit, as defined in A Mathematical Framework. Because there's no non-linearity between the value vector and the output of the layer, the output is purely determined by the matrix W_OV = W_V @ W_O, and not W_V or W_O individually. (Mathematically, for a single head, output == pattern @ residual @ W_V @ W_O, see the glossary for more)
 
         Done in the order W_V, W_O because the paper uses left-multiplying weight matrices, and TransformerLens uses right-multiplying, sorry!
@@ -322,11 +323,11 @@ class Attention(nn.Module):
         Returns a FactoredMatrix, with left matrix W_V [head_index, d_model, d_head] and right matrix W_O [head_index, d_head, d_model] - this is a low rank factorisation of the underlying [head_index, d_model, d_model]. FactoredMatrix has helper functions to deal with these large matrices efficiently. To get the OV circuit of a head k, attn.OV[k] works.
         """
         return FactoredMatrix(self.W_V, self.W_O)
-    
+
     @property
     @lru_cache(maxsize=None)
     def QK(self) -> FactoredMatrix:
-        """ 
+        """
         QK-Circuit, as defined in A Mathematical Framework. Because there's no non-linearity in the key-query dot product, the output is purely determined by the matrix W_QK = W_Q.T @ W_K, and not W_Q or W_K individually. (Mathematically, for a single head, pattern = destination_residual.T @ W_Q.T @ W_K @ source-residual, see the glossary for more).
 
         Done in the order Q on the left, K on the right, because the pattern has dimensions [destination_pos, source_pos]
@@ -335,9 +336,10 @@ class Attention(nn.Module):
 
         Returns a FactoredMatrix, with left matrix W_Q [head_index, d_model, d_head] and right matrix W_K.T [head_index, d_head, d_model] - this is a low rank factorisation of the underlying [head_index, d_model, d_model] matrix. FactoredMatrix has helper functions to deal with these large matrices efficiently. To get the QK circuit of a head k, attn.QK[k] works.
         """
-        W_K_transpose = einops.rearrange(self.W_K , "head_index d_model d_head -> head_index d_head d_model")
+        W_K_transpose = einops.rearrange(
+            self.W_K, "head_index d_model d_head -> head_index d_head d_model"
+        )
         return FactoredMatrix(self.W_Q, W_K_transpose)
-
 
     def forward(
         self,
@@ -350,34 +352,33 @@ class Attention(nn.Module):
         past_kv_cache_entry is an optional entry of past keys and values for this layer, only relevant if generating text. Defaults to None
 
         """
-        if self.cfg.positional_embedding_type in ["standard", "rotary"]:
-            # Normal attention
-            q = self.hook_q(
-                einsum(
-                    "batch pos d_model, head_index d_model d_head \
-                    -> batch pos head_index d_head",
-                    resid_pre,
-                    self.W_Q,
-                )
-                + self.b_Q
-            )  # [batch, pos, head_index, d_head]
-            k = self.hook_k(
-                einsum(
-                    "batch pos d_model, head_index d_model d_head \
-                    -> batch pos head_index d_head",
-                    resid_pre,
-                    self.W_K,
-                )
-                + self.b_K
-            )  # [batch, pos, head_index, d_head]
-        elif self.cfg.positional_embedding_type == "shortformer":
-            # Weird shortformer attention see HookedTransformerConfig for details
-            q, k = self.shortformer_calculate_qk(resid_pre, shortformer_pos_embed)
+        assert self.cfg.positional_embedding_type in ["standard", "rotary"]
+        head_input = self.hook_head_input(einops.repeat(
+            resid_pre, "a b c -> a b x c", x=self.cfg.n_heads
+        ))
+        q = self.hook_q(
+            einsum(
+                "batch pos head_index d_model, head_index d_model d_head \
+                -> batch pos head_index d_head",
+                head_input,
+                self.W_Q,
+            )
+            + self.b_Q
+        )  # [batch, pos, head_index, d_head]
+        k = self.hook_k(
+            einsum(
+                "batch pos head_index d_model, head_index d_model d_head \
+                -> batch pos head_index d_head",
+                head_input,
+                self.W_K,
+            )
+            + self.b_K
+        )  # [batch, pos, head_index, d_head]
         v = self.hook_v(
             einsum(
-                "batch pos d_model, head_index d_model d_head \
+                "batch pos head_index d_model, head_index d_model d_head \
                 -> batch pos head_index d_head",
-                resid_pre,
+                head_input,
                 self.W_V,
             )
             + self.b_V
