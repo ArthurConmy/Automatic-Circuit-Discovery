@@ -181,7 +181,7 @@ for idx in range(len(receiver_components)):
                 # loss = model(lines[10:20], return_type="loss", loss_per_token=True)
                 loss = get_losses(model, lines[10:20])
 
-                append_to_json("data2.json", f"{name}Z{dim_idx}Z{name2}Z{dim_idx2}", loss.mean().detach().cpu().item())
+                append_to_json("data3.json", f"{name}Z{dim_idx}Z{name2}Z{dim_idx2}", loss.mean().detach().cpu().item())
                 model.reset_hooks()
                 del cur
                 torch.cuda.empty_cache()
@@ -334,3 +334,10 @@ def check_some_losses(model, toks, lens, samples=100, manual_eos=None):
 
 # %%
 check_some_losses(model, toks, lens, samples=100, manual_eos=50256)
+
+#%%
+tens1 = torch.tensor([1, 0])
+tens2 = einops.repeat(tens1, "d -> b d", b=2)
+print(tens2)
+tens2[0, 0] = 0.0
+print(tens2) # all zeros
