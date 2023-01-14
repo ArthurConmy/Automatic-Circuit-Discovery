@@ -287,7 +287,6 @@ class Attention(nn.Module):
         if self.cfg.scale_attn_by_inverse_layer_idx:
             self.attn_scale *= self.layer_id + 1
 
-        self.hook_head_input = HookPoint()  # [batch, pos, head_index, d_head]
         self.hook_k = HookPoint()  # [batch, pos, head_index, d_head]
         self.hook_q = HookPoint()  # [batch, pos, head_index, d_head]
         self.hook_v = HookPoint()  # [batch, pos, head_index, d_head]
@@ -343,7 +342,7 @@ class Attention(nn.Module):
 
     def forward(
         self,
-        resid_pre: TT["batch", "pos", "d_model"],
+        normalized_resid_pre: TT["batch", "pos", "head_index", "d_model"],
         shortformer_pos_embed: Optional[TT["batch", "pos", "d_model"]] = None,
         past_kv_cache_entry: Optional[HookedTransformerKeyValueCacheEntry] = None,
     ) -> TT["batch", "pos", "d_model"]:
@@ -353,14 +352,14 @@ class Attention(nn.Module):
 
         """
         assert self.cfg.positional_embedding_type in ["standard", "rotary"]
-        head_input = self.hook_head_input(einops.repeat(
-            resid_pre, "a b c -> a b x c", x=self.cfg.n_heads
-        ))
+        # head_input = self.hook_head_input(einops.repeat(
+        #     resid_pre, "a b c -> a b x c", x=self.cfg.n_heads
+        # ))
         q = self.hook_q(
             einsum(
                 "batch pos head_index d_model, head_index d_model d_head \
                 -> batch pos head_index d_head",
-                head_input,
+                normalized_resid_pre,
                 self.W_Q,
             )
             + self.b_Q
@@ -369,7 +368,7 @@ class Attention(nn.Module):
             einsum(
                 "batch pos head_index d_model, head_index d_model d_head \
                 -> batch pos head_index d_head",
-                head_input,
+                normalized_resid_pre,
                 self.W_K,
             )
             + self.b_K
@@ -378,7 +377,7 @@ class Attention(nn.Module):
             einsum(
                 "batch pos head_index d_model, head_index d_model d_head \
                 -> batch pos head_index d_head",
-                head_input,
+                normalized_resid_pre,
                 self.W_V,
             )
             + self.b_V
@@ -675,6 +674,7 @@ class TransformerBlock(nn.Module):
             self.attn = Attention(cfg, attn_type, block_index)
         if not self.cfg.attn_only:
             self.mlp = MLP(cfg)
+        self.block_index = block_index
 
         self.hook_attn_out = HookPoint()  # [batch, pos, d_model]
         self.hook_mlp_out = HookPoint()  # [batch, pos, d_model]
@@ -682,6 +682,7 @@ class TransformerBlock(nn.Module):
         if not self.cfg.attn_only and not self.cfg.parallel_attn_mlp:
             self.hook_resid_mid = HookPoint()  # [batch, pos, d_model]
         self.hook_resid_post = HookPoint()  # [batch, pos, d_model]
+        self.hook_head_input = HookPoint() 
 
     def forward(
         self,
@@ -700,7 +701,15 @@ class TransformerBlock(nn.Module):
             _type_: _description_
         """
         resid_pre = self.hook_resid_pre(resid_pre)  # [batch, pos, d_model]
-        normalized_resid_pre = self.ln1(resid_pre)
+        head_input = self.hook_head_input(einops.repeat(
+            resid_pre, "a b c -> a b x c", x=self.cfg.n_heads
+        ))
+        # torch.save(head_input, "hook_head_input0.pt") # , head_input.detach())
+        if self.block_index == 11:
+            torch.save(head_input, "hook_head_input1.pt")
+            assert False
+        normalized_resid_pre = self.ln1(head_input)
+        # head_input = self.hook_head_input(normal)
         attn_out = self.hook_attn_out(
             self.attn(
                 normalized_resid_pre,
