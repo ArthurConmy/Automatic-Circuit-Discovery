@@ -40,60 +40,52 @@ if ipython is not None:
     ipython.magic("load_ext autoreload")
     ipython.magic("autoreload 2")
 
-# def get_act_hook(fn, alt_act=None, idx=None, dim=None, name=None, message=None):
-#     """Return an hook that modify the activation on the fly. alt_act (Alternative activations) is a tensor of the same shape of the z.
-#     E.g. It can be the mean activation or the activations on other dataset."""
-#     if alt_act is not None:
+def get_act_hook(fn, alt_act=None, idx=None, dim=None, name=None, message=None):
+    """Return an hook that modify the activation on the fly. alt_act (Alternative activations) is a tensor of the same shape of the z.
+    E.g. It can be the mean activation or the activations on other dataset."""
+    if alt_act is not None:
 
-#         def custom_hook(z, hook):
-#             hook.ctx["idx"] = idx
-#             hook.ctx["dim"] = dim
-#             hook.ctx["name"] = name
+        def custom_hook(z, hook):
+            hook.ctx["idx"] = idx
+            hook.ctx["dim"] = dim
+            hook.ctx["name"] = name
 
-#             if message is not None:
-#                 print(message)
+            if message is not None:
+                print(message)
 
-#             if (
-#                 dim is None
-#             ):  # mean and z have the same shape, the mean is constant along the batch dimension
-#                 return fn(z, alt_act, hook)
-#             if dim == 0:
-#                 z[idx] = fn(z[idx], alt_act[idx], hook)
-#             elif dim == 1:
-#                 z[:, idx] = fn(z[:, idx], alt_act[:, idx], hook)
-#             elif dim == 2:
-#                 z[:, :, idx] = fn(z[:, :, idx], alt_act[:, :, idx], hook)
-#             return z
+            if (
+                dim is None
+            ):  # mean and z have the same shape, the mean is constant along the batch dimension
+                return fn(z, alt_act, hook)
+            if dim == 0:
+                z[idx] = fn(z[idx], alt_act[idx], hook)
+            elif dim == 1:
+                z[:, idx] = fn(z[:, idx], alt_act[:, idx], hook)
+            elif dim == 2:
+                z[:, :, idx] = fn(z[:, :, idx], alt_act[:, :, idx], hook)
+            return z
 
-#     else:
+    else:
 
-#         def custom_hook(z, hook):
-#             hook.ctx["idx"] = idx
-#             hook.ctx["dim"] = dim
-#             hook.ctx["name"] = name
+        def custom_hook(z, hook):
+            hook.ctx["idx"] = idx
+            hook.ctx["dim"] = dim
+            hook.ctx["name"] = name
 
-#             if message is not None:
-#                 print(message)
+            if message is not None:
+                print(message)
 
-#             if dim is None:
-#                 return fn(z, hook)
-#             if dim == 0:
-#                 z[idx] = fn(z[idx], hook)
-#             elif dim == 1:
-#                 z[:, idx] = fn(z[:, idx], hook)
-#             elif dim == 2:
-#                 print("weurhed", idx)
-#                 assert torch.allclose(z[:, :, idx], z[:, :, idx+1])
-#                 old_z = z[:, :, idx].clone()
-#                 print(torch.norm(old_z))
-#                 z[:, :, idx] = 0.0 # -= fn(old_z, hook)
-#                 print(torch.norm(z[:, :, idx]), torch.norm(z[:, :, idx+1]))
-#                 assert not torch.allclose(z[:, :, idx], z[:, :, idx+1])
-#                 # print(fn)
-#             return z
+            if dim is None:
+                return fn(z, hook)
+            if dim == 0:
+                z[idx] = fn(z[idx], hook)
+            elif dim == 1:
+                z[:, idx] = fn(z[:, idx], hook)
+            elif dim == 2:
+                z[:, :, idx] = fn(z[:, :, idx], hook)
+            return z
 
-    # return custom_hook
-from get_act import get_act_hook
+    return custom_hook
 #%%
 model = HookedTransformer.from_pretrained("gpt2").cuda()
 model.set_use_attn_result(True)
@@ -101,7 +93,7 @@ model.set_use_attn_result(True)
 with open("openwebtext-10k.jsonl", "r") as f:
     lines = [json.loads(l)["text"] for l in f.readlines()]
 #%%
-base_loss = model(lines[:10], return_type="loss", loss_per_token=True) # WTONNG!!
+base_loss = model(lines[:10], return_type="loss", loss_per_token=True)
 # %%
 receiver_components = [
     [("blocks.11.hook_resid_post", None)],
@@ -111,7 +103,7 @@ for layer in range(11, -1, -1):
         [("blocks.{}.hook_resid_mid".format(layer), None)], # MLP inputs
     )
     receiver_components.append(
-        [("blocks.{}.hook_head_input".format(layer), head_idx) for head_idx in range(12)], # head inputs
+        [("blocks.{}.attn.hook_head_input".format(layer), head_idx) for head_idx in range(12)], # head inputs
     )
 # TODO look at token and positional embeddings
 #%%
@@ -151,10 +143,10 @@ def get_losses(model, list_of_texts):
     return sum(losses)/len(losses)
 
 model.reset_hooks()
-# base_loss = get_losses(model, lines[10:20]) #  model(lines[10:20], return_type="loss", loss_per_token=True).detach().cpu()
+base_loss = get_losses(model, lines[10:20]) #  model(lines[10:20], return_type="loss", loss_per_token=True).detach().cpu()
 
 model.reset_hooks()
-for idx in range(2, len(receiver_components)):
+for idx in range(len(receiver_components)):
     for name, dim_idx in receiver_components[idx]:
         answers = []
         names = []
@@ -164,16 +156,11 @@ for idx in range(2, len(receiver_components)):
                 print(name2, dim_idx2, name, dim_idx)
                 activation = None
                 cur = []
-
-                if name != "blocks.11.hook_head_input" or dim_idx==0:
-                    continue
-
                 def saver(z, hook):
                     # nonlocal activation
-                    assert len(z.shape) == 3
                     global cur
                     cur = [z.clone()]
-                    print("savin", torch.norm(z), hook.ctx["name"], hook.ctx["idx"], hook.ctx["dim"])
+                    print("savin", torch.norm(z))
                     return z
                 save_act_hook = get_act_hook(
                     saver, idx=dim_idx2, dim=None if dim_idx2 is None else 2, # name=name2
@@ -181,12 +168,10 @@ for idx in range(2, len(receiver_components)):
                 model.add_hook(name2, save_act_hook)
                 def replacer(z, hook):
                     # nonlocal activation
-                    assert len(z.shape) == 3
                     global cur
-                    print("replacin", torch.norm(cur[0]), hook.ctx["name"], hook.ctx["idx"], hook.ctx["dim"])
-                    # z-=cur[0]
-                    # print(z.shape, cur[0].shape)
-                    return cur[0]
+                    print("replacin", torch.norm(cur[0]))
+                    z[:] -= cur[0]
+                    return z
                 replace_act_hook = get_act_hook(
                     replacer, idx=dim_idx, dim=None if dim_idx is None else 2, # name=name
                 )
@@ -196,18 +181,10 @@ for idx in range(2, len(receiver_components)):
                 # loss = model(lines[10:20], return_type="loss", loss_per_token=True)
                 loss = get_losses(model, lines[10:20])
 
-                append_to_json("data2again.json", f"{name}Z{dim_idx}Z{name2}Z{dim_idx2}", loss.mean().detach().cpu().item())
+                append_to_json("data2.json", f"{name}Z{dim_idx}Z{name2}Z{dim_idx2}", loss.mean().detach().cpu().item())
                 model.reset_hooks()
                 del cur
                 torch.cuda.empty_cache()
-#%%
-
-tens1 = torch.tensor([1, 0])
-tens2 = einops.repeat(tens1, "d -> b d", b=2)
-print(tens2)
-# tens2[0, 0] = 0.0
-# print(tens2) # all zeros
-
 #%%
 if False: # extra dull stuff on plotting
     # sort the answers, and change the order of names and answers

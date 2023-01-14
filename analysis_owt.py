@@ -162,17 +162,6 @@ for k, v in d.items():
 #%%
 
 base_loss_was = 2.850428581237793
-
-y=m.clone()
-# set the 0 elements to the base loss
-y[y==0] = base_loss_was
-
-for layer in range(11, -1, -1):
-    for head in range(12, -1, -1):
-        show_pp(
-            y[layer][head][:12] - base_loss_was,
-            title="Direct effect on layer {} head {}".format(layer, head),
-            xlabel="Sender head (12=MLP)",
-            ylabel="Sender layer",
-        )
-        input("Press Enter to continue...")
+show_pp(
+    m[12][12][:12] - base_loss_was,
+)

@@ -1,4 +1,4 @@
-pyimport torch
+import torch
 import torch.nn.functional as F
 from tqdm import tqdm
 from transformers import GPT2LMHeadModel, GPT2TokenizerFast
