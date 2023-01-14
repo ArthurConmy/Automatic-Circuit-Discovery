@@ -37,7 +37,6 @@ fig.show()
 
 #%%
 
-
 def show_pp(
     m,
     xlabel="",
@@ -109,3 +108,53 @@ def show_pp(
         fig.show()
     if return_fig:
         return 
+
+#%%
+
+# make the JSON file a 4D tensor
+# receiver_layer(-1=EMBED, 12=OUT) receiver_head (12=MLP) sender_layer sender_head
+
+def dec(s):
+    s=s.split("Z")
+    receiver_layer = None
+    if s[0] == "blocks.11.hook_resid_post":
+        receiver_layer = 12
+    else:
+        receiver_layer = int(s[0].split(".")[1])
+    assert receiver_layer is not None
+
+    receiver_head = None
+    if s[1] == "None":
+        receiver_head = 12
+    else:
+        receiver_head = int(s[1])
+
+    sender_layer = int(s[2].split(".")[1])
+    sender_head = 12 if s[3]=="None" else int(s[3])
+
+    return receiver_layer, receiver_head, sender_layer, sender_head
+
+    # blocks.11.hook_resid_postZNoneZblocks.10.attn.hook_resultZ9
+
+#%%
+
+def append_to_json(filename, key, value):
+    """filename: name of the json file
+    key: key of the dictionary
+    value: value of the dictionary"""
+    with open(filename, 'r+') as file:
+        # First we load existing data into a dict.
+        file_data = json.load(file)
+        # Join new_data with file_data inside emp_details
+        file_data[key] = value
+        file.seek(0)
+        # Sets file's current position at offset.
+        json.dump(file_data, file, indent = 4)
+
+#%%
+
+m = torch.tensor(torch.zeros(13, 13, 13, 13))
+d = load_dict("data2.json")
+for k, v in d.items():
+    receiver_layer, receiver_head, sender_layer, sender_head = dec(k)
+    m[receiver_layer][receiver_head][sender_layer][sender_head] = v
