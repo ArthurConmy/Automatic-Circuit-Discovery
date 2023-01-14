@@ -158,3 +158,10 @@ d = load_dict("data2.json")
 for k, v in d.items():
     receiver_layer, receiver_head, sender_layer, sender_head = dec(k)
     m[receiver_layer][receiver_head][sender_layer][sender_head] = v
+
+#%%
+
+base_loss_was = 2.850428581237793
+show_pp(
+    m[12][12][:12] - base_loss_was,
+)
