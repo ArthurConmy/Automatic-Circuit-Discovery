@@ -39,6 +39,53 @@ ipython = get_ipython()
 if ipython is not None:
     ipython.magic("load_ext autoreload")
     ipython.magic("autoreload 2")
+
+def get_act_hook(fn, alt_act=None, idx=None, dim=None, name=None, message=None):
+    """Return an hook that modify the activation on the fly. alt_act (Alternative activations) is a tensor of the same shape of the z.
+    E.g. It can be the mean activation or the activations on other dataset."""
+    if alt_act is not None:
+
+        def custom_hook(z, hook):
+            hook.ctx["idx"] = idx
+            hook.ctx["dim"] = dim
+            hook.ctx["name"] = name
+
+            if message is not None:
+                print(message)
+
+            if (
+                dim is None
+            ):  # mean and z have the same shape, the mean is constant along the batch dimension
+                return fn(z, alt_act, hook)
+            if dim == 0:
+                z[idx] = fn(z[idx], alt_act[idx], hook)
+            elif dim == 1:
+                z[:, idx] = fn(z[:, idx], alt_act[:, idx], hook)
+            elif dim == 2:
+                z[:, :, idx] = fn(z[:, :, idx], alt_act[:, :, idx], hook)
+            return z
+
+    else:
+
+        def custom_hook(z, hook):
+            hook.ctx["idx"] = idx
+            hook.ctx["dim"] = dim
+            hook.ctx["name"] = name
+
+            if message is not None:
+                print(message)
+
+            if dim is None:
+                return fn(z, hook)
+            if dim == 0:
+                z[idx] = fn(z[idx], hook)
+            elif dim == 1:
+                z[:, idx] = fn(z[:, idx], hook)
+            elif dim == 2:
+                z[:, :, idx] = fn(z[:, :, idx], hook)
+            return z
+
+    return custom_hook
 #%%
 model = HookedTransformer.from_pretrained("gpt2").cuda()
 model.set_use_attn_result(True)
@@ -56,26 +103,101 @@ for layer in range(11, -1, -1):
         [("blocks.{}.hook_resid_mid".format(layer), None)], # MLP inputs
     )
     receiver_components.append(
-        [("blocks.{}.hook_head_input".format(layer), head_idx) for head_idx in range(12)], # head inputs
+        [("blocks.{}.attn.hook_head_input".format(layer), head_idx) for head_idx in range(12)], # head inputs
     )
 # TODO look at token and positional embeddings
 #%%
-sender_components = [[]]
+sender_components = [
+    [("blocks.11.hook_resid_post", None)],
+]
 for layer in range(11, -1, -1):
     sender_components.append(
-        [("blocks.{}.hook_resid_mid".format(layer), None)], # MLP inputs
+        [("blocks.{}.hook_mlp_out".format(layer), None)], # MLP inputs
     )
     sender_components.append(
-        [("blocks.{}.hook_attn_result".format(layer), head_idx) for head_idx in range(12)], # head inputs
+        [("blocks.{}.attn.hook_result".format(layer), head_idx) for head_idx in range(12)], # head inputs
     )
 #%%
 cache={}
 model.cache_all(cache)
-base_loss = model(lines[:10], return_type="loss", loss_per_token=True)
+# model.reset_hooks()
+base_loss = model(lines[10:20], return_type="loss", loss_per_token=True).detach().cpu()
 print(cache.keys())
 #%%
+def append_to_json(filename, key, value):
+    """filename: name of the json file
+    key: key of the dictionary
+    value: value of the dictionary"""
+    with open(filename, 'r+') as file:
+        # First we load existing data into a dict.
+        file_data = json.load(file)
+        # Join new_data with file_data inside emp_details
+        file_data[key] = value
+        file.seek(0)
+        # Sets file's current position at offset.
+        json.dump(file_data, file, indent = 4)
+
+# # add to JSON file
+# data = {}
+# with open('data.json', 'w') as outfile:
+#     json.dump(data, outfile)
 
 model.reset_hooks()
 for idx in range(len(receiver_components)):
-    activation = None
-    def save_acti
+    for name, dim_idx in receiver_components[idx]:
+        answers = []
+        names = []
+        for sender_idx in tqdm(range(idx+1, len(sender_components))):
+            for name2, dim_idx2 in sender_components[sender_idx]:
+                model.reset_hooks()
+                print(name2, dim_idx2, name, dim_idx)
+                activation = None
+                cur = []
+                def saver(z, hook):
+                    # nonlocal activation
+                    global cur
+                    cur = [z.clone()]
+                    print("savin", torch.norm(z))
+                    return z
+                save_act_hook = get_act_hook(
+                    saver, idx=dim_idx2, dim=None if dim_idx2 is None else 2, # name=name2
+                )
+                model.add_hook(name2, save_act_hook)
+                def replacer(z, hook):
+                    # nonlocal activation
+                    global cur
+                    print("replacin", torch.norm(cur[0]))
+                    z[:] -= cur[0]
+                    return z
+                replace_act_hook = get_act_hook(
+                    replacer, idx=dim_idx, dim=None if dim_idx is None else 2, # name=name
+                )
+                model.add_hook(name, replace_act_hook)
+                loss = model(lines[10:20], return_type="loss", loss_per_token=True)
+                append_to_json("data.json", f"{name}Z{dim_idx}Z{name2}Z{dim_idx2}", loss.mean().detach().cpu().item())
+                model.reset_hooks()
+                del cur
+                torch.cuda.empty_cache()
+#%%
+if False: # extra dull stuff on plotting
+    # sort the answers, and change the order of names and answers
+    answers, names = zip(*sorted(zip(answers, names)))
+    answers = list(answers)
+    names = list(names)
+
+    # plot the answers
+    plt.figure(figsize=(10, 10))
+    plt.barh(range(len(answers)), answers)
+    plt.yticks(range(len(answers)), names)
+
+    # set a white background
+    ax = plt.gca()
+    ax.set_facecolor("white")
+
+    from time import ctime
+    plt.title("Losses for {} {} {}".format(name, dim_idx, ctime()))
+    plt.show()
+    assert False
+    # plt.savefig("losses_{}_{}.png".format(name, dim_idx))
+    # plt.close()
+#%%
