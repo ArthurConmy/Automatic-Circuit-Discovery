@@ -201,3 +201,26 @@ if False: # extra dull stuff on plotting
     # plt.savefig("losses_{}_{}.png".format(name, dim_idx))
     # plt.close()
 #%%
+def zero_ablate(z, hook):
+    z[:] = 0.0
+    return z
+
+model.reset_hooks()
+# model.add_hook(zero_ablate, name="blocks.11.hook_mlp_out") # , dim=None)
+
+for i in range(3000, 10000, 10):
+    model.reset_hooks()
+    loss = model(lines[i:i+10], return_type="loss", loss_per_token=True).detach().cpu()
+    print(loss.mean(), end=" ")
+    model.add_hook("blocks.11.hook_mlp_out", zero_ablate)
+    new_loss = model(lines[i:i+10], return_type="loss", loss_per_token=True).detach().cpu()
+    print(new_loss.mean()) # .mean().detach().cpu().item())
+    torch.cuda.empty_cache()
+
+
+def ppl(model):
+    with open("openwebtext-10k.jsonl", "r") as f:
+        lines = [json.loads(l)["text"] for l in f.readlines()]
+    model.reset_hooks()
+    loss = model(lines, return_type="loss", loss_per_token=True).detach().cpu()
+    return torch.exp(loss.mean())
