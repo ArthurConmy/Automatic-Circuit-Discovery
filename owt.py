@@ -41,8 +41,41 @@ if ipython is not None:
     ipython.magic("autoreload 2")
 #%%
 model = HookedTransformer.from_pretrained("gpt2").cuda()
+model.set_use_attn_result(True)
 #%%
 with open("openwebtext-10k.jsonl", "r") as f:
     lines = [json.loads(l)["text"] for l in f.readlines()]
 #%%
-base_loss = model(lines[0], return_type="loss", loss_per_token=True)
+base_loss = model(lines[:10], return_type="loss", loss_per_token=True)
+# %%
+receiver_components = [
+    [("blocks.11.hook_resid_post", None)],
+]
+for layer in range(11, -1, -1):    
+    receiver_components.append(
+        [("blocks.{}.hook_resid_mid".format(layer), None)], # MLP inputs
+    )
+    receiver_components.append(
+        [("blocks.{}.hook_head_input".format(layer), head_idx) for head_idx in range(12)], # head inputs
+    )
+# TODO look at token and positional embeddings
+#%%
+sender_components = [[]]
+for layer in range(11, -1, -1):
+    sender_components.append(
+        [("blocks.{}.hook_resid_mid".format(layer), None)], # MLP inputs
+    )
+    sender_components.append(
+        [("blocks.{}.hook_attn_result".format(layer), head_idx) for head_idx in range(12)], # head inputs
+    )
+#%%
+cache={}
+model.cache_all(cache)
+base_loss = model(lines[:10], return_type="loss", loss_per_token=True)
+print(cache.keys())
+#%%
+
+model.reset_hooks()
+for idx in range(len(receiver_components)):
+    activation = None
+    def save_acti
