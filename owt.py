@@ -118,12 +118,6 @@ for layer in range(11, -1, -1):
         [("blocks.{}.attn.hook_result".format(layer), head_idx) for head_idx in range(12)], # head inputs
     )
 #%%
-cache={}
-model.cache_all(cache)
-# model.reset_hooks()
-base_loss = model(lines[10:20], return_type="loss", loss_per_token=True).detach().cpu()
-print(cache.keys())
-#%%
 def append_to_json(filename, key, value):
     """filename: name of the json file
     key: key of the dictionary
@@ -141,6 +135,15 @@ def append_to_json(filename, key, value):
 # data = {}
 # with open('data.json', 'w') as outfile:
 #     json.dump(data, outfile)
+
+def get_losses(model, list_of_texts):
+    losses = []
+    for texts in list_of_texts:
+        losses.append(model(texts, return_type="loss", loss_per_token=True).detach().cpu().mean())
+    return sum(losses)/len(losses)
+
+model.reset_hooks()
+base_loss = get_losses(model, lines[10:20]) #  model(lines[10:20], return_type="loss", loss_per_token=True).detach().cpu()
 
 model.reset_hooks()
 for idx in range(len(receiver_components)):
@@ -173,8 +176,12 @@ for idx in range(len(receiver_components)):
                     replacer, idx=dim_idx, dim=None if dim_idx is None else 2, # name=name
                 )
                 model.add_hook(name, replace_act_hook)
-                loss = model(lines[10:20], return_type="loss", loss_per_token=True)
-                append_to_json("data.json", f"{name}Z{dim_idx}Z{name2}Z{dim_idx2}", loss.mean().detach().cpu().item())
+                # tokens = model.to_tokens(lines[10:20])
+                # ismask = tokens[:, 1:] == model.mask_token_id
+                # loss = model(lines[10:20], return_type="loss", loss_per_token=True)
+                loss = get_losses(model, lines[10:20])
+
+                append_to_json("data2.json", f"{name}Z{dim_idx}Z{name2}Z{dim_idx2}", loss.mean().detach().cpu().item())
                 model.reset_hooks()
                 del cur
                 torch.cuda.empty_cache()
@@ -224,3 +231,106 @@ def ppl(model):
     model.reset_hooks()
     loss = model(lines, return_type="loss", loss_per_token=True).detach().cpu()
     return torch.exp(loss.mean())
+
+#%%
+# DATA SHIT
+print("WARN: not using Ryan stuff")
+data_rrfs = os.path.expanduser(f"~/rrfs/pretraining_datasets/owt_tokens_int16_val/0.pt")
+data_suffix = "name_data/data-2022-07-30.pt"
+data_local = os.path.expanduser(f"~/{data_suffix}")
+try:
+    data_full = torch.load(data_local)
+except FileNotFoundError:
+    data_full = torch.load(data_rrfs)
+toks = data_full["tokens"].long() + 32768
+lens = data_full["lens"].long()
+
+
+def d(tokens, tokenizer=model.tokenizer):
+    return tokenizer.decode(tokens)
+
+
+if False:
+    SEQ_LEN = 10
+    print(f"WARN: SEQ_LEN = {SEQ_LEN}")
+    MODEL_ID = "attention_only_four_layers_untied"
+    MODEL_ID = "attention_only_two_layers_untied"
+    # MODEL_ID = "jan5_attn_only_two_layers"
+    DATASET_SIZE = 8000  # total data points is twice this...
+    DATASET_DIR = PP("/home/arthur/rrfs/arthur/induction/data7/")
+    MODIFY_DATASETS = False
+    TRIM_TO_SIZE = False
+    FIND_SAME_TOKEN = False
+
+    DATASET_PATH = DATASET_DIR / "ind.pt"
+    MADE_DATA = os.path.exists(DATASET_PATH)
+    VOCAB_SIZE = 50259
+    if os.path.exists(DATASET_PATH):
+        smol = torch.load(str(DATASET_PATH))
+        print("Trying to decode ...")
+        print(d(smol[0, :]))
+        print("... done.")
+    else:
+        print("Rip, no smol found")
+        if not os.path.exists(DATASET_DIR):
+            print(f"Made {str(DATASET_DIR)}")
+            os.mkdir(DATASET_DIR)
+
+#%% [markdown]
+# Check that the model BPBs roughly agree with https://arxiv.org/pdf/2101.00027v1.pdf page 8
+
+
+def perplexity(losses):
+    return torch.exp(torch.mean(losses))
+
+
+def bpb(losses):
+    """Cursed EleutherAI value"""
+    return (0.29335 / np.log(2)) * losses
+
+
+def get_loss(model, tokens, return_per_token=False):
+    losses = model(
+        tokens,
+        return_type="loss",
+        loss_per_token=return_per_token,        
+    )
+    return losses
+
+
+model_name_list = [
+    "gpt2",
+    "EleutherAI/gpt-neo-125M",
+    "gpt2-large",
+    "EleutherAI/gpt-neo-1.3B",
+    "gpt2-xl",
+    "EleutherAI/gpt-neo-2.7B",
+]
+
+
+def check_some_losses(model, toks, lens, samples=100, manual_eos=None):
+    # model = EasyTransformer.from_pretrained(model_name).cuda()
+    # model.set_use_attn_result(True)
+    loss_list = []
+    for idx in tqdm(range(samples)):
+        cur = torch.cat(
+            (
+                torch.tensor([model.tokenizer.pad_token_id])
+                if manual_eos is None
+                else torch.tensor([manual_eos]),
+                toks[torch.sum(lens[:idx]) : torch.sum(lens[: idx + 1])],
+            )
+        )
+        cur_tokens = cur.unsqueeze(0)[:, :1024]
+        cur_tokens[:, 0] = model.tokenizer.pad_token_id
+        loss = get_loss(model, cur_tokens, return_per_token=True)
+
+        model.reset_hooks()
+        model.add_hook("blocks.11.hook_mlp_out", zero_ablate)
+        new_loss = get_loss(model, cur_tokens, return_per_token=True)
+        model.reset_hooks()
+
+        print(loss.mean().item(), new_loss.mean().item(), loss.shape)
+
+# %%
+check_some_losses(model, toks, lens, samples=100, manual_eos=50256)
