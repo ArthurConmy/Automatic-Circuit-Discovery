@@ -12,7 +12,7 @@ def split_by_any_of(s, list_of_strs: List[str]):
     return s.split("YOLO")
 #%%
 
-d=load_dict("data2.json")
+d=load_dict("data4.json")
 
 names = []
 answers = []
@@ -154,7 +154,7 @@ def append_to_json(filename, key, value):
 #%%
 
 m = torch.tensor(torch.zeros(13, 13, 13, 13))
-d = load_dict("data2.json")
+d = load_dict("data4.json")
 for k, v in d.items():
     receiver_layer, receiver_head, sender_layer, sender_head = dec(k)
     m[receiver_layer][receiver_head][sender_layer][sender_head] = v
@@ -165,3 +165,37 @@ base_loss_was = 2.850428581237793
 show_pp(
     m[12][12][:12] - base_loss_was,
 )
+
+#%%
+base_loss_was = 2.850428581237793
+y=m.clone()
+# set the 0 elements to the base loss
+y[y==0] = base_loss_was
+for layer in range(11, -1, -1):
+    for head in range(12, -1, -1):
+        show_pp(
+            y[layer][head][:12] - base_loss_was,
+            title="Direct effect on layer {} head {}".format(layer, head),
+            xlabel="Sender head (12=MLP)",
+            ylabel="Sender layer",
+        )
+        input("Press Enter to continue...")
+
+#%%
+# look at means of edge ablations of RECEIVING from certain places
+def mean_over_nonzero_elems(tens):
+    # print(torch.sum(tens != 0))
+    return torch.sum(tens) / torch.sum(tens != 0)
+ymean = torch.zeros(13, 13)
+for layer in range(12, -1, -1):
+    for head in range(12, -1, -1):
+        ymean[layer][head] = mean_over_nonzero_elems(y[layer][head] - base_loss_was)
+show_pp(ymean[:12,:12], title="Mean loss increase when ablating random edges INTO each layer and head", xlabel="Sender head", ylabel="Sender layer")
+#%%
+# look at means of edge ablations of SENDING from certain places
+
+ymean2 = torch.zeros(13, 13)
+for layer in range(12, -1, -1):
+    for head in range(12, -1, -1):
+        ymean2[layer][head] = mean_over_nonzero_elems(y[:12,:12,layer,head] - base_loss_was)
+show_pp(ymean2[:12,:12], title="Mean loss increase when ablating random edges FROM each layer and head", xlabel="Receiver head", ylabel="Receiver layer")

@@ -93,7 +93,9 @@ model.set_use_attn_result(True)
 with open("openwebtext-10k.jsonl", "r") as f:
     lines = [json.loads(l)["text"] for l in f.readlines()]
 #%%
-base_loss = model(lines[:10], return_type="loss", loss_per_token=True)
+model.reset_hooks()
+base_loss = model(lines[10:20], return_type="loss", loss_per_token=True)
+print(base_loss.mean())
 # %%
 receiver_components = [
     [("blocks.11.hook_resid_post", None)],
@@ -103,7 +105,7 @@ for layer in range(11, -1, -1):
         [("blocks.{}.hook_resid_mid".format(layer), None)], # MLP inputs
     )
     receiver_components.append(
-        [("blocks.{}.attn.hook_head_input".format(layer), head_idx) for head_idx in range(12)], # head inputs
+        [("blocks.{}.hook_head_input".format(layer), head_idx) for head_idx in range(12)], # head inputs
     )
 # TODO look at token and positional embeddings
 #%%
@@ -153,7 +155,10 @@ for idx in range(len(receiver_components)):
         for sender_idx in tqdm(range(idx+1, len(sender_components))):
             for name2, dim_idx2 in sender_components[sender_idx]:
                 model.reset_hooks()
+                # if name != "blocks.11.hook_head_input": #  or dim_idx==0:
+                    # continue
                 print(name2, dim_idx2, name, dim_idx)
+
                 activation = None
                 cur = []
                 def saver(z, hook):
@@ -180,8 +185,8 @@ for idx in range(len(receiver_components)):
                 # ismask = tokens[:, 1:] == model.mask_token_id
                 # loss = model(lines[10:20], return_type="loss", loss_per_token=True)
                 loss = get_losses(model, lines[10:20])
-
-                append_to_json("data3.json", f"{name}Z{dim_idx}Z{name2}Z{dim_idx2}", loss.mean().detach().cpu().item())
+                print(loss)
+                append_to_json("data4.json", f"{name}Z{dim_idx}Z{name2}Z{dim_idx2}", loss.mean().detach().cpu().item())
                 model.reset_hooks()
                 del cur
                 torch.cuda.empty_cache()
