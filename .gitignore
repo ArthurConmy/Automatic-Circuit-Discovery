@@ -13,3 +13,7 @@ _modidx.py
 .ipynb_checkpoints
 env
 dist/
+*.db
+*.jsonl
+pngs/*
+pts/*
