@@ -96,24 +96,123 @@ for i in range(100):
 
 #%%
 # def proc
-def get_no_parameters(model):
+def get_no_parameters(model, d, l=10):
+    lis = [list(l.shape) for l in list(model.parameters()) if l.requires_grad] # [2:-4]
+    print(lis)
     ans = 0
-    lis = [l for l in list(model.parameters()) if l.requires_grad]
-    # print(sum(lis))
-    return lis[0], lis[1], lis[-2]
-    # if p.requires_grad:
-    #     shap = list(p.shape)
-    #     print(shap)
+    for thing in lis[2:-4]:
+        l2 = list(thing)
+        for i in range(len(l2)):
+            if l2[i] == 768:
+                l2[i] = d
+            if l2[i] == 4*768:
+                l2[i] = 4*d
+            if l2[i] == 768//12:
+                l2[i] = d // l
+        ans += np.prod(l2)
+    ans *= (l/12)
+    ans += 50257
+#    print(sum(lis[2:-4]) * (10/12))
+    return (ans + (d/768) * sum(np.prod(l) for l in lis[:2] + lis[-4:-1]))
 
-    # return list(list(p.shape) for p in model.parameters() if p.requires_grad)
+def get_no_params_raw(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-a, b, c = get_no_parameters(model)
-print(a.shape, b.shape, c.shape)
+original = 124_000_000 # get_no_parameters(model, 768, 12)
+# binary search for d so that the number of parameters is 1/2 of the original
 
-for v in [a.T, c, a.T - c]:
-    print(torch.norm(v))
+fails = 0
+passes = 768
+while fails + 1 < passes:
+    mid = (fails + passes) // 2
+    print(mid)
+    if get_no_parameters(model, mid, 10) < original:
+        fails = mid
+    else:
+        passes = mid
+print(passes)
 
-assert torch.allclose(a.T, c)
+# print(sum(lis))
+# return lis[0].numel(), lis[1], lis[-2]
+# if p.requires_grad:
+#     shap = list(p.shape)
+#     print(shap)
+
+# return list(list(p.shape) for p in model.parameters() if p.requires_grad)
+
+# a, b, c = get_no_parameters(model, 768)
+# print(a.shape, b.shape, c.shape)
+
+# for v in [a.T, c, a.T - c]:
+#     print(torch.norm(v))
+
+# assert torch.allclose(a.T, c)
+
+#%%
+
+d_model = 684
+n_layers = 10
+n_heads = 12
+assert d_model % n_heads == 0
+d_head = d_model // n_heads
+
+from transformer_lens import HookedTransformerConfig, HookedTransformer
+
+cfg = HookedTransformerConfig.from_dict({
+    "n_layers": n_layers,
+    "n_heads": n_heads,
+    "d_model": d_model,
+    "n_ctx": 1024,
+    "d_head": d_head,
+    "act_fn": "gelu",
+    "d_vocab": 50257,
+})
+trans = HookedTransformer(cfg)
+
+# act_fn: Optional[str] = None
+# d_vocab: int = -1
+# eps: float = 1e-5
+# use_attn_result: bool = False
+# use_attn_scale: bool = True
+# use_local_attn: bool = False
+# original_architecture: Optional[str] = None
+# from_checkpoint: bool = False
+# checkpoint_index: Optional[int] = None
+# checkpoint_label_type: Optional[str] = None
+# checkpoint_value: Optional[int] = None
+# tokenizer_name: Optional[str] = None
+# window_size: Optional[int] = None
+# attn_types: Optional[List] = None
+# init_mode: str = "gpt2"
+# normalization_type: Optional[str] = "LN"
+# device: Optional[str] = None
+# attention_dir: str = "causal"
+# attn_only: bool = False
+# seed: Optional[int] = None
+# initializer_range: float = -1.0
+# init_weights: bool = True
+# scale_attn_by_inverse_layer_idx: bool = False
+# positional_embedding_type: str = "standard"
+# final_rms: bool = False
+# d_vocab_out: int = -1
+# parallel_attn_mlp: bool = False
+# rotary_dim: Optional[int] = None
+# n_params: Optional[int] = None
+
+#%%
+
+from datasets import list_datasets, load_dataset
+datasets_list = list_datasets()
+
+for s in datasets_list:
+    if "pile" in s:
+        print(s)
+
+dataset = load_dataset("the_pile")
+
+# len(datasets_list)
+# optimizer = 
+
 
 #%%
 
