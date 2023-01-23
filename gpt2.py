@@ -39,14 +39,15 @@ from copy import deepcopy
 # from ioi_dataset import (
 #     IOIDataset,
 # )
-from ioi_utils import (
-    path_patching,
-    max_2d,
-    CLASS_COLORS,
-    show_pp,
-    show_attention_patterns,
-    scatter_attention_and_contribution,
-)
+
+# from ioi_utils import (
+#     path_patching,
+#     max_2d,
+#     CLASS_COLORS,
+#     show_pp,
+#     show_attention_patterns,
+#     scatter_attention_and_contribution,
+# )
 
 from random import randint as ri
 
@@ -68,7 +69,7 @@ model = HookedTransformer.from_pretrained("gpt2", center_unembed=False, center_w
 model.set_use_attn_result(True)
 
 #%%
-model.unembed.W_U = torch.nn.Parameter(model.embed.W_E.T)
+# model.unembed.W_U = torch.nn.Parameter(model.embed.W_E.T)
 
 #%%
 import json
@@ -150,8 +151,8 @@ print(passes)
 
 #%%
 
-d_model = 684
-n_layers = 10
+d_model = 768
+n_layers = 12
 n_heads = 12
 assert d_model % n_heads == 0
 d_head = d_model // n_heads
@@ -168,169 +169,79 @@ cfg = HookedTransformerConfig.from_dict({
     "d_vocab": 50257,
 })
 trans = HookedTransformer(cfg)
-
-# act_fn: Optional[str] = None
-# d_vocab: int = -1
-# eps: float = 1e-5
-# use_attn_result: bool = False
-# use_attn_scale: bool = True
-# use_local_attn: bool = False
-# original_architecture: Optional[str] = None
-# from_checkpoint: bool = False
-# checkpoint_index: Optional[int] = None
-# checkpoint_label_type: Optional[str] = None
-# checkpoint_value: Optional[int] = None
-# tokenizer_name: Optional[str] = None
-# window_size: Optional[int] = None
-# attn_types: Optional[List] = None
-# init_mode: str = "gpt2"
-# normalization_type: Optional[str] = "LN"
-# device: Optional[str] = None
-# attention_dir: str = "causal"
-# attn_only: bool = False
-# seed: Optional[int] = None
-# initializer_range: float = -1.0
-# init_weights: bool = True
-# scale_attn_by_inverse_layer_idx: bool = False
-# positional_embedding_type: str = "standard"
-# final_rms: bool = False
-# d_vocab_out: int = -1
-# parallel_attn_mlp: bool = False
-# rotary_dim: Optional[int] = None
-# n_params: Optional[int] = None
+trans.tokenizer = model.tokenizer
 
 #%%
 
 from datasets import list_datasets, load_dataset
 datasets_list = list_datasets()
-
 for s in datasets_list:
     if "pile" in s:
         print(s)
+dataset = load_dataset("openwebtext")
 
-dataset = load_dataset("the_pile")
+#%%
+mean=0
+for i in tqdm(range(1000)):
+    sample = dataset["train"][i]
+    mean+=((model.to_tokens(sample["text"])).numel())
+mean/=1000
+print(mean)
 
-# len(datasets_list)
-# optimizer = 
-
+#%%
+trans.generate("There should be non-sensical completion here:")
 
 #%%
 
-b = torch.randn(2, 2)
-a = b.T
-print(torch.norm(b))
-b+=1
-print(torch.norm(b), torch.norm(a))
+import wandb
+wandb.init(project="gpt-a", name="arthurs-run")
+
+#%% [markdown]
+# TODO:
+# - [ ] Get learning rate warmup working
+# - [ ] Get gradient clipping working
 
 #%%
 
-def get_top_logits(
-    ls, # batch size, seq_len, vocab_size
-):
-    """Print the top 10 tokens and their probabilities"""
+def save_model_weights(model, path):
+    torch.save(model.state_dict(), path)
 
-    top_logits, top_indices = torch.topk(ls[:, -1], 10, dim=-1)
-    top_probs = torch.softmax(top_logits, dim=-1)
-    
-    # for i in range(len(top_indices)):
-    #     print(f"Top 10 tokens for sentence {i}")
-    #     for j in range(len(top_indices[i])):
-    #         print(f"{model.tokenizer.decode([top_indices[i][j].item()])}: {top_probs[i][j].item()}")
-    # print("Done")
+fpath = "pts/initial_trans.pt"
 
-@torch.no_grad()
-def single_head_v2(model, prompts, layer, head, correct_ids, incorrect_ids=False, correct_mode=False, no_hooks=False):
-    model.set_use_attn_result(True)
-    batch_size = len(prompts)
+if not os.path.exists(fpath):
+    save_model_weights(trans.parameters(), "pts/initial_trans.pt")
 
-    arr = []
+# load trans to be the model we're training
 
-    def save_head(tensor, hook):
-        # saved_head = tensor[:, :, head, :].clone() # (batch_size, seq_len, d model)
-        arr.append(tensor[:, :, head, :].clone())
-        # print("read", torch.norm(arr[0]))
-        return tensor
-    
+if "is_loaded" not in dir(trans):
+    # load trans from pt file
+    print("yee haw")
+    trans.load_state_dict(torch.load(fpath))
+    trans.is_loaded = True
 
-
-    def save_mlp(tensor, hook):
-        arr.append(tensor.clone())
-        return tensor
-
-    def set_out(tensor, hook):  
-        # tensor.copy_(saved_head)
-        # print(len(arr), [a.shape for a in arr])
-        assert len(arr) == 1
-        # tensor.copy_(arr[0])
-        tensor[:] -= arr[0]
-        # print("write", torch.norm(arr[0]))
-        return tensor
-
-    model.reset_hooks()
-    logits = model.run_with_hooks(
-        prompts,
-        fwd_hooks=[
-            (f"blocks.{layer}.attn.hook_result", save_head) if head != "mlp" else (f"blocks.{layer}.hook_mlp_out", save_mlp),
-            ("blocks.11.hook_resid_post", set_out),
-        ] if not no_hooks else [],
-        prepend_bos=True,
-    )
-
-    probs = torch.nn.functional.softmax(logits, dim=-1) # (batch_size, 1, vocab_size)
-    correct_logits = logits[torch.arange(batch_size), -1, correct_ids] - (0.0 if incorrect_ids is None else logits[torch.arange(batch_size), -1, incorrect_ids]) # (batch_size)
-    correct_probs = probs[torch.arange(batch_size), -1, correct_ids]
-    incorrect_probs = probs[torch.arange(batch_size), -1, incorrect_ids]
-
-    for i in range(7):
-        get_top_logits(logits[i:i+1])
-
-    if correct_mode:
-        return correct_logits, correct_probs, incorrect_probs
-    else:
-        return logits, probs
-
-
-correct_ls, correct_ps, incorrect_ps = single_head_v2(
-    model,
-    prompts=["If today is Monday, tomorrow is", "If today is Tuesday, tomorrow is"],
-    layer=-23480237,
-    head=-2357892,
-    correct_ids=[model.tokenizer.encode(" Tuesday")[-1], model.tokenizer.encode(" Wednesday")[-1]],
-    incorrect_ids=[model.tokenizer.encode(" Monday")[-1], model.tokenizer.encode(" Tuesday")[-1]],
-    correct_mode=True,
-    no_hooks=True,
+# Adam optimizer, LR 6e-4
+opt = torch.optim.Adam(
+    trans.parameters(),
+    lr=6e-4,
+    betas=(0.9, 0.95),
+    eps=1e-8,
 )
 
-for i in range(7):
-    res = t.zeros(12, 13)
-    lres = t.zeros(12, 13)
-    ares = t.zeros(12, 13)
+#%%
 
-    days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    days_of_week_rot = days_of_week[1:] + [days_of_week[0]]
+ds = dataset["train"]
 
-    get_top_logits(single_head_v2(model, ["If today is Monday, tomorrow is"], layer=0, head=0, correct_ids=[model.tokenizer.encode(" Tuesday")[0]], correct_mode=False, no_hooks=True)[0])
+for step in range(len(ds)):
+    log = {}
+    sample = ds[step]
+    toks = model.to_tokens(sample["text"]).cuda()
 
-    for layer in tqdm(range(12)):
-        for head in range(13):
-            ls, ps, ps2 = single_head_v2(
-                model=model,
-                prompts=["Today is {day}, then tomorrow is".format(day=days_of_week[i])], # for day in days_of_week],
-                head=head if head != 12 else "mlp",
-                correct_ids=[model.tokenizer.encode(" "+day)[0] for day in [days_of_week_rot[i]]],
-                incorrect_ids=[model.tokenizer.encode(" "+day)[0] for day in [days_of_week[i]]],
-                correct_mode=True,
-                layer=layer,
-                # head=2s42,
-                no_hooks=False,
-            )
-            
-            ares[layer, head] = ps.mean() # - correct_ps[0
-            res[layer, head] = ps2.mean() # - correct_ps[0]
-            lres[layer, head] = ls.item() # - correct_ls[0]
-            # print()
+    opt.zero_grad()
+    loss = trans(toks, return_type="loss", loss_per_token=True)
+    loss *= loss.numel() / 1024
+    loss.backward()
+    opt.step()
+    log["loss"]
 
-    # variances = t.var(lres, dim=2)
-
-    show_pp(ares, title="Probs on correct when removing effect of heads and MLPs for day " + str(days_of_week[i]), xlabel="Head (pos 12 is MLP)", ylabel="Layer") # removing direct effect of head...")
-# %%
+    if False:
+        wandb.log(log)

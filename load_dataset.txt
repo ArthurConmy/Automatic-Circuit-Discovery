@@ -1,0 +1,600 @@
+---------------------------------------------------------------------------
+ModuleNotFoundError                       Traceback (most recent call last)
+~/Easy-Transformer/gpt2.py in <module>
+     27 #     IOIDataset,
+     28 # )
+---> 29 from ioi_utils import (
+     30     path_patching,
+     31     max_2d,
+
+ModuleNotFoundError: No module named 'ioi_utils'
+Cell was canceled due to an error in a previous cell.
+Cell was canceled due to an error in a previous cell.
+
+Using pad_token, but it is not set yet.
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cuda
+0.11882615089416504
+0.11079788208007812
+0.10153841972351074
+0.09299612045288086
+0.09314632415771484
+0.09312319755554199
+0.0931539535522461
+0.09329986572265625
+0.09316492080688477
+0.09313344955444336
+0.09313249588012695
+0.09318161010742188
+---------------------------------------------------------------------------
+KeyboardInterrupt                         Traceback (most recent call last)
+~/Easy-Transformer/gpt2.py in <module>
+     13     logs = model(toks)
+     14     loss = torch.sum(logs)
+---> 15     loss.backward()
+     16     optimizer.step()
+     17     end_time = time.time()
+
+/home/exx/miniconda3/envs/unity_env_arthur/lib/python3.10/site-packages/torch/_tensor.py in backward(self, gradient, retain_graph, create_graph, inputs)
+    394                 create_graph=create_graph,
+    395                 inputs=inputs)
+--> 396         torch.autograd.backward(self, gradient, retain_graph, create_graph, inputs=inputs)
+    397 
+    398     def register_hook(self, hook):
+
+/home/exx/miniconda3/envs/unity_env_arthur/lib/python3.10/site-packages/torch/autograd/__init__.py in backward(tensors, grad_tensors, retain_graph, create_graph, grad_variables, inputs)
+    171     # some Python versions print out the first line of a multi-line function
+    172     # calls in the traceback and some print out the last line
+--> 173     Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+    174         tensors, grad_tensors_, retain_graph, create_graph, inputs,
+    175         allow_unreachable=True, accumulate_grad=True)  # Calls into the C++ engine to run the backward pass
+
+KeyboardInterrupt: 
+384
+[[50257, 768], [1024, 768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768, 50257], [50257]]
+576
+[[50257, 768], [1024, 768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768, 50257], [50257]]
+672
+[[50257, 768], [1024, 768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768, 50257], [50257]]
+624
+[[50257, 768], [1024, 768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768, 50257], [50257]]
+648
+[[50257, 768], [1024, 768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768, 50257], [50257]]
+660
+[[50257, 768], [1024, 768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768, 50257], [50257]]
+666
+[[50257, 768], [1024, 768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768, 50257], [50257]]
+663
+[[50257, 768], [1024, 768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768, 50257], [50257]]
+664
+[[50257, 768], [1024, 768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768, 50257], [50257]]
+665
+[[50257, 768], [1024, 768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768], [768], [12, 768, 64], [12, 768, 64], [12, 768, 64], [12, 64, 768], [12, 64], [12, 64], [12, 64], [768], [768, 3072], [3072], [3072, 768], [768], [768], [768], [768, 50257], [50257]]
+665
+the_pile
+the_pile_books3
+the_pile_openwebtext2
+the_pile_stack_exchange
+pile-of-law/pile-of-law
+shahp7575/sia_pile_sample
+sia-precision-education/pile_cpp
+sia-precision-education/pile_js
+sia-precision-education/pile_python
+sia-precision-education/sia_pile_sample
+tomekkorbak/pile-curse-small
+tomekkorbak/pile-curse-full_test
+tomekkorbak/pile-debug
+tomekkorbak/pile-curse-chunk-1
+tomekkorbak/pile-curse-chunk-0
+tomekkorbak/pile-curse-chunk-3
+tomekkorbak/pile-curse-chunk-2
+tomekkorbak/pile-curse-chunk-5
+tomekkorbak/pile-curse-chunk-6
+tomekkorbak/pile-curse-chunk-4
+tomekkorbak/pile-curse-chunk-16
+tomekkorbak/pile-curse-chunk-15
+tomekkorbak/pile-curse-chunk-14
+tomekkorbak/pile-curse-chunk-13
+tomekkorbak/pile-curse-chunk-8
+tomekkorbak/pile-curse-chunk-9
+tomekkorbak/pile-curse-chunk-20
+tomekkorbak/pile-curse-chunk-18
+tomekkorbak/pile-curse-chunk-7
+tomekkorbak/pile-curse-chunk-24
+tomekkorbak/pile-curse-chunk-17
+tomekkorbak/pile-curse-chunk-21
+tomekkorbak/pile-curse-chunk-22
+tomekkorbak/pile-curse-chunk-10
+tomekkorbak/pile-curse-chunk-26
+tomekkorbak/pile-curse-chunk-11
+tomekkorbak/pile-curse-chunk-27
+tomekkorbak/pile-curse-chunk-12
+tomekkorbak/pile-curse-chunk-25
+tomekkorbak/pile-curse-chunk-19
+tomekkorbak/pile-curse-chunk-23
+tomekkorbak/pile-curse-chunk-29
+tomekkorbak/pile-curse-chunk-28
+tomekkorbak/pile-curse-full
+tomekkorbak/pile-toxic-chunk-0
+tomekkorbak/pile-nontoxic-chunk-0
+tomekkorbak/pile-toxicity-balanced
+tomekkorbak/pile-toxicity-balanced2
+rasikabh/pile-pii
+tomekkorbak/pile-toxicity-balanced2-filtered
+kejian/pile-severetoxicTEST-chunk-0
+pile-of-law/eoir_privacy
+kejian/pile-severetoxic-chunk-0
+kejian/pile-severetoxic-balanced
+kejian/pile-severetoxic-random100k
+kejian/pile-severetoxic-balanced2
+tomekkorbak/pile-pii
+bigscience-data/roots_en_the_pile_europarl
+bigscience-data/roots_en_the_pile_uspto
+bigscience-data/roots_es_the_pile_europarl
+bigscience-data/roots_fr_the_pile_europarl
+bigscience-data/roots_pt_the_pile_europarl
+tomekkorbak/pile-chunk-toxicity-scored-3
+tomekkorbak/pile-toxicity-balanced3
+conceptofmind/pile_cc
+conceptofmind/pile_hacker_news
+conceptofmind/pile_wikipedia_en
+conceptofmind/pile_open_web_text_2
+conceptofmind/pile_uspto_backgrounds
+conceptofmind/pile_dm_mathematics
+conceptofmind/pile_open_subtitles
+conceptofmind/pile_project_gutenberg
+tomekkorbak/pile-debug-value-test
+tomekkorbak/pile-toxicity-balanced3-with-values
+mschi/twitter_stream_pile
+conceptofmind/pile_enron_emails
+hoskinson-center/proof-pile
+Downloading builder script:
+2.86k/? [00:00<00:00, 111kB/s]
+Downloading metadata:
+1.15k/? [00:00<00:00, 48.8kB/s]
+/home/exx/miniconda3/envs/unity_env_arthur/lib/python3.10/site-packages/scipy/__init__.py:146: UserWarning: A NumPy version >=1.16.5 and <1.23.0 is required for this version of SciPy (detected version 1.23.5
+  warnings.warn(f"A NumPy version >={np_minversion} and <{np_maxversion}"
+Downloading and preparing dataset openwebtext/plain_text (download: 12.00 GiB, generated: 37.04 GiB, post-processed: Unknown size, total: 49.03 GiB) to /home/arthur/.cache/huggingface/datasets/openwebtext/plain_text/1.0.0/85b3ae7051d2d72e7c5fdf6dfb462603aaa26e9ed506202bf3a24d261c6c40a1...
+Downloading data: 100%
+12.9G/12.9G [12:03<00:00, 22.8MB/s]
+Output exceeds the size limit. Open the full output data in a text editor
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+...
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+  
+Extracting data files #4: 100%
+215/215 [00:55<00:00, 3.73obj/s]
+Extracting data files #7: 100%
+215/215 [00:56<00:00, 7.01obj/s]
+Extracting data files #3: 100%
+215/215 [00:56<00:00, 6.17obj/s]
+Extracting data files #2: 100%
+215/215 [00:56<00:00, 4.65obj/s]
+Extracting data files #8: 100%
+215/215 [00:56<00:00, 5.93obj/s]
+Extracting data files #5: 100%
+215/215 [00:56<00:00, 9.20obj/s]
+Extracting data files #0: 100%
+215/215 [00:55<00:00, 4.34obj/s]
+Extracting data files #1: 100%
+215/215 [00:56<00:00, 5.38obj/s]
+Extracting data files #9: 100%
+215/215 [00:55<00:00, 4.28obj/s]
+Extracting data files #22: 100%
+215/215 [00:56<00:00, 5.44obj/s]
+Extracting data files #13: 100%
+215/215 [00:55<00:00, 4.63obj/s]
+Extracting data files #6: 100%
+215/215 [00:55<00:00, 4.32obj/s]
+Extracting data files #19: 100%
+215/215 [00:56<00:00, 7.55obj/s]
+Extracting data files #12: 100%
+215/215 [00:55<00:00, 4.36obj/s]
+Extracting data files #25: 100%
+215/215 [00:56<00:00, 4.74obj/s]
+Extracting data files #14: 100%
+215/215 [00:56<00:00, 5.28obj/s]
+Extracting data files #15: 100%
+215/215 [00:56<00:00, 4.79obj/s]
+Extracting data files #23: 100%
+215/215 [00:56<00:00, 5.52obj/s]
+Extracting data files #18: 100%
+215/215 [00:56<00:00, 6.26obj/s]
+Extracting data files #34: 100%
+215/215 [00:55<00:00, 5.10obj/s]
+Extracting data files #21: 100%
+215/215 [00:56<00:00, 5.64obj/s]
+Extracting data files #16: 100%
+215/215 [00:56<00:00, 4.82obj/s]
+Extracting data files #33: 100%
+215/215 [00:56<00:00, 7.93obj/s]
+Extracting data files #29: 100%
+215/215 [00:55<00:00, 4.51obj/s]
+Extracting data files #30: 100%
+215/215 [00:55<00:00, 4.00obj/s]
+Extracting data files #28: 100%
+215/215 [00:56<00:00, 7.33obj/s]
+Extracting data files #38: 100%
+215/215 [00:56<00:00, 4.57obj/s]
+Extracting data files #26: 100%
+215/215 [00:56<00:00, 9.05obj/s]
+Extracting data files #20: 100%
+215/215 [00:56<00:00, 6.29obj/s]
+Extracting data files #27: 100%
+215/215 [00:56<00:00, 5.51obj/s]
+Extracting data files #37: 100%
+215/215 [00:55<00:00, 4.24obj/s]
+Extracting data files #17: 100%
+215/215 [00:55<00:00, 4.20obj/s]
+Extracting data files #36: 100%
+215/215 [00:56<00:00, 4.82obj/s]
+Extracting data files #24: 100%
+215/215 [00:55<00:00, 4.01obj/s]
+Extracting data files #43: 100%
+215/215 [00:55<00:00, 4.59obj/s]
+Extracting data files #42: 100%
+215/215 [00:56<00:00, 6.69obj/s]
+Extracting data files #32: 100%
+215/215 [00:56<00:00, 4.47obj/s]
+Extracting data files #41: 100%
+215/215 [00:56<00:00, 4.82obj/s]
+Extracting data files #35: 100%
+215/215 [00:56<00:00, 4.64obj/s]
+Extracting data files #45: 100%
+215/215 [00:56<00:00, 7.02obj/s]
+Extracting data files #31: 100%
+215/215 [00:55<00:00, 4.60obj/s]
+Extracting data files #40: 100%
+215/215 [00:56<00:00, 7.66obj/s]
+Extracting data files #44: 100%
+215/215 [00:56<00:00, 4.76obj/s]
+Extracting data files #47: 100%
+215/215 [00:56<00:00, 5.65obj/s]
+Extracting data files #49: 100%
+215/215 [00:56<00:00, 4.94obj/s]
+Extracting data files #46: 100%
+215/215 [00:56<00:00, 4.94obj/s]
+Extracting data files #54: 100%
+215/215 [00:56<00:00, 4.92obj/s]
+Extracting data files #50: 100%
+215/215 [00:55<00:00, 4.18obj/s]
+Extracting data files #52: 100%
+215/215 [00:56<00:00, 7.52obj/s]
+Extracting data files #53: 100%
+215/215 [00:55<00:00, 4.29obj/s]
+Extracting data files #48: 100%
+215/215 [00:55<00:00, 5.30obj/s]
+Extracting data files #55: 100%
+215/215 [00:56<00:00, 4.69obj/s]
+Extracting data files #51: 100%
+215/215 [00:55<00:00, 4.08obj/s]
+Extracting data files #58: 100%
+215/215 [00:56<00:00, 7.91obj/s]
+Extracting data files #62: 100%
+215/215 [00:56<00:00, 6.88obj/s]
+Extracting data files #66: 100%
+214/214 [00:56<00:00, 4.82obj/s]
+Extracting data files #59: 100%
+215/215 [00:56<00:00, 6.99obj/s]
+Extracting data files #63: 100%
+215/215 [00:56<00:00, 5.36obj/s]
+Extracting data files #56: 100%
+215/215 [00:55<00:00, 4.15obj/s]
+Extracting data files #64: 100%
+215/215 [00:56<00:00, 5.88obj/s]
+Extracting data files #61: 100%
+215/215 [00:56<00:00, 4.69obj/s]
+Extracting data files #57: 100%
+215/215 [00:56<00:00, 5.33obj/s]
+Extracting data files #70: 100%
+214/214 [00:55<00:00, 3.96obj/s]
+Extracting data files #65: 100%
+215/215 [00:56<00:00, 6.49obj/s]
+Extracting data files #68: 100%
+214/214 [00:56<00:00, 4.94obj/s]
+Extracting data files #72: 100%
+214/214 [00:55<00:00, 4.61obj/s]
+Extracting data files #71: 100%
+214/214 [00:55<00:00, 4.24obj/s]
+Extracting data files #73: 100%
+214/214 [00:55<00:00, 4.03obj/s]
+Extracting data files #67: 100%
+214/214 [00:56<00:00, 5.61obj/s]
+Extracting data files #79: 100%
+214/214 [00:54<00:00, 3.80obj/s]
+Extracting data files #76: 100%
+214/214 [00:54<00:00, 3.92obj/s]
+Extracting data files #60: 100%
+215/215 [00:55<00:00, 4.40obj/s]
+Extracting data files #77: 100%
+214/214 [00:56<00:00, 7.82obj/s]
+Extracting data files #83: 100%
+214/214 [00:55<00:00, 4.30obj/s]
+Extracting data files #39: 100%
+215/215 [00:56<00:00, 5.79obj/s]
+Extracting data files #92: 100%
+214/214 [00:56<00:00, 5.75obj/s]
+Extracting data files #86: 100%
+214/214 [00:55<00:00, 4.33obj/s]
+Extracting data files #88: 100%
+214/214 [00:55<00:00, 5.01obj/s]
+Extracting data files #93: 100%
+214/214 [00:55<00:00, 3.95obj/s]
+Extracting data files #85: 100%
+214/214 [00:55<00:00, 3.99obj/s]
+Extracting data files #84: 100%
+214/214 [00:55<00:00, 3.96obj/s]
+Extracting data files #91: 100%
+214/214 [00:56<00:00, 8.84obj/s]
+Extracting data files #94: 100%
+214/214 [00:55<00:00, 4.25obj/s]
+Extracting data files #81: 100%
+214/214 [00:55<00:00, 4.75obj/s]
+Extracting data files #95: 100%
+214/214 [00:55<00:00, 4.33obj/s]
+Extracting data files #78: 100%
+214/214 [00:56<00:00, 6.29obj/s]
+Extracting data files #89: 100%
+214/214 [00:55<00:00, 4.65obj/s]
+Extracting data files #11: 100%
+215/215 [00:55<00:00, 4.47obj/s]
+Extracting data files #90: 100%
+214/214 [00:55<00:00, 4.29obj/s]
+Extracting data files #87: 100%
+214/214 [00:55<00:00, 4.08obj/s]
+Extracting data files #10: 100%
+215/215 [00:56<00:00, 5.61obj/s]
+Extracting data files #69: 100%
+214/214 [00:55<00:00, 4.10obj/s]
+Extracting data files #80: 100%
+214/214 [00:55<00:00, 3.78obj/s]
+Extracting data files #82: 100%
+214/214 [00:54<00:00, 3.92obj/s]
+Extracting data files #74: 100%
+214/214 [00:55<00:00, 4.27obj/s]
+Extracting data files #75: 100%
+214/214 [00:55<00:00, 3.88obj/s]
+Dataset openwebtext downloaded and prepared to /home/arthur/.cache/huggingface/datasets/openwebtext/plain_text/1.0.0/85b3ae7051d2d72e7c5fdf6dfb462603aaa26e9ed506202bf3a24d261c6c40a1. Subsequent calls will reuse this data.
+100%
+1/1 [00:00<00:00, 34.19it/s]
+
+DatasetDict({
+    train: Dataset({
+        features: ['text'],
+        num_rows: 8013769
+    })
+})
+{'text': "If you live abroad and are requesting an ITIN for a foreign child who has been adopted or legally placed in your home pending adoption, remember to include a copy of the legal documents evidencing your relationship to the child.\n\nIf you live abroad and are requesting an ITIN for a foreign child who has been adopted or legally placed in your home pending adoption, remember to include a copy of the legal documents evidencing your relationship to the child.\n\nWhen it comes to ITINs for dependents only IRS employees serving as certifying acceptance agents are empowered to evaluate your dependent's passport on the spot and immediately return the passport.\n\nWhen it comes to ITINs for dependents only IRS employees serving as certifying acceptance agents are empowered to evaluate your dependent's passport on the spot and immediately return the passport."}
+---------------------------------------------------------------------------
+IndexError                                Traceback (most recent call last)
+~/Easy-Transformer/gpt2.py in <module>
+      1 #%%
+      2 
+----> 3 sample = dataset["train"][8013769]
+
+/home/exx/miniconda3/envs/unity_env_arthur/lib/python3.10/site-packages/datasets/arrow_dataset.py in __getitem__(self, key)
+   2152     def __getitem__(self, key):  # noqa: F811
+   2153         """Can be used to index columns (by string names) or rows (by integer index or iterable of indices or bools)."""
+-> 2154         return self._getitem(
+   2155             key,
+   2156         )
+
+/home/exx/miniconda3/envs/unity_env_arthur/lib/python3.10/site-packages/datasets/arrow_dataset.py in _getitem(self, key, decoded, **kwargs)
+   2136         format_kwargs = format_kwargs if format_kwargs is not None else {}
+   2137         formatter = get_formatter(format_type, features=self.features, decoded=decoded, **format_kwargs)
+-> 2138         pa_subtable = query_table(self._data, key, indices=self._indices if self._indices is not None else None)
+   2139         formatted_output = format_table(
+   2140             pa_subtable, key, formatter=formatter, format_columns=format_columns, output_all_columns=output_all_columns
+
+/home/exx/miniconda3/envs/unity_env_arthur/lib/python3.10/site-packages/datasets/formatting/formatting.py in query_table(table, key, indices)
+    484     else:
+    485         size = indices.num_rows if indices is not None else table.num_rows
+--> 486         _check_valid_index_key(key, size)
+    487     # Query the main table
+    488     if indices is None:
+
+/home/exx/miniconda3/envs/unity_env_arthur/lib/python3.10/site-packages/datasets/formatting/formatting.py in _check_valid_index_key(key, size)
+    427     if isinstance(key, int):
+    428         if (key < 0 and key + size < 0) or (key >= size):
+--> 429             raise IndexError(f"Invalid key: {key} is out of bounds for size {size}")
+    430         return
+    431     elif isinstance(key, slice):
+
+IndexError: Invalid key: 8013769 is out of bounds for size 8013769
