@@ -15,7 +15,6 @@ try:
 except:
     IN_COLAB = False
     print("Running as a Jupyter notebook - intended for development only!")
-
 # %% [markdown]
 # <h2>Imports</h2>
 
@@ -41,7 +40,6 @@ from easy_transformer.utils_circuit_discovery import (
     direct_path_patching,
     logit_diff_io_s,
     Circuit,
-    path_patching,
     logit_diff_from_logits,
     get_datasets,
 )

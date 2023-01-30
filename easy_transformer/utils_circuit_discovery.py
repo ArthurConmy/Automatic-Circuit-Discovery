@@ -772,8 +772,8 @@ class Circuit:
             )
 
 
-def evaluate_circuit(h):
-    if h.current_node is not None:
+def evaluate_circuit(h, override_error = False):
+    if h.current_node is not None and not override_error:
         raise NotImplementedError("Make circuit full")
 
     receivers_to_senders = make_base_receiver_sender_objects(h.important_nodes)
