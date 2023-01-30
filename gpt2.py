@@ -1,5 +1,5 @@
 #%%
-s="""Model Name nparams nlayers dmodel nheads dhead Batch Size Learning Rate
+s = """Model Name nparams nlayers dmodel nheads dhead Batch Size Learning Rate
 GPT-3 Small 125M 12 768 12 64 0.5M 6.0 × 10−4
 GPT-3 Medium 350M 24 1024 16 64 0.5M 3.0 × 10−4
 GPT-3 Large 760M 24 1536 16 96 0.5M 2.5 × 10−4
@@ -15,6 +15,7 @@ from copy import deepcopy
 import os
 import torch
 import matplotlib.pyplot as plt
+
 assert torch.cuda.device_count() == 1
 from tqdm import tqdm
 import pandas as pd
@@ -47,16 +48,19 @@ if ipython is not None:
 #%% [markdown]
 
 # Initialise model (use larger N or fewer templates for no warnings about in-template ablation)
-model = HookedTransformer.from_pretrained("gpt2", center_unembed=False, center_writing_weights=False, fold_ln=False).cuda()
+model = HookedTransformer.from_pretrained(
+    "gpt2", center_unembed=False, center_writing_weights=False, fold_ln=False
+).cuda()
 model.set_use_attn_result(True)
 
 #%%
 
 import time
+
 toks = model.to_tokens("Hello, my name is Arthur")
 
 optimizer = torch.optim.Adam(model.parameters(), lr=6e-4)
- 
+
 lis = []
 
 for i in range(100):
@@ -73,7 +77,7 @@ for i in range(100):
 #%%
 # def proc
 def get_no_parameters(model, d, l=10):
-    lis = [list(l.shape) for l in list(model.parameters()) if l.requires_grad] # [2:-4]
+    lis = [list(l.shape) for l in list(model.parameters()) if l.requires_grad]  # [2:-4]
     print(lis)
     ans = 0
     for thing in lis[2:-4]:
@@ -81,20 +85,22 @@ def get_no_parameters(model, d, l=10):
         for i in range(len(l2)):
             if l2[i] == 768:
                 l2[i] = d
-            if l2[i] == 4*768:
-                l2[i] = 4*d
-            if l2[i] == 768//12:
+            if l2[i] == 4 * 768:
+                l2[i] = 4 * d
+            if l2[i] == 768 // 12:
                 l2[i] = d // l
         ans += np.prod(l2)
-    ans *= (l/12)
+    ans *= l / 12
     ans += 50257
-#    print(sum(lis[2:-4]) * (10/12))
-    return (ans + (d/768) * sum(np.prod(l) for l in lis[:2] + lis[-4:-1]))
+    #    print(sum(lis[2:-4]) * (10/12))
+    return ans + (d / 768) * sum(np.prod(l) for l in lis[:2] + lis[-4:-1])
+
 
 def get_no_params_raw(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-original = 124_000_000 # get_no_parameters(model, 768, 12)
+
+original = 124_000_000  # get_no_parameters(model, 768, 12)
 # binary search for d so that the number of parameters is 1/2 of the original
 
 fails = 0
@@ -124,31 +130,11 @@ print(passes)
 
 # assert torch.allclose(a.T, c)
 
-#%%
-
-d_model = 768
-n_layers = 12
-n_heads = 12
-assert d_model % n_heads == 0
-d_head = d_model // n_heads
-
-from transformer_lens import HookedTransformerConfig, HookedTransformer
-
-cfg = HookedTransformerConfig.from_dict({
-    "n_layers": n_layers,
-    "n_heads": n_heads,
-    "d_model": d_model,
-    "n_ctx": 1024,
-    "d_head": d_head,
-    "act_fn": "gelu",
-    "d_vocab": 50257,
-})
-trans = HookedTransformer(cfg)
-trans.tokenizer = model.tokenizer
 
 #%%
 
 from datasets import list_datasets, load_dataset
+
 datasets_list = list_datasets()
 for s in datasets_list:
     if "pile" in s:
@@ -156,11 +142,11 @@ for s in datasets_list:
 dataset = load_dataset("openwebtext")
 
 #%%
-mean=0
+mean = 0
 for i in tqdm(range(1000)):
     sample = dataset["train"][i]
-    mean+=((model.to_tokens(sample["text"])).numel())
-mean/=1000
+    mean += (model.to_tokens(sample["text"])).numel()
+mean /= 1000
 print(mean)
 
 #%%
@@ -168,13 +154,7 @@ trans.generate("There should be non-sensical completion here:")
 
 #%%
 
-USING_WANDB = True
-
-if USING_WANDB:
-    wandb.init(project="gpt-a", name="arthurs-run")
-
-
-#%%
+# From GPT-3 paper
 
 # To train all versions of GPT-3, we use Adam with β1 = 0.9, β2 = 0.95, and  = 10−8
 # , we clip the global norm of the
@@ -185,6 +165,8 @@ if USING_WANDB:
 # training (until an epoch boundary is reached) to minimize overfitting. All models use weight decay of 0.1 to provide a
 # small amount of regularization [LH17].
 
+# Also this: https://wandb.ai/bkkaggle/lm-finetuning/reports/Pretraining-a-124-M-Parameter-GPT-2-Language-Model--VmlldzoyMjg4NzA
+
 #%% [markdown]
 # TODO:
 # - [ ] Get learning rate warmup working
@@ -194,8 +176,32 @@ if USING_WANDB:
 #%% [markdown]
 # Save / load in a base model (rm the fpath in orde to save)
 
+d_model = 768
+n_layers = 12
+n_heads = 12
+assert d_model % n_heads == 0
+d_head = d_model // n_heads
+
+from transformer_lens import HookedTransformerConfig, HookedTransformer
+
+cfg = HookedTransformerConfig.from_dict(
+    {
+        "n_layers": n_layers,
+        "n_heads": n_heads,
+        "d_model": d_model,
+        "n_ctx": 1024,
+        "d_head": d_head,
+        "act_fn": "gelu",
+        "d_vocab": 50257,
+    }
+)
+trans = HookedTransformer(cfg)
+trans.tokenizer = model.tokenizer
+
+
 def save_model_weights(model, path):
     torch.save(model.state_dict(), path)
+
 
 fpath = "pts/initial_trans.pt"
 
@@ -206,7 +212,7 @@ if not os.path.exists(fpath):
 
 if "is_loaded" not in dir(trans):
     # load trans from pt file
-    print("yee haw")
+    print("yee haw, a new model")
     trans.load_state_dict(torch.load(fpath))
     trans.is_loaded = True
 
@@ -220,20 +226,61 @@ opt = torch.optim.Adam(
 
 #%%
 
+USING_WANDB = True
+
+if USING_WANDB:
+    wandb.init(project="gpt-a", name="arthurs-run")
+
+    file_text = ""
+    with open(__file__, "r") as f:
+        file_text = f.read()
+    wandb.run.notes = (
+        """#%% make sure to .replace('\\n', '\n) before printing this!\\n"""
+        + file_text.replace("\n", "\\n")
+    )
+
 ds = dataset["train"]
+
+current_tokens = torch.zeros((1, 0)).long().cuda()
+BATCH_SIZE = 32_000
 
 for step in tqdm(range(len(ds))):
     log = {}
     sample = ds[step]
-    toks = model.to_tokens(sample["text"]).cuda()
+    toks = model.to_tokens(sample["text"], prepend_bos=False).cuda()
+    current_tokens = torch.cat((current_tokens, toks), dim=1)
 
-    opt.zero_grad()
-    loss = trans(toks, return_type="loss", loss_per_token=False) # i think that this computes mean...
-    log["loss"] = loss.item()
+    if current_tokens.shape[1] >= BATCH_SIZE:
+        spare_tokens = torch.cat(
+            (current_tokens[:, :1], current_tokens[:, BATCH_SIZE:]), dim=1
+        )  # keep the BOS token
+        current_tokens = current_tokens[:, :BATCH_SIZE]
 
-    # loss *= loss.numel() / 1024
-    loss.backward()
-    opt.step()
+        loss = torch.tensor(0.0).cuda()
 
-    if USING_WANDB:
-        wandb.log(log)  
+        # split by 1023s...
+        for i in range(0, current_tokens.shape[1], 1023):
+            cur_loss = trans(
+                torch.cat(
+                    (torch.LongTensor([[50256]]).cuda(), current_tokens[:, i : i + 1023]),
+                    dim=1,
+                ),
+                return_type="loss",
+                loss_per_token=True,
+            )
+            loss += cur_loss.sum()
+
+        loss /= current_tokens.shape[1]
+        log["loss"] = loss.item()
+        loss.backward()
+        opt.step()
+
+        # resets
+        opt.zero_grad()
+        torch.cuda.empty_cache()
+        current_tokens = spare_tokens
+
+        if USING_WANDB:
+            wandb.log(log)
+
+#%%
