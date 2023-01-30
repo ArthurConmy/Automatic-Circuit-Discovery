@@ -291,14 +291,20 @@ def direct_path_patching(
 
 def make_base_receiver_sender_objects(
     important_nodes,
+    both = False,
 ):
-    base_initial_senders = []
+    initial_receivers_to_senders = []
     base_receivers_to_senders = {}
 
     for receiver in important_nodes:
         hook = get_hook_tuple(receiver.layer, receiver.head, input=True)
 
         for sender_child, _, comp in receiver.children:
+
+            if len(sender_child.children) == 0:
+                sender_hook = get_hook_tuple(sender_child.layer, sender_child.head)
+                initial_receivers_to_senders.append((hook, (sender_hook[0], sender_hook[1], sender_child.position))
+
             if comp in ["v", "k", "q"]:
                 qkv_hook = get_hook_tuple(receiver.layer, receiver.head, comp)
                 if qkv_hook not in base_receivers_to_senders:
@@ -316,7 +322,10 @@ def make_base_receiver_sender_objects(
                     (sender_hook[0], sender_hook[1], sender_child.position)
                 )
 
-    return base_receivers_to_senders
+    if both:
+        return base_initial_senders, initial_receivers_to_senders
+    else:
+        return base_receivers_to_senders
 
 
 def direct_path_patching_up_to(
@@ -614,62 +623,25 @@ class Circuit:
                     )  # similar story to above, only care about the last position
 
             for receiver_hook in receiver_hooks:
-                # if verbose:
-                print(f"Working on pos {pos}, receiver hook {receiver_hook}")
-
-                attn_results, mlp_results, embed_results = direct_path_patching_up_to(
-                    model=self.model,
-                    receiver_hook=receiver_hook,
-                    important_nodes=self.important_nodes,
-                    metric=self.metric,
-                    dataset=self.dataset,
-                    orig_data=self.orig_data,
-                    new_data=self.new_data,
-                    orig_positions=self.orig_positions,
-                    new_positions=self.new_positions,
-                    cur_position=pos,
-                    orig_cache=self.orig_cache,
-                    new_cache=self.new_cache,
-                )
-
-                self.attn_results = attn_results.clone()
-                self.mlp_results = mlp_results.clone()
-                self.embed_results = torch.tensor(embed_results).clone()
-                # convert to percentage
-                attn_results -= self.default_metric
-                attn_results /= self.default_metric
-                mlp_results -= self.default_metric
-                mlp_results /= self.default_metric
-                embed_results -= self.default_metric
-                embed_results /= self.default_metric
-
-                if show_graphics:
-                    show_pp(
-                        attn_results,
-                        title=f"{node} {receiver_hook} {pos}",
-                        xlabel="Head",
-                        ylabel="Layer",
-                    )
-                    show_pp(
-                        mlp_results,
-                        title=f"MLP results for {node} with receiver hook {receiver_hook} position {pos}",
-                        xlabel="Layer",
-                        ylabel="",
-                    )
-
-                if auto_threshold:
-                    threshold = max(
-                        auto_threshold * attn_results.std(),
-                        auto_threshold * mlp_results.std(),
-                        0.01,
-                    )
                 if verbose:
-                    print(f"threshold: {threshold:.3f}")
-                # process result and mark nodes above threshold as important
-                for layer in range(
-                    attn_results.shape[0]
-                ):  # TODO seems to be able to put 9.6 in the things that affect 9.6...why
-                    for head in range(attn_results.shape[1]):
+                    print(f"Working on pos {pos}, receiver hook {receiver_hook}")
+
+                # dry run, that adds all hooks
+                for l in tqdm(range(max_layer)):
+                    for h in range(self.model.cfg.n_heads):
+                        self.node_stack[(layer, head, pos)].parents.append(
+                            (node, score, comp_type)
+                        )
+                        node.children.append(
+                            (self.node_stack[(layer, head, pos)], score, comp_type)
+                        )
+
+                # TODO the online version
+                max_layer = node.layer + (1 if receiver_hook[1] is None else 0)
+                for l in tqdm(range(max_layer)):
+                    for h in range(self.model.cfg.n_heads):
+                        cur_metric = self.eval_circuit()
+
                         if abs(attn_results[layer, head]) > threshold:
                             print(
                                 "Found important head:",
@@ -685,21 +657,23 @@ class Circuit:
                             node.children.append(
                                 (self.node_stack[(layer, head, pos)], score, comp_type)
                             )
-                    if (
-                        layer < mlp_results.shape[0]
-                        and abs(mlp_results[layer]) > threshold
-                    ):
-                        print("Found important MLP: layer", layer, "position", pos)
-                        score = mlp_results[layer, 0]
-                        comp_type = get_comp_type(receiver_hook[0])
-                        self.node_stack[
-                            (layer, None, pos)
-                        ].parents.append(  # TODO fix the MLP thing with GPT-NEO
-                            (node, score, comp_type)
-                        )
-                        node.children.append(
-                            (self.node_stack[(layer, None, pos)], score, comp_type)
-                        )
+
+                    if l < node.layer: # don't look at MLP n -> MLP n effect : )
+                        if (
+                            layer < mlp_results.shape[0]
+                            and abs(mlp_results[layer]) > threshold
+                        ):
+                            print("Found important MLP: layer", layer, "position", pos)
+                            score = mlp_results[layer, 0]
+                            comp_type = get_comp_type(receiver_hook[0])
+                            self.node_stack[
+                                (layer, None, pos)
+                            ].parents.append(  # TODO fix the MLP thing with GPT-NEO
+                                (node, score, comp_type)
+                            )
+                            node.children.append(
+                                (self.node_stack[(layer, None, pos)], score, comp_type)
+                            )
                 # deal with the embedding layer too
                 if abs(embed_results) > threshold:
                     print("Found important embedding layer at position", pos)
@@ -771,46 +745,54 @@ class Circuit:
                 "Cannot extract model while there are still nodes to explore"
             )
 
+    def evaluate_circuit(self, override_error = False, old_mode = True):
+        if self.current_node is not None and not override_error:
+            raise NotImplementedError("Make circuit full")
 
-def evaluate_circuit(h, override_error = False):
-    if h.current_node is not None and not override_error:
-        raise NotImplementedError("Make circuit full")
+        receivers_to_senders = make_base_receiver_sender_objects(h.important_nodes)
 
-    receivers_to_senders = make_base_receiver_sender_objects(h.important_nodes)
+        # what we do here is make sure that the ONLY embed objects that are set to their values on the original dataset are the ones that are in the circuit
+        initial_receivers_to_senders: List[
+            Tuple[Tuple[str, Optional[int]], Tuple[str, Optional[int], str]]
+        ] = []
 
-    # what we do here is make sure that the ONLY embed objects that are set to their values on the original dataset are the ones that are in the circuit
-    initial_receivers_to_senders: List[
-        Tuple[Tuple[str, Optional[int]], Tuple[str, Optional[int], str]]
-    ] = []
-    for node in h.important_nodes:
-        for child, _, _2 in node.children:
-            if child.layer == -1:
-                initial_receivers_to_senders.append(
-                    (
-                        ("blocks.0.hook_resid_pre", None),
-                        ("blocks.0.hook_resid_pre", None, node.position),
-                    )
-                )
-    assert (
-        len(initial_receivers_to_senders) > 0
-    ), "Need at least one embedding present!!!"
+        for node in self.important_nodes:
+            for child, comp, score in node.children:
+                if old_mode:
+                    if child.layer == -1:
+                        raise NotImplementedError("I don't understand what I'm doing here")
+                        initial_receivers_to_senders.append(
+                            (
+                                ("blocks.0.hook_resid_pre", None),
+                                ("blocks.0.hook_resid_pre", None, node.position),
+                            )
+                        )
 
-    initial_receivers_to_senders = list(set(initial_receivers_to_senders))
+        if not old_mode:
+            receivers_to_senders, initial_receivers_to_senders = make_base_receiver_sender_objects(
+                self.important_nodes, both=True
+            )            
 
-    for pos in h.orig_positions:
-        assert torch.allclose(
-            h.orig_positions[pos], h.new_positions[pos]
-        ), "Data must be the same for all positions"
+        assert (
+            len(initial_receivers_to_senders) > 0
+        ), "Need at least one embedding present!!!"
 
-    model = direct_path_patching(
-        model=h.model,
-        orig_data=h.new_data,  # NOTE these are different
-        new_data=h.orig_data,
-        initial_receivers_to_senders=initial_receivers_to_senders,
-        receivers_to_senders=receivers_to_senders,
-        orig_positions=h.orig_positions,  # tensor of shape (batch_size,)
-        new_positions=h.new_positions,
-        orig_cache=None,
-        new_cache=None,
-    )
-    return h.metric(model, dataset)
+        initial_receivers_to_senders = list(set(initial_receivers_to_senders))
+
+        for pos in self.orig_positions:
+            assert torch.allclose(
+                self.orig_positions[pos], self.new_positions[pos]
+            ), "Data must be the same for all positions"
+
+        model = direct_path_patching(
+            model=self.model,
+            orig_data=self.new_data, # NOTE these are different
+            new_data=self.orig_data,
+            initial_receivers_to_senders=initial_receivers_to_senders,
+            receivers_to_senders=receivers_to_senders,
+            orig_positions=self.orig_positions,  # tensor of shape (batch_size,)
+            new_positions=self.new_positions,
+            orig_cache=self.orig_cache,
+            new_cache=self.new_cache,
+        )
+        return self.metric(model, dataset)
