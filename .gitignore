@@ -17,3 +17,6 @@ dist/
 *.jsonl
 pngs/*
 pts/*
+*.png
+*.dot
+*.gz

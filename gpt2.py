@@ -12,6 +12,7 @@ GPT-3 175B or “GPT-3” 175.0B 96 12288 96 128 3.2M 0.6 × 10−4"""
 #%% [markdown]
 ## Setup
 from copy import deepcopy
+import os
 import torch
 import matplotlib.pyplot as plt
 assert torch.cuda.device_count() == 1
@@ -22,6 +23,7 @@ import torch as t
 from transformer_lens.HookedTransformer import (
     HookedTransformer,
 )
+import wandb
 from time import ctime
 from functools import partial
 
@@ -36,51 +38,24 @@ import random
 import einops
 from IPython import get_ipython
 from copy import deepcopy
-# from ioi_dataset import (
-#     IOIDataset,
-# )
-
-# from ioi_utils import (
-#     path_patching,
-#     max_2d,
-#     CLASS_COLORS,
-#     show_pp,
-#     show_attention_patterns,
-#     scatter_attention_and_contribution,
-# )
-
 from random import randint as ri
-
-# from ioi_circuit_extraction import (
-#     do_circuit_extraction,
-#     get_heads_circuit,
-#     CIRCUIT,
-# )
-# from ioi_utils import logit_diff, probs
-# from ioi_utils import get_top_tokens_and_probs as g
 
 ipython = get_ipython()
 if ipython is not None:
     ipython.magic("load_ext autoreload")
     ipython.magic("autoreload 2")
 #%% [markdown]
+
 # Initialise model (use larger N or fewer templates for no warnings about in-template ablation)
 model = HookedTransformer.from_pretrained("gpt2", center_unembed=False, center_writing_weights=False, fold_ln=False).cuda()
 model.set_use_attn_result(True)
 
 #%%
-# model.unembed.W_U = torch.nn.Parameter(model.embed.W_E.T)
-
-#%%
-import json
-with open("openwebtext-10k.jsonl", "r") as f:
-    lines = [json.loads(l)["text"] for l in f.readlines()]
-#%%
 
 import time
+toks = model.to_tokens("Hello, my name is Arthur")
 
-toks = model.to_tokens(lines[0])
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+optimizer = torch.optim.Adam(model.parameters(), lr=6e-4)
  
 lis = []
 
@@ -193,15 +168,31 @@ trans.generate("There should be non-sensical completion here:")
 
 #%%
 
-import wandb
-wandb.init(project="gpt-a", name="arthurs-run")
+USING_WANDB = True
+
+if USING_WANDB:
+    wandb.init(project="gpt-a", name="arthurs-run")
+
+
+#%%
+
+# To train all versions of GPT-3, we use Adam with β1 = 0.9, β2 = 0.95, and  = 10−8
+# , we clip the global norm of the
+# gradient at 1.0, and we use cosine decay for learning rate down to 10% of its value, over 260 billion tokens (after 260
+# billion tokens, training continues at 10% of the original learning rate). There is a linear LR warmup over the first 375
+# million tokens. We also gradually increase the batch size linearly from a small value (32k tokens) to the full value over
+# the first 4-12 billion tokens of training, depending on the model size. Data are sampled without replacement during
+# training (until an epoch boundary is reached) to minimize overfitting. All models use weight decay of 0.1 to provide a
+# small amount of regularization [LH17].
 
 #%% [markdown]
 # TODO:
 # - [ ] Get learning rate warmup working
 # - [ ] Get gradient clipping working
+# - [ ] Saving of the text of the running code.
 
-#%%
+#%% [markdown]
+# Save / load in a base model (rm the fpath in orde to save)
 
 def save_model_weights(model, path):
     torch.save(model.state_dict(), path)
@@ -209,7 +200,7 @@ def save_model_weights(model, path):
 fpath = "pts/initial_trans.pt"
 
 if not os.path.exists(fpath):
-    save_model_weights(trans.parameters(), "pts/initial_trans.pt")
+    save_model_weights(trans, "pts/initial_trans.pt")
 
 # load trans to be the model we're training
 
@@ -231,17 +222,18 @@ opt = torch.optim.Adam(
 
 ds = dataset["train"]
 
-for step in range(len(ds)):
+for step in tqdm(range(len(ds))):
     log = {}
     sample = ds[step]
     toks = model.to_tokens(sample["text"]).cuda()
 
     opt.zero_grad()
-    loss = trans(toks, return_type="loss", loss_per_token=True)
-    loss *= loss.numel() / 1024
+    loss = trans(toks, return_type="loss", loss_per_token=False) # i think that this computes mean...
+    log["loss"] = loss.item()
+
+    # loss *= loss.numel() / 1024
     loss.backward()
     opt.step()
-    log["loss"]
 
-    if False:
-        wandb.log(log)
+    if USING_WANDB:
+        wandb.log(log)  
