@@ -110,9 +110,9 @@ def direct_path_patching(
     new_cache=None,
 ) -> EasyTransformer:
     """
-    Generalisation of the path_patching from the paper, where we only consider direct effects, and never indirect follow through effects.
+    Generalization of the path_patching from the paper, where we only consider direct effects, and never indirect follow through effects.
 
-    `intial_receivers_to_sender` is a list of pairs representing the edges we patch the new_cache connection on.
+    `intial_receivers_to_sender` is a list of pairs representing the edges we patch the orig_cache connection on.
 
     `receiver_to_senders`: dict of (hook_name, idx, pos) -> [(hook_name, head_idx, pos), ...]
     these define all of the edges in the graph
@@ -176,6 +176,9 @@ def direct_path_patching(
         assert (
             len(receivers_to_senders[(hook_name, head_idx)]) > 0
         ), f"No senders for {hook_name, head_idx}, this shouldn't be attached!"
+
+        if "resid_post" in hook_name:
+            a=1 # for breakpoint
 
         assert len(receivers_to_senders[(hook_name, head_idx)]) > 0, (
             receivers_to_senders,
@@ -433,10 +436,10 @@ class Circuit:
         ), "Number and order of keys should be the same ... for now"
         self.node_stack = OrderedDict()
         self.populate_node_stack()
-        self.current_node = self.node_stack[
+        self.current_node: Node = self.node_stack[
             next(reversed(self.node_stack))
         ]  # last element TODO make a method or something for this
-        self.root_node = self.current_node
+        self.root_node: Node = self.current_node
         self.metric = metric
         self.dataset = dataset
         self.orig_data = orig_data
@@ -492,6 +495,32 @@ class Circuit:
         self.model.cache_all(self.new_cache)
         _ = self.model(self.new_data, prepend_bos=False)
 
+    def remove_connection(
+        self,
+        parent_layer=None,
+        parent_head=None,
+        parent_pos=None,
+        child_layer=None,
+        child_head=None,
+        child_pos=None,
+        parent=None,
+        child=None,
+    ):
+        """Remove a parent->child connection. 
+        Parent and children can be specified by either the node object or the layer, head, and position (but not both).
+        """
+
+        assert (parent is None) != (parent_layer is None and parent_head is None and parent_pos is None), f"You need to make one of these None... {parent is None} == ({parent_layer is None} and {parent_head is None} and {parent_pos is None}) currently"
+        assert (child is None) != (child_layer is None and child_head is None and child_pos is None), f"You need to make one of these None... {child is None} == ({child_layer is None} and {child_head is None} and {child_pos is None}) currently"
+
+        if parent is None:
+            parent = self.node_stack[(parent_layer, parent_head, parent_pos)]
+        if child is None:
+            child = self.node_stack[(child_layer, child_head, child_pos)]
+
+        parent.remove_child(child)
+        child.remove_parent(parent)
+
     def step(
         self,
         threshold: Union[float, None] = None,
@@ -519,20 +548,25 @@ class Circuit:
             if self.current_node.layer == -1:
                 continue  # nothing before this
             elif self.current_node.layer == self.model.cfg.n_layers:
-                receiver_hooks.append((f"blocks.{self.current_node.layer-1}.hook_resid_post", None))
+                # receiver_hooks.append((f"blocks.{self.current_node.layer-1}.hook_resid_post", None))
+                receiver_hooks.append(None)
             elif self.current_node.head is None:
-                receiver_hooks.append((f"blocks.{self.current_node.layer}.hook_resid_mid", None))
+                # receiver_hooks.append((f"blocks.{self.current_node.layer}.hook_resid_mid", None))
+                receiver_hooks.append(None)
             else:
-                receiver_hooks.append(
-                    (f"blocks.{self.current_node.layer}.attn.hook_v_input", self.current_node.head)
-                )
-                receiver_hooks.append(
-                    (f"blocks.{self.current_node.layer}.attn.hook_k_input", self.current_node.head)
-                )
+                # receiver_hooks.append(
+                #     (f"blocks.{self.current_node.layer}.attn.hook_v_input", self.current_node.head)
+                # )
+                receiver_hooks.append("v")
+                # receiver_hooks.append(
+                #     (f"blocks.{self.current_node.layer}.attn.hook_k_input", self.current_node.head)
+                # )
+                receiver_hooks.append("k")
                 if pos == current_node_position:
-                    receiver_hooks.append(
-                        (f"blocks.{self.current_node.layer}.attn.hook_q_input", self.current_node.head)
-                    )  # similar story to above, only care about the last position
+                    # receiver_hooks.append(
+                    #     (f"blocks.{self.current_node.layer}.attn.hook_q_input", self.current_node.head)
+                    # )  # similar story to above, only care about the last position
+                    receiver_hooks.append("q")
 
             for receiver_hook in receiver_hooks:
                 if verbose:
@@ -546,20 +580,21 @@ class Circuit:
                     self.node_stack[(-1, None, pos)], None, None
                 )
 
-                max_layer = min(self.model.cfg.n_layers, self.current_node.layer + (1 if receiver_hook[1] is None else 0)) # this handles attn heads, MLPs and end-state-of-residual-stream
+                max_layer = min(self.model.cfg.n_layers, self.current_node.layer + (1 if self.current_node.head is None else 0)) # this handles attn heads, MLPs and end-state-of-residual-stream
                 for l in tqdm(range(max_layer)):
                     for h in range(self.model.cfg.n_heads):
-                        self.node_stack[(l, h, pos)].add_parent(self.current_node) # TODO does this fuck up the registering of parent comp and score???
+                        self.node_stack[(l, h, pos)].add_parent(self.current_node)
                         self.current_node.add_child(
-                            self.node_stack[(l, h, pos)], None, None
+                            self.node_stack[(l, h, pos)], receiver_hook, None
                         )
-                    # add the MLP
-                    self.node_stack[(l, None, pos)].add_parent(self.current_node)
-                    self.current_node.add_child(
-                        self.node_stack[(l, None, pos)], None, None
-                    )
+                    if l < self.current_node.layer:
+                        # add the MLP
+                        self.node_stack[(l, None, pos)].add_parent(self.current_node)
+                        self.current_node.add_child(
+                            self.node_stack[(l, None, pos)], receiver_hook, None
+                        )
 
-                # TODO the online version
+                # do online pruning
                 for l in tqdm(range(max_layer-1, -1, -1)):
                     for h in range(self.model.cfg.n_heads):
                         cur_metric = self.evaluate_circuit(override_error=True, old_mode=False) # TODO keep updated
@@ -567,7 +602,7 @@ class Circuit:
                             self.current_node
                         )
                         self.current_node.remove_child(
-                            self.node_stack[(l, h, pos)], None, None
+                            self.node_stack[(l, h, pos)], receiver_hook, None
                         )
 
                         new_metric = self.evaluate_circuit(override_error=True, old_mode=False)
@@ -584,14 +619,14 @@ class Circuit:
                                 "at position",
                                 pos,
                             )
-                            comp_type = get_comp_type(receiver_hook[0])
+                            # comp_type = get_comp_type(receiver_hook[0])
 
                             # add back connection 
                             self.node_stack[(l, h, pos)].add_parent(
                                 self.current_node
                             )
                             self.current_node.add_child(
-                                self.node_stack[(l, h, pos)], None, None
+                                self.node_stack[(l, h, pos)], receiver_hook, None
                             )
 
                         else:
@@ -610,31 +645,55 @@ class Circuit:
                         new_metric = self.evaluate_circuit(override_error=True, old_mode=False)
                         print(cur_metric, new_metric)                        
 
-                        print("Found important MLP: layer", l, "position", pos)
-                        # score = mlp_results[layer, 0]
-                        # comp_type = get_comp_type(receiver_hook[0])
-                        self.node_stack[
-                            (l, None, pos)
-                        ].parents.append(  # TODO fix the MLP thing with GPT-NEO
-                            (self.current_node, None, None)
-                        )
-                        self.current_node.add_child(
-                            self.node_stack[(l, None, pos)], None, None # TODO sort out the score and comp_type
-                        )
+                        if abs(new_metric - cur_metric) > threshold:
+                            print(
+                                "Found important MLP:",
+                                (l, None),
+                                "at position",
+                                pos,
+                            )
+                            # comp_type = get_comp_type(receiver_hook[0])
 
-                # # deal with the embedding layer tool
-                # if abs(embed_results) > threshold:
-                #     print("Found important embedding layer at position", pos)
-                #     score = embed_results
-                #     comp_type = get_comp_type(receiver_hook[0])
-                #     self.node_stack[
-                #         (-1, None, pos)
-                #     ].parents.append(  # TODO fix the MLP thing with GPT-NEO
-                #         (self.current_node, score, comp_type)
-                #     )
-                #     self.current_node.add_child(
-                #         (self.node_stack[(-1, None, pos)], score, comp_type)
-                #     )
+                            # add back connection 
+                            self.node_stack[(l, None, pos)].add_parent(
+                                self.current_node
+                            )
+                            self.current_node.add_child(
+                                self.node_stack[(l, None, pos)], receiver_hook, None
+                            )
+
+                        else:
+                            if self.verbose:
+                                print("Found unimportant MLP:", (l, None), "at position", pos)
+
+                # deal with the embedding layer too
+                cur_metric = self.evaluate_circuit(override_error=True, old_mode=False)
+                self.node_stack[(-1, None, pos)].remove_parent(
+                    self.current_node
+                )
+                self.current_node.remove_child(
+                    self.node_stack[(-1, None, pos)], None, None
+                )
+
+                new_metric = self.evaluate_circuit(override_error=True, old_mode=False)
+                print(cur_metric, new_metric)                        
+
+                if abs(new_metric - cur_metric) > threshold:
+                    print(
+                        "Found important Embedding:",
+                        (-1, None),
+                        "at position",
+                        pos,
+                    )
+                    # comp_type = get_comp_type(receiver_hook[0])
+
+                    # add back connection 
+                    self.node_stack[(-1, None, pos)].add_parent(
+                        self.current_node
+                    )
+                    self.current_node.add_child(
+                        self.node_stack[(-1, None, pos)], None, None
+                    )
 
             if current_node_position == pos:
                 break
@@ -649,6 +708,21 @@ class Circuit:
             self.current_node = self.node_stack[next(reversed(self.node_stack))]
         else:
             self.current_node = None
+
+    def __deepcopy__(self, memo, object_to_use=None):
+        """Object to use is for autoreload shenanigans"""
+        clas = self.__class__
+        result = clas.__new__(clas)
+        memo[id(self)] = result
+        if object_to_use is None:
+            object_to_use = self
+        for k, v in object_to_use.__dict__.items():
+            if k == "model":
+                setattr(result, k, v)
+            else:
+                setattr(result, k, deepcopy(v, memo))
+        return result
+
 
     def show(self, save_file: Optional[str] = None):
         g = graphviz.Digraph(format="png")
@@ -675,9 +749,9 @@ class Circuit:
                 g.edge(
                     child[0].display(),
                     node.display(),
-                    color=color_dict[(child[2] or "other")],
-                    penwidth=str(scale((child[1] or 1))),
-                    arrowsize=str(scale((child[1] or 1))),
+                    color=color_dict[(child[1] or "other")],
+                    penwidth=str(scale((child[2] or 1))),
+                    arrowsize=str(scale((child[2] or 1))),
                 )
         # add invisible edges to keep layers separate
         for i in range(len(self.important_nodes) - 1):
@@ -739,16 +813,18 @@ class Circuit:
                 self.orig_positions[pos], self.new_positions[pos]
             ), "Data must be the same for all positions"
 
-
         model = direct_path_patching(
             model=self.model,
-            orig_data=self.orig_data,  # TODO sort these being different these are different
+            orig_data=self.orig_data,
             new_data=self.new_data,
             initial_receivers_to_senders=initial_receivers_to_senders,
             receivers_to_senders=receivers_to_senders,
             orig_positions=self.orig_positions,  # tensor of shape (batch_size,)
             new_positions=self.new_positions,
-            orig_cache=self.orig_cache, # TODO also sort these different
+            orig_cache=self.orig_cache,
             new_cache=self.new_cache,
         )
-        return self.metric(model, self.dataset)
+        answer = self.metric(model, self.dataset)
+        self.model.reset_hooks()
+        torch.cuda.empty_cache()
+        return answer

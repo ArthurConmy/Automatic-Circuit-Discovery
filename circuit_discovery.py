@@ -162,11 +162,15 @@ h = Circuit(
     metric=logit_diff_metric,
     orig_data=ioi_dataset.toks.long(),
     new_data=abc_Dataset.toks.long(),
-    threshold=1e-9,
+    threshold=0.2,
     orig_positions=positions,
     new_positions=positions, # in some datasets we might want to patch from different positions; not here
-    verbose=False,
+    verbose=True,
 )
+
+if "es" not in globals():
+    es =  [deepcopy(h)]
+
 #%%
 # <h2> Run path patching! </h2>
 # <p> Only the first two lines of this cell matter; the rest are for saving images. This cell takes several minutes to run. If you cancel and then call h.show(), you can see intermediate representations of the circuit. </p>
@@ -190,6 +194,14 @@ while h.current_node is not None:
             "-Gdpi=600",
         ]
     )
+
+    es.append(deepcopy(h))
+
+    break
+
+#%%
+h.step()
+
 #%% [markdown]
 # <h2> Show the circuit </h2>
 h.show()
