@@ -558,8 +558,8 @@ class Circuit:
                     self.current_node.add_child(
                         self.node_stack[(l, None, pos)], None, None
                     )
-                # TODO the online version
 
+                # TODO the online version
                 for l in tqdm(range(max_layer-1, -1, -1)):
                     for h in range(self.model.cfg.n_heads):
                         cur_metric = self.evaluate_circuit(override_error=True, old_mode=False) # TODO keep updated
@@ -599,34 +599,43 @@ class Circuit:
                                 print("Found unimportant head:", (l, h), "at position", pos)
 
                     if l < self.current_node.layer:  # don't look at MLP n -> MLP n effect : )
-                        if (
-                            layer < mlp_results.shape[0]
-                            and abs(mlp_results[layer]) > threshold
-                        ):
-                            print("Found important MLP: layer", layer, "position", pos)
-                            score = mlp_results[layer, 0]
-                            comp_type = get_comp_type(receiver_hook[0])
-                            self.node_stack[
-                                (layer, None, pos)
-                            ].parents.append(  # TODO fix the MLP thing with GPT-NEO
-                                (self.current_node, score, comp_type)
-                            )
-                            self.current_node.add_child(
-                                (self.node_stack[(layer, None, pos)], score, comp_type)
-                            )
-                # deal with the embedding layer too
-                if abs(embed_results) > threshold:
-                    print("Found important embedding layer at position", pos)
-                    score = embed_results
-                    comp_type = get_comp_type(receiver_hook[0])
-                    self.node_stack[
-                        (-1, None, pos)
-                    ].parents.append(  # TODO fix the MLP thing with GPT-NEO
-                        (self.current_node, score, comp_type)
-                    )
-                    self.current_node.add_child(
-                        (self.node_stack[(-1, None, pos)], score, comp_type)
-                    )
+                        cur_metric = self.evaluate_circuit(override_error=True, old_mode=False) # TODO keep updated
+                        self.node_stack[(l, None, pos)].remove_parent(
+                            self.current_node
+                        )
+                        self.current_node.remove_child(
+                            self.node_stack[(l, None, pos)], None, None
+                        )
+
+                        new_metric = self.evaluate_circuit(override_error=True, old_mode=False)
+                        print(cur_metric, new_metric)                        
+
+                        print("Found important MLP: layer", l, "position", pos)
+                        # score = mlp_results[layer, 0]
+                        # comp_type = get_comp_type(receiver_hook[0])
+                        self.node_stack[
+                            (l, None, pos)
+                        ].parents.append(  # TODO fix the MLP thing with GPT-NEO
+                            (self.current_node, None, None)
+                        )
+                        self.current_node.add_child(
+                            self.node_stack[(l, None, pos)], None, None # TODO sort out the score and comp_type
+                        )
+
+                # # deal with the embedding layer tool
+                # if abs(embed_results) > threshold:
+                #     print("Found important embedding layer at position", pos)
+                #     score = embed_results
+                #     comp_type = get_comp_type(receiver_hook[0])
+                #     self.node_stack[
+                #         (-1, None, pos)
+                #     ].parents.append(  # TODO fix the MLP thing with GPT-NEO
+                #         (self.current_node, score, comp_type)
+                #     )
+                #     self.current_node.add_child(
+                #         (self.node_stack[(-1, None, pos)], score, comp_type)
+                #     )
+
             if current_node_position == pos:
                 break
 
@@ -666,9 +675,9 @@ class Circuit:
                 g.edge(
                     child[0].display(),
                     node.display(),
-                    color=color_dict[child[2]],
-                    penwidth=str(scale(child[1])),
-                    arrowsize=str(scale(child[1])),
+                    color=color_dict[(child[2] or "other")],
+                    penwidth=str(scale((child[1] or 1))),
+                    arrowsize=str(scale((child[1] or 1))),
                 )
         # add invisible edges to keep layers separate
         for i in range(len(self.important_nodes) - 1):
