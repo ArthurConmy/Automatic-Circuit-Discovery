@@ -198,6 +198,13 @@ h.show()
 
 import time
 times = []
+
+for l in range(11, -1, -1):
+    for h1 in range(0, 12):
+        h.important_nodes.append(
+            h.node_stack[(l, h1, "END")],
+        )
+
 for l in range(11, -1, -1):
     for h1 in range(0, 12):
         for l2 in range(0, l):
