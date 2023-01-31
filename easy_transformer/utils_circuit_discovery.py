@@ -185,6 +185,7 @@ def direct_path_patching(
         for sender_hook_name, sender_hook_idx, sender_head_pos in receivers_to_senders[
             (hook_name, head_idx)
         ]:
+            # setup the cache that the new_cache stuff will be replaced with
             if (
                 (hook_name, head_idx),
                 (sender_hook_name, sender_hook_idx, sender_head_pos),
@@ -559,7 +560,7 @@ class Circuit:
                     )
                 # TODO the online version
 
-                for l in tqdm(range(max_layer)):
+                for l in tqdm(range(max_layer-1, -1, -1)):
                     for h in range(self.model.cfg.n_heads):
                         cur_metric = self.evaluate_circuit(override_error=True, old_mode=False) # TODO keep updated
                         self.node_stack[(l, h, pos)].remove_parent(

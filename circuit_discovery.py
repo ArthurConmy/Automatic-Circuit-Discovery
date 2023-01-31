@@ -143,7 +143,7 @@ positions["END"] = ones.clone() * 14
 #%%
 
 def logit_diff_metric(model, dataset):
-    logits = model(ioi_dataset.toks.long())
+    logits = model(abc_Dataset.toks.long())
 
     corrects = ioi_dataset.toks.long()[:, positions["IO"][0].item()]
     wrongs = ioi_dataset.toks.long()[:, positions["S1"][0].item()]
