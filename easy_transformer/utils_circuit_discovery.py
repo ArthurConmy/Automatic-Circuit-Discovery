@@ -291,7 +291,7 @@ def direct_path_patching(
 
 def make_base_receiver_sender_objects(
     important_nodes,
-    both = False,
+    both=False,
 ):
     initial_receivers_to_senders = []
     base_receivers_to_senders = {}
@@ -303,7 +303,9 @@ def make_base_receiver_sender_objects(
 
             if len(sender_child.children) == 0:
                 sender_hook = get_hook_tuple(sender_child.layer, sender_child.head)
-                initial_receivers_to_senders.append((hook, (sender_hook[0], sender_hook[1], sender_child.position))
+                initial_receivers_to_senders.append(
+                    (hook, (sender_hook[0], sender_hook[1], sender_child.position))
+                )
 
             if comp in ["v", "k", "q"]:
                 qkv_hook = get_hook_tuple(receiver.layer, receiver.head, comp)
@@ -323,7 +325,7 @@ def make_base_receiver_sender_objects(
                 )
 
     if both:
-        return base_initial_senders, initial_receivers_to_senders
+        return base_receivers_to_senders, initial_receivers_to_senders
     else:
         return base_receivers_to_senders
 
@@ -479,8 +481,10 @@ class Node:
             position, str
         ), f"Position must be a string, not {type(position)}"
         self.position = position
+        
         self.children = []
         self.parents = []
+        
         self.resid_out = resid_out
 
     def __repr__(self):
@@ -499,6 +503,21 @@ class Node:
         else:
             return f"{self.layer}.{self.head}\n{self.position}"
 
+    def add_child(self, child, comp, score):
+        assert (child, comp, score) not in self.children
+        self.children.append((child, comp, score))
+
+    def add_parent(self, parent):
+        assert parent not in self.parents
+        self.parents.append(parent)
+
+    def remove_child(self, child, comp, score):
+        assert (child, comp, score) in self.children
+        self.children.remove((child, comp, score))
+
+    def remove_parent(self, parent):
+        assert parent in self.parents
+        self.parents.remove(parent)
 
 class Circuit:
     def __init__(
@@ -580,46 +599,46 @@ class Circuit:
         self.model.cache_all(self.new_cache)
         _ = self.model(self.new_data, prepend_bos=False)
 
-    def eval(
+    def step(
         self,
         threshold: Union[float, None] = None,
         verbose: bool = False,
         show_graphics: bool = True,
         auto_threshold: float = 0.0,
     ):
-        """DIRECT PATH PATCHING VERSION"""
+        """See mlab2 repo docs for def step"""
 
         if threshold is None:
             threshold = self.threshold
 
-        _, node = self.node_stack.popitem()
-        self.important_nodes.append(node)
-        print("Currently evaluating", node)
+        _, self.current_node = self.node_stack.popitem()
+        self.important_nodes.append(self.current_node)
+        print("Currently evaluating", self.current_node)
 
-        current_node_position = node.position
+        current_node_position = self.current_node.position
         for pos in self.orig_positions:
             if (
-                current_node_position != pos and node.head is None
+                current_node_position != pos and self.current_node.head is None
             ):  # MLPs and the end state of the residual stream only care about the last position
                 continue
 
             receiver_hooks = []
-            if node.layer == -1:
+            if self.current_node.layer == -1:
                 continue  # nothing before this
-            elif node.layer == self.model.cfg.n_layers:
-                receiver_hooks.append((f"blocks.{node.layer-1}.hook_resid_post", None))
-            elif node.head is None:
-                receiver_hooks.append((f"blocks.{node.layer}.hook_resid_mid", None))
+            elif self.current_node.layer == self.model.cfg.n_layers:
+                receiver_hooks.append((f"blocks.{self.current_node.layer-1}.hook_resid_post", None))
+            elif self.current_node.head is None:
+                receiver_hooks.append((f"blocks.{self.current_node.layer}.hook_resid_mid", None))
             else:
                 receiver_hooks.append(
-                    (f"blocks.{node.layer}.attn.hook_v_input", node.head)
+                    (f"blocks.{self.current_node.layer}.attn.hook_v_input", self.current_node.head)
                 )
                 receiver_hooks.append(
-                    (f"blocks.{node.layer}.attn.hook_k_input", node.head)
+                    (f"blocks.{self.current_node.layer}.attn.hook_k_input", self.current_node.head)
                 )
                 if pos == current_node_position:
                     receiver_hooks.append(
-                        (f"blocks.{node.layer}.attn.hook_q_input", node.head)
+                        (f"blocks.{self.current_node.layer}.attn.hook_q_input", self.current_node.head)
                     )  # similar story to above, only care about the last position
 
             for receiver_hook in receiver_hooks:
@@ -627,22 +646,45 @@ class Circuit:
                     print(f"Working on pos {pos}, receiver hook {receiver_hook}")
 
                 # dry run, that adds all hooks
+
+                # add the embedding node
+                self.node_stack[(-1, None, pos)].add_parent(self.current_node)
+                self.current_node.add_child(
+                    self.node_stack[(-1, None, pos)], None, None
+                )
+
+                max_layer = min(self.model.cfg.n_layers, self.current_node.layer + (1 if receiver_hook[1] is None else 0)) # this handles attn heads, MLPs and end-state-of-residual-stream
                 for l in tqdm(range(max_layer)):
                     for h in range(self.model.cfg.n_heads):
-                        self.node_stack[(layer, head, pos)].parents.append(
-                            (node, score, comp_type)
+                        self.node_stack[(l, h, pos)].add_parent(self.current_node) # TODO does this fuck up the registering of parent comp and score???
+                        self.current_node.add_child(
+                            self.node_stack[(l, h, pos)], None, None
                         )
-                        node.children.append(
-                            (self.node_stack[(layer, head, pos)], score, comp_type)
-                        )
-
+                    # add the MLP
+                    self.node_stack[(l, None, pos)].add_parent(self.current_node)
+                    self.current_node.add_child(
+                        self.node_stack[(l, None, pos)], None, None
+                    )
                 # TODO the online version
-                max_layer = node.layer + (1 if receiver_hook[1] is None else 0)
+
                 for l in tqdm(range(max_layer)):
                     for h in range(self.model.cfg.n_heads):
-                        cur_metric = self.eval_circuit()
+                        cur_metric = self.evaluate_circuit(override_error=True, old_mode=False) # TODO keep updated
+                        self.node_stack[(l, h, pos)].remove_parent(
+                            self.current_node
+                        )
+                        self.current_node.remove_child(
+                            self.node_stack[(l, h, pos)], None, None
+                        )
 
-                        if abs(attn_results[layer, head]) > threshold:
+                        new_metric = self.evaluate_circuit(override_error=True, old_mode=False)
+                        print(cur_metric, new_metric)
+
+                        self.model.reset_hooks()
+                        default = self.metric(self.model, self.dataset)
+                        print(f"{default=}")
+
+                        if abs(new_metric - cur_metric) > threshold:
                             print(
                                 "Found important head:",
                                 (layer, head),
@@ -652,13 +694,13 @@ class Circuit:
                             score = attn_results[layer, head]
                             comp_type = get_comp_type(receiver_hook[0])
                             self.node_stack[(layer, head, pos)].parents.append(
-                                (node, score, comp_type)
+                                (self.current_node, score, comp_type)
                             )
-                            node.children.append(
-                                (self.node_stack[(layer, head, pos)], score, comp_type)
+                            self.current_node.remove_child(
+                                self.node_stack[(layer, head, pos)], score, comp_type
                             )
 
-                    if l < node.layer: # don't look at MLP n -> MLP n effect : )
+                    if l < self.current_node.layer:  # don't look at MLP n -> MLP n effect : )
                         if (
                             layer < mlp_results.shape[0]
                             and abs(mlp_results[layer]) > threshold
@@ -669,9 +711,9 @@ class Circuit:
                             self.node_stack[
                                 (layer, None, pos)
                             ].parents.append(  # TODO fix the MLP thing with GPT-NEO
-                                (node, score, comp_type)
+                                (self.current_node, score, comp_type)
                             )
-                            node.children.append(
+                            self.current_node.add_child(
                                 (self.node_stack[(layer, None, pos)], score, comp_type)
                             )
                 # deal with the embedding layer too
@@ -682,9 +724,9 @@ class Circuit:
                     self.node_stack[
                         (-1, None, pos)
                     ].parents.append(  # TODO fix the MLP thing with GPT-NEO
-                        (node, score, comp_type)
+                        (self.current_node, score, comp_type)
                     )
-                    node.children.append(
+                    self.current_node.add_child(
                         (self.node_stack[(-1, None, pos)], score, comp_type)
                     )
             if current_node_position == pos:
@@ -745,13 +787,16 @@ class Circuit:
                 "Cannot extract model while there are still nodes to explore"
             )
 
-    def evaluate_circuit(self, override_error = False, old_mode = True):
+    def evaluate_circuit(self, override_error=False, old_mode=True):
+        """Actually run a forward pass with the current graph object"""
+        
         if self.current_node is not None and not override_error:
             raise NotImplementedError("Make circuit full")
 
-        receivers_to_senders = make_base_receiver_sender_objects(h.important_nodes)
+        receivers_to_senders = make_base_receiver_sender_objects(self.important_nodes)
 
-        # what we do here is make sure that the ONLY embed objects that are set to their values on the original dataset are the ones that are in the circuit
+        # what we do here is make sure that the ONLY embed objects that are set to their values on 
+        # the original dataset are the ones that are in the circuit
         initial_receivers_to_senders: List[
             Tuple[Tuple[str, Optional[int]], Tuple[str, Optional[int], str]]
         ] = []
@@ -760,7 +805,9 @@ class Circuit:
             for child, comp, score in node.children:
                 if old_mode:
                     if child.layer == -1:
-                        raise NotImplementedError("I don't understand what I'm doing here")
+                        raise NotImplementedError(
+                            "I don't understand what I'm doing here"
+                        )
                         initial_receivers_to_senders.append(
                             (
                                 ("blocks.0.hook_resid_pre", None),
@@ -769,9 +816,10 @@ class Circuit:
                         )
 
         if not old_mode:
-            receivers_to_senders, initial_receivers_to_senders = make_base_receiver_sender_objects(
-                self.important_nodes, both=True
-            )            
+            (
+                receivers_to_senders,
+                initial_receivers_to_senders,
+            ) = make_base_receiver_sender_objects(self.important_nodes, both=True)
 
         assert (
             len(initial_receivers_to_senders) > 0
@@ -784,15 +832,16 @@ class Circuit:
                 self.orig_positions[pos], self.new_positions[pos]
             ), "Data must be the same for all positions"
 
+
         model = direct_path_patching(
             model=self.model,
-            orig_data=self.new_data, # NOTE these are different
+            orig_data=self.new_data,  # TODO sort these being different these are different
             new_data=self.orig_data,
             initial_receivers_to_senders=initial_receivers_to_senders,
             receivers_to_senders=receivers_to_senders,
             orig_positions=self.orig_positions,  # tensor of shape (batch_size,)
             new_positions=self.new_positions,
-            orig_cache=self.orig_cache,
-            new_cache=self.new_cache,
+            orig_cache=self.new_cache, # TODO also sort these different
+            new_cache=self.orig_cache,
         )
-        return self.metric(model, dataset)
+        return self.metric(model, self.dataset)

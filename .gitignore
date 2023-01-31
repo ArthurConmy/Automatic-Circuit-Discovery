@@ -26,3 +26,4 @@ _modidx.py
 *.dot
 acronyms.py
 archive/*
+*.jsonl*
