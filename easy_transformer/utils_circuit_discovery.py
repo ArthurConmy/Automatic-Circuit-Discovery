@@ -189,8 +189,9 @@ def direct_path_patching(
                 (hook_name, head_idx),
                 (sender_hook_name, sender_hook_idx, sender_head_pos),
             ) in initial_receivers_to_senders:  # hopefully fires > once
-                cache_to_use = new_cache
-                positions_to_use = new_positions
+                cache_to_use = orig_cache
+                positions_to_use = orig_positions
+
             else:
                 cache_to_use = hook.ctx["model"].cache
                 positions_to_use = orig_positions
@@ -201,7 +202,7 @@ def direct_path_patching(
                     cache_to_use[sender_hook_name][
                         torch.arange(N), positions_to_use[sender_head_pos]
                     ]
-                    - orig_cache[sender_hook_name][
+                    - new_cache[sender_hook_name][
                         torch.arange(N), positions_to_use[sender_head_pos]
                     ]
                 )
@@ -212,7 +213,7 @@ def direct_path_patching(
                         positions_to_use[sender_head_pos],
                         sender_hook_idx,
                     ]
-                    - orig_cache[sender_hook_name][
+                    - new_cache[sender_hook_name][
                         torch.arange(N),
                         positions_to_use[sender_head_pos],
                         sender_hook_idx,
@@ -251,7 +252,8 @@ def direct_path_patching(
             z, orig_cache["blocks.0.hook_resid_pre"]
         ):
             a = 1
-        z[:] = orig_cache[hook_name]
+
+        z[:] = new_cache[hook_name]        
         return z
 
     # save the embeddings! they will be useful
@@ -419,6 +421,7 @@ class Circuit:
         new_positions: OrderedDict,
         use_caching: bool = True,
         dataset=None,
+        verbose: bool = False,
     ):
         model.reset_hooks()
         self.model = model
@@ -449,6 +452,7 @@ class Circuit:
             self.get_caches()
         self.important_nodes = []
         self.finished = False
+        self.verbose = verbose
 
     def populate_node_stack(self):
         for pos in self.orig_positions:
@@ -575,18 +579,23 @@ class Circuit:
                         if abs(new_metric - cur_metric) > threshold:
                             print(
                                 "Found important head:",
-                                (layer, head),
+                                (l, h),
                                 "at position",
                                 pos,
                             )
-                            score = attn_results[layer, head]
                             comp_type = get_comp_type(receiver_hook[0])
-                            self.node_stack[(layer, head, pos)].parents.append(
-                                (self.current_node, score, comp_type)
+
+                            # add back connection 
+                            self.node_stack[(l, h, pos)].add_parent(
+                                self.current_node
                             )
-                            self.current_node.remove_child(
-                                self.node_stack[(layer, head, pos)], score, comp_type
+                            self.current_node.add_child(
+                                self.node_stack[(l, h, pos)], None, None
                             )
+
+                        else:
+                            if self.verbose:
+                                print("Found unimportant head:", (l, h), "at position", pos)
 
                     if l < self.current_node.layer:  # don't look at MLP n -> MLP n effect : )
                         if (
@@ -675,7 +684,7 @@ class Circuit:
                 "Cannot extract model while there are still nodes to explore"
             )
 
-    def evaluate_circuit(self, override_error=False, old_mode=True):
+    def evaluate_circuit(self, override_error=True, old_mode=False):
         """Actually run a forward pass with the current graph object"""
         
         if self.current_node is not None and not override_error:
@@ -709,9 +718,9 @@ class Circuit:
                 initial_receivers_to_senders,
             ) = make_base_receiver_sender_objects(self.important_nodes, both=True)
 
-        assert (
-            len(initial_receivers_to_senders) > 0
-        ), "Need at least one embedding present!!!"
+        
+        if len(initial_receivers_to_senders) > 0:
+            warnings.warn("Need at least one embedding present!!!")
 
         initial_receivers_to_senders = list(set(initial_receivers_to_senders))
 
@@ -723,13 +732,13 @@ class Circuit:
 
         model = direct_path_patching(
             model=self.model,
-            orig_data=self.new_data,  # TODO sort these being different these are different
-            new_data=self.orig_data,
+            orig_data=self.orig_data,  # TODO sort these being different these are different
+            new_data=self.new_data,
             initial_receivers_to_senders=initial_receivers_to_senders,
             receivers_to_senders=receivers_to_senders,
             orig_positions=self.orig_positions,  # tensor of shape (batch_size,)
             new_positions=self.new_positions,
-            orig_cache=self.new_cache, # TODO also sort these different
-            new_cache=self.orig_cache,
+            orig_cache=self.orig_cache, # TODO also sort these different
+            new_cache=self.new_cache,
         )
         return self.metric(model, self.dataset)

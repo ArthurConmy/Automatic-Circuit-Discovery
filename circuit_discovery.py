@@ -28,6 +28,7 @@ from collections import OrderedDict
 import pickle
 from subprocess import call
 from IPython import get_ipython
+import matplotlib.pyplot as plt
 
 ipython = get_ipython()
 if ipython is not None:
@@ -161,9 +162,10 @@ h = Circuit(
     metric=logit_diff_metric,
     orig_data=ioi_dataset.toks.long(),
     new_data=abc_Dataset.toks.long(),
-    threshold=0.25,
+    threshold=1e-9,
     orig_positions=positions,
     new_positions=positions, # in some datasets we might want to patch from different positions; not here
+    verbose=False,
 )
 #%%
 # <h2> Run path patching! </h2>
@@ -191,3 +193,22 @@ while h.current_node is not None:
 #%% [markdown]
 # <h2> Show the circuit </h2>
 h.show()
+
+#%%
+
+import time
+times = []
+for l in range(11, -1, -1):
+    for h1 in range(0, 12):
+        for l2 in range(0, l):
+            for h2 in range(0, 12):
+                h.node_stack[(l, h1, "END")].add_child(
+                    h.node_stack[(l2, h2, "END")], None, None
+                )
+                h.node_stack[(l2, h2, "END")].add_parent(
+                    h.node_stack[(l, h1, "END")],
+                )
+                t1 = time.time()
+                h.evaluate_circuit()
+                t2 = time.time()
+                times.append(t2 - t1)
