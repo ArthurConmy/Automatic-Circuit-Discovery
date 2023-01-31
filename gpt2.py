@@ -148,10 +148,6 @@ for i in tqdm(range(1000)):
     mean += (model.to_tokens(sample["text"])).numel()
 mean /= 1000
 print(mean)
-
-#%%
-trans.generate("There should be non-sensical completion here:")
-
 #%%
 
 # From GPT-3 paper
@@ -244,6 +240,8 @@ ds = dataset["train"]
 current_tokens = torch.zeros((1, 0)).long().cuda()
 BATCH_SIZE = 32_000
 
+grad_steps = 2
+
 for step in tqdm(range(len(ds))):
     log = {}
     sample = ds[step]
@@ -252,7 +250,7 @@ for step in tqdm(range(len(ds))):
 
     if current_tokens.shape[1] >= BATCH_SIZE:
         spare_tokens = torch.cat(
-            (current_tokens[:, :1], current_tokens[:, BATCH_SIZE:]), dim=1
+            (current_tokens[:, :1], current_tokens[:, BATCH_SIZE:]), dim=1,
         )  # keep the BOS token
         current_tokens = current_tokens[:, :BATCH_SIZE]
 
@@ -283,4 +281,6 @@ for step in tqdm(range(len(ds))):
         if USING_WANDB:
             wandb.log(log)
 
-#%%
+        grad_steps -= 1
+        if grad_steps == 0:
+            break

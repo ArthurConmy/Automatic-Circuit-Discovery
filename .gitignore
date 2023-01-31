@@ -20,3 +20,4 @@ pts/*
 *.png
 *.dot
 *.gz
+profile*.json
