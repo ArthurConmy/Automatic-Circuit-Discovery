@@ -166,7 +166,7 @@ def direct_path_patching(
     # for specifically editing the inputs from certain previous parts
     def input_activation_editor(
         z,
-        hook,
+        hook, # TODO rename to "hook point"
         head_idx=None,
     ):
         """Probably too many asserts, ignore them"""
@@ -247,7 +247,7 @@ def direct_path_patching(
 
     # for saving and then overwriting outputs of attention and MLP layers
     def layer_output_hook(z, hook):
-        hook_name = hook.ctx["hook_name"]
+        hook_name = hook.ctx["hook_name"] # TODO remove? We have access to this
         hook.ctx["model"].cache[hook_name] = z.clone()  # hmm maybe CPU if debugging OOM
         assert (
             z.shape == orig_cache[hook_name].shape
