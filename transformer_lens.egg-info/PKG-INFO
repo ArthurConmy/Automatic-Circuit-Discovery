@@ -1,3 +1,11 @@
+Metadata-Version: 2.1
+Name: transformer-lens
+Version: 0.1.0
+Summary: An implementation of transformers tailored for mechanistic interpretability.
+License: LICENSE
+Provides-Extra: dev
+License-File: LICENSE
+
 # TransformerLens
 
 [![Pypi](https://img.shields.io/pypi/v/transformer-lens)](https://pypi.org/project/transformer-lens/)
