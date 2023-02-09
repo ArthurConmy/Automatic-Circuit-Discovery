@@ -1485,3 +1485,7 @@ class HookedTransformer(HookedRootModule):
             if not n.endswith("mask"):
                 p.requires_grad = False
 
+class MaskedHookedTransformer(HookedTransformer):
+    def __init__(self, cfg, tokenizer=None, move_to_device=True):
+        super().__init__(cfg, tokenizer, move_to_device)
+        self.is_masked = True
