@@ -1,10 +1,12 @@
 #%%
 
 import transformer_lens
+import random
 from transformer_lens.ioi_dataset import IOIDataset
 from functools import *
-from utils import logit_diff
+from utils import *
 import torch
+from copy import deepcopy
 
 import IPython
 if IPython.get_ipython() is not None:
@@ -15,7 +17,9 @@ if IPython.get_ipython() is not None:
 #%%
 
 def get_model():
-    return transformer_lens.HookedTransformer.from_pretrained("gpt2")
+    model =  transformer_lens.HookedTransformer.from_pretrained("gpt2")
+    model.set_use_attn_result(True)
+    return model
 
 model = get_model()
 
@@ -152,15 +156,13 @@ def custom_step(opt):
 #%%
 
 def get_loss(model, dataset, d_samples=10, return_var = False): 
-
     loss_list = []
-
     for _ in range(d_samples):
         logits = model.run_with_hooks(
             dataset.toks.long(),
             fwd_hooks=fwd_hooks,
         )
-        loss_list.append(logit_diff(logits, dataset, item=False))
+        loss_list.append(-1.0 * logit_diff(logits, dataset, item=False))
 
     ans = sum(loss_list) / d_samples
 
@@ -192,7 +194,8 @@ while D.p <= 1.0:
 
 #%%
 
-l = logit_diff(model, dataset, mean=False, item=False)
+l, v = get_loss(model, dataset, return_var=True)
+print(l, v)
 
 #%%
 
@@ -202,4 +205,67 @@ def save_model(
 ):
     torch.save(model.state_dict(), path)
 
-save_model(model, "initial_dropout_full.pt")
+save_model(model, "sign_correct.pt")
+
+#%%
+
+model.reset_hooks()
+for hook in fwd_hooks:
+    model.add_hook(*hook)
+
+#%%
+
+for head in circuit_heads:
+    scatter_attention_and_contribution(model, dataset, head[0], head[1])
+
+#%%
+
+for head in circuit_heads:
+    show_attention_patterns(
+        model, [head], dataset[:1], mode="attn"
+    )
+
+
+#%%
+
+old_inv_heads_by_layer = deepcopy(inv_heads_by_layer)
+
+
+#%%
+
+def zero_out(z, hook, D: DropoutManager, idxs=None):
+    if idxs is None:    
+        return D(z)
+
+    else:
+        zp = z[idxs]
+        zp = D(zp)
+        z[idxs] = zp
+        return z
+
+model.reset_hooks()
+inv_heads_by_layer = deepcopy(old_inv_heads_by_layer)
+circuit_heads_subset = random.sample(circuit_heads, 18)
+
+for layer_idx, head_idx in circuit_heads_subset:
+    inv_heads_by_layer[layer_idx].append(head_idx)
+    fwd_hooks = []
+
+for hook_name in model.hook_dict:
+    # all MLPs and all irrelevant heads ...
+    if hook_name.endswith("attn.hook_result"): # remember to zero out at position 2 ...
+        layer = int(hook_name.split(".")[1])
+        fwd_hooks.append((hook_name, partial(zero_out, D=D, idxs=inv_heads_by_layer[layer])))
+
+    if hook_name.endswith("mlp_out"):
+        fwd_hooks.append((hook_name, partial(zero_out, D=D)))
+
+logits = model.run_with_hooks(
+    dataset.toks.long(),
+    fwd_hooks=fwd_hooks,
+)
+print(layer_idx, head_idx)
+print(logit_diff(logits, dataset))
+
+# very bugged, even ablating erryting means we still have hi logit diff
+# and this doesn't agree with base GPT. So there must be some bug...
