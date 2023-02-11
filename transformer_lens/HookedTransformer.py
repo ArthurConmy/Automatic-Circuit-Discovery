@@ -68,6 +68,7 @@ class HookedTransformer(HookedRootModule):
         move_to_device (bool): Whether to move the model to the device specified in cfg.
             device.
         """
+        self.is_correct_branch = True
         super().__init__()
         if isinstance(cfg, Dict):
             cfg = HookedTransformerConfig(**cfg)
