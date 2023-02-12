@@ -106,9 +106,9 @@ def zero_out(z, hook, D: DropoutManager, idxs=None):
         return D(z)
 
     else:
-        zp = z[idxs]
+        zp = z[:, :, idxs]
         zp = D(zp)
-        z[idxs] = zp
+        z[:, :, idxs] = zp
         return z
 
 fwd_hooks = []
@@ -188,6 +188,7 @@ while D.p <= 1.0:
 
     if log["newer_loss"] < -3.0:
         D.p += 0.1
+        D.p = max(D.p, 1.0)
         print("-"*10, D.p, "-"*10)
 
     print(log)
@@ -238,9 +239,9 @@ def zero_out(z, hook, D: DropoutManager, idxs=None):
         return D(z)
 
     else:
-        zp = z[idxs]
+        zp = z[:, :, idxs]
         zp = D(zp)
-        z[idxs] = zp
+        z[:, :, idxs] = zp
         return z
 
 model.reset_hooks()
