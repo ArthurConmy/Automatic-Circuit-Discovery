@@ -15,13 +15,14 @@ for root, dirs, files in os.walk('circ_models2'):
     else:
       warnings.warn("Found a file called " + str(file) + ": this doesn't seem right")
 
+# sneaky hack to dynamically import a bunch of things
 for fname, fpath in FILES.items():
   with open(fpath, 'r') as f:
     model_text = f.read()
-    #  FILES[fname] = f.read()
   exec(f"{(fname[:-5]).replace('-', '_')}_string = model_text")
 
-# print(FILES)
+
+# example of GPT-2 small:
 
 # gpt2_small = """# info:{"params": {"block_params": {"norm_type": "ln", "attn_bias": true, "attn_pos": false, "use_mlp": true, "mlp_act_type": "gelu", "mlp_output_bias": true}, "num_layers": 12, "use_norm_output": true, "output_bias": false}, "model_class": "GPT", "pos_enc_type": "gpt", "causal_mask": true, "extra": null}
 # 't.w.tok_embeds' [50257,768] Array 1f668798fb95d0e16b2a0143

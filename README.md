@@ -10,5 +10,6 @@ Public rust circuit version of ACDC.
 
 # TODO
 
-[ ] make this into a pip installable, so we can just `pip install -e .` and then import much more easily.
-[ ] check that the docstring circuit, which uses unconventional tensors, works for us.
+- [ ] make this into a pip installable, so we can just `pip install -e .` and then import much more easily.
+- [ ] make the docstring circuit, which uses unconventional tensors, works for us.
+- [ ] make the induction circuit work
