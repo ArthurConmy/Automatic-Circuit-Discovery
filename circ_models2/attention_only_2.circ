@@ -1,0 +1,22 @@
+# info:{"params": {"block_params": {"norm_type": "ln", "attn_bias": false, "attn_pos": true, "use_mlp": false, "mlp_act_type": "gelu", "mlp_output_bias": true}, "num_layers": 2, "use_norm_output": true, "output_bias": false}, "model_class": "GPTBeginEndToks", "pos_enc_type": "shortformer", "causal_mask": true, "extra": null}
+'t.w.tok_embeds' [50259,256] Array eb2fc151d7c22fdfa127e7f1
+'t.w.pos_embeds' [2048,256] Array 8f900aaea9821012b15adc53
+'t.bind_w' Module
+  't.logits'
+  'a0.ln.w.bias_arr' [256] Array b8ecc0432e48478807ec8a27 ! 'a0.ln.w.bias' [0s] Symbol e443df78-9558-867f-5ba9-1faf7a024204
+  'a0.ln.w.scale_arr' [256] Array 88edf16ca3a56b8138a4e8c3 ! 'a0.ln.w.scale' [0s] Symbol 23a7711a-8133-2876-37eb-dcd9e87a1613
+  'a0.w.q_arr' [8,32,256] Array bd8d197484b1bcb97a38ca1e ! 'a0.w.q' [4s,7s,0s] Symbol e3e70682-c209-4cac-629f-6fbed82c07cd
+  'a0.w.k_arr' [8,32,256] Array a324a632c36b0a396ddd449f ! 'a0.w.k' [4s,7s,0s] Symbol f728b4fa-4248-5e3a-0a5d-2f346baa9455
+  'a0.w.v_arr' [8,32,256] Array a9aa2750fed91dabc92f23c4 ! 'a0.w.v' [4s,8s,0s] Symbol eb1167b3-67a9-c378-7c65-c1e582e2e662
+  'a0.w.o_arr' [8,256,32] Array 86652380de81149be28073bc ! 'a0.w.o' [4s,0s,8s] Symbol f7c1bd87-4da5-e709-d471-3d60c8a70639
+  'a1.ln.w.bias_arr' [256] Array 89bd0ac23418df165f9b000f ! 'a1.ln.w.bias' [0s] Symbol e4b06ce6-0741-c7a8-7ce4-2c8218072e8c
+  'a1.ln.w.scale_arr' [256] Array 74f11afa23daa6868a2aae21 ! 'a1.ln.w.scale' [0s] Symbol 9b810e76-6ec9-d286-63ca-828dd5f4b3b2
+  'a1.w.q_arr' [8,32,256] Array a584bbb0ba3e83183e4d8039 ! 'a1.w.q' [4s,7s,0s] Symbol cd613e30-d8f1-6adf-91b7-584a2265b1f5
+  'a1.w.k_arr' [8,32,256] Array 9d23139db839c3fea11dd2f3 ! 'a1.w.k' [4s,7s,0s] Symbol 1e2feb89-414c-343c-1027-c4d1c386bbc4
+  'a1.w.v_arr' [8,32,256] Array 29a0657147f53d2394d43925 ! 'a1.w.v' [4s,8s,0s] Symbol 78e51061-7311-d8a3-c2ce-6f447ed4d57b
+  'a1.w.o_arr' [8,256,32] Array c8e6eb97a7812f3195ccce86 ! 'a1.w.o' [4s,0s,8s] Symbol 35bf992d-c9e9-c616-612e-7696a6cecc1b
+  'final.ln.w.bias_arr' [256] Array b5464c0d0d1efa0e435f68d7 ! 'final.ln.w.bias'
+  'final.ln.w.scale_arr' [256] Array 422294bedcf72bd6e6750b09 ! 'final.ln.w.scale'
+  't.w.unembed_arr' [50259,256] Array c5c3c49229dad27d975bf368 ! 't.w.unembed'
+
+# originally attention_only_two_layers_untied

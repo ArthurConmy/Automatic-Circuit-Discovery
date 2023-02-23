@@ -1,0 +1,59 @@
+# info:{"params": {"block_params": {"norm_type": "ln", "attn_bias": true, "attn_pos": false, "use_mlp": true, "mlp_act_type": "relu", "mlp_output_bias": true}, "num_layers": 3, "use_norm_output": true, "output_bias": true}, "model_class": "GPT", "pos_enc_type": "gpt", "causal_mask": false, "extra": null}
+'t.w.tok_embeds' [5,56] Array a9861bc6b472d4e9ebb6e463
+'t.w.pos_embeds' [512,56] Array 56fd2b0290a76e078a1d465a
+'t.bind_w' Module
+  't.logits_p_bias'
+  'a0.ln.w.bias_arr' [56] Array 3659acff77d0361e31464026 ! 'a0.ln.w.bias' [0s] Symbol 8d723104-f773-83c1-3458-a748e9bb17bc
+  'a0.ln.w.scale_arr' [56] Array 0997c6b977eddd429765c554 ! 'a0.ln.w.scale' [0s] Symbol 85776e9a-dd84-f39e-7154-5a137a1d5006
+  'a0.w.q_arr' [2,28,56] Array b25e101cdd2b70d432efc6c6 ! 'a0.w.q' [4s,7s,0s] Symbol 1846d424-c17c-6279-23c6-612f48268673
+  'a0.w.k_arr' [2,28,56] Array c952c9749347f431598006e9 ! 'a0.w.k' [4s,7s,0s] Symbol b4862b21-fb97-d435-8856-1712e8e5216a
+  'a0.w.v_arr' [2,28,56] Array 4c2b1109bcb8074bb05e2df1 ! 'a0.w.v' [4s,8s,0s] Symbol 12e0c8b2-bad6-40fb-1948-8dec4f65d4d9
+  'a0.w.o_arr' [2,56,28] Array e6890006d4d455a81cb1e2c5 ! 'a0.w.o' [4s,0s,8s] Symbol 5a921187-19c7-8df4-8f4f-f31e78de5857
+  'a0.w.q_bias_arr' [2,28] Array 1bffc99d15d3873d537c0429 ! 'a0.w.q_bias' [4s,7s] Symbol fcbd04c3-4021-2ef7-cca5-a5a19e4d6e3c
+  'a0.w.k_bias_arr' [2,28] Array 8597587d64a16d993cad7e36 ! 'a0.w.k_bias' [4s,7s] Symbol 259f4329-e6f4-590b-9a16-4106cf6a659e
+  'a0.w.v_bias_arr' [2,28] Array 84f337df8e86dfdf0afa1b3c ! 'a0.w.v_bias' [4s,8s] Symbol 5487ce1e-af19-922a-d9b8-a714e61a441c
+  'a0.w.o_bias_arr' [56] Array 00f1f1106db14f6c69e0207c ! 'a0.w.o_bias' [0s] Symbol a3f2c9bf-9c63-16b9-50f2-44556f25e2a2
+  'm0.ln.w.bias_arr' [56] Array b6f6d935ca0e0955522ea42f ! 'm0.ln.w.bias' [0s] Symbol e443df78-9558-867f-5ba9-1faf7a024204
+  'm0.ln.w.scale_arr' [56] Array a87d9adeac5e2d3734e7d22a ! 'm0.ln.w.scale' [0s] Symbol 23a7711a-8133-2876-37eb-dcd9e87a1613
+  'm0.w.proj_in_arr' [56,56] Array 002a466441bf55a5ee6881fb ! 'm0.w.proj_in' [5s,0s] Symbol e3e70682-c209-4cac-629f-6fbed82c07cd
+  'm0.w.in_bias_arr' [56] Array 6118887b4ebc2243f72dac8f ! 'm0.w.in_bias' [5s] Symbol f728b4fa-4248-5e3a-0a5d-2f346baa9455
+  'm0.w.proj_out_arr' [56,56] Array d2ecd5f61711c24eb26aec05 ! 'm0.w.proj_out' [0s,5s] Symbol eb1167b3-67a9-c378-7c65-c1e582e2e662
+  'm0.w.out_bias_arr' [56] Array 8d6297063a8fcb292a44fa31 ! 'm0.w.out_bias' [0s] Symbol f7c1bd87-4da5-e709-d471-3d60c8a70639
+  'a1.ln.w.bias_arr' [56] Array 41e749a0b0ca5ad818e2a395 ! 'a1.ln.w.bias' [0s] Symbol 8d88348a-7eed-8d14-f06d-3fef701966a0
+  'a1.ln.w.scale_arr' [56] Array cc7c855a7066c4bbff0f9e02 ! 'a1.ln.w.scale' [0s] Symbol ad45f23d-3b1a-11df-587f-d2803bab6c39
+  'a1.w.q_arr' [2,28,56] Array 6e98da2c10babba752cc75cb ! 'a1.w.q' [4s,7s,0s] Symbol b2221a58-008a-05a6-c464-7159c324c985
+  'a1.w.k_arr' [2,28,56] Array c294c4ab3f02c96233b5586c ! 'a1.w.k' [4s,7s,0s] Symbol 1a2b8f1f-f1fd-42a2-9755-d4c13a902931
+  'a1.w.v_arr' [2,28,56] Array d1c2ec0e4937139f73c0244b ! 'a1.w.v' [4s,8s,0s] Symbol 025b413f-8a9a-021e-a648-a7dd06839eb9
+  'a1.w.o_arr' [2,56,28] Array 541578b076afa77c7a888efb ! 'a1.w.o' [4s,0s,8s] Symbol b9d179e0-6c0f-d4f5-f813-0c4237730edf
+  'a1.w.q_bias_arr' [2,28] Array 1f2bc8bac1de3ccc70a04293 ! 'a1.w.q_bias' [4s,7s] Symbol cd447e35-b8b6-d8fe-442e-3d437204e52d
+  'a1.w.k_bias_arr' [2,28] Array 33f687315392fea82294247a ! 'a1.w.k_bias' [4s,7s] Symbol 05b6e6e3-07d4-bedc-5143-1193e6c3f339
+  'a1.w.v_bias_arr' [2,28] Array 08e12c0ab199263fb7fbe7db ! 'a1.w.v_bias' [4s,8s] Symbol afbd67f9-6196-99cf-e198-8ad9f06c144a
+  'a1.w.o_bias_arr' [56] Array c4f74f4dae3c5cc7aa5e2281 ! 'a1.w.o_bias' [0s] Symbol c381e88f-38c0-c8fd-8712-b8bc076f3787
+  'm1.ln.w.bias_arr' [56] Array 0520a35a1503bfa11eb2dec0 ! 'm1.ln.w.bias' [0s] Symbol e4b06ce6-0741-c7a8-7ce4-2c8218072e8c
+  'm1.ln.w.scale_arr' [56] Array b635450b3e55074d815d6f89 ! 'm1.ln.w.scale' [0s] Symbol 9b810e76-6ec9-d286-63ca-828dd5f4b3b2
+  'm1.w.proj_in_arr' [56,56] Array 8cdd170d82c06d992cbd50d9 ! 'm1.w.proj_in' [5s,0s] Symbol cd613e30-d8f1-6adf-91b7-584a2265b1f5
+  'm1.w.in_bias_arr' [56] Array 1bd0a9076f250feb95e6a499 ! 'm1.w.in_bias' [5s] Symbol 1e2feb89-414c-343c-1027-c4d1c386bbc4
+  'm1.w.proj_out_arr' [56,56] Array 0b9676b308b03cc7a24773c0 ! 'm1.w.proj_out' [0s,5s] Symbol 78e51061-7311-d8a3-c2ce-6f447ed4d57b
+  'm1.w.out_bias_arr' [56] Array fe0f3da015bd6717f49208c9 ! 'm1.w.out_bias' [0s] Symbol 35bf992d-c9e9-c616-612e-7696a6cecc1b
+  'a2.ln.w.bias_arr' [56] Array b84b74dba797c5ac9c5f1f0c ! 'a2.ln.w.bias' [0s] Symbol 2d3d854e-061b-9030-3b08-c6e33c729578
+  'a2.ln.w.scale_arr' [56] Array 28cb35721c6a2669bd17fd45 ! 'a2.ln.w.scale' [0s] Symbol 829a48d4-22fe-99a2-2c70-501e533c9135
+  'a2.w.q_arr' [2,28,56] Array ab529c96b501a83686ac6d89 ! 'a2.w.q' [4s,7s,0s] Symbol cdbd47d3-64be-8049-a372-db8f6e405d93
+  'a2.w.k_arr' [2,28,56] Array ef93a9ccbedb4081edbe6a9e ! 'a2.w.k' [4s,7s,0s] Symbol ef8acd12-8b4f-2fc1-5f3f-57ebf30b94fa
+  'a2.w.v_arr' [2,28,56] Array 90d96efcbe381366d6e047cf ! 'a2.w.v' [4s,8s,0s] Symbol 5d300cb9-0706-a045-defc-044a09325626
+  'a2.w.o_arr' [2,56,28] Array 2604d2d1deb5e800ae2d54f6 ! 'a2.w.o' [4s,0s,8s] Symbol e2520e33-e44c-5055-6c71-c4a66148a86f
+  'a2.w.q_bias_arr' [2,28] Array 6f95f8fa4f6afb611b14239f ! 'a2.w.q_bias' [4s,7s] Symbol 82523e86-feac-7eb7-dc38-f519b91751da
+  'a2.w.k_bias_arr' [2,28] Array bbc1bb268ae2c9d9689904f8 ! 'a2.w.k_bias' [4s,7s] Symbol e6b58de7-44ab-6cce-8087-7b6f71e1f6d2
+  'a2.w.v_bias_arr' [2,28] Array 288f2ed5d0f9d6817383dc9b ! 'a2.w.v_bias' [4s,8s] Symbol e8624fab-5186-ee32-ee8d-7ee9770348a0
+  'a2.w.o_bias_arr' [56] Array 77efd60ad36ccdc3efd404db ! 'a2.w.o_bias' [0s] Symbol 2d6c797f-8f7d-9b78-2a1b-e9cd8697bbd0
+  'm2.ln.w.bias_arr' [56] Array 415421f5ad4bcc6a63e9a8d5 ! 'm2.ln.w.bias' [0s] Symbol 0925e474-9b57-5bd1-3653-f8dd9b1f282e
+  'm2.ln.w.scale_arr' [56] Array 652791e2168823156578d616 ! 'm2.ln.w.scale' [0s] Symbol ffed9235-288b-c781-ae66-267594c9c950
+  'm2.w.proj_in_arr' [56,56] Array 4a35cba06cc8ed543fd70b24 ! 'm2.w.proj_in' [5s,0s] Symbol d95bafc8-f2a4-d27b-dcf4-bb99f4bea973
+  'm2.w.in_bias_arr' [56] Array a9bffe4dc6152250c546313f ! 'm2.w.in_bias' [5s] Symbol 5c6e4337-15ba-2bdd-1772-19d30e7a269f
+  'm2.w.proj_out_arr' [56,56] Array 4a45bc76e5d2e2dba9bc3443 ! 'm2.w.proj_out' [0s,5s] Symbol cf1822ff-bc68-8778-2b49-1044d5e34124
+  'm2.w.out_bias_arr' [56] Array 9654e9617c2eb7b4f930af58 ! 'm2.w.out_bias' [0s] Symbol 4067c358-4ee2-07f8-da94-e3e8ab73738f
+  'final.ln.w.bias_arr' [56] Array 4f8d3a489534ec1035d2239c ! 'final.ln.w.bias'
+  'final.ln.w.scale_arr' [56] Array 48ef48a584c8426767171134 ! 'final.ln.w.scale'
+  't.w.unembed_arr' [2,56] Array bf9f3b84cab7916a2448e375 ! 't.w.unembed'
+  't.w.unembed_bias_arr' [2] Array 7b8074c2ec3c045e9a4618b2 ! 't.w.unembed_bias'
+
+# originally jun9_paren_balancer

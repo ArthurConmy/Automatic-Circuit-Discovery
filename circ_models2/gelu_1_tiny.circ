@@ -1,0 +1,26 @@
+# info:{"params": {"block_params": {"norm_type": "ln", "attn_bias": false, "attn_pos": true, "use_mlp": true, "mlp_act_type": "gelu", "mlp_output_bias": false}, "num_layers": 1, "use_norm_output": true, "output_bias": false}, "model_class": "GPTBeginEndToks", "pos_enc_type": "shortformer", "causal_mask": true, "extra": null}
+
+'tok_losses' [192512] Array cc8b0b98bb7a5ae686c330d5
+'lr_vals' [192512] Array 0c8ee48625826c9f3ae2150b
+
+'t.w.tok_embeds' [50259,128] Array 72239d4fb1105de974eb3f34
+'t.w.pos_embeds' [512,128] Array 0f6416951ae6c6afe2b3229d
+
+'t.bind_w' Module
+  't.logits'
+  'a0.ln.w.bias_arr' [128] Array 4feea4002bb70adbacee87ef ! 'a0.ln.w.bias' [0s] Symbol 12e0c8b2-bad6-40fb-1948-8dec4f65d4d9
+  'a0.ln.w.scale_arr' [128] Array 6d7835ad8d5fccd44b3dfd98 ! 'a0.ln.w.scale' [0s] Symbol 5487ce1e-af19-922a-d9b8-a714e61a441c
+  'a0.w.q_arr' [4,32,128] Array 65b20cc5627ba851fd3dc023 ! 'a0.w.q' [4s,7s,0s] Symbol 1846d424-c17c-6279-23c6-612f48268673
+  'a0.w.k_arr' [4,32,128] Array 92e1b7355d4a2bacafc99899 ! 'a0.w.k' [4s,7s,0s] Symbol fcbd04c3-4021-2ef7-cca5-a5a19e4d6e3c
+  'a0.w.v_arr' [4,32,128] Array 04d6758aaa916acf2d4b5be7 ! 'a0.w.v' [4s,8s,0s] Symbol b4862b21-fb97-d435-8856-1712e8e5216a
+  'a0.w.o_arr' [4,128,32] Array 0cc762d121ea10766408cdcb ! 'a0.w.o' [4s,0s,8s] Symbol 259f4329-e6f4-590b-9a16-4106cf6a659e
+  'm0.ln.w.bias_arr' [128] Array 705ac727b712640c54849a5a ! 'm0.ln.w.bias' [0s] Symbol e443df78-9558-867f-5ba9-1faf7a024204
+  'm0.ln.w.scale_arr' [128] Array e516762178d3fa16705bbf27 ! 'm0.ln.w.scale' [0s] Symbol 23a7711a-8133-2876-37eb-dcd9e87a1613
+  'm0.w.proj_in_arr' [128,128] Array 4b4bbf1009f5b31391dcfea7 ! 'm0.w.proj_in' [5s,0s] Symbol e3e70682-c209-4cac-629f-6fbed82c07cd
+  'm0.w.in_bias_arr' [128] Array 8837392e381cefdd4fb78bba ! 'm0.w.in_bias' [5s] Symbol f728b4fa-4248-5e3a-0a5d-2f346baa9455
+  'm0.w.proj_out_arr' [128,128] Array 0d208fef4cc67b4583838953 ! 'm0.w.proj_out' [0s,5s] Symbol eb1167b3-67a9-c378-7c65-c1e582e2e662
+  'final.ln.w.bias_arr' [128] Array 2be7db86ab51655b96309661 ! 'final.ln.w.bias'
+  'final.ln.w.scale_arr' [128] Array 514d57b2166fedc730295c3c ! 'final.ln.w.scale'
+  't.w.unembed_arr' [50259,128] Array fad233260be0dc3b64a1a6d0 ! 't.w.unembed'
+
+# very small 1 layer gelu

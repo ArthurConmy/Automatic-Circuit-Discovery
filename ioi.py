@@ -9,7 +9,7 @@ import os
 import warnings
 from copy import deepcopy
 from typing import List
-from models.model_strings import gpt2_small as gpt2_small_model_string
+from models.model_strings import gelu_12_tied_string
 import click
 import IPython
 import rust_circuit as rc
@@ -158,7 +158,7 @@ def get_model(
     
     # MODEL_ID = "gelu_12_tied"  # aka gpt2 small
 
-    circ_dict, tokenizer, model_info = load_transformer_model_string(gpt2_small_model_string)
+    circ_dict, tokenizer, model_info = load_transformer_model_string(gelu_12_tied_string)
     keys = list(circ_dict.keys())
     for key in tqdm(keys):
         circ_dict[key] = rc.cast_circuit(circ_dict[key], device_dtype=rc.TorchDeviceDtype("cuda:0", "float32").op())

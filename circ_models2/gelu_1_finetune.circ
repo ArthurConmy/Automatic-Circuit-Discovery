@@ -1,0 +1,28 @@
+# info:{"params": {"block_params": {"norm_type": "ln", "attn_bias": false, "attn_pos": true, "use_mlp": true, "mlp_act_type": "gelu", "mlp_output_bias": true}, "num_layers": 1, "use_norm_output": true, "output_bias": false}, "model_class": "GPTBeginEndToks", "pos_enc_type": "shortformer", "causal_mask": true, "extra": null}
+
+'tok_losses' [296960] Array 261b8ad005c8a4e3b1c8ec15
+'running_steps' [296960] Array 831df9d8e2dea7dc4bc46d1b
+'lrs' [296960] Array be5430a4afc3a24cd0f45430
+
+'t.w.tok_embeds' [50259,256] Array ab3664000559d8152437d729
+'t.w.pos_embeds' [2048,256] Array 7ffcd07d2481cedaf6d18d5f
+'t.bind_w' Module
+  't.logits'
+  'a0.ln.w.bias_arr' [256] Array c3c5d73890e901bafaa4644a ! 'a0.ln.w.bias' [0s] Symbol 12e0c8b2-bad6-40fb-1948-8dec4f65d4d9
+  'a0.ln.w.scale_arr' [256] Array 6eca230ae6aa0c59e3cf9804 ! 'a0.ln.w.scale' [0s] Symbol 5487ce1e-af19-922a-d9b8-a714e61a441c
+  'a0.w.q_arr' [8,32,256] Array c05c30ae94b98069f1caae78 ! 'a0.w.q' [4s,7s,0s] Symbol 1846d424-c17c-6279-23c6-612f48268673
+  'a0.w.k_arr' [8,32,256] Array 9778c4bca15689b2989ee15c  ! 'a0.w.k' [4s,7s,0s] Symbol fcbd04c3-4021-2ef7-cca5-a5a19e4d6e3c
+  'a0.w.v_arr' [8,32,256] Array 3cdf8eb4b84cce5d043a2708  ! 'a0.w.v' [4s,8s,0s] Symbol b4862b21-fb97-d435-8856-1712e8e5216a
+  'a0.w.o_arr' [8,256,32] Array d12297b0dbf67fb2980e4242  ! 'a0.w.o' [4s,0s,8s] Symbol 259f4329-e6f4-590b-9a16-4106cf6a659e
+  'm0.ln.w.bias_arr' [256] Array 34b8221aec443743a51d8821 ! 'm0.ln.w.bias' [0s] Symbol e443df78-9558-867f-5ba9-1faf7a024204
+  'm0.ln.w.scale_arr' [256] Array 6f259e1e452972955865adf4 ! 'm0.ln.w.scale' [0s] Symbol 23a7711a-8133-2876-37eb-dcd9e87a1613
+  'm0.w.proj_in_arr' [1024,256] Array 0c30a6f08b5efad13c722a9e ! 'm0.w.proj_in' [5s,0s] Symbol e3e70682-c209-4cac-629f-6fbed82c07cd
+  'm0.w.in_bias_arr' [1024] Array 0066370cc0cfacf108dd1cdd ! 'm0.w.in_bias' [5s] Symbol f728b4fa-4248-5e3a-0a5d-2f346baa9455
+  'm0.w.proj_out_arr' [256,1024] Array 7a5729b2ab252c80281d49ac ! 'm0.w.proj_out' [0s,5s] Symbol eb1167b3-67a9-c378-7c65-c1e582e2e662
+  'm0.w.out_bias_arr' [256] Array e79f7e392e0c677830ec9f35 ! 'm0.w.out_bias' [0s] Symbol f7c1bd87-4da5-e709-d471-3d60c8a70639
+  'final.ln.w.bias_arr' [256] Array 87f9276781ed65030e390be2 ! 'final.ln.w.bias'
+  'final.ln.w.scale_arr' [256] Array da9b83cdf7ff42eca006d05e ! 'final.ln.w.scale'
+  't.w.unembed_arr' [50259,256] Array 28e95ff3cac41e389cc39aa8 ! 't.w.unembed'
+
+
+# finetuned gelu_one_layer_untied with correct random offsets etc

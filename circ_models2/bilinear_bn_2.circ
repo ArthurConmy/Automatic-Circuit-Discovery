@@ -1,0 +1,42 @@
+# info:{"params": {"block_params": {"norm_type": "bn", "attn_bias": false, "attn_pos": true, "use_mlp": true, "mlp_act_type": "bilinear", "mlp_output_bias": false}, "num_layers": 2, "use_norm_output": true, "output_bias": false}, "model_class": "GPTBeginEndToks", "pos_enc_type": "shortformer", "causal_mask": true, "extra": null}
+'t.w.tok_embeds' [50259,256] Array db35b20632ab93c12ebd2e6e
+'t.w.pos_embeds' [512,256] Array 1c5ff3c830a2dd376afe43f0
+'t.bind_w' Module
+  't.logits'
+  'a0.bn.w.bias_arr' [256] Array 3c3e8a02c532eb4ed5b610de ! 'a0.bn.w.bias' [0s] Symbol a3f2c9bf-9c63-16b9-50f2-44556f25e2a2
+  'a0.bn.w.scale_arr' [256] Array 87d42d61097cbb1bf41c559f ! 'a0.bn.w.scale' [0s] Symbol 8d723104-f773-83c1-3458-a748e9bb17bc
+  'a0.bn.mean_arr' [256] Array 3127202aae170812bbeb2f3c ! 'a0.bn.mean' [0s] Symbol 5487ce1e-af19-922a-d9b8-a714e61a441c
+  'a0.bn.var_arr' [256] Array 4c8a8562147ded9d07d3b0b4 ! 'a0.bn.var' [0s] Symbol 5a921187-19c7-8df4-8f4f-f31e78de5857
+  'a0.w.q_arr' [8,32,256] Array 28bb884ecc3cb7176cc3253e ! 'a0.w.q' [4s,7s,0s] Symbol fcbd04c3-4021-2ef7-cca5-a5a19e4d6e3c
+  'a0.w.k_arr' [8,32,256] Array 0a40e1cfae4a6d151af4ad6f ! 'a0.w.k' [4s,7s,0s] Symbol b4862b21-fb97-d435-8856-1712e8e5216a
+  'a0.w.v_arr' [8,32,256] Array 76c3508fa6681a40cc09599a ! 'a0.w.v' [4s,8s,0s] Symbol 259f4329-e6f4-590b-9a16-4106cf6a659e
+  'a0.w.o_arr' [8,256,32] Array 4eca2ec7f0c86393c3123802 ! 'a0.w.o' [4s,0s,8s] Symbol 12e0c8b2-bad6-40fb-1948-8dec4f65d4d9
+  'm0.bn.w.bias_arr' [256] Array 803c0babc9cd733dfa2c43d6 ! 'm0.bn.w.bias' [0s] Symbol 23a7711a-8133-2876-37eb-dcd9e87a1613
+  'm0.bn.w.scale_arr' [256] Array 8928edf2fcde3696c79f1306 ! 'm0.bn.w.scale' [0s] Symbol 1846d424-c17c-6279-23c6-612f48268673
+  'm0.bn.mean_arr' [256] Array a1ad46173ff0a73297fccb74 ! 'm0.bn.mean' [0s] Symbol f7c1bd87-4da5-e709-d471-3d60c8a70639
+  'm0.bn.var_arr' [256] Array 0722c2571e8b8cb8eca3ab19 ! 'm0.bn.var' [0s] Symbol e443df78-9558-867f-5ba9-1faf7a024204
+  'm0.w.proj_in_arr' [1024,256] Array c2571abb166dc88553c05601 ! 'm0.w.proj_in' [2*6s,0s] Symbol e3e70682-c209-4cac-629f-6fbed82c07cd
+  'm0.w.in_bias_arr' [1024] Array 8629b1ad5a740f9bc84333a7 ! 'm0.w.in_bias' [2*6s] Symbol f728b4fa-4248-5e3a-0a5d-2f346baa9455
+  'm0.w.proj_out_arr' [256,512] Array 1ea7c83f030a1ce267a677b2 ! 'm0.w.proj_out' [0s,6s] Symbol eb1167b3-67a9-c378-7c65-c1e582e2e662
+  'a1.bn.w.bias_arr' [256] Array 2f44d50c1c3086863bc86c2e ! 'a1.bn.w.bias' [0s] Symbol c381e88f-38c0-c8fd-8712-b8bc076f3787
+  'a1.bn.w.scale_arr' [256] Array fdcccc305f6a5137d9143a20 ! 'a1.bn.w.scale' [0s] Symbol 8d88348a-7eed-8d14-f06d-3fef701966a0
+  'a1.bn.mean_arr' [256] Array 783bb67cd80f7daae3d8f104 ! 'a1.bn.mean' [0s] Symbol afbd67f9-6196-99cf-e198-8ad9f06c144a
+  'a1.bn.var_arr' [256] Array f441e29c269eda17e5b854df ! 'a1.bn.var' [0s] Symbol b9d179e0-6c0f-d4f5-f813-0c4237730edf
+  'a1.w.q_arr' [8,32,256] Array 0407c2b902b2953a12401ff5 ! 'a1.w.q' [4s,7s,0s] Symbol cd447e35-b8b6-d8fe-442e-3d437204e52d
+  'a1.w.k_arr' [8,32,256] Array da270816be460d4d463fa928 ! 'a1.w.k' [4s,7s,0s] Symbol 1a2b8f1f-f1fd-42a2-9755-d4c13a902931
+  'a1.w.v_arr' [8,32,256] Array abfb4be7b8e8a41a6f104d83 ! 'a1.w.v' [4s,8s,0s] Symbol 05b6e6e3-07d4-bedc-5143-1193e6c3f339
+  'a1.w.o_arr' [8,256,32] Array 699e856855f90f82a2a5714f ! 'a1.w.o' [4s,0s,8s] Symbol 025b413f-8a9a-021e-a648-a7dd06839eb9
+  'm1.bn.w.bias_arr' [256] Array b27f813eaf225308dbb0f558 ! 'm1.bn.w.bias' [0s] Symbol 9b810e76-6ec9-d286-63ca-828dd5f4b3b2
+  'm1.bn.w.scale_arr' [256] Array b40285977fd3903adac14d0c ! 'm1.bn.w.scale' [0s] Symbol b2221a58-008a-05a6-c464-7159c324c985
+  'm1.bn.mean_arr' [256] Array 36e8391e8b6573a88cab5775 ! 'm1.bn.mean' [0s] Symbol 35bf992d-c9e9-c616-612e-7696a6cecc1b
+  'm1.bn.var_arr' [256] Array 910a380eaeafa987d361dc49 ! 'm1.bn.var' [0s] Symbol e4b06ce6-0741-c7a8-7ce4-2c8218072e8c
+  'm1.w.proj_in_arr' [1024,256] Array c5a95c6ac45e307880e62085 ! 'm1.w.proj_in' [2*6s,0s] Symbol cd613e30-d8f1-6adf-91b7-584a2265b1f5
+  'm1.w.in_bias_arr' [1024] Array 2f9f370a6b0aa5b19b9fbf3c ! 'm1.w.in_bias' [2*6s] Symbol 1e2feb89-414c-343c-1027-c4d1c386bbc4
+  'm1.w.proj_out_arr' [256,512] Array cdff93678c51e56c48c9c9de ! 'm1.w.proj_out' [0s,6s] Symbol 78e51061-7311-d8a3-c2ce-6f447ed4d57b
+  'final.bn.w.bias_arr' [256] Array c0e416250756907194f461ef ! 'final.bn.w.bias'
+  'final.bn.w.scale_arr' [256] Array 5a8e84ed59a6d5dc9f663c92 ! 'final.bn.w.scale'
+  'final.bn.mean_arr' [256] Array f9b59df16e5f630febe2c818 ! 'final.bn.mean'
+  'final.bn.var_arr' [256] Array 515f42aa2e2913db986719f6 ! 'final.bn.var'
+  't.w.unembed_arr' [50259,256] Array d7898abbf4c9bef10e24ba81 ! 't.w.unembed'
+
+# originally bilinear_bn_two_layers_nobias_3_fixed

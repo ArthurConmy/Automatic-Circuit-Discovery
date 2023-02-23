@@ -57,11 +57,30 @@ class IDataset(Dataset):
     def l(self):
         return self.arrs["labels"].value
 
+from rust_circuit.py_utils import TorchAxisIndex, TorchIndex
+
+class TorchIndexer:
+    """Helper for defining slices more easily which always returns tuples
+    (instead of sometimes returning just TorchAxisIndex).
+
+    Also wraps slices so that they are valid jax types.
+
+    Like Indexer, but with torch typing.
+    """
+
+    def __getitem__(self, idx: TorchIndex) -> Tuple[TorchAxisIndex, ...]:
+        raise NotImplementedError("I tried to port indexing for induction like this, but it failed ...")
+        # if isinstance(idx, tuple):
+        #     return IdxTup(idx)
+        # else:
+        #     return IdxTup((idx,))
+
 def make_arr(
     tokens: torch.Tensor,
     name: str,
     device_dtype: rc.TorchDeviceDtype = rc.TorchDeviceDtype("cuda:0", "float32"),
 ) -> rc.Array:
+    """Thanks to Adria+Tim for this helper function"""
     return rc.cast_circuit(rc.Array(tokens, name=name), device_dtype.op()).cast_array()
 
 def any_prefix_matcher(names: Iterable[str], dot_after_name=True) -> rc.Matcher:

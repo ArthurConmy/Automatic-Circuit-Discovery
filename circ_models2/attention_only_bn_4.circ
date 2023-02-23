@@ -1,0 +1,44 @@
+# info:{"params": {"block_params": {"norm_type": "bn", "attn_bias": false, "attn_pos": true, "use_mlp": false, "mlp_act_type": "bilinear", "mlp_output_bias": false}, "num_layers": 4, "use_norm_output": true, "output_bias": false}, "model_class": "GPTBeginEndToks", "pos_enc_type": "shortformer", "causal_mask": true, "extra": null}
+'t.w.tok_embeds' [50259,256] Array d8dc57492c86705dbd83bf51
+'t.w.pos_embeds' [512,256] Array 523707e4c7b9b68f9bda264f
+'t.bind_w' Module
+  't.logits'
+  'a0.bn.w.bias_arr' [256] Array 3884589595643eb2c47368c2 ! 'a0.bn.w.bias' [0s] Symbol 1846d424-c17c-6279-23c6-612f48268673
+  'a0.bn.w.scale_arr' [256] Array 4b60fb2010a8a10f18ea9f46 ! 'a0.bn.w.scale' [0s] Symbol fcbd04c3-4021-2ef7-cca5-a5a19e4d6e3c
+  'a0.bn.mean_arr' [256] Array 783ac3cad89cfc03f5eee806 ! 'a0.bn.mean' [0s] Symbol e443df78-9558-867f-5ba9-1faf7a024204
+  'a0.bn.var_arr' [256] Array 85ab8404f135d7d6f3424c16 ! 'a0.bn.var' [0s] Symbol 23a7711a-8133-2876-37eb-dcd9e87a1613
+  'a0.w.q_arr' [8,32,256] Array 7992200703f22332bb4731d4 ! 'a0.w.q' [4s,7s,0s] Symbol e3e70682-c209-4cac-629f-6fbed82c07cd
+  'a0.w.k_arr' [8,32,256] Array 1a098f2505c0edaccb16d0af ! 'a0.w.k' [4s,7s,0s] Symbol f728b4fa-4248-5e3a-0a5d-2f346baa9455
+  'a0.w.v_arr' [8,32,256] Array c1c46614a82365b97fa39c38 ! 'a0.w.v' [4s,8s,0s] Symbol eb1167b3-67a9-c378-7c65-c1e582e2e662
+  'a0.w.o_arr' [8,256,32] Array b2d72e6f499be918bce60626 ! 'a0.w.o' [4s,0s,8s] Symbol f7c1bd87-4da5-e709-d471-3d60c8a70639
+  'a1.bn.w.bias_arr' [256] Array d1b073bbc894008c0d116769 ! 'a1.bn.w.bias' [0s] Symbol b2221a58-008a-05a6-c464-7159c324c985
+  'a1.bn.w.scale_arr' [256] Array 9a27faeff040ca5d50dfe5f5 ! 'a1.bn.w.scale' [0s] Symbol cd447e35-b8b6-d8fe-442e-3d437204e52d
+  'a1.bn.mean_arr' [256] Array 0b0631acc7b50203ceb44d73 ! 'a1.bn.mean' [0s] Symbol e4b06ce6-0741-c7a8-7ce4-2c8218072e8c
+  'a1.bn.var_arr' [256] Array 0454eb0ea4fb0a3b101f8cff ! 'a1.bn.var' [0s] Symbol 9b810e76-6ec9-d286-63ca-828dd5f4b3b2
+  'a1.w.q_arr' [8,32,256] Array 638f63ad750aa31b2ac28493 ! 'a1.w.q' [4s,7s,0s] Symbol cd613e30-d8f1-6adf-91b7-584a2265b1f5
+  'a1.w.k_arr' [8,32,256] Array 47b58f2d7132dcdd74a2bd51 ! 'a1.w.k' [4s,7s,0s] Symbol 1e2feb89-414c-343c-1027-c4d1c386bbc4
+  'a1.w.v_arr' [8,32,256] Array c9ad59dc9857a4209b09b282 ! 'a1.w.v' [4s,8s,0s] Symbol 78e51061-7311-d8a3-c2ce-6f447ed4d57b
+  'a1.w.o_arr' [8,256,32] Array a28c956c1ce224e88a073084 ! 'a1.w.o' [4s,0s,8s] Symbol 35bf992d-c9e9-c616-612e-7696a6cecc1b
+  'a2.bn.w.bias_arr' [256] Array f4145290fdbd260984772f29 ! 'a2.bn.w.bias' [0s] Symbol cdbd47d3-64be-8049-a372-db8f6e405d93
+  'a2.bn.w.scale_arr' [256] Array 1a0137bbe01beb46995be58d ! 'a2.bn.w.scale' [0s] Symbol 82523e86-feac-7eb7-dc38-f519b91751da
+  'a2.bn.mean_arr' [256] Array 8b9ba286c4f8b77d766b1bd9 ! 'a2.bn.mean' [0s] Symbol 0925e474-9b57-5bd1-3653-f8dd9b1f282e
+  'a2.bn.var_arr' [256] Array 11027501a3773ff24e50f92e ! 'a2.bn.var' [0s] Symbol ffed9235-288b-c781-ae66-267594c9c950
+  'a2.w.q_arr' [8,32,256] Array ded1183e5a58d163200a630f ! 'a2.w.q' [4s,7s,0s] Symbol d95bafc8-f2a4-d27b-dcf4-bb99f4bea973
+  'a2.w.k_arr' [8,32,256] Array 4cbab2a385548063172ad218 ! 'a2.w.k' [4s,7s,0s] Symbol 5c6e4337-15ba-2bdd-1772-19d30e7a269f
+  'a2.w.v_arr' [8,32,256] Array f69211009abc1bdb11754505 ! 'a2.w.v' [4s,8s,0s] Symbol cf1822ff-bc68-8778-2b49-1044d5e34124
+  'a2.w.o_arr' [8,256,32] Array 5acf330eb312166682abcc63 ! 'a2.w.o' [4s,0s,8s] Symbol 4067c358-4ee2-07f8-da94-e3e8ab73738f
+  'a3.bn.w.bias_arr' [256] Array 3c45f3136e9d3be80b9e367d ! 'a3.bn.w.bias' [0s] Symbol 65aa9c82-79f2-48b0-8cb4-a0d7d6225675
+  'a3.bn.w.scale_arr' [256] Array 995142cc747916e6cd275f0a ! 'a3.bn.w.scale' [0s] Symbol 3b5f3d86-268e-cc45-dc6b-f1e1a399f82a
+  'a3.bn.mean_arr' [256] Array ac160d64a384fd55e28be87d ! 'a3.bn.mean' [0s] Symbol 31162427-3bfd-1d33-8d00-38ec42650644
+  'a3.bn.var_arr' [256] Array 8012f6c28ffed9166f469f33 ! 'a3.bn.var' [0s] Symbol 8a7d43b5-7863-3074-b797-0386fee29476
+  'a3.w.q_arr' [8,32,256] Array b2d355357c43a5ba65fa1939 ! 'a3.w.q' [4s,7s,0s] Symbol 21636369-8b52-9b4a-97b7-50923ceb3ffd
+  'a3.w.k_arr' [8,32,256] Array cf8d477858ac7e7f314ad78c ! 'a3.w.k' [4s,7s,0s] Symbol 795b929e-9a9a-80fd-ea7b-5bf55eb561a4
+  'a3.w.v_arr' [8,32,256] Array b1b4e26df3c646d345d56497 ! 'a3.w.v' [4s,8s,0s] Symbol 9b08923d-10c6-7fd9-94b2-b8fda02f34a6
+  'a3.w.o_arr' [8,256,32] Array ab8447595a5a320134233c4a ! 'a3.w.o' [4s,0s,8s] Symbol 781f9c58-d664-5fa9-e8a8-529f035efa25
+  'final.bn.w.bias_arr' [256] Array 177ac411b5b4714b16353fc9 ! 'final.bn.w.bias'
+  'final.bn.w.scale_arr' [256] Array 38f0d64e2256e7c62ef4fe46 ! 'final.bn.w.scale'
+  'final.bn.mean_arr' [256] Array fa9191936db8d059bcf1bc73 ! 'final.bn.mean'
+  'final.bn.var_arr' [256] Array 59743d1a6b671373c26fe31f ! 'final.bn.var'
+  't.w.unembed_arr' [50259,256] Array 17f818d15a57ce08a5f8d241 ! 't.w.unembed'
+
+# originally attention_only_bn_four_layers_nobias_3_fixed

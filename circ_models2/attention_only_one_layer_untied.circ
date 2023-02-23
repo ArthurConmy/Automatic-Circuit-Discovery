@@ -1,0 +1,16 @@
+# info:{"params": {"block_params": {"norm_type": "ln", "attn_bias": false, "attn_pos": true, "use_mlp": false, "mlp_act_type": "gelu", "mlp_output_bias": true}, "num_layers": 1, "use_norm_output": true, "output_bias": false}, "model_class": "GPTBeginEndToks", "pos_enc_type": "shortformer", "causal_mask": true, "extra": null}
+'t.w.tok_embeds' [50259,256] Array 7fb0e4bd750ebe43a2b012bc
+'t.w.pos_embeds' [2048,256] Array ac7a786232e47891dac87f81
+'t.bind_w' Module
+  't.logits'
+  'a0.ln.w.bias_arr' [256] Array 0194d9bba132626b8249caa8 ! 'a0.ln.w.bias' [0s] Symbol e443df78-9558-867f-5ba9-1faf7a024204
+  'a0.ln.w.scale_arr' [256] Array f2733598922f2da4a550ff7a ! 'a0.ln.w.scale' [0s] Symbol 23a7711a-8133-2876-37eb-dcd9e87a1613
+  'a0.w.q_arr' [8,32,256] Array 27cb5549c280dee49a7a22e3 ! 'a0.w.q' [4s,7s,0s] Symbol e3e70682-c209-4cac-629f-6fbed82c07cd
+  'a0.w.k_arr' [8,32,256] Array 14cdbe9fd324a66407ee71fb ! 'a0.w.k' [4s,7s,0s] Symbol f728b4fa-4248-5e3a-0a5d-2f346baa9455
+  'a0.w.v_arr' [8,32,256] Array f5fe5ff52e19c447c78e4ccf ! 'a0.w.v' [4s,8s,0s] Symbol eb1167b3-67a9-c378-7c65-c1e582e2e662
+  'a0.w.o_arr' [8,256,32] Array 6b6ace98d990219b2523be9c ! 'a0.w.o' [4s,0s,8s] Symbol f7c1bd87-4da5-e709-d471-3d60c8a70639
+  'final.ln.w.bias_arr' [256] Array 86f71cfa38083b5927fc97a9 ! 'final.ln.w.bias'
+  'final.ln.w.scale_arr' [256] Array d7afd3814bdd5bb739f7ca4d ! 'final.ln.w.scale'
+  't.w.unembed_arr' [50259,256] Array 998f1945b436ff93f2118374 ! 't.w.unembed'
+
+# originally attention_only_one_layer_untied
