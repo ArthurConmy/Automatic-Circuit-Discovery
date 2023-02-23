@@ -1,0 +1,8 @@
+tasks/
+__pycache__
+
+# presumably not wanted..
+.z3-trace 
+
+wandb/
+acdc_plot*
