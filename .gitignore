@@ -16,3 +16,23 @@ dist/
 docs/build
 .coverage
 
+# don't really know what these are..
+.hypothesis/
+arthur
+et_model_state_dict_the_(1).pt
+gpt2_hypothesis_tree_Sun Jan 29 23:24:51 2023.png
+gpt2_hypothesis_tree_Tue Jan 31 09:50:47 2023.png
+gpt2_hypothesis_tree_Tue Jan 31 10:04:54 2023.png
+gpt2_hypothesis_tree_Tue Jan 31 10:07:44 2023.png
+gpt2_hypothesis_tree_Tue Jan 31 10:34:57 2023.png
+gpt2_hypothesis_tree_Tue Jan 31 10:45:48 2023.png
+gpt2_hypothesis_tree_Tue Jan 31 11:05:51 2023.png
+gpt2_hypothesis_tree_Tue Jan 31 11:40:10 2023.png
+gpt2_hypothesis_tree_Tue Jan 31 11:45:14 2023.png
+hypothesis_tree.dot
+openwebtext-10k.jsonl
+openwebtext-10k.jsonl.gz
+profile.json
+profile2.json
+profile_trash.json
+pts/

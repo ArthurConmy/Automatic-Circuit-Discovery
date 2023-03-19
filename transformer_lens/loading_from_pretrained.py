@@ -139,89 +139,87 @@ MODEL_ALIASES = {
         "solu-4l-wiki-finetune",
         "solu-4l-finetune",
     ],
-
     "EleutherAI/pythia-70m": [
-        "pythia-70m", 
+        "pythia-70m",
         "pythia",
         "EleutherAI/pythia-19m",
-        "pythia-19m", # EleutherAI renamed this model 
+        "pythia-19m",  # EleutherAI renamed this model
     ],
     "EleutherAI/pythia-160m": [
         "pythia-160m",
         "EleutherAI/pythia-125m",
-        "pythia-125m", # EleutherAI renamed this model"        
+        "pythia-125m",  # EleutherAI renamed this model"
     ],
     "EleutherAI/pythia-410m": [
         "pythia-410m",
         "EleutherAI/pythia-350m",
-        "pythia-350m", # EleutherAI renamed this model
+        "pythia-350m",  # EleutherAI renamed this model
     ],
     "EleutherAI/pythia-1b": [
         "pythia-1b",
         "EleutherAI/pythia-800m",
-        "pythia-800m", # EleutherAI renamed this model
+        "pythia-800m",  # EleutherAI renamed this model
     ],
     "EleutherAI/pythia-1.4b": [
         "pythia-1.4b",
         "EleutherAI/pythia-1.3b",
-        "pythia-1.3b", # EleutherAI renamed this model
+        "pythia-1.3b",  # EleutherAI renamed this model
     ],
     "EleutherAI/pythia-2.8b": [
         "pythia-2.8b",
         "EleutherAI/pythia-2.7b",
-        "pythia-2.7b", # EleutherAI renamed this model
+        "pythia-2.7b",  # EleutherAI renamed this model
     ],
     "EleutherAI/pythia-6.9b": [
         "pythia-6.9b",
         "EleutherAI/pythia-6.7b",
-        "pythia-6.7b", # EleutherAI renamed this model
+        "pythia-6.7b",  # EleutherAI renamed this model
     ],
     "EleutherAI/pythia-12b": [
         "pythia-12b",
         "EleutherAI/pythia-13b",
-        "pythia-13b", # EleutherAI renamed this model
+        "pythia-13b",  # EleutherAI renamed this model
     ],
     "EleutherAI/pythia-70m-deduped": [
         "pythia-70m-deduped",
-        "EleutherAI/pythia-19m-deduped", # EleutherAI renamed this model 
+        "EleutherAI/pythia-19m-deduped",  # EleutherAI renamed this model
         "pythia-19m-deduped",
     ],
     "EleutherAI/pythia-160m-deduped": [
         "pythia-160m-deduped",
-        "EleutherAI/pythia-125m-deduped", # EleutherAI renamed this model
+        "EleutherAI/pythia-125m-deduped",  # EleutherAI renamed this model
         "pythia-125m-deduped",
     ],
     "EleutherAI/pythia-410m-deduped": [
         "pythia-410m-deduped",
-        "EleutherAI/pythia-350m-deduped", # EleutherAI renamed this model
+        "EleutherAI/pythia-350m-deduped",  # EleutherAI renamed this model
         "pythia-350m-deduped",
     ],
     "EleutherAI/pythia-1b-deduped": [
         "pythia-1b-deduped",
-        "EleutherAI/pythia-800m-deduped", # EleutherAI renamed this model
+        "EleutherAI/pythia-800m-deduped",  # EleutherAI renamed this model
         "pythia-800m-deduped",
     ],
     "EleutherAI/pythia-1.4b-deduped": [
         "pythia-1.4b-deduped",
-        "EleutherAI/pythia-1.3b-deduped", # EleutherAI renamed this model
+        "EleutherAI/pythia-1.3b-deduped",  # EleutherAI renamed this model
         "pythia-1.3b-deduped",
     ],
     "EleutherAI/pythia-2.8b-deduped": [
         "pythia-2.8b-deduped",
-        "EleutherAI/pythia-2.7b-deduped", # EleutherAI renamed this model
+        "EleutherAI/pythia-2.7b-deduped",  # EleutherAI renamed this model
         "pythia-2.7b-deduped",
     ],
     "EleutherAI/pythia-6.9b-deduped": [
         "pythia-6.9b-deduped",
-        "EleutherAI/pythia-6.7b-deduped", # EleutherAI renamed this model
+        "EleutherAI/pythia-6.7b-deduped",  # EleutherAI renamed this model
         "pythia-6.7b-deduped",
     ],
     "EleutherAI/pythia-12b-deduped": [
         "pythia-12b-deduped",
-        "EleutherAI/pythia-13b-deduped", # EleutherAI renamed this model
+        "EleutherAI/pythia-13b-deduped",  # EleutherAI renamed this model
         "pythia-13b-deduped",
     ],
-    
     "gpt2": ["gpt2-small"],
     "distilgpt2": ["distillgpt2", "distill-gpt2", "distil-gpt2", "gpt2-xs"],
     "facebook/opt-125m": ["opt-125m", "opt-small", "opt"],
@@ -299,7 +297,11 @@ MODEL_ALIASES = {
 }
 
 # Sets a default model alias, by convention the first one in the model alias table, else the official name if it has no aliases
-DEFAULT_MODEL_ALIASES = [MODEL_ALIASES[name][0] if name in MODEL_ALIASES else name for name in OFFICIAL_MODEL_NAMES]
+DEFAULT_MODEL_ALIASES = [
+    MODEL_ALIASES[name][0] if name in MODEL_ALIASES else name
+    for name in OFFICIAL_MODEL_NAMES
+]
+
 
 def make_model_alias_map():
     """
@@ -533,7 +535,9 @@ def get_pretrained_model_config(
             cfg_dict["checkpoint_index"] = checkpoint_index
             cfg_dict["checkpoint_value"] = checkpoint_labels[checkpoint_index]
         elif checkpoint_value is not None:
-            assert checkpoint_value in checkpoint_labels, f"Checkpoint value {checkpoint_value} is not in list of available checkpoints"
+            assert (
+                checkpoint_value in checkpoint_labels
+            ), f"Checkpoint value {checkpoint_value} is not in list of available checkpoints"
             cfg_dict["checkpoint_value"] = checkpoint_value
             cfg_dict["checkpoint_index"] = checkpoint_labels.index(checkpoint_value)
     else:
@@ -562,9 +566,9 @@ STANFORD_CRFM_CHECKPOINTS = (
     + list(range(20000, 400000 + 1, 1000))
 )
 
-# Linearly spaced checkpoints for Pythia models, taken every 1000 steps. 
+# Linearly spaced checkpoints for Pythia models, taken every 1000 steps.
 # Batch size 2,097,152 tokens, so checkpoints every 2.1B tokens
-PYTHIA_CHECKPOINTS = list(range(1000, 143000+1, 1000))
+PYTHIA_CHECKPOINTS = list(range(1000, 143000 + 1, 1000))
 
 
 def get_checkpoint_labels(model_name: str):
@@ -633,7 +637,9 @@ def get_pretrained_state_dict(
                     official_model_name, revision=f"step{cfg.checkpoint_value}"
                 )
             else:
-                raise ValueError(f"Checkpoints for model {official_model_name} are not supported")
+                raise ValueError(
+                    f"Checkpoints for model {official_model_name} are not supported"
+                )
         elif hf_model is None:
             hf_model = AutoModelForCausalLM.from_pretrained(official_model_name)
 

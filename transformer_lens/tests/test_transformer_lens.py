@@ -1,6 +1,3 @@
-from jaxtyping import install_import_hook
-hook = install_import_hook("transformer_lens", ("typeguard", "typechecked"))
-
 import pytest
 
 from transformer_lens import HookedTransformer
@@ -54,14 +51,24 @@ def test_from_pretrained_no_processing():
     # is equivalent to using from_pretrained_no_processing
     name = "solu-1l"
 
-    model_ref = HookedTransformer. from_pretrained_no_processing(name)
-    model_override = HookedTransformer.from_pretrained(name, fold_ln=False, center_writing_weights=False, center_unembed=False, refactor_factored_attn_matrices=False)
+    model_ref = HookedTransformer.from_pretrained_no_processing(name)
+    model_override = HookedTransformer.from_pretrained(
+        name,
+        fold_ln=False,
+        center_writing_weights=False,
+        center_unembed=False,
+        refactor_factored_attn_matrices=False,
+    )
     assert model_ref.cfg == model_override.cfg
-    
+
     # Do the converse check, i.e. check that overriding boolean flags in
     # from_pretrained_no_processing is equivalent to using from_pretrained
     model_ref = HookedTransformer.from_pretrained(name)
-    model_override = HookedTransformer.from_pretrained_no_processing(name, fold_ln=True, center_writing_weights=True, center_unembed=True, refactor_factored_attn_matrices=False)
+    model_override = HookedTransformer.from_pretrained_no_processing(
+        name,
+        fold_ln=True,
+        center_writing_weights=True,
+        center_unembed=True,
+        refactor_factored_attn_matrices=False,
+    )
     assert model_ref.cfg == model_override.cfg
-
-hook.uninstall()

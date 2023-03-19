@@ -1,4 +1,3 @@
-
 # %%
 """
 A module for patching activations in a transformer model, and measuring the effect of the patch on the output.
@@ -13,14 +12,15 @@ from __future__ import annotations
 import torch
 from typing import Optional, Union, Dict, Callable, Sequence, Optional, Tuple
 from typing_extensions import Literal
+from torchtyping import TensorType as TT
 
+from transformer_lens.torchtyping_helper import T
 from transformer_lens import HookedTransformer, ActivationCache
 import transformer_lens.utils as utils
 import pandas as pd
 import itertools
 from functools import partial
 from tqdm.auto import tqdm
-from jaxtyping import Float, Int 
 
 import einops
 
@@ -31,13 +31,19 @@ AxisNames = Literal["layer", "pos", "head_index", "head", "src_pos", "dest_pos"]
 
 # %%
 from typing import Sequence
-def make_df_from_ranges(column_max_ranges: Sequence[int], column_names: Sequence[str]) -> pd.DataFrame:
+
+
+def make_df_from_ranges(
+    column_max_ranges: Sequence[int], column_names: Sequence[str]
+) -> pd.DataFrame:
     """
     Takes in a list of column names and max ranges for each column, and returns a dataframe with the cartesian product of the range for each column (ie iterating through all combinations from zero to column_max_range - 1, in order, incrementing the final column first)
     """
-    rows = list(itertools.product(*[
-        range(axis_max_range) for axis_max_range in column_max_ranges
-    ]))
+    rows = list(
+        itertools.product(
+            *[range(axis_max_range) for axis_max_range in column_max_ranges]
+        )
+    )
     df = pd.DataFrame(rows, columns=column_names)
     return df
 
@@ -46,12 +52,15 @@ def make_df_from_ranges(column_max_ranges: Sequence[int], column_names: Sequence
 CorruptedActivation = torch.Tensor
 PatchedActivation = torch.Tensor
 
+
 def generic_activation_patch(
     model: HookedTransformer,
-    corrupted_tokens: Int[torch.Tensor, "batch pos"],
+    corrupted_tokens: TT["batch", "pos"],
     clean_cache: ActivationCache,
-    patching_metric: Callable[[Float[torch.Tensor, "batch pos d_vocab"]], Float[torch.Tensor, ""]],
-    patch_setter: Callable[[CorruptedActivation, Sequence[int], ActivationCache], PatchedActivation],
+    patching_metric: Callable[[TT[T.batch, T.pos, T.d_vocab]], TT[()]],
+    patch_setter: Callable[
+        [CorruptedActivation, Sequence[int], ActivationCache], PatchedActivation
+    ],
     activation_name: str,
     index_axis_names: Optional[Sequence[AxisNames]] = None,
     index_df: Optional[pd.DataFrame] = None,
@@ -63,10 +72,10 @@ def generic_activation_patch(
     Activation patching is about studying the counterfactual effect of a specific activation between a clean run and a corrupted run. The idea is have two inputs, clean and corrupted, which have two different outputs, and differ in some key detail. Eg "The Eiffel Tower is in" vs "The Colosseum is in". Then to take a cached set of activations from the "clean" run, and a set of corrupted.
 
     Internally, the key function comes from three things: A list of tuples of indices (eg (layer, position, head_index)), a index_to_act_name function which identifies the right activation for each index, a patch_setter function which takes the corrupted activation, the index and the clean cache, and a metric for how well the patched model has recovered.
-    
+
     The indices can either be given explicitly as a pandas dataframe, or by listing the relevant axis names and having them inferred from the tokens and the model config. It is assumed that the first column is always layer.
 
-    This function then iterates over every tuple of indices, does the relevant patch, and stores it 
+    This function then iterates over every tuple of indices, does the relevant patch, and stores it
 
     Params
     model: The relevant model
@@ -98,7 +107,9 @@ def generic_activation_patch(
         max_axis_range["head"] = max_axis_range["head_index"]
 
         # Get the max range for each axis we iterate over
-        index_axis_max_range = [max_axis_range[axis_name] for axis_name in index_axis_names]
+        index_axis_max_range = [
+            max_axis_range[axis_name] for axis_name in index_axis_names
+        ]
 
         # Get the dataframe where each row is a tuple of indices
         index_df = make_df_from_ranges(index_axis_max_range, index_axis_names)
@@ -115,7 +126,9 @@ def generic_activation_patch(
     if flattened_output:
         patched_metric_output = torch.zeros(len(index_df), device=model.cfg.device)
     else:
-        patched_metric_output = torch.zeros(index_axis_max_range, device=model.cfg.device)
+        patched_metric_output = torch.zeros(
+            index_axis_max_range, device=model.cfg.device
+        )
 
     # A generic patching hook - for each index, it applies the patch_setter appropriately to patch the activation
     def patching_hook(corrupted_activation, hook, index, clean_activation):
@@ -131,44 +144,44 @@ def generic_activation_patch(
         # The hook function cannot receive additional inputs, so we use partial to include the specific index and the corresponding clean activation
         current_hook = partial(
             patching_hook,
-            index = index,
-            clean_activation = clean_cache[current_activation_name]
-        )                 
+            index=index,
+            clean_activation=clean_cache[current_activation_name],
+        )
 
         # Run the model with the patching hook and get the logits!
-        patched_logits = model.run_with_hooks(corrupted_tokens, fwd_hooks=[(current_activation_name, current_hook)])
+        patched_logits = model.run_with_hooks(
+            corrupted_tokens, fwd_hooks=[(current_activation_name, current_hook)]
+        )
 
         # Calculate the patching metric and store
         if flattened_output:
             patched_metric_output[c] = patching_metric(patched_logits).item()
         else:
             patched_metric_output[tuple(index)] = patching_metric(patched_logits).item()
-    
+
     if return_index_df:
         return patched_metric_output, index_df
     else:
         return patched_metric_output
 
+
 # %%
 # Defining patch setters for various shapes of activations
-def layer_pos_patch_setter(
-    corrupted_activation, 
-    index, 
-    clean_activation
-    ):
+def layer_pos_patch_setter(corrupted_activation, index, clean_activation):
     """
     Applies the activation patch where index = [layer, pos]
 
     Impliitly assumes that the activation axis order is [batch, pos, ...], which is true of everything that is not an attention pattern shaped tensor.
     """
-    assert len(index)==2
+    assert len(index) == 2
     layer, pos = index
     corrupted_activation[:, pos, ...] = clean_activation[:, pos, ...]
     return corrupted_activation
 
+
 def layer_pos_head_vector_patch_setter(
-    corrupted_activation, 
-    index, 
+    corrupted_activation,
+    index,
     clean_activation,
 ):
     """
@@ -176,14 +189,15 @@ def layer_pos_head_vector_patch_setter(
 
     Impliitly assumes that the activation axis order is [batch, pos, head_index, ...], which is true of all attention head vector activations (q, k, v, z, result) but *not* of attention patterns.
     """
-    assert len(index)==3
+    assert len(index) == 3
     layer, pos, head_index = index
     corrupted_activation[:, pos, head_index] = clean_activation[:, pos, head_index]
     return corrupted_activation
 
+
 def layer_head_vector_patch_setter(
-    corrupted_activation, 
-    index, 
+    corrupted_activation,
+    index,
     clean_activation,
 ):
     """
@@ -191,15 +205,16 @@ def layer_head_vector_patch_setter(
 
     Impliitly assumes that the activation axis order is [batch, pos, head_index, ...], which is true of all attention head vector activations (q, k, v, z, result) but *not* of attention patterns.
     """
-    assert len(index)==2
+    assert len(index) == 2
     layer, head_index = index
     corrupted_activation[:, :, head_index] = clean_activation[:, :, head_index]
-    
+
     return corrupted_activation
 
+
 def layer_head_pattern_patch_setter(
-    corrupted_activation, 
-    index, 
+    corrupted_activation,
+    index,
     clean_activation,
 ):
     """
@@ -207,15 +222,16 @@ def layer_head_pattern_patch_setter(
 
     Impliitly assumes that the activation axis order is [batch, head_index, dest_pos, src_pos], which is true of attention scores and patterns.
     """
-    assert len(index)==2
+    assert len(index) == 2
     layer, head_index = index
     corrupted_activation[:, head_index, :, :] = clean_activation[:, head_index, :, :]
-    
+
     return corrupted_activation
 
+
 def layer_head_pos_pattern_patch_setter(
-    corrupted_activation, 
-    index, 
+    corrupted_activation,
+    index,
     clean_activation,
 ):
     """
@@ -223,15 +239,18 @@ def layer_head_pos_pattern_patch_setter(
 
     Impliitly assumes that the activation axis order is [batch, head_index, dest_pos, src_pos], which is true of attention scores and patterns.
     """
-    assert len(index)==3
+    assert len(index) == 3
     layer, head_index, dest_pos = index
-    corrupted_activation[:, head_index, dest_pos, :] = clean_activation[:, head_index, dest_pos, :]
-    
+    corrupted_activation[:, head_index, dest_pos, :] = clean_activation[
+        :, head_index, dest_pos, :
+    ]
+
     return corrupted_activation
 
+
 def layer_head_dest_src_pos_pattern_patch_setter(
-    corrupted_activation, 
-    index, 
+    corrupted_activation,
+    index,
     clean_activation,
 ):
     """
@@ -239,141 +258,182 @@ def layer_head_dest_src_pos_pattern_patch_setter(
 
     Impliitly assumes that the activation axis order is [batch, head_index, dest_pos, src_pos], which is true of attention scores and patterns.
     """
-    assert len(index)==4
+    assert len(index) == 4
     layer, head_index, dest_pos, src_pos = index
-    corrupted_activation[:, head_index, dest_pos, src_pos] = clean_activation[:, head_index, dest_pos, src_pos]
-    
+    corrupted_activation[:, head_index, dest_pos, src_pos] = clean_activation[
+        :, head_index, dest_pos, src_pos
+    ]
+
     return corrupted_activation
+
 
 # %%
 # Defining activation patching functions for a range of common activation patches.
 get_act_patch_resid_pre = partial(
     generic_activation_patch,
-    patch_setter = layer_pos_patch_setter,
-    activation_name = "resid_pre",
-    index_axis_names = ("layer", "pos")
+    patch_setter=layer_pos_patch_setter,
+    activation_name="resid_pre",
+    index_axis_names=("layer", "pos"),
 )
 get_act_patch_resid_mid = partial(
     generic_activation_patch,
-    patch_setter = layer_pos_patch_setter,
-    activation_name = "resid_mid",
-    index_axis_names = ("layer", "pos")
+    patch_setter=layer_pos_patch_setter,
+    activation_name="resid_mid",
+    index_axis_names=("layer", "pos"),
 )
 get_act_patch_attn_out = partial(
     generic_activation_patch,
-    patch_setter = layer_pos_patch_setter,
-    activation_name = "attn_out",
-    index_axis_names = ("layer", "pos")
+    patch_setter=layer_pos_patch_setter,
+    activation_name="attn_out",
+    index_axis_names=("layer", "pos"),
 )
 get_act_patch_mlp_out = partial(
     generic_activation_patch,
-    patch_setter = layer_pos_patch_setter,
-    activation_name = "mlp_out",
-    index_axis_names = ("layer", "pos")
+    patch_setter=layer_pos_patch_setter,
+    activation_name="mlp_out",
+    index_axis_names=("layer", "pos"),
 )
 # %%
 get_act_patch_attn_head_out_by_pos = partial(
     generic_activation_patch,
-    patch_setter = layer_pos_head_vector_patch_setter,
-    activation_name = "z",
-    index_axis_names = ("layer", "pos", "head")
+    patch_setter=layer_pos_head_vector_patch_setter,
+    activation_name="z",
+    index_axis_names=("layer", "pos", "head"),
 )
 get_act_patch_attn_head_q_by_pos = partial(
     generic_activation_patch,
-    patch_setter = layer_pos_head_vector_patch_setter,
-    activation_name = "q",
-    index_axis_names = ("layer", "pos", "head")
+    patch_setter=layer_pos_head_vector_patch_setter,
+    activation_name="q",
+    index_axis_names=("layer", "pos", "head"),
 )
 get_act_patch_attn_head_k_by_pos = partial(
     generic_activation_patch,
-    patch_setter = layer_pos_head_vector_patch_setter,
-    activation_name = "k",
-    index_axis_names = ("layer", "pos", "head")
+    patch_setter=layer_pos_head_vector_patch_setter,
+    activation_name="k",
+    index_axis_names=("layer", "pos", "head"),
 )
 get_act_patch_attn_head_v_by_pos = partial(
     generic_activation_patch,
-    patch_setter = layer_pos_head_vector_patch_setter,
-    activation_name = "v",
-    index_axis_names = ("layer", "pos", "head")
+    patch_setter=layer_pos_head_vector_patch_setter,
+    activation_name="v",
+    index_axis_names=("layer", "pos", "head"),
 )
 # %%
 get_act_patch_attn_head_pattern_by_pos = partial(
     generic_activation_patch,
-    patch_setter = layer_head_pos_pattern_patch_setter,
-    activation_name = "pattern",
-    index_axis_names = ("layer", "head_index", "dest_pos")
+    patch_setter=layer_head_pos_pattern_patch_setter,
+    activation_name="pattern",
+    index_axis_names=("layer", "head_index", "dest_pos"),
 )
 get_act_patch_attn_head_pattern_dest_src_pos = partial(
     generic_activation_patch,
-    patch_setter = layer_head_dest_src_pos_pattern_patch_setter,
-    activation_name = "pattern",
-    index_axis_names = ("layer", "head_index", "dest_pos", "src_pos")
+    patch_setter=layer_head_dest_src_pos_pattern_patch_setter,
+    activation_name="pattern",
+    index_axis_names=("layer", "head_index", "dest_pos", "src_pos"),
 )
 
 # %%
 get_act_patch_attn_head_out_all_pos = partial(
     generic_activation_patch,
-    patch_setter = layer_head_vector_patch_setter,
-    activation_name = "z",
-    index_axis_names = ("layer", "head")
+    patch_setter=layer_head_vector_patch_setter,
+    activation_name="z",
+    index_axis_names=("layer", "head"),
 )
 get_act_patch_attn_head_q_all_pos = partial(
     generic_activation_patch,
-    patch_setter = layer_head_vector_patch_setter,
-    activation_name = "q",
-    index_axis_names = ("layer", "head")
+    patch_setter=layer_head_vector_patch_setter,
+    activation_name="q",
+    index_axis_names=("layer", "head"),
 )
 get_act_patch_attn_head_k_all_pos = partial(
     generic_activation_patch,
-    patch_setter = layer_head_vector_patch_setter,
-    activation_name = "k",
-    index_axis_names = ("layer", "head")
+    patch_setter=layer_head_vector_patch_setter,
+    activation_name="k",
+    index_axis_names=("layer", "head"),
 )
 get_act_patch_attn_head_v_all_pos = partial(
     generic_activation_patch,
-    patch_setter = layer_head_vector_patch_setter,
-    activation_name = "v",
-    index_axis_names = ("layer", "head")
+    patch_setter=layer_head_vector_patch_setter,
+    activation_name="v",
+    index_axis_names=("layer", "head"),
 )
 get_act_patch_attn_head_pattern_all_pos = partial(
     generic_activation_patch,
-    patch_setter = layer_head_pattern_patch_setter,
-    activation_name = "pattern",
-    index_axis_names = ("layer", "head_index")
+    patch_setter=layer_head_pattern_patch_setter,
+    activation_name="pattern",
+    index_axis_names=("layer", "head_index"),
 )
 
 # %%
 
-def get_act_patch_attn_head_all_pos_every(model, corrupted_tokens, clean_cache, metric) -> Float[torch.Tensor, "patch_type layer head"]:
-    """Helper function to get activation patching results for every head (across all positions) for every act type (output, query, key, value, pattern). Wrapper around each's patching function, returns a stacked tensor of shape [5, n_layers, n_heads]
-    """
+
+def get_act_patch_attn_head_all_pos_every(
+    model, corrupted_tokens, clean_cache, metric
+) -> TT["patch_type":5, "layer", "head"]:
+    """Helper function to get activation patching results for every head (across all positions) for every act type (output, query, key, value, pattern). Wrapper around each's patching function, returns a stacked tensor of shape [5, n_layers, n_heads]"""
     act_patch_results = []
-    act_patch_results.append(get_act_patch_attn_head_out_all_pos(model, corrupted_tokens, clean_cache, metric))
-    act_patch_results.append(get_act_patch_attn_head_q_all_pos(model, corrupted_tokens, clean_cache, metric))
-    act_patch_results.append(get_act_patch_attn_head_k_all_pos(model, corrupted_tokens, clean_cache, metric))
-    act_patch_results.append(get_act_patch_attn_head_v_all_pos(model, corrupted_tokens, clean_cache, metric))
-    act_patch_results.append(get_act_patch_attn_head_pattern_all_pos(model, corrupted_tokens, clean_cache, metric))
+    act_patch_results.append(
+        get_act_patch_attn_head_out_all_pos(
+            model, corrupted_tokens, clean_cache, metric
+        )
+    )
+    act_patch_results.append(
+        get_act_patch_attn_head_q_all_pos(model, corrupted_tokens, clean_cache, metric)
+    )
+    act_patch_results.append(
+        get_act_patch_attn_head_k_all_pos(model, corrupted_tokens, clean_cache, metric)
+    )
+    act_patch_results.append(
+        get_act_patch_attn_head_v_all_pos(model, corrupted_tokens, clean_cache, metric)
+    )
+    act_patch_results.append(
+        get_act_patch_attn_head_pattern_all_pos(
+            model, corrupted_tokens, clean_cache, metric
+        )
+    )
     return torch.stack(act_patch_results, dim=0)
 
-def get_act_patch_attn_head_by_pos_every(model, corrupted_tokens, clean_cache, metric) -> Float[torch.Tensor, "patch_type layer pos head"]:
-    """Helper function to get activation patching results for every head (across all positions) for every act type (output, query, key, value, pattern). Wrapper around each's patching function, returns a stacked tensor of shape [5, n_layers, pos, n_heads]
-    """
+
+def get_act_patch_attn_head_by_pos_every(
+    model, corrupted_tokens, clean_cache, metric
+) -> TT["patch_type":5, "layer", "pos", "head"]:
+    """Helper function to get activation patching results for every head (across all positions) for every act type (output, query, key, value, pattern). Wrapper around each's patching function, returns a stacked tensor of shape [5, n_layers, pos, n_heads]"""
     act_patch_results = []
-    act_patch_results.append(get_act_patch_attn_head_out_by_pos(model, corrupted_tokens, clean_cache, metric))
-    act_patch_results.append(get_act_patch_attn_head_q_by_pos(model, corrupted_tokens, clean_cache, metric))
-    act_patch_results.append(get_act_patch_attn_head_k_by_pos(model, corrupted_tokens, clean_cache, metric))
-    act_patch_results.append(get_act_patch_attn_head_v_by_pos(model, corrupted_tokens, clean_cache, metric))
-    
+    act_patch_results.append(
+        get_act_patch_attn_head_out_by_pos(model, corrupted_tokens, clean_cache, metric)
+    )
+    act_patch_results.append(
+        get_act_patch_attn_head_q_by_pos(model, corrupted_tokens, clean_cache, metric)
+    )
+    act_patch_results.append(
+        get_act_patch_attn_head_k_by_pos(model, corrupted_tokens, clean_cache, metric)
+    )
+    act_patch_results.append(
+        get_act_patch_attn_head_v_by_pos(model, corrupted_tokens, clean_cache, metric)
+    )
+
     # Reshape pattern to be compatible with the rest of the results
-    pattern_results = (get_act_patch_attn_head_pattern_by_pos(model, corrupted_tokens, clean_cache, metric))
-    act_patch_results.append(einops.rearrange(pattern_results, "batch head pos -> batch pos head"))
+    pattern_results = get_act_patch_attn_head_pattern_by_pos(
+        model, corrupted_tokens, clean_cache, metric
+    )
+    act_patch_results.append(
+        einops.rearrange(pattern_results, "batch head pos -> batch pos head")
+    )
     return torch.stack(act_patch_results, dim=0)
 
-def get_act_patch_block_every(model, corrupted_tokens, clean_cache, metric) -> Float[torch.Tensor, "patch_type layer pos"]:
-    """Helper function to get activation patching results for the residual stream (at the start of each block), output of each Attention layer and output of each MLP layer. Wrapper around each's patching function, returns a stacked tensor of shape [3, n_layers, pos]
-    """
+
+def get_act_patch_block_every(
+    model, corrupted_tokens, clean_cache, metric
+) -> TT["patch_type":3, "layer", "pos"]:
+    """Helper function to get activation patching results for the residual stream (at the start of each block), output of each Attention layer and output of each MLP layer. Wrapper around each's patching function, returns a stacked tensor of shape [3, n_layers, pos]"""
     act_patch_results = []
-    act_patch_results.append(get_act_patch_resid_pre(model, corrupted_tokens, clean_cache, metric))
-    act_patch_results.append(get_act_patch_attn_out(model, corrupted_tokens, clean_cache, metric))
-    act_patch_results.append(get_act_patch_mlp_out(model, corrupted_tokens, clean_cache, metric))
+    act_patch_results.append(
+        get_act_patch_resid_pre(model, corrupted_tokens, clean_cache, metric)
+    )
+    act_patch_results.append(
+        get_act_patch_attn_out(model, corrupted_tokens, clean_cache, metric)
+    )
+    act_patch_results.append(
+        get_act_patch_mlp_out(model, corrupted_tokens, clean_cache, metric)
+    )
     return torch.stack(act_patch_results, dim=0)
