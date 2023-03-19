@@ -31,8 +31,7 @@ from transformer_lens.past_key_value_caching import HookedTransformerKeyValueCac
 from transformer_lens.components import *
 import transformer_lens.loading_from_pretrained as loading
 from transformer_lens.torchtyping_helper import T
-import transformer_lens.utils as utils
-from transformer_lens.utils import make_nd_dict
+from transformer_lens.utils import make_nd_dict, TorchIndex
 
 SingleLoss = TT[()]  # Type alias for a single element tensor
 LossPerToken = TT["batch", "position - 1"]
@@ -44,102 +43,31 @@ class Output(NamedTuple):
     loss: Loss
 
 
-class GlobalCache(dict):
-    def __init__(self, subnetwork_probing = True, device = "cuda"):
+class GlobalCache: # this dict stores the activations from the forward pass
+    def __init__(self, device = "cuda"):
         # TODO find a way to make the device propagate when we to .to on the p
-        self.corrupt_cache = None
-        self.sampled_mask = None
+
+        # TODO make it essential first key is a str, second a TorchIndex, third a str
+
+        self.cache = make_nd_dict(end_type=List[TorchIndex], n=3)
+        self.second_cache = make_nd_dict(end_type=List[TorchIndex], n=3)
         self.device = device
 
-        # self.params = {
-        #   {receiver: {sender: param, ...}} # oh boy so many dictionaries
-        # }
-        # # this makes it easy to get the trainable parameters out
-
-        # OK so then we need to make a list of things to save...
-        # and a list of things to load...
-        # don't do the QKV version for now. So also need to run naive ACDC version that is just on the heads...
-
-        if subnetwork_probing:
-            self.parameters = make_nd_dict(torch.nn.Parameter, n=4)
-            self.sampled_mask = make_nd_dict(torch.Tensor, n=4)
-            self.beta = 2/3
-            self.gamma = -0.1
-            self.zeta = 1.1
-            self.mask_p = 0.9
-            # self.name = name
-            # self.is_mlp = is_mlp
-            # self.init_weights() # need to init weights after setting up the actual dict items
-
-    #     self.is_caching = False
-    #     self.is_disabled = is_disabled
-    #     self.cache = None            
-
     def clear(self):
-        self.corrupt_cache = None
-        for key in self.parameters.keys():
-            del self.parameters[key]
-        for key in self.sampled_mask.keys():
-            del self.sampled_mask[key]
-        for key in self.keys():
+        for key in self.cache.keys():
             del self[key]
+        for key in self.second_cache.keys():
+            del self.parameters[key]
 
     def to(self, device):
-        assert isinstance(device, str), "TODO implement this for non-strings"
-        
         # move all the parameters
-        for receiver_name in self.parameters:
-            for receiver_slice_tuple in self.parameters[receiver_name]:
-                for sender_name in self.parameters[receiver_name][receiver_slice_tuple]:
-                    for sender_slice_tuple in self.parameters[receiver_name][receiver_slice_tuple][sender_name]:
-                        self.parameters[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple] = self.parameters[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple].to(device)
-        
-        # move all the sampled masks
-        for receiver_name in self.sampled_mask:
-            for receiver_slice_tuple in self.sampled_mask[receiver_name]:
-                for sender_name in self.sampled_mask[receiver_name][receiver_slice_tuple]:
-                    for sender_slice_tuple in self.sampled_mask[receiver_name][receiver_slice_tuple][sender_name]:
-                        self.sampled_mask[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple] = self.sampled_mask[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple].to(device)
-        
+        for cache in [self.cache, self.second_cache]: # mutable means this works..
+            for receiver_name in cache:
+                for receiver_slice_tuple in cache[receiver_name]:
+                    for sender_name in cache[receiver_name][receiver_slice_tuple]:
+                        for sender_slice_tuple in cache[receiver_name][receiver_slice_tuple][sender_name]:
+                            cache[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple] = cache[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple].to(device)
         return self
-
-
-    def init_weights(self):
-        """
-        Augustine: this is how they initialise (their code pasted)
-        """
-        p = (self.mask_p - self.gamma) / (self.zeta - self.gamma)
-        
-        for receiver_name in self.parameters:
-            for receiver_slice_tuple in self.parameters[receiver_name]:
-                for sender_name in self.parameters[receiver_name][receiver_slice_tuple]:
-                    for sender_slice_tuple in self.parameters[receiver_name][receiver_slice_tuple][sender_name]:
-                        assert isinstance(self.parameters[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple], torch.nn.Parameter)
-                        torch.nn.init.constant_(self.parameters[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple], val=np.log(p / (1 - p)))
-
-    def sample_mask(self):
-        """Mostly copilot code for nesting these 4 loops..."""
-        for receiver_name in self.parameters:
-            warnings.warn("Probably we want a better way to clear this sampled mask thing each run")
-            for receiver_slice_tuple in self.parameters[receiver_name]:
-                for sender_name in self.parameters[receiver_name][receiver_slice_tuple]:
-                    for sender_slice_tuple in self.parameters[receiver_name][receiver_slice_tuple][sender_name]:
-
-                        print(self.parameters[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple].item(), end=" and ") # don't seem to change : (
-
-                        uniform_sample = (
-                            torch.zeros([1]).uniform_().clamp(0.0001, 0.9999)
-                        )
-                        s = torch.sigmoid(
-                            ((uniform_sample.log() - (1 - uniform_sample).log()).item() + self.parameters[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple])
-                            / self.beta
-                        )
-                        s_bar = s * (self.zeta - self.gamma) + self.gamma
-                        mask = s_bar.clamp(min=0.0, max=1.0)
-                        self.sampled_mask[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple] = mask
-                        print(mask.item(), end=", ")
-
-        print()
 
 class HookedTransformer(HookedRootModule):
     """
@@ -194,7 +122,6 @@ class HookedTransformer(HookedRootModule):
             self.cfg.d_vocab = max(self.tokenizer.vocab.values()) + 1
         if self.cfg.d_vocab_out == -1:
             self.cfg.d_vocab_out = self.cfg.d_vocab
-            is_this_still_super_slow = no # lol
 
         if self.cfg.use_global_cache:
             self.global_cache = global_cache = GlobalCache(device=cfg.device)
@@ -734,8 +661,8 @@ class HookedTransformer(HookedRootModule):
     @classmethod
     def from_pretrained(
         cls,
-        is_masked: bool,
         model_name: str,
+        is_masked: bool = False,
         fold_ln=True,
         center_writing_weights=True,
         center_unembed=True,
@@ -745,6 +672,7 @@ class HookedTransformer(HookedRootModule):
         hf_model=None,
         device=None,
         move_state_dict_to_device=True,
+        use_global_cache=False,
         **model_kwargs,
     ):
         """Class method to load in a pretrained model weights to the HookedTransformer format and optionally to do some processing to make the model easier to interpret. Currently supports loading from most autoregressive HuggingFace models (GPT2, GPTNeo, GPTJ, OPT) and from a range of toy models and SoLU models trained by me (Neel Nanda).
@@ -798,6 +726,9 @@ class HookedTransformer(HookedRootModule):
             fold_ln=fold_ln,
             device=device,
         )
+
+        if use_global_cache:
+            cfg.use_global_cache = True
 
         # Get the state dict of the model (ie a mapping of parameter names to tensors), processed to match the HookedTransformer parameter names.
         state_dict = loading.get_pretrained_state_dict(

@@ -24,6 +24,14 @@ CACHE_DIR = transformers.TRANSFORMERS_CACHE
 import json
 
 
+class TorchIndex(tuple):
+    def __init__(self, *args):
+        assert all([type(arg) in [slice, int, torch.Tensor] for arg in args]), f"The arguments to TorchIndex must be slices, ints, or torch.Tensors, not {[type(arg) for arg in args]}"
+
+        # TODO implement some checker that if there are tensors, they correctly broadcast
+
+        super().__init__(args)
+
 def make_nd_dict(end_type, n = 3):
     if n not in [3, 4]:
         raise NotImplementedError("Only implemented for 3/4")
