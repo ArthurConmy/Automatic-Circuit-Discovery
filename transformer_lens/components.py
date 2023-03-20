@@ -700,8 +700,7 @@ class TransformerBlock(nn.Module):
 
         if self.cfg.use_split_qkv_input:
             def add_head_dimension(tensor):
-                warnings.warn("Removing clone so maybe gradients flow???")
-                return einops.repeat(tensor, "batch pos d_model -> batch pos n_heads d_model", n_heads=self.cfg.n_heads)
+                return einops.repeat(tensor, "batch pos d_model -> batch pos n_heads d_model", n_heads=self.cfg.n_heads).clone()
 
             query_input = self.hook_q_input(add_head_dimension(query_input))
             key_input = self.hook_k_input(add_head_dimension(key_input))

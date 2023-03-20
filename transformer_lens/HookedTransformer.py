@@ -68,7 +68,6 @@ class GlobalCache: # this dict stores the activations from the forward pass
                         for sender_slice_tuple in cache[receiver_name][receiver_slice_tuple][sender_name]:
                             cache[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple] = cache[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple].to(device)
         return self
-
 class HookedTransformer(HookedRootModule):
     """
     This class implements a full Transformer using the components in ./components.py, with

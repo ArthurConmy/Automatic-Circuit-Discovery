@@ -23,24 +23,53 @@ from collections import defaultdict
 CACHE_DIR = transformers.TRANSFORMERS_CACHE
 import json
 
+import collections
 
-class TorchIndex(tuple):
-    def __init__(self, *args):
-        assert all([type(arg) in [slice, int, torch.Tensor] for arg in args]), f"The arguments to TorchIndex must be slices, ints, or torch.Tensors, not {[type(arg) for arg in args]}"
+class OrderedDefaultdict(collections.OrderedDict):
+    """ A defaultdict with OrderedDict as its base class. 
+    Thanks to https://stackoverflow.com/a/6190500/1090562"""
 
-        # TODO implement some checker that if there are tensors, they correctly broadcast
+    def __init__(self, default_factory=None, *args, **kwargs):
+        if not (default_factory is None or callable(default_factory)):
+            raise TypeError('first argument must be callable or None')
+        super(OrderedDefaultdict, self).__init__(*args, **kwargs)
+        self.default_factory = default_factory  # called by __missing__()
 
-        super().__init__(args)
+    def __missing__(self, key):
+        if self.default_factory is None:
+            raise KeyError(key,)
+        self[key] = value = self.default_factory()
+        return value
+
+    def __repr__(self):  # Optional.
+        return '%s(%r, %r)' % (self.__class__.__name__, self.default_factory, self.items())
+
+
+# TODO attrs.frozen???
+class TorchIndex:
+    def __init__(self, list_of_things_in_tuple):
+        for arg in list_of_things_in_tuple: # TODO write this less verbosely. Just typehint + check typeguard saves us??
+            if type(arg) in [type(None), int]:
+                continue
+            else:
+                assert isinstance(arg, list)
+                assert all([type(x) == int for x in arg])
+
+        self.as_index = tuple([slice(None) if x is None else x for x in list_of_things_in_tuple])
+        self.hashable_tuple = tuple(list_of_things_in_tuple)
+
+    def __hash__(self):
+        return hash(self.hashable_tuple)
 
 def make_nd_dict(end_type, n = 3):
     if n not in [3, 4]:
         raise NotImplementedError("Only implemented for 3/4")
         
     if n == 3:
-        return defaultdict(lambda: defaultdict(lambda: defaultdict(end_type)))
+        return OrderedDefaultdict(lambda: defaultdict(lambda: defaultdict(end_type)))
 
     if n == 4:
-        return defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(end_type))))
+        return OrderedDefaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(end_type))))
 
 def download_file_from_hf(
     repo_name, file_name, subfolder=".", cache_dir=CACHE_DIR, force_is_torch=False
