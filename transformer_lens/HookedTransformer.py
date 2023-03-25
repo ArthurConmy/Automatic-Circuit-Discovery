@@ -54,10 +54,15 @@ class GlobalCache: # this dict stores the activations from the forward pass
         self.device = device
 
     def clear(self):
-        for key in self.cache.keys():
-            del self[key]
-        for key in self.second_cache.keys():
-            del self.parameters[key]
+        # for key in self.cache.keys():
+        #     del self.cache[key]
+        # for key in self.second_cache.keys():
+        #     del self.parameters[key]
+        self.cache = make_nd_dict(end_type=List[TorchIndex], n=3)
+        self.second_cache = make_nd_dict(end_type=List[TorchIndex], n=3) # hmmm DRY 
+        import gc
+        gc.collect()
+        torch.cuda.empty_cache()
 
     def to(self, device):
         # move all the parameters
