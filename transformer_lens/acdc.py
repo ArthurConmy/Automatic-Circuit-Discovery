@@ -51,6 +51,7 @@ from transformer_lens.induction.utils import kl_divergence, toks_int_values, tok
 tl_model = HookedTransformer.from_pretrained(
     "redwood_attn_2l",
     use_global_cache=True,
+    fold_ln=False,
     center_writing_weights=False,
     center_unembed=False,
 )
@@ -140,7 +141,6 @@ def sender_hook(z, hook, verbose=False, cache="first"):
 tl_model.reset_hooks()
 for name in all_senders_names:
     tl_model.add_hook(name=name, hook=partial(sender_hook, verbose=False, cache="second"))
-
 corrupt_stuff = tl_model(toks_int_values_other)
 tl_model.reset_hooks()
 
@@ -148,7 +148,7 @@ tl_model.reset_hooks()
 
 b_O = tl_model.blocks[0].attn.b_O
 
-def receiver_hook(z, hook):
+def receiver_hook(z, hook, verbose=True):
     for receiver_slice_tuple in full_graph[hook.name].keys():
         for sender_name in full_graph[hook.name][receiver_slice_tuple].keys():
             for sender_slice_tuple in full_graph[hook.name][receiver_slice_tuple][sender_name]:
@@ -156,13 +156,16 @@ def receiver_hook(z, hook):
                     # do "actually" include this edge
                     continue
 
-                print(hook.name, receiver_slice_tuple, sender_name, sender_slice_tuple)
-                print(z.norm().item())
-                print(receiver_slice_tuple.as_index, sender_slice_tuple.as_index)
+                if verbose:
+                    print(hook.name, receiver_slice_tuple, sender_name, sender_slice_tuple)
+                    print("-------")
+                    # print(receiver_slice_tuple.as_index, sender_slice_tuple.as_index)
+                    print(hook.global_cache.cache[sender_name].shape, sender_slice_tuple.as_index)
 
-                z[receiver_slice_tuple.as_index]
-                hook.global_cache.cache[sender_name][sender_slice_tuple.as_index]
+
+                z[receiver_slice_tuple.as_index] # this checks where the indexing is bugged
                 z[receiver_slice_tuple.as_index] -= hook.global_cache.cache[sender_name][sender_slice_tuple.as_index]
+                z[receiver_slice_tuple.as_index] += hook.global_cache.second_cache[sender_name][sender_slice_tuple.as_index]
 
     # assert torch.allclose(z, torch.zeros_like(z)) or torch.allclose(z, b_O)
     return z
@@ -171,12 +174,12 @@ def receiver_hook(z, hook):
 for receiver_name in full_graph.keys():
     tl_model.add_hook(
         name=receiver_name,
-        hook=partial(sender_hook, cache="first"),
+        hook=receiver_hook,
     )
-for sender_name in full_graph.keys():
+for sender_name in all_senders_names:
     tl_model.add_hook(
         name=sender_name,
-        hook=receiver_hook,
+        hook=partial(sender_hook, cache="first"),
     )
 
 #%%
@@ -185,23 +188,9 @@ ans = tl_model(toks_int_values) # torch.arange(5) # note that biases mean not EV
 new_metric = metric(ans)
 assert abs(new_metric) < 1e-5, f"Metric {new_metric} is not zero"
 
-
 #%%
 
-def vizualize_graph(graph):
-    G = nx.DiGraph()
-    for receiver_name in graph.keys():
-        for receiver_slice_tuple in graph[receiver_name].keys():
-            for sender_name in graph[receiver_name][receiver_slice_tuple].keys():
-                for sender_slice_tuple in graph[receiver_name][receiver_slice_tuple][sender_name]:
-                    G.add_edge(sender_name, receiver_name, weight=1 + int(graph[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple]))
-    return G
-
-graph = vizualize_graph(full_graph)
-
-#%%
-
-show(graph, "test.png")
+show(full_graph, "test.png")
 
 #%%
 
@@ -212,15 +201,18 @@ def step(
     receiver_slice_tuple,
     verbose=True,
     using_wandb=False,
+    remove_redundant=False,
+    early_stop=False,
 ):
     """
-    TOIMPLEMENT:
+    TOIMPLEMENT: (prioritise these)
     - Incoming effect sizes on the nodes
     - Dynamic threshold?
     - Node stats
     - Parallelism
     - Not just monotone metric
     - wandb
+    - remove_redundant
     """
     warnings.warn("Implement incoming effect sizes on the nodes")
     start_step_time = time.time()
@@ -236,6 +228,9 @@ def step(
 
         for sender_slice_tuple in graph[receiver_name][receiver_slice_tuple][sender_name]:
             graph[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple] = False
+
+            if early_stop:
+                return tl_model(toks_int_values)
 
             evaluated_metric = metric(tl_model(toks_int_values))
 
@@ -264,45 +259,22 @@ def step(
                 graph[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple] = True
 
             if using_wandb:
-                raise NotImplementedError("Wandb not implemented yet")
+                raise NotImplementedError("WANDB not implemented yet")
     
-    # TODOTODOTODO Arthur implement this
-    if len(self.current_node.children) == 0:
+    if all(not graph[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple] for sender_name in graph[receiver_name] for sender_slice_tuple in graph[receiver_name][receiver_slice_tuple][sender_name]):
+        # removed all connections
         print(
-            f"Warning: we added {self.current_node.name} earlier, but we just removed all its child connections. So we are{(' ' if self.remove_redundant else ' not ')}removing it and its redundant descendants now (remove_redundant={self.remove_redundant})"
+            f"Warning: we added {receiver_name} at {receiver_slice_tuple} earlier, but we just removed all its child connections. So we are{(' ' if remove_redundant else ' not ')}removing it and its redundant descendants now (remove_redundant=remove_redundant)"
         )
-        self.current_node.is_redundant = True
-        if self.remove_redundant:
-            queue = [self.current_node]
-            idx = 0
-            for idx in range(0, int(1e9)):
-                if idx >= len(queue):
-                    break
-                parents = list(queue[idx].parents)
-                for parent in parents:
-                    self.remove_connection(
-                        parent_node=typing.cast(ACDCInterpNode, parent),
-                        child_node=typing.cast(ACDCInterpNode, queue[idx]),
-                        suppress_warning=True,
-                    )
-                    if len(parent.children) == 0 and parent not in queue:
-                        parent.is_redundant = True
-                        queue.append(parent)
-    # TODO: this is annoying
-    if self.using_wandb:
-        fname = "acdc_plot_" + str(self.current_node.name) + ".png"
-        if self.wandb_project_name is not None:
-            fname = self.wandb_project_name + "/current_run/" + fname
-        self._nodes.show(fname=fname, show=False)
-        self.log_metrics_to_wandb(picture_fname=fname)
 
-    self.increment_current_node()
-    end_step_time = time.time()
-    step_time = end_step_time - start_step_time
+    # TODO: this is annoying
+    if using_wandb:
+        raise NotImplementedError()
     
-    # sad, wish this could be logged as a system metric...
-    if self.using_wandb:
-        wandb.log({"step_time": step_time})
+
+#%%
+
+old = tl_model(toks_int_values)
 
 #%%
 
@@ -311,11 +283,19 @@ def step(
 for receiver_name in full_graph.keys():
     for receiver_slice_tuple in full_graph[receiver_name]:
 
-        print("Currently at ")
+        print("Currently at ", receiver_name, "and the tuple is", receiver_slice_tuple)
 
-        for sender_name in full_graph[receiver_name][receiver_slice_tuple]:
-            for sender_slice_tuple in full_graph[receiver_name][receiver_slice_tuple][sender_name]:
-                full_graph[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple] = True
+        new = step(
+            graph=full_graph,
+            threshold=0.0,
+            receiver_name=receiver_name,
+            receiver_slice_tuple=receiver_slice_tuple,
+            verbose=True,
+            early_stop=False,
+        )
+
+        assert False
+
 
 #%%
 
@@ -323,7 +303,6 @@ def zero_hook(z, hook):
     return torch.zeros_like(z)
 
 def run_in_normal_way(tl_model):
-
     tl_model.reset_hooks()
     for hook_name in ['blocks.0.attn.hook_result', 'blocks.0.hook_resid_pre', 'blocks.1.attn.hook_result']:
         tl_model.add_hook(hook_name, zero_hook)

@@ -61,6 +61,9 @@ class TorchIndex:
     def __hash__(self):
         return hash(self.hashable_tuple)
 
+    def __repr__(self) -> str:
+        return f"TorchIndex({self.hashable_tuple})"
+
 def make_nd_dict(end_type, n = 3):
     if n not in [3, 4]:
         raise NotImplementedError("Only implemented for 3/4")

@@ -9,6 +9,7 @@ import random
 import torch.nn as nn
 import torch.nn.functional as F
 import warnings
+import networkx as nx
 
 DEVICE = "cuda:0"
 SEQ_LEN = 300
@@ -90,14 +91,24 @@ def build_colorscheme(node_names, colorscheme: str = "Pastel2") -> Dict[str, str
         colors[str(node)] = generate_random_color(colorscheme)
     return colors
 
+def vizualize_graph(graph):
+    G = nx.DiGraph()
+    for receiver_name in graph.keys():
+        for receiver_slice_tuple in graph[receiver_name].keys():
+            for sender_name in graph[receiver_name][receiver_slice_tuple].keys():
+                for sender_slice_tuple in graph[receiver_name][receiver_slice_tuple][sender_name]:
+                    G.add_edge(sender_name, receiver_name, weight=1 + int(graph[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple]))
+    return G
+
 def show(
-    graph,
+    graph: Dict,
     fname: str,
     colorscheme: str = "Pastel2",
 ):
     """
     takes matplotlib colormaps
     """
+    graph = vizualize_graph(graph)
     g = graphviz.Digraph(format="png")
     colors = build_colorscheme(list(graph.nodes))
     warnings.warn("This hardcodes in the allsendersnames")
