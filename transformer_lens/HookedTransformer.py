@@ -45,36 +45,45 @@ class Output(NamedTuple):
 
 
 class GlobalCache: # this dict stores the activations from the forward pass
-    def __init__(self, device = "cuda"):
+    def __init__(self, device: Union[str, Tuple[str, str]] = "cuda"):
         # TODO find a way to make the device propagate when we to .to on the p
-
         # TODO make it essential first key is a str, second a TorchIndex, third a str
 
-        self.cache = OrderedDict() # make_nd_dict(end_type=torch.Tensor, n=1) # make_nd_dict(end_type=List[TorchIndex], n=3) 
-        # uh both seem wrong - I think just dict???
-        self.second_cache = OrderedDict() # make_nd_dict(end_type=List[TorchIndex], n=3)
-        self.device = device
+        if isinstance(device, str):
+            device = (device, device)
+
+        self.cache = OrderedDict() 
+        self.second_cache = OrderedDict()
+        self.device: Tuple[str, str] = (device, device)
 
     def clear(self, just_first_cache=False):
         
         if just_first_cache:
             self.cache = OrderedDict()
         else:
-            self.__init__(self.device) # lol
+            self.__init__(self.device[0], self.device[1]) # lol
 
         import gc
         gc.collect()
         torch.cuda.empty_cache()
 
-    def to(self, device):
+    def to(self, device, which_caches: Literal["first", "second", "all"]="all"): # 
+
+        caches = []
+        if which_caches != "second":
+            self.device = (device, self.device[1])
+            caches.append(self.cache)
+        if which_caches != "first":
+            self.device = (self.device[0], device)
+            caches.append(self.second_cache)
+
         # move all the parameters
-        for cache in [self.cache, self.second_cache]: # mutable means this works..
-            for receiver_name in cache:
-                for receiver_slice_tuple in cache[receiver_name]:
-                    for sender_name in cache[receiver_name][receiver_slice_tuple]:
-                        for sender_slice_tuple in cache[receiver_name][receiver_slice_tuple][sender_name]:
-                            cache[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple] = cache[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple].to(device)
+        for cache in caches: # mutable means this works..
+            for name in cache:
+                cache[name] = cache[name].to(device)
+
         return self
+
 class HookedTransformer(HookedRootModule):
     """
     This class implements a full Transformer using the components in ./components.py, with

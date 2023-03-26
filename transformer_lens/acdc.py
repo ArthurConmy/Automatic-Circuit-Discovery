@@ -93,7 +93,7 @@ base_model_probs = F.softmax(base_model_logits, dim=-1)
 
 # %%
 
-USING_WANDB = True
+USING_WANDB = False
 
 raw_metric = partial(kl_divergence, base_model_probs=base_model_probs, using_wandb=False)
 metric = partial(kl_divergence, base_model_probs=base_model_probs, using_wandb=USING_WANDB)
@@ -196,13 +196,17 @@ if False:
 
 # add the saving hooks
 
-def sender_hook(z, hook, verbose=False, cache="first"):
+def sender_hook(z, hook, verbose=False, cache="first", device=None):
     """General, to cover online and corrupt caching"""
 
+    tens = z.clone()
+    if device is not None:
+        tens = tens.to(device)
+
     if cache == "second":
-        hook.global_cache.second_cache[hook.name] = z.clone()
+        hook.global_cache.second_cache[hook.name] = tens
     elif cache == "first":
-        hook.global_cache.cache[hook.name] = z.clone()
+        hook.global_cache.cache[hook.name] = tens
     else:
         raise ValueError(f"Unknown cache type {cache}")
 
@@ -211,14 +215,22 @@ def sender_hook(z, hook, verbose=False, cache="first"):
 
     return z
 
+FIRST_CACHE_CPU = True
 
 tl_model.reset_hooks()
 for name in all_senders_names: # TODO actually isn't this too many???
     tl_model.add_hook(
-        name=name, hook=partial(sender_hook, verbose=False, cache="second")
+        name=name, hook=partial(sender_hook, verbose=False, cache="second", device="cpu" if FIRST_CACHE_CPU else None)
     )
 corrupt_stuff = tl_model(toks_int_values_other)
 tl_model.reset_hooks()
+
+#%%
+
+SECOND_CACHE_CPU = True # slow, but less GPU memory 
+
+if SECOND_CACHE_CPU:
+    tl_model.global_cache.to("cpu", which_caches="second")
 
 # %%
 
@@ -250,13 +262,13 @@ def receiver_hook(z, hook, verbose=True):
                 if edge.edge_type == EdgeType.ADDITION:
                     z[receiver_slice_tuple.as_index] -= hook.global_cache.cache[
                         sender_name
-                    ][sender_slice_tuple.as_index]
+                    ][sender_slice_tuple.as_index].to(z.device)
                     z[receiver_slice_tuple.as_index] += hook.global_cache.second_cache[
                         sender_name
-                    ][sender_slice_tuple.as_index]
+                    ][sender_slice_tuple.as_index].to(z.device)
 
                 elif edge.edge_type == EdgeType.DIRECT_COMPUTATION:
-                    z[receiver_slice_tuple.as_index] = hook.global_cache.second_cache[receiver_name][receiver_slice_tuple.as_index]
+                    z[receiver_slice_tuple.as_index] = hook.global_cache.second_cache[receiver_name][receiver_slice_tuple.as_index].to(z.device)
 
                 else: 
                     assert edge.edge_type == EdgeType.ALWAYS_INCLUDED, f"Unknown edge type {edge.edge_type}"
@@ -321,14 +333,10 @@ def step(
     for sender_name in graph[receiver_name][receiver_slice_tuple]:
         print(f"\nNode name: {sender_name}\n")
 
-        for sender_slice_tuple in graph[receiver_name][receiver_slice_tuple][
-            sender_name
-        ]:
-            graph[receiver_name][receiver_slice_tuple][sender_name][
-                sender_slice_tuple
-            ].present = False
+        for sender_slice_tuple in graph[receiver_name][receiver_slice_tuple][sender_name]:
+            graph[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple].present = False
 
-            if early_stop:
+            if early_stop: # for debugging the effects of one and only one forward pass
                 return tl_model(toks_int_values)
 
             evaluated_metric = metric(tl_model(toks_int_values))
@@ -430,22 +438,24 @@ show(full_graph, "test.png")
 
 # %%
 
-def zero_hook(z, hook):
-    return torch.zeros_like(z)
+if False:
+    """A good way to sanity check our wild hooking stuff is to check zero ablating everything is the same as zero ablating everything in the normal way. For now this is not implemented"""
+
+    def zero_hook(z, hook):
+        return torch.zeros_like(z)
+
+    def run_in_normal_way(tl_model):
+        tl_model.reset_hooks()
+        for hook_name in [
+            "blocks.0.attn.hook_result",
+            "blocks.0.hook_resid_pre",
+            "blocks.1.attn.hook_result",
+        ]:
+            tl_model.add_hook(hook_name, zero_hook)
+        answer = tl_model(torch.arange(5))
+        tl_model.reset_hooks()
+        return answer
 
 
-def run_in_normal_way(tl_model):
-    tl_model.reset_hooks()
-    for hook_name in [
-        "blocks.0.attn.hook_result",
-        "blocks.0.hook_resid_pre",
-        "blocks.1.attn.hook_result",
-    ]:
-        tl_model.add_hook(hook_name, zero_hook)
-    answer = tl_model(torch.arange(5))
-    tl_model.reset_hooks()
-    return answer
-
-
-b2 = run_in_normal_way(tl_model)
-assert torch.allclose(b, b2)  # TODO fix this, I dunno if we have settings for the
+    b2 = run_in_normal_way(tl_model)
+    assert torch.allclose(b, b2)  # TODO fix this, I dunno if we have settings for the

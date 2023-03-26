@@ -240,9 +240,7 @@ def show(
     return g
 
 def count_no_edges(graph):
-    
     num_edges = 0
-
     for receiver_name in graph.keys():
         for receiver_slice_tuple in graph[receiver_name].keys():
             for sender_hook_name in graph[receiver_name][receiver_slice_tuple].keys():
@@ -251,5 +249,4 @@ def count_no_edges(graph):
 
                     if not edge.edge_type == EdgeType.ALWAYS_INCLUDED and edge.present:
                         num_edges += 1
-
     return num_edges

@@ -98,6 +98,8 @@ class TorchIndex:
         return f"TorchIndex({self.hashable_tuple})"
 
 def make_nd_dict(end_type, n = 3) -> Any:
+    """Make biiig default dicts : ) : )"""
+
     if n not in [3, 4]:
         raise NotImplementedError("Only implemented for 3/4")
         
