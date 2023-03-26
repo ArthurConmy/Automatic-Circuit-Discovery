@@ -73,9 +73,28 @@ from transformer_lens.induction.utils import (
     count_no_edges,
     show,
 )
+import argparse
 
-# rust%%
+#%%
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--first-cache-cpu', type=bool, required=False, default=True, help='Value for FIRST_CACHE_CPU')
+parser.add_argument('--second-cache-cpu', type=bool, required=False, default=True, help='Value for SECOND_CACHE_CPU')
+# parser.add_argument('--num-examples', type=int, required=False, default=40, help='Value for NUM_EXAMPLES') # TODO integrate with utils files
+# parser.add_argument('--seq-len', type=int, required=False, default=300, help='Value for SEQ_LEN')
+parser.add_argument('--using-wandb', type=bool, required=False, default=True, help='Value for USING_WANDB')
+parser.add_argument('--threshold', type=float, required=False, default=1.0, help='Value for THRESHOLD')
+
+args = parser.parse_args()
+
+FIRST_CACHE_CPU = args.first_cache_cpu
+SECOND_CACHE_CPU = args.second_cache_cpu
+# NUM_EXAMPLES = args.num_examples
+# SEQ_LEN = args.seq_len
+USING_WANDB = args.using_wandb
+THRESHOLD = args.threshold
+
+#%%
 tl_model = HookedTransformer.from_pretrained(
     "redwood_attn_2l",
     use_global_cache=True,
@@ -92,8 +111,6 @@ base_model_logits = tl_model(toks_int_values)
 base_model_probs = F.softmax(base_model_logits, dim=-1)
 
 # %%
-
-USING_WANDB = False
 
 raw_metric = partial(kl_divergence, base_model_probs=base_model_probs, using_wandb=False)
 metric = partial(kl_divergence, base_model_probs=base_model_probs, using_wandb=USING_WANDB)
@@ -215,8 +232,6 @@ def sender_hook(z, hook, verbose=False, cache="first", device=None):
 
     return z
 
-FIRST_CACHE_CPU = True
-
 tl_model.reset_hooks()
 for name in all_senders_names: # TODO actually isn't this too many???
     tl_model.add_hook(
@@ -226,8 +241,6 @@ corrupt_stuff = tl_model(toks_int_values_other)
 tl_model.reset_hooks()
 
 #%%
-
-SECOND_CACHE_CPU = True # slow, but less GPU memory 
 
 if SECOND_CACHE_CPU:
     tl_model.global_cache.to("cpu", which_caches="second")
@@ -396,7 +409,7 @@ file_content = ""
 with open(__file__, "r") as f:
     file_content = f.read()
 
-threshold = 0.7
+threshold = THRESHOLD
 
 #%%
 
