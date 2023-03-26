@@ -447,7 +447,7 @@ if USING_WANDB:
 
 #%%
 
-show(full_graph, "test.png")
+show(full_graph, f"ims/{threshold}.png")
 
 # %%
 
