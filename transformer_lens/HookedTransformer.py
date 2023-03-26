@@ -32,6 +32,7 @@ from transformer_lens.components import *
 import transformer_lens.loading_from_pretrained as loading
 from transformer_lens.torchtyping_helper import T
 from transformer_lens.utils import make_nd_dict, TorchIndex
+from collections import OrderedDict
 
 SingleLoss = TT[()]  # Type alias for a single element tensor
 LossPerToken = TT["batch", "position - 1"]
@@ -49,17 +50,18 @@ class GlobalCache: # this dict stores the activations from the forward pass
 
         # TODO make it essential first key is a str, second a TorchIndex, third a str
 
-        self.cache = make_nd_dict(end_type=List[TorchIndex], n=3)
-        self.second_cache = make_nd_dict(end_type=List[TorchIndex], n=3)
+        self.cache = OrderedDict() # make_nd_dict(end_type=torch.Tensor, n=1) # make_nd_dict(end_type=List[TorchIndex], n=3) 
+        # uh both seem wrong - I think just dict???
+        self.second_cache = OrderedDict() # make_nd_dict(end_type=List[TorchIndex], n=3)
         self.device = device
 
-    def clear(self):
-        # for key in self.cache.keys():
-        #     del self.cache[key]
-        # for key in self.second_cache.keys():
-        #     del self.parameters[key]
-        self.cache = make_nd_dict(end_type=List[TorchIndex], n=3)
-        self.second_cache = make_nd_dict(end_type=List[TorchIndex], n=3) # hmmm DRY 
+    def clear(self, just_first_cache=False):
+        
+        if just_first_cache:
+            self.cache = OrderedDict()
+        else:
+            self.__init__(self.device) # lol
+
         import gc
         gc.collect()
         torch.cuda.empty_cache()

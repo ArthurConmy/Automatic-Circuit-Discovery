@@ -1,3 +1,5 @@
+*.png
+*.gv
 __pycache__
 Testing_Notebook.ipynb
 transformer_lens/scratch.py

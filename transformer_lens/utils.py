@@ -2,9 +2,11 @@ from __future__ import annotations
 import numpy as np
 import torch
 import torch.nn.functional as F
+from typing import Any
 
 # from datasets.arrow_dataset import Dataset
 import einops
+from enum import Enum
 from transformers import AutoTokenizer
 from typing import Optional, Union, Tuple, List, Dict, Type
 from torchtyping import TensorType as TT
@@ -44,10 +46,41 @@ class OrderedDefaultdict(collections.OrderedDict):
     def __repr__(self):  # Optional.
         return '%s(%r, %r)' % (self.__class__.__name__, self.default_factory, self.items())
 
+class EdgeType(Enum):
+    """Property of edges in the computational graph - either 
+    
+    1. The parent adds to the child (e.g residual stream)
+    2. The *single* child is a function of and only of the parent (e.g the value hooked by hook_q is a function of what hook_q_input saves)
+    3. Generally like 2. but where there are generally multiple parents, so it's hard to separate effects. E.g hook_result is a function of hook_q, _k and _v but once we've computed hook_result it's difficult to edit one input"""
+
+    ADDITION = 0
+    DIRECT_COMPUTATION = 1
+    ALWAYS_INCLUDED = 2
+
+class Edge:
+    def __init__(
+        self,
+        edge_type: EdgeType,
+        present: bool = True,
+    ):
+        self.edge_type = edge_type
+        self.present = present
+
 
 # TODO attrs.frozen???
 class TorchIndex:
-    def __init__(self, list_of_things_in_tuple):
+    """There is not a clean bijection between things we 
+    want in the computational graph, and things that are hooked
+    (e.g hook_result covers all heads in a layer)
+    
+    `HookReference`s are essentially indices that say which part of the tensor is being affected. 
+    
+    E.g (slice(None), slice(None), 3) means index [:, :, 3]"""
+
+    def __init__(
+        self, 
+        list_of_things_in_tuple
+    ):
         for arg in list_of_things_in_tuple: # TODO write this less verbosely. Just typehint + check typeguard saves us??
             if type(arg) in [type(None), int]:
                 continue
@@ -64,7 +97,7 @@ class TorchIndex:
     def __repr__(self) -> str:
         return f"TorchIndex({self.hashable_tuple})"
 
-def make_nd_dict(end_type, n = 3):
+def make_nd_dict(end_type, n = 3) -> Any:
     if n not in [3, 4]:
         raise NotImplementedError("Only implemented for 3/4")
         
