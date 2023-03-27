@@ -84,6 +84,7 @@ parser.add_argument('--second-cache-cpu', type=bool, required=False, default=Tru
 # parser.add_argument('--seq-len', type=int, required=False, default=300, help='Value for SEQ_LEN')
 parser.add_argument('--using-wandb', type=bool, required=False, default=True, help='Value for USING_WANDB')
 parser.add_argument('--threshold', type=float, required=False, default=1.0, help='Value for THRESHOLD')
+parser.add_argument('--zero-ablation', action='store_true', help='A flag without a value')
 
 args = parser.parse_args()
 
@@ -94,7 +95,15 @@ SECOND_CACHE_CPU = args.second_cache_cpu
 USING_WANDB = args.using_wandb
 THRESHOLD = args.threshold
 
+print(f"{args.zero_ablation=}")
+
+if args.zero_ablation:
+    ZERO_ABLATION = True
+else:
+    ZERO_ABLATION = False
+
 #%%
+
 tl_model = HookedTransformer.from_pretrained(
     "redwood_attn_2l",
     use_global_cache=True,
@@ -105,7 +114,7 @@ tl_model = HookedTransformer.from_pretrained(
 tl_model.set_use_attn_result(True)
 tl_model.set_use_split_qkv_input(True)
 
-# %%
+#%%
 
 base_model_logits = tl_model(toks_int_values)
 base_model_probs = F.softmax(base_model_logits, dim=-1)
@@ -115,6 +124,25 @@ base_model_probs = F.softmax(base_model_logits, dim=-1)
 raw_metric = partial(kl_divergence, base_model_probs=base_model_probs, using_wandb=False)
 metric = partial(kl_divergence, base_model_probs=base_model_probs, using_wandb=USING_WANDB)
 
+#%%
+
+if False: # a test of the zero ablation stuff
+    def zer(z, hook, head):
+        z[:, :, head] = 0.0
+
+    for layer in range(0, 2):
+        for head in range(0, 8):
+            if (layer, head) not in [(0, 0), (1, 5), (1, 6)]:
+                tl_model.add_hook(
+                    name=f"blocks.{layer}.attn.hook_result",
+                    hook=partial(zer, head=head),
+                )
+    
+    zer_logits = tl_model(toks_int_values)
+    zer_probs = F.softmax(zer_logits, dim=-1)
+    zer_metric = raw_metric(zer_probs)
+    print(zer_metric, "is the result...")
+    tl_model.reset_hooks()
 # %%
 
 FullGraphT = Dict[str, Dict[TorchIndex, Dict[str, Dict[TorchIndex, Edge]]]]
@@ -238,6 +266,13 @@ for name in all_senders_names: # TODO actually isn't this too many???
         name=name, hook=partial(sender_hook, verbose=False, cache="second", device="cpu" if FIRST_CACHE_CPU else None)
     )
 corrupt_stuff = tl_model(toks_int_values_other)
+
+if ZERO_ABLATION:
+    for name in tl_model.global_cache.second_cache:
+        tl_model.global_cache.second_cache[name] = torch.zeros_like(
+            tl_model.global_cache.second_cache[name]
+        )
+
 tl_model.reset_hooks()
 
 #%%
@@ -334,6 +369,7 @@ def step(
     - remove_redundant
     - just record the metrics that we actually stick to
     """
+
     warnings.warn("Implement incoming effect sizes on the nodes")
     start_step_time = time.time()
 
@@ -349,7 +385,7 @@ def step(
         for sender_slice_tuple in graph[receiver_name][receiver_slice_tuple][sender_name]:
             graph[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple].present = False
 
-            if early_stop: # for debugging the effects of one and only one forward pass
+            if early_stop: # for debugging the effects of one and only one forward pass WITH a corrupted edge
                 return tl_model(toks_int_values)
 
             evaluated_metric = metric(tl_model(toks_int_values))
@@ -382,6 +418,8 @@ def step(
 
             if using_wandb:
                 wandb.log({"num_edges": count_no_edges(graph)})
+
+    cur_metric = metric(tl_model(toks_int_values))
 
     if all(
         not graph[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple].present
@@ -416,14 +454,16 @@ threshold = THRESHOLD
 if USING_WANDB:
     wandb.init(
         entity="remix_school-of-rock", 
-        project="tl_induction", 
-        name="arthurs_example_threshold_" + str(threshold) + "_" +str(random.randint(0, 1000000)),
+        project="tl_induction_proper", 
+        name="arthurs_example_threshold_" + str(threshold) + "_" + ("_zero" if ZERO_ABLATION else "") + str(random.randint(0, 1000000)),
         notes=file_content,
     )
 
 for receiver_name in full_graph.keys():
     for receiver_slice_tuple in full_graph[receiver_name]:
         print("Currently at ", receiver_name, "and the tuple is", receiver_slice_tuple)
+
+        # TODO c'mon... you must be able to implement a speedup where you check if this position doesn't matter at all...
 
         step(
             graph=full_graph,
@@ -448,6 +488,14 @@ if USING_WANDB:
 #%%
 
 show(full_graph, f"ims/{threshold}.png")
+
+
+for receiver_name in full_graph.keys():
+    for receiver_slice_tuple in full_graph[receiver_name]:
+        for sender_name in full_graph[receiver_name][receiver_slice_tuple].keys():
+            for sender_slice_tuple in full_graph[receiver_name][receiver_slice_tuple][sender_name]:
+                if full_graph[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple].present:
+                    print("Connection from", sender_name, sender_slice_tuple, "to", receiver_name, receiver_slice_tuple)
 
 # %%
 
