@@ -272,6 +272,7 @@ if ZERO_ABLATION:
         tl_model.global_cache.second_cache[name] = torch.zeros_like(
             tl_model.global_cache.second_cache[name]
         )
+        torch.cuda.empty_cache()
 
 tl_model.reset_hooks()
 
@@ -284,15 +285,12 @@ if SECOND_CACHE_CPU:
 
 b_O = tl_model.blocks[0].attn.b_O
 
-def receiver_hook(z, hook, verbose=True):
+def receiver_hook(z, hook, verbose=False):
     receiver_name = hook.name
     for receiver_slice_tuple in full_graph[hook.name].keys():
         for sender_name in full_graph[hook.name][receiver_slice_tuple].keys():
             for sender_slice_tuple in full_graph[hook.name][receiver_slice_tuple][sender_name]:
-                
                 edge = full_graph[hook.name][receiver_slice_tuple][sender_name][sender_slice_tuple]
-                print(receiver_slice_tuple, sender_name, sender_slice_tuple, "...")
-
                 if edge.present:
                     continue
 

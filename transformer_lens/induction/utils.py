@@ -78,15 +78,15 @@ def kl_divergence(
     assert probs.min() >= 0.0
     assert probs.max() <= 1.0
 
-    kl_div = (base_model_probs * (base_model_probs.log() - probs.log())).sum(dim=-1)
+    kl_div = (base_model_probs.cpu() * (base_model_probs.cpu().log() - probs.cpu().log())).sum(dim=-1)
 
     assert kl_div.shape == mask_repeat_candidates.shape, (
         kl_div.shape,
         mask_repeat_candidates.shape,
     )
-    kl_div = kl_div * mask_repeat_candidates.long()
+    kl_div = kl_div * mask_repeat_candidates.cpu().long()
 
-    answer = (kl_div.sum() / mask_repeat_candidates.int().sum().item()).item()
+    answer = (kl_div.sum() / mask_repeat_candidates.cpu().int().sum().item()).item()
 
     if using_wandb:
         wandb.log({"metric": answer})

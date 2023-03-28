@@ -73,11 +73,12 @@ for pi, project_name in (enumerate(project_names)):
             all_edges = history["num_edges"].values
             all_edges = process_nan(all_edges)
 
+            # if True:
             if "zero" in run.name: # if "num_edges_total" in history.keys() and "self.cur_metric" in history.keys() and run.name not in names and "kl_" in run.name: # run.name.startswith("acdc-run-arthur_fixed_edges"):
-                for i in range(1, 31):
-                    names.append(run.name)
+                for i in range(1, 61):
                     if np.isnan(all_metrics[-i]) or len(all_edges) < i:
                         continue
+                    names.append(run.name)
                     final_edges.append(all_edges[-i])
                     _initial_edges.append(max_edges)
                     _initial_losses.append(start_metric)
@@ -192,6 +193,7 @@ if True:
 
 #%%
 
+assert len(final_edges) == len(final_metric) == len(names) == len(thresholds), f"{len(final_edges)=}, {len(final_metric)=}, {len(names)=}, {len(thresholds)=}"
 
 # scatter plot with names as labels and thresholds as colors
 fig.add_trace(
@@ -212,7 +214,7 @@ fig.add_trace(
                 ticktext=np.arange(0, 16)/10,
             ),
         ),
-        # text=names,
+        text=names,
         name="ACDC"
     )
 )
