@@ -1,6 +1,6 @@
 # Automatic Circuit Discovery 
 
-Installation:
+## Installation:
 
 ```bash
 git clone https://github.com/ArthurConmy/Automatic-Circuit-Discovery

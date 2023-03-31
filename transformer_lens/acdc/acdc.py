@@ -56,23 +56,27 @@ from transformer_lens.hook_points import HookedRootModule, HookPoint
 from transformer_lens.HookedTransformer import (
     HookedTransformer,
 )
-from transformer_lens.utils import (
+from transformer_lens.acdc.utils import (
     make_nd_dict,
+    TLACDCInterpNode,
+    TLACDCCorrespondence,
     TorchIndex,
     Edge,
     EdgeType,
 )  # these introduce several important classes !!!
 from collections import defaultdict, deque, OrderedDict
-from transformer_lens.induction.utils import (
+from transformer_lens.acdc.induction.utils import (
     kl_divergence,
     toks_int_values,
     toks_int_values_other,
     good_induction_candidates,
     validation_data,
+)
+from transformer_lens.acdc.graphics import (
     build_colorscheme,
-    count_no_edges,
     show,
 )
+from transformer_lens.acdc.utils import count_no_edges
 import argparse
 
 #%%
@@ -86,7 +90,11 @@ parser.add_argument('--using-wandb', type=bool, required=False, default=True, he
 parser.add_argument('--threshold', type=float, required=False, default=1.0, help='Value for THRESHOLD')
 parser.add_argument('--zero-ablation', action='store_true', help='A flag without a value')
 
-args = parser.parse_args()
+if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
+    args = parser.parse_args("".split())
+    # args = parser.parse_args("--zero-ablation".split())
+else:
+    args = parser.parse_args()
 
 FIRST_CACHE_CPU = args.first_cache_cpu
 SECOND_CACHE_CPU = args.second_cache_cpu
@@ -101,7 +109,6 @@ if args.zero_ablation:
     ZERO_ABLATION = True
 else:
     ZERO_ABLATION = False
-
 #%%
 
 tl_model = HookedTransformer.from_pretrained(
@@ -145,28 +152,15 @@ if False: # a test of the zero ablation stuff
     tl_model.reset_hooks()
 # %%
 
-FullGraphT = Dict[str, Dict[TorchIndex, Dict[str, Dict[TorchIndex, Edge]]]]
-full_graph: FullGraphT = make_nd_dict(end_type=Edge, n=4)  # TODO really global variable
-all_senders_names = set()  # get receivers by .keys()
+correspondence = TLACDCCorrespondence()
 
-residual_stream_items: Dict[str, List[TorchIndex]] = defaultdict(list)
-residual_stream_items[f"blocks.{tl_model.cfg.n_layers-1}.hook_resid_post"] = [
-    TorchIndex([None])
-]  # TODO the position version
-
-
-def add_edge(
-    receiver_name: str,
-    receiver_slice: TorchIndex,
-    sender_name: str,
-    sender_slice: TorchIndex,
-    computation_mode: EdgeType,
-):
-    full_graph[receiver_name][receiver_slice][sender_name][
-        sender_slice
-    ] = Edge(computation_mode)
-    all_senders_names.add(sender_name)
-
+upstream_residual_nodes: List[TLACDCInterpNode] = []
+logits_node = TLACDCInterpNode(
+    name=f"blocks.{tl_model.cfg.n_layers-1}.hook_resid_post",
+    index=TorchIndex([None]),
+    mode="addition",
+)
+upstream_residual_nodes.append(logits_node)
 
 for layer_idx in range(tl_model.cfg.n_layers - 1, -1, -1):
     # connect MLPs
@@ -178,64 +172,50 @@ for layer_idx in range(tl_model.cfg.n_layers - 1, -1, -1):
         # this head writes to all future residual stream things
         cur_head_name = f"blocks.{layer_idx}.attn.hook_result"
         cur_head_slice = TorchIndex([None, None, head_idx])
-        for receiver_name in residual_stream_items:
-            for receiver_slice_tuple in residual_stream_items[receiver_name]:
-                add_edge(
-                    receiver_name,
-                    receiver_slice_tuple,
-                    cur_head_name,
-                    cur_head_slice,
-                    EdgeType.ADDITION,
-                )
+        cur_head = TLACDCInterpNode(
+            name=cur_head_name,
+            index=cur_head_slice,
+            mode="addition",
+        )
+        for residual_stream_node in upstream_residual_nodes:
+            correspondence.add_edge(
+                parent_node=residual_stream_node,
+                child_node=cur_head,
+            )
 
         # TODO maybe this needs be moved out of this block??? IDK
+        hook_letter_inputs = {}
         for letter in "qkv":
             hook_letter_name = f"blocks.{layer_idx}.attn.hook_{letter}"
             hook_letter_slice = TorchIndex([None, None, head_idx])
-
-            # add connections from result to hook_k etcs
-            add_edge(
-                cur_head_name,
-                cur_head_slice,
-                hook_letter_name,
-                hook_letter_slice,
-                EdgeType.ALWAYS_INCLUDED,
-            )
-            # add connection to hook_k_input etc
-            add_edge(
-                hook_letter_name,
-                hook_letter_slice,
-                f"blocks.{layer_idx}.hook_{letter}_input",
-                TorchIndex([None, None, head_idx]),
-                EdgeType.DIRECT_COMPUTATION,
+            hook_letter_node = TLACDCInterpNode(name=hook_letter_name, index=hook_letter_slice, mode="off")
+            
+            hook_letter_input_name = f"blocks.{layer_idx}.hook_{letter}_input"
+            hook_letter_input_slice = TorchIndex([None, None, head_idx])
+            hook_letter_input_node = TLACDCInterpNode(
+                name=hook_letter_input_name, index=hook_letter_input_slice, mode="direct_computation"
             )
 
-    for head_idx in range(tl_model.cfg.n_heads - 1, -1, -1):
-        for letter in "qkv":
-            # eventually add the positional shit heeere
-            letter_hook_name = f"blocks.{layer_idx}.hook_{letter}_input"
-            letter_tuple_slice = TorchIndex([None, None, head_idx])
-            residual_stream_items[letter_hook_name].append(letter_tuple_slice)
+            correspondence.add_edge(
+                parent_node=hook_letter_input_node,
+                child_node=hook_letter_node,
+            )
+
+            # Surely this doesn't need be added anywhere else?
+            upstream_residual_nodes.append(hook_letter_input_node)
 
 # add the embedding node
-for receiver_name in residual_stream_items:
-    for receiver_slice_tuple in residual_stream_items[receiver_name]:
-        add_edge(
-            receiver_name,
-            receiver_slice_tuple,
-            "blocks.0.hook_resid_pre",
-            TorchIndex([None]),
-            EdgeType.ADDITION,
-        )
 
-# %%
-
-if False:
-    current_graph = deepcopy(full_graph)
-    nodes = OrderedDict()  # used as an OrderedSet replacement
-    for node_name in full_graph.keys():
-        for node_slice in full_graph[node_name].keys():
-            nodes[(node_name, node_slice)] = None
+embedding_node = TLACDCInterpNode(
+    name="blocks.0.hook_resid_pre",
+    index=TorchIndex([None]),
+    mode="addition",
+)
+for node in upstream_residual_nodes:
+    correspondence.add_edge(
+        parent_node=node,
+        child_node=embedding_node,
+    )
 
 # %%
 
@@ -244,7 +224,10 @@ if False:
 def sender_hook(z, hook, verbose=False, cache="first", device=None):
     """General, to cover online and corrupt caching"""
 
-    tens = z.clone()
+    if device == "cpu": # maaaybe saves memory??
+        tens = z.cpu()
+    else:
+        tens = z.clone()
     if device is not None:
         tens = tens.to(device)
 
@@ -259,12 +242,17 @@ def sender_hook(z, hook, verbose=False, cache="first", device=None):
         print(f"Saved {hook.name} with norm {z.norm().item()}")
 
     return z
-
 tl_model.reset_hooks()
-for name in all_senders_names: # TODO actually isn't this too many???
+for node in correspondence.nodes():
+    if node.mode != "addition":
+        continue
+    if len(tl_model.hook_dict[node.name].fwd_hooks) > 0:
+        continue
     tl_model.add_hook(
-        name=name, hook=partial(sender_hook, verbose=False, cache="second", device="cpu" if FIRST_CACHE_CPU else None)
+        name=node.name, 
+        hook=partial(sender_hook, verbose=False, cache="second", device="cpu" if FIRST_CACHE_CPU else None),
     )
+
 corrupt_stuff = tl_model(toks_int_values_other)
 
 if ZERO_ABLATION:
@@ -283,57 +271,67 @@ if SECOND_CACHE_CPU:
 
 # %%
 
-b_O = tl_model.blocks[0].attn.b_O
+b_O = tl_model.blocks[0].attn.b_O # lolol
 
 def receiver_hook(z, hook, verbose=False):
+    
     receiver_name = hook.name
-    for receiver_slice_tuple in full_graph[hook.name].keys():
-        for sender_name in full_graph[hook.name][receiver_slice_tuple].keys():
-            for sender_slice_tuple in full_graph[hook.name][receiver_slice_tuple][sender_name]:
-                edge = full_graph[hook.name][receiver_slice_tuple][sender_name][sender_slice_tuple]
-                if edge.present:
-                    continue
+    found_direct_computation = False
 
-                if verbose:
-                    # TODO delete this eventually, but useful scrappy debugging
-                    print(
-                        hook.name, receiver_slice_tuple, sender_name, sender_slice_tuple
-                    )
-                    print("-------")
-                    print(
-                        hook.global_cache.cache[sender_name].shape,
-                        sender_slice_tuple.as_index,
-                    )
-                
-                if edge.edge_type == EdgeType.ADDITION:
-                    z[receiver_slice_tuple.as_index] -= hook.global_cache.cache[
-                        sender_name
-                    ][sender_slice_tuple.as_index].to(z.device)
-                    z[receiver_slice_tuple.as_index] += hook.global_cache.second_cache[
-                        sender_name
-                    ][sender_slice_tuple.as_index].to(z.device)
+    for receiver_node in correspondence.graph[receiver_name]:
+        for sender_node in receiver_node.parents:
 
-                elif edge.edge_type == EdgeType.DIRECT_COMPUTATION:
-                    z[receiver_slice_tuple.as_index] = hook.global_cache.second_cache[receiver_name][receiver_slice_tuple.as_index].to(z.device)
+            # implement skipping edges post-hoc
+            if verbose:
+                # TODO delete this eventually, but useful scrappy debugging
+                print(
+                    hook.name, receiver_node.index, sender_node.name, sender_node.index.index
+                )
+                print("-------")
+                print(
+                    hook.global_cache.cache[sender_name].shape,
+                    sender_node.index.index.as_index,
+                )
+            
+            if sender_node.mode == "addition": # TODO turn into ENUM
+                z[receiver_node.index.as_index] -= hook.global_cache.cache[
+                    sender_name
+                ][sender_node.index.index.as_index].to(z.device)
+                z[receiver_node.index.as_index] += hook.global_cache.second_cache[
+                    sender_name
+                ][sender_node.index.index.as_index].to(z.device)
 
-                else: 
-                    assert edge.edge_type == EdgeType.ALWAYS_INCLUDED, f"Unknown edge type {edge.edge_type}"
+            elif sender_node.mode == "direct_computation":
+                assert not found_direct_computation, "Found multiple direct computation nodes"
+                found_direct_computation = True
+
+                z[receiver_node.index.as_index] = hook.global_cache.second_cache[receiver_name][receiver_node.index.as_index].to(z.device)
+
+            else: 
+                assert sender_node.mode == "off", f"Unknown edge type {sender_node.mode}"
 
     return z
 
 # add both sender and receiver hooks
-for receiver_name in full_graph.keys():
-    tl_model.add_hook(
-        name=receiver_name,
-        hook=receiver_hook,
-    )
-for sender_name in all_senders_names:
+
+tl_model.reset_hooks()
+sender_node_names = list(set([node.name for node in correspondence.nodes() if node.mode == "addition"]))
+for sender_name in sender_node_names:
     tl_model.add_hook(
         name=sender_name,
         hook=partial(sender_hook, cache="first"),
     )
 
+receiver_node_names = list(set([node.name for node in correspondence.nodes()]))
+for receiver_name in receiver_node_names: # TODO could remove the nodes that don't have any parents...
+    tl_model.add_hook(
+        name=receiver_name,
+        hook=receiver_hook,
+    )
+
 # %%
+
+# TODO: why are the sender hooks not storing anything???
 
 ans = tl_model(
     toks_int_values
@@ -351,7 +349,7 @@ def step(
     graph: FullGraphT,
     threshold,
     receiver_name,
-    receiver_slice_tuple,
+    receiver_node.index,
     verbose=True,
     using_wandb=False,
     remove_redundant=False,
@@ -377,11 +375,11 @@ def step(
     if verbose:
         print("New metric:", cur_metric)
 
-    for sender_name in graph[receiver_name][receiver_slice_tuple]:
+    for sender_name in graph[receiver_name][receiver_node.index]:
         print(f"\nNode name: {sender_name}\n")
 
-        for sender_slice_tuple in graph[receiver_name][receiver_slice_tuple][sender_name]:
-            graph[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple].present = False
+        for sender_node.index.index in graph[receiver_name][receiver_node.index][sender_name]:
+            graph[receiver_name][receiver_node.index][sender_name][sender_node.index.index].present = False
 
             if early_stop: # for debugging the effects of one and only one forward pass WITH a corrupted edge
                 return tl_model(toks_int_values)
@@ -392,7 +390,7 @@ def step(
                 print(
                     "Metric after removing connection to",
                     sender_name,
-                    sender_slice_tuple,
+                    sender_node.index.index,
                     "is",
                     evaluated_metric,
                     "(and current metric " + str(cur_metric) + ")",
@@ -410,8 +408,8 @@ def step(
             else:
                 if verbose:
                     print("...so keeping connection")
-                graph[receiver_name][receiver_slice_tuple][sender_name][
-                    sender_slice_tuple
+                graph[receiver_name][receiver_node.index][sender_name][
+                    sender_node.index.index
                 ].present = True
 
             if using_wandb:
@@ -420,13 +418,13 @@ def step(
     cur_metric = metric(tl_model(toks_int_values))
 
     if all(
-        not graph[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple].present
-        for sender_name in graph[receiver_name][receiver_slice_tuple].keys()
-        for sender_slice_tuple in graph[receiver_name][receiver_slice_tuple][sender_name]
+        not graph[receiver_name][receiver_node.index][sender_name][sender_node.index.index].present
+        for sender_name in graph[receiver_name][receiver_node.index].keys()
+        for sender_node.index.index in graph[receiver_name][receiver_node.index][sender_name]
     ):
         # removed all connections
         print(
-            f"Warning: we added {receiver_name} at {receiver_slice_tuple} earlier, but we just removed all its child connections. So we are{(' ' if remove_redundant else ' not ')}removing it and its redundant descendants now (remove_redundant={remove_redundant})"
+            f"Warning: we added {receiver_name} at {receiver_node.index} earlier, but we just removed all its child connections. So we are{(' ' if remove_redundant else ' not ')}removing it and its redundant descendants now (remove_redundant={remove_redundant})"
         )
 
 # %%
@@ -458,8 +456,8 @@ if USING_WANDB:
     )
 
 for receiver_name in full_graph.keys():
-    for receiver_slice_tuple in full_graph[receiver_name]:
-        print("Currently at ", receiver_name, "and the tuple is", receiver_slice_tuple)
+    for receiver_node.index in full_graph[receiver_name]:
+        print("Currently at ", receiver_name, "and the tuple is", receiver_node.index)
 
         # TODO c'mon... you must be able to implement a speedup where you check if this position doesn't matter at all...
 
@@ -467,7 +465,7 @@ for receiver_name in full_graph.keys():
             graph=full_graph,
             threshold=threshold,
             receiver_name=receiver_name,
-            receiver_slice_tuple=receiver_slice_tuple,
+            receiver_node.index=receiver_node.index,
             verbose=True,
             early_stop=False,
             using_wandb=USING_WANDB,
@@ -489,11 +487,11 @@ show(full_graph, f"ims/{threshold}.png")
 
 
 for receiver_name in full_graph.keys():
-    for receiver_slice_tuple in full_graph[receiver_name]:
-        for sender_name in full_graph[receiver_name][receiver_slice_tuple].keys():
-            for sender_slice_tuple in full_graph[receiver_name][receiver_slice_tuple][sender_name]:
-                if full_graph[receiver_name][receiver_slice_tuple][sender_name][sender_slice_tuple].present:
-                    print("Connection from", sender_name, sender_slice_tuple, "to", receiver_name, receiver_slice_tuple)
+    for receiver_node.index in full_graph[receiver_name]:
+        for sender_name in full_graph[receiver_name][receiver_node.index].keys():
+            for sender_node.index.index in full_graph[receiver_name][receiver_node.index][sender_name]:
+                if full_graph[receiver_name][receiver_node.index][sender_name][sender_node.index.index].present:
+                    print("Connection from", sender_name, sender_node.index.index, "to", receiver_name, receiver_node.index)
 
 # %%
 

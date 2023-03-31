@@ -31,7 +31,7 @@ from transformer_lens.past_key_value_caching import HookedTransformerKeyValueCac
 from transformer_lens.components import *
 import transformer_lens.loading_from_pretrained as loading
 from transformer_lens.torchtyping_helper import T
-from transformer_lens.utils import make_nd_dict, TorchIndex
+from transformer_lens.acdc.utils import make_nd_dict, TorchIndex
 from collections import OrderedDict
 
 SingleLoss = TT[()]  # Type alias for a single element tensor
