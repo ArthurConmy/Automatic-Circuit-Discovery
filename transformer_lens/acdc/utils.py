@@ -260,6 +260,9 @@ class TLACDCExperiment:
         if initial:
             assert abs(self.cur_metric) < 1e-5, f"Metric {self.cur_metric=} is not zero"
 
+        if self.using_wandb:
+            wandb.log({"cur_metric": self.cur_metric})
+
     def reverse_topologically_sort_corr(self):
         """Topologically sort the template corr"""
         for hook in self.model.hook_dict.values():

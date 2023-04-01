@@ -34,6 +34,7 @@ import time
 import networkx as nx
 import os
 import torch
+import huggingface_hub
 import graphviz
 from enum import Enum
 import torch.nn as nn
@@ -52,7 +53,7 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
 pio.renderers.default = "colab"
-device = "cuda" if torch.cuda.is_available() else "cpu"
+device = "cuda" if torch.cuda.is_available() else "cpu" # TODO check CPU support
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 from transformer_lens.HookedTransformer import (
     HookedTransformer,
@@ -70,10 +71,6 @@ from transformer_lens.acdc.utils import (
 from collections import defaultdict, deque, OrderedDict
 from transformer_lens.acdc.induction.utils import (
     kl_divergence,
-    toks_int_values,
-    toks_int_values_other,
-    good_induction_candidates,
-    validation_data,
 )
 from transformer_lens.acdc.graphics import (
     build_colorscheme,
@@ -84,7 +81,7 @@ import argparse
 #%%
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--config", type=str, required=True, help="Path to YAML config file")
+parser.add_argument("--config", type=str, required=False, help="Path to YAML config file", default="../../configs_acdc/base_config.yaml")
 parser.add_argument('--first-cache-cpu', type=bool, required=False, default=True, help='Value for FIRST_CACHE_CPU')
 parser.add_argument('--second-cache-cpu', type=bool, required=False, default=True, help='Value for SECOND_CACHE_CPU') # TODO move these to the config file. ... or do YAML overrides
 parser.add_argument('--threshold', type=float, required=False, default=-1.0, help='Value for THRESHOLD') # defaults to fake value
@@ -121,15 +118,52 @@ tl_model = HookedTransformer.from_pretrained(
 tl_model.set_use_attn_result(True)
 tl_model.set_use_split_qkv_input(True)
 
+# %%
+
+SEQ_LEN = 300
+NUM_EXAMPLES = 40
+
+# get the dataset from HF
+validation_fname = huggingface_hub.hf_hub_download(
+    repo_id="ArthurConmy/redwood_attn_2l", filename="validation_data.pt"
+)
+validation_data = torch.load(validation_fname)
+
+good_induction_candidates_fname = huggingface_hub.hf_hub_download(
+    repo_id="ArthurConmy/redwood_attn_2l", filename="good_induction_candidates.pt"
+)
+good_induction_candidates = torch.load(good_induction_candidates_fname)
+
+mask_repeat_candidates_fname = huggingface_hub.hf_hub_download(
+    repo_id="ArthurConmy/redwood_attn_2l", filename="mask_repeat_candidates.pkl"
+)
+mask_repeat_candidates = torch.load(mask_repeat_candidates_fname)
+mask_repeat_candidates.requires_grad = False
+mask_repeat_candidates = mask_repeat_candidates[:NUM_EXAMPLES, :SEQ_LEN]
+
+
+def shuffle_tensor(tens):
+    """Shuffle tensor along first dimension"""
+    torch.random.manual_seed(42)
+    return tens[torch.randperm(tens.shape[0])]
+
+
+toks_int_values = validation_data[:NUM_EXAMPLES, :SEQ_LEN].to(device).long()
+toks_int_values_other = (
+    shuffle_tensor(validation_data[:NUM_EXAMPLES, :SEQ_LEN]).to(device).long()
+)
+good_induction_candidates = mask_repeat_candidates[:NUM_EXAMPLES, :SEQ_LEN].to(device)
+labels = validation_data[:NUM_EXAMPLES, 1 : SEQ_LEN + 1].to(device).long()
+
 #%%
 
 base_model_logits = tl_model(toks_int_values)
 base_model_probs = F.softmax(base_model_logits, dim=-1)
 
-# %%
+#%%
 
-raw_metric = partial(kl_divergence, base_model_probs=base_model_probs, using_wandb=False)
-metric = partial(kl_divergence, base_model_probs=base_model_probs, using_wandb=USING_WANDB)
+raw_metric = partial(kl_divergence, base_model_probs=base_model_probs, mask_repeat_candidates=mask_repeat_candidates)
+metric = partial(kl_divergence, base_model_probs=base_model_probs, mask_repeat_candidates=mask_repeat_candidates)
 
 #%%
 
@@ -250,7 +284,7 @@ exp = TLACDCExperiment(
 
 exp.step()
 
-#%%
+    #%%
 
 show(correspondence, "test.png")
 
@@ -292,7 +326,7 @@ for receiver_name in full_graph.keys():
             graph=full_graph,
             threshold=threshold,
             receiver_name=receiver_name,
-            receiver_node.index=receiver_node.index,
+            receiver_node_index=receiver_node.index,
             verbose=True,
             early_stop=False,
             using_wandb=USING_WANDB,
