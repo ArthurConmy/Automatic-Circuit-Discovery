@@ -60,6 +60,7 @@ from transformer_lens.acdc.utils import (
     make_nd_dict,
     TLACDCInterpNode,
     TLACDCCorrespondence,
+    TLACDCExperiment,
     TorchIndex,
     Edge,
     EdgeType,
@@ -150,7 +151,9 @@ if False: # a test of the zero ablation stuff
     zer_metric = raw_metric(zer_probs)
     print(zer_metric, "is the result...")
     tl_model.reset_hooks()
-# %%
+
+# %% [markdown]
+# build the graph
 
 correspondence = TLACDCCorrespondence()
 
@@ -218,64 +221,21 @@ for node in downstream_residual_nodes:
         child_node=node,
     )
 
+#%%
+
+exp = TLACDCExperiment(
+    model=tl_model,
+    ds=toks_int_values,
+    ref_ds=toks_int_values_other,
+    template_corr=correspondence,
+    threshold=THRESHOLD,
+    metric=metric,
+    verbose=True,
+)
+
 # %%
 
-# add the saving hooks
-
-def sender_hook(z, hook, verbose=False, cache="first", device=None):
-    """General, to cover online and corrupt caching"""
-
-    if device == "cpu": # maaaybe saves memory??
-        tens = z.cpu()
-    else:
-        tens = z.clone()
-        if device is not None:
-            tens = tens.to(device)
-
-    if cache == "second":
-        hook.global_cache.second_cache[hook.name] = tens
-    elif cache == "first":
-        hook.global_cache.cache[hook.name] = tens
-    else:
-        raise ValueError(f"Unknown cache type {cache}")
-
-    if verbose:
-        print(f"Saved {hook.name} with norm {z.norm().item()}")
-
-    return z
-tl_model.reset_hooks()
-for node in correspondence.nodes():
-    if node.mode != "addition":
-        continue
-    if len(tl_model.hook_dict[node.name].fwd_hooks) > 0:
-        continue
-    tl_model.add_hook(
-        name=node.name, 
-        hook=partial(sender_hook, verbose=False, cache="second", device="cpu" if FIRST_CACHE_CPU else None),
-    )
-
-# ugh sort of ugly, more nodes need to be added to above thing
-for node in correspondence.nodes():
-    if node.mode == "direct_computation":
-        for child in node.children:
-            if len(tl_model.hook_dict[child.name].fwd_hooks) > 0:
-                continue
-            print(child.name)
-            tl_model.add_hook(
-                name=child.name,
-                hook=partial(sender_hook, verbose=False, cache="second", device="cpu" if FIRST_CACHE_CPU else None),
-            )
-
-corrupt_stuff = tl_model(toks_int_values_other)
-
-if ZERO_ABLATION:
-    for name in tl_model.global_cache.second_cache:
-        tl_model.global_cache.second_cache[name] = torch.zeros_like(
-            tl_model.global_cache.second_cache[name]
-        )
-        torch.cuda.empty_cache()
-
-tl_model.reset_hooks()
+exp.setup_second_cache()
 
 #%%
 
@@ -284,94 +244,27 @@ if SECOND_CACHE_CPU:
 
 # %%
 
-b_O = tl_model.blocks[0].attn.b_O # lolol
+exp.setup_model_hooks()
 
-def receiver_hook(z, hook, verbose=False):
-    
-
-    for receiver_node in correspondence.graph[hook.name]:
-        direct_computation_nodes = []
-        for sender_node in receiver_node.parents:
-
-            # implement skipping edges post-hoc
-
-            if verbose:
-                print(
-                    hook.name, receiver_node.index, sender_node.name, sender_node.index.as_index
-                )
-                print("-------")
-                if sender_node.mode == "addition":
-                    print(
-                        hook.global_cache.cache[sender_node.name].shape,
-                        sender_node.index.as_index,
-                    )
-            
-            if sender_node.mode == "addition": # TODO turn into ENUM
-                z[receiver_node.index.as_index] -= hook.global_cache.cache[
-                    sender_node.name
-                ][sender_node.index.as_index].to(z.device)
-                z[receiver_node.index.as_index] += hook.global_cache.second_cache[
-                    sender_node.name
-                ][sender_node.index.as_index].to(z.device)
-
-            elif sender_node.mode == "direct_computation":
-                direct_computation_nodes.append(sender_node)
-                assert len(direct_computation_nodes) == 1, f"Found multiple direct computation nodes {direct_computation_nodes}"
-
-                z[receiver_node.index.as_index] = hook.global_cache.second_cache[receiver_node.name][receiver_node.index.as_index].to(z.device)
-
-            else: 
-                assert sender_node.mode == "off", f"Unknown edge type {sender_node.mode}"
-
-    return z
-
-# add both sender and receiver hooks
-
-tl_model.reset_hooks()
-sender_node_names = list(set([node.name for node in correspondence.nodes() if node.mode == "addition"]))
-
-# for node in correspondence.nodes():
-#     if node.mode == "direct_computation":
-#         for child in node.children:
-#             if child.name not in sender_node_names:
-#                 print(child.name)
-#                 sender_node_names.append(child.name)
-
-
-for sender_node_name in sender_node_names:
-    tl_model.add_hook(
-        name=sender_node_name,
-        hook=partial(sender_hook, cache="first", verbose=True),
-    )
-
-receiver_node_names = list(set([node.name for node in correspondence.nodes()]))
-for receiver_name in receiver_node_names: # TODO could remove the nodes that don't have any parents...
-    tl_model.add_hook(
-        name=receiver_name,
-        hook=partial(receiver_hook, verbose=True),
-    )
-
-# %%
+#%%
 
 # TODO: why are the sender hooks not storing anything???
 
-ans = tl_model(
+ans = exp.model(
     toks_int_values
 )  # torch.arange(5) # note that biases mean not EVERYTHING is zero ablated
 new_metric = raw_metric(ans)
 assert abs(new_metric) < 1e-5, f"Metric {new_metric} is not zero"
 
-# %%
+#%%
 
-show(full_graph, "test.png")
+show(correspondence, "test.png")
 
 # %%
 
 def step(
-    graph: FullGraphT,
+    graph: TLACDCCorrespondence,
     threshold,
-    receiver_name,
-    receiver_node.index,
     verbose=True,
     using_wandb=False,
     remove_redundant=False,
@@ -538,3 +431,25 @@ if False:
 
     b2 = run_in_normal_way(tl_model)
     assert torch.allclose(b, b2)  # TODO fix this, I dunno if we have settings for the
+
+#%% [markdown]
+
+class MyClass:
+    def __init__(self, model):
+        self.model = model
+        self.a = 4
+
+    def class_hook(self, z, hook):
+        print(f"{hook.name=}")
+        print(self.a)
+        return z
+    
+    def add_hook(self):
+        self.model.add_hook("blocks.0.attn.hook_result", self.class_hook)
+
+#%%
+
+m = MyClass(tl_model)
+
+# %%
+
