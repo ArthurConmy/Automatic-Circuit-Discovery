@@ -154,13 +154,14 @@ if False: # a test of the zero ablation stuff
 
 correspondence = TLACDCCorrespondence()
 
-upstream_residual_nodes: List[TLACDCInterpNode] = []
+downstream_residual_nodes: List[TLACDCInterpNode] = []
 logits_node = TLACDCInterpNode(
     name=f"blocks.{tl_model.cfg.n_layers-1}.hook_resid_post",
     index=TorchIndex([None]),
     mode="addition",
 )
-upstream_residual_nodes.append(logits_node)
+downstream_residual_nodes.append(logits_node)
+new_downstream_residual_nodes: List[TLACDCInterpNode] = []
 
 for layer_idx in range(tl_model.cfg.n_layers - 1, -1, -1):
     # connect MLPs
@@ -177,10 +178,10 @@ for layer_idx in range(tl_model.cfg.n_layers - 1, -1, -1):
             index=cur_head_slice,
             mode="addition",
         )
-        for residual_stream_node in upstream_residual_nodes:
+        for residual_stream_node in downstream_residual_nodes:
             correspondence.add_edge(
-                parent_node=residual_stream_node,
-                child_node=cur_head,
+                parent_node=cur_head,
+                child_node=residual_stream_node,
             )
 
         # TODO maybe this needs be moved out of this block??? IDK
@@ -201,8 +202,8 @@ for layer_idx in range(tl_model.cfg.n_layers - 1, -1, -1):
                 child_node=hook_letter_node,
             )
 
-            # Surely this doesn't need be added anywhere else?
-            upstream_residual_nodes.append(hook_letter_input_node)
+            new_downstream_residual_nodes.append(hook_letter_input_node)
+    downstream_residual_nodes.extend(new_downstream_residual_nodes)
 
 # add the embedding node
 
@@ -211,10 +212,10 @@ embedding_node = TLACDCInterpNode(
     index=TorchIndex([None]),
     mode="addition",
 )
-for node in upstream_residual_nodes:
+for node in downstream_residual_nodes:
     correspondence.add_edge(
-        parent_node=node,
-        child_node=embedding_node,
+        parent_node=embedding_node,
+        child_node=node,
     )
 
 # %%
@@ -228,8 +229,8 @@ def sender_hook(z, hook, verbose=False, cache="first", device=None):
         tens = z.cpu()
     else:
         tens = z.clone()
-    if device is not None:
-        tens = tens.to(device)
+        if device is not None:
+            tens = tens.to(device)
 
     if cache == "second":
         hook.global_cache.second_cache[hook.name] = tens
@@ -253,6 +254,18 @@ for node in correspondence.nodes():
         hook=partial(sender_hook, verbose=False, cache="second", device="cpu" if FIRST_CACHE_CPU else None),
     )
 
+# ugh sort of ugly, more nodes need to be added to above thing
+for node in correspondence.nodes():
+    if node.mode == "direct_computation":
+        for child in node.children:
+            if len(tl_model.hook_dict[child.name].fwd_hooks) > 0:
+                continue
+            print(child.name)
+            tl_model.add_hook(
+                name=child.name,
+                hook=partial(sender_hook, verbose=False, cache="second", device="cpu" if FIRST_CACHE_CPU else None),
+            )
+
 corrupt_stuff = tl_model(toks_int_values_other)
 
 if ZERO_ABLATION:
@@ -275,37 +288,37 @@ b_O = tl_model.blocks[0].attn.b_O # lolol
 
 def receiver_hook(z, hook, verbose=False):
     
-    receiver_name = hook.name
-    found_direct_computation = False
 
-    for receiver_node in correspondence.graph[receiver_name]:
+    for receiver_node in correspondence.graph[hook.name]:
+        direct_computation_nodes = []
         for sender_node in receiver_node.parents:
 
             # implement skipping edges post-hoc
+
             if verbose:
-                # TODO delete this eventually, but useful scrappy debugging
                 print(
-                    hook.name, receiver_node.index, sender_node.name, sender_node.index.index
+                    hook.name, receiver_node.index, sender_node.name, sender_node.index.as_index
                 )
                 print("-------")
-                print(
-                    hook.global_cache.cache[sender_name].shape,
-                    sender_node.index.index.as_index,
-                )
+                if sender_node.mode == "addition":
+                    print(
+                        hook.global_cache.cache[sender_node.name].shape,
+                        sender_node.index.as_index,
+                    )
             
             if sender_node.mode == "addition": # TODO turn into ENUM
                 z[receiver_node.index.as_index] -= hook.global_cache.cache[
-                    sender_name
-                ][sender_node.index.index.as_index].to(z.device)
+                    sender_node.name
+                ][sender_node.index.as_index].to(z.device)
                 z[receiver_node.index.as_index] += hook.global_cache.second_cache[
-                    sender_name
-                ][sender_node.index.index.as_index].to(z.device)
+                    sender_node.name
+                ][sender_node.index.as_index].to(z.device)
 
             elif sender_node.mode == "direct_computation":
-                assert not found_direct_computation, "Found multiple direct computation nodes"
-                found_direct_computation = True
+                direct_computation_nodes.append(sender_node)
+                assert len(direct_computation_nodes) == 1, f"Found multiple direct computation nodes {direct_computation_nodes}"
 
-                z[receiver_node.index.as_index] = hook.global_cache.second_cache[receiver_name][receiver_node.index.as_index].to(z.device)
+                z[receiver_node.index.as_index] = hook.global_cache.second_cache[receiver_node.name][receiver_node.index.as_index].to(z.device)
 
             else: 
                 assert sender_node.mode == "off", f"Unknown edge type {sender_node.mode}"
@@ -316,17 +329,26 @@ def receiver_hook(z, hook, verbose=False):
 
 tl_model.reset_hooks()
 sender_node_names = list(set([node.name for node in correspondence.nodes() if node.mode == "addition"]))
-for sender_name in sender_node_names:
+
+# for node in correspondence.nodes():
+#     if node.mode == "direct_computation":
+#         for child in node.children:
+#             if child.name not in sender_node_names:
+#                 print(child.name)
+#                 sender_node_names.append(child.name)
+
+
+for sender_node_name in sender_node_names:
     tl_model.add_hook(
-        name=sender_name,
-        hook=partial(sender_hook, cache="first"),
+        name=sender_node_name,
+        hook=partial(sender_hook, cache="first", verbose=True),
     )
 
 receiver_node_names = list(set([node.name for node in correspondence.nodes()]))
 for receiver_name in receiver_node_names: # TODO could remove the nodes that don't have any parents...
     tl_model.add_hook(
         name=receiver_name,
-        hook=receiver_hook,
+        hook=partial(receiver_hook, verbose=True),
     )
 
 # %%
