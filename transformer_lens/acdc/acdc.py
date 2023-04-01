@@ -59,6 +59,7 @@ from transformer_lens.HookedTransformer import (
 )
 from transformer_lens.acdc.utils import (
     make_nd_dict,
+    ct,
     TLACDCInterpNode,
     TLACDCCorrespondence,
     TLACDCExperiment,
@@ -86,7 +87,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--config", type=str, required=True, help="Path to YAML config file")
 parser.add_argument('--first-cache-cpu', type=bool, required=False, default=True, help='Value for FIRST_CACHE_CPU')
 parser.add_argument('--second-cache-cpu', type=bool, required=False, default=True, help='Value for SECOND_CACHE_CPU') # TODO move these to the config file. ... or do YAML overrides
-parser.add_argument('--threshold', type=float, required=False, default=1.0, help='Value for THRESHOLD')
+parser.add_argument('--threshold', type=float, required=False, default=-1.0, help='Value for THRESHOLD') # defaults to fake value
 parser.add_argument('--zero-ablation', action='store_true', help='A flag without a value')
 
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
@@ -96,7 +97,7 @@ else:
 
 FIRST_CACHE_CPU = args.first_cache_cpu
 SECOND_CACHE_CPU = args.second_cache_cpu
-THRESHOLD = args.threshold
+THRESHOLD = args.threshold # only used if >= 0.0
 
 with open(args.config, 'r') as yaml_file:
     yaml_config = yaml.safe_load(yaml_file)
@@ -223,41 +224,27 @@ for node in downstream_residual_nodes:
 with open(__file__, "r") as f:
     notes = f.read()
 
-tl_model.global_cache.clear
+config_overrides = {}
+if THRESHOLD >= 0.0: # we actually added this
+    config_overrides["THRESHOLD"] = THRESHOLD
+
+config_overrides["WANDB_RUN_NAME"] = ct()
+
+for key, value in config_overrides.items():
+    yaml_config[key] = value
+
+tl_model.global_cache.clear()
 tl_model.reset_hooks()
 exp = TLACDCExperiment(
     model=tl_model,
     ds=toks_int_values,
     ref_ds=toks_int_values_other,
     corr=correspondence,
-    threshold=THRESHOLD,
     metric=metric,
     verbose=True,
     wandb_notes=notes,
     config=yaml_config,
 )
-# %%
-
-exp.setup_second_cache()
-
-#%%
-
-if SECOND_CACHE_CPU:
-    tl_model.global_cache.to("cpu", which_caches="second")
-
-# %%
-
-exp.setup_model_hooks()
-
-#%%
-
-# TODO: why are the sender hooks not storing anything???
-
-ans = exp.model(
-    toks_int_values
-)  # torch.arange(5) # note that biases mean not EVERYTHING is zero ablated
-new_metric = raw_metric(ans)
-assert abs(new_metric) < 1e-5, f"Metric {new_metric} is not zero"
 
 #%%
 

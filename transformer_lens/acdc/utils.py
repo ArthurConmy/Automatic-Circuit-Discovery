@@ -185,10 +185,10 @@ class TLACDCExperiment:
         ds: torch.Tensor,
         ref_ds: Optional[torch.Tensor],
         corr: TLACDCCorrespondence,
-        threshold: float,
         metric: Callable[[torch.Tensor, torch.Tensor], float], # dataset and logits to metric
         second_metric: Optional[Callable[[torch.Tensor, torch.Tensor], float]] = None,
         verbose: bool = False,
+        hook_verbose: bool = False,
         parallel_hypotheses: int = 1, # lol
         using_wandb: bool = False,
         remove_redundant: bool = False, # TODO implement
@@ -204,6 +204,7 @@ class TLACDCExperiment:
         self.model = model
         self.zero_ablation = zero_ablation
         self.verbose = verbose
+        self.hook_verbose = hook_verbose
 
         self.corr = corr
         self.reverse_topologically_sort_corr()
@@ -214,9 +215,11 @@ class TLACDCExperiment:
         self.ref_ds = ref_ds
         self.first_cache_cpu = first_cache_cpu
         self.second_cache_cpu = second_cache_cpu
-
         self.setup_second_cache()
-        
+        if self.second_cache_cpu:
+            self.model.global_cache.to("cpu", which_caches="second")
+        self.setup_model_hooks()
+
         self.using_wandb = using_wandb # TODO sync with YAML
         if config is not None and config["USING_WANDB"]:
             wandb.init(
@@ -226,18 +229,20 @@ class TLACDCExperiment:
                 notes=wandb_notes,
             )
 
-        self.threshold = threshold
-        assert self.ref_ds is not None or self.zero_ablation, "If you're doing random ablation, you need a ref ds"
-
         self.metric = metric
         self.second_metric = second_metric
         self.second_metric = second_metric
+        self.update_cur_metric()
+
+        self.threshold = config["THRESHOLD"]
+        assert self.ref_ds is not None or self.zero_ablation, "If you're doing random ablation, you need a ref ds"
 
         self.parallel_hypotheses = parallel_hypotheses
         if self.parallel_hypotheses != 1:
             raise NotImplementedError("Parallel hypotheses not implemented yet") # TODO?
 
         if self.using_wandb:
+            # TODO?
             self.metrics_to_plot = {}
             self.metrics_to_plot["new_metrics"] = []
             self.metrics_to_plot["list_of_parents_evaluated"] = []
@@ -248,6 +253,12 @@ class TLACDCExperiment:
             self.metrics_to_plot["results"] = []
             self.metrics_to_plot["acdc_step"] = 0
             self.metrics_to_plot["num_edges"] = []
+
+    def update_cur_metric(self, initial=False):
+        self.cur_metric = self.metric(self.model(self.ds))
+
+        if initial:
+            assert abs(self.cur_metric) < 1e-5, f"Metric {self.cur_metric=} is not zero"
 
     def reverse_topologically_sort_corr(self):
         """Topologically sort the template corr"""
@@ -317,8 +328,6 @@ class TLACDCExperiment:
                                 sender_node_index,
                             )
                     
-
-
                     if edge.edge_type == EdgeType.ADDITION:
                         z[receiver_node_index.as_index] -= hook.global_cache.cache[
                             sender_node_name
@@ -363,7 +372,7 @@ class TLACDCExperiment:
                 continue
             self.model.add_hook(
                 name=node.name, 
-                hook=partial(self.sender_hook, verbose=self.verbose, cache=cache, device=device),
+                hook=partial(self.sender_hook, verbose=self.hook_verbose, cache=cache, device=device),
             )
 
     def setup_second_cache(self):
@@ -389,7 +398,7 @@ class TLACDCExperiment:
         for receiver_name in receiver_node_names: # TODO could remove the nodes that don't have any parents...
             self.model.add_hook(
                 name=receiver_name,
-                hook=partial(self.receiver_hook, verbose=self.verbose),
+                hook=partial(self.receiver_hook, verbose=self.hook_verbose),
             )
 
     def step(self, early_stop=False):
@@ -494,3 +503,6 @@ def make_nd_dict(end_type, n = 3) -> Any:
 
     if n == 4:
         return OrderedDefaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(end_type))))
+
+def ct():
+    return time.ctime().replace(" ", "_").replace(":", "_")

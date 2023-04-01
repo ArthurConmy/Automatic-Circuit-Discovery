@@ -1,4 +1,5 @@
-USING_WANDB: False
+USING_WANDB: True
+THRESHOLD: 0.3
 WANDB_ENTITY_NAME: remix_school-of-rock
 WANDB_PROJECT_NAME: tl_induction_proper
 WANDB_RUN_NAME: dummy_yaml_name
