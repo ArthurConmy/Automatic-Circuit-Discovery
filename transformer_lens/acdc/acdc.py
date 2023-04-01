@@ -218,13 +218,12 @@ for node in downstream_residual_nodes:
         child_node=node,
         edge=Edge(edge_type=EdgeType.ADDITION),
     )
-
 #%%
 
 with open(__file__, "r") as f:
     notes = f.read()
 
-tl_model.global_cache.clear()
+tl_model.global_cache.clear
 tl_model.reset_hooks()
 exp = TLACDCExperiment(
     model=tl_model,

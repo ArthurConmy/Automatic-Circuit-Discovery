@@ -41,6 +41,10 @@ class EdgeType(Enum):
     ADDITION = 0
     DIRECT_COMPUTATION = 1
 
+    def __eq__(self, other):
+        # TODO WTF? Why do I need this?? To busy to look into now, check the commit where we add this later
+        return self.value == other.value
+
 class Edge:
     def __init__(
         self,
@@ -140,8 +144,7 @@ class TLACDCCorrespondence:
             for child_index, rest2 in rest1.items():
                 for parent_name, rest3 in rest2.items():
                     for parent_index, edge in rest3.items():
-                        if edge is None:
-                            print(child_name, child_index, parent_name, parent_index, "sldkfdj")
+                        assert edge is not None, (child_name, child_index, parent_name, parent_index, "sldkfdj")
 
                         big_dict[(child_name, child_index, parent_name, parent_index)] = edge
         
@@ -351,8 +354,8 @@ class TLACDCExperiment:
             elif edge.edge_type == EdgeType.ADDITION:
                 node = self.corr.graph[big_tuple[2]][big_tuple[3]]
             else:
-                raise ValueError(str(big_tuple) + str(edge) + "failed")
-
+                print(edge.edge_type.value, EdgeType.ADDITION.value, edge.edge_type.value == EdgeType.ADDITION.value, type(edge.edge_type.value), type(EdgeType.ADDITION.value))
+                raise ValueError(f"{str(big_tuple)} {str(edge)} failed")
 
             print(big_tuple, "worked!")
 
