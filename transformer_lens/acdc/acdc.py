@@ -224,6 +224,8 @@ for node in downstream_residual_nodes:
 with open(__file__, "r") as f:
     notes = f.read()
 
+tl_model.global_cache.clear()
+tl_model.reset_hooks()
 exp = TLACDCExperiment(
     model=tl_model,
     ds=toks_int_values,
@@ -235,7 +237,6 @@ exp = TLACDCExperiment(
     wandb_notes=notes,
     config=yaml_config,
 )
-
 # %%
 
 exp.setup_second_cache()

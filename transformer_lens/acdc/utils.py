@@ -50,6 +50,8 @@ class Edge:
         self.edge_type = edge_type
         self.present = present
 
+    def __repr__(self) -> str:
+        return f"Edge({self.edge_type}, {self.present})"
 
 # TODO attrs.frozen???
 class TorchIndex:
@@ -77,6 +79,9 @@ class TorchIndex:
 
     def __hash__(self):
         return hash(self.hashable_tuple)
+
+    def __eq__(self, other):
+        return self.hashable_tuple == other.hashable_tuple
 
     def __repr__(self) -> str:
         return f"TorchIndex({self.hashable_tuple})"
@@ -117,7 +122,7 @@ class TLACDCCorrespondence:
         self.graph: OrderedDict[str, OrderedDict[TorchIndex, TLACDCInterpNode]] = OrderedDefaultdict(OrderedDict) # TODO rename "nodes?"
  
         # TODO implement this
-        self.edges: OrderedDict[str, OrderedDict[TorchIndex, OrderedDict[str, OrderedDict[TorchIndex, Edge]]]] = OrderedDefaultdict(OrderedDict) # TODO need n=4 thing?
+        self.edges: OrderedDict[str, OrderedDict[TorchIndex, OrderedDict[str, OrderedDict[TorchIndex, Optional[Edge]]]]] = make_nd_dict(end_type=None, n=4) # TODO need n=4 thing?
 
         # this maps (child_name, child_index) to parent_node
         # TODO maybe a further level of nesting: str, TorchIndex for the parent too ???
@@ -128,7 +133,19 @@ class TLACDCCorrespondence:
     
     def all_edges(self) -> Dict[Tuple[str, TorchIndex, str, TorchIndex], Edge]:
         """Concatenate all edges in the graph"""
-        return {(child_name, child_index, parent_name, parent_index): edge for child_name, by_child_index in self.edges.items() for child_index, by_parent_name in by_child_index.items() for parent_name, by_parent_index in by_parent_name.items() for parent_index, edge in by_parent_index.items()}
+        
+        big_dict = {}
+
+        for child_name, rest1 in self.edges.items():
+            for child_index, rest2 in rest1.items():
+                for parent_name, rest3 in rest2.items():
+                    for parent_index, edge in rest3.items():
+                        if edge is None:
+                            print(child_name, child_index, parent_name, parent_index, "sldkfdj")
+
+                        big_dict[(child_name, child_index, parent_name, parent_index)] = edge
+        
+        return big_dict
 
     def add_node(self, node: TLACDCInterpNode):
         assert node not in self.nodes(), f"Node {node} already in graph"
@@ -297,8 +314,10 @@ class TLACDCExperiment:
                                 sender_node_index,
                             )
                     
+
+
                     if edge.edge_type == EdgeType.ADDITION:
-                        z[receiver_node_index] -= hook.global_cache.cache[
+                        z[receiver_node_index.as_index] -= hook.global_cache.cache[
                             sender_node_name
                         ][sender_node_index.as_index].to(z.device)
                         z[receiver_node_index.as_index] += hook.global_cache.second_cache[
@@ -312,11 +331,12 @@ class TLACDCExperiment:
                         z[receiver_node_index.as_index] = hook.global_cache.second_cache[receiver_node_name][receiver_node_index.as_index].to(z.device)
 
                     else: 
+                        print(edge)
                         raise ValueError(f"Unknown edge type {edge.edge_type}")
 
         return z
 
-    def add_sender_hooks(self, reset=True, cache="first"):
+    def add_sender_hooks(self, reset=True, cache="first"):    
         if self.verbose:
             print("Adding sender hooks...")
         if reset:
@@ -330,6 +350,12 @@ class TLACDCExperiment:
                 node = self.corr.graph[big_tuple[0]][big_tuple[1]]
             elif edge.edge_type == EdgeType.ADDITION:
                 node = self.corr.graph[big_tuple[2]][big_tuple[3]]
+            else:
+                raise ValueError(str(big_tuple) + str(edge) + "failed")
+
+
+            print(big_tuple, "worked!")
+
             if len(self.model.hook_dict[node.name].fwd_hooks) > 0:
                 continue
             self.model.add_hook(
@@ -377,66 +403,70 @@ class TLACDCExperiment:
         warnings.warn("Implement incoming effect sizes on the nodes")
         start_step_time = time.time()
 
-        initial_metric = self.metric(self.model(self.ref_ds)) # toks_int_values))
+        initial_metric = self.metric(self.model(self.ds)) # toks_int_values))
         assert isinstance(initial_metric, float), f"Initial metric is a {type(initial_metric)} not a float"
 
         cur_metric = initial_metric
         if self.verbose:
             print("New metric:", cur_metric)
 
-        for sender_node in self.corr.graph[self.current_node.name][self.current_node.index]:
-            if self.verbose:
-                print(f"\nNode name: {sender_node.name}\n")
+        for sender_name in self.corr.edges[self.current_node.name][self.current_node.index]:
+            for sender_index in self.corr.edges[self.current_node.name][self.current_node.index][sender_name]:
+                edge = self.corr.edges[self.current_node.name][self.current_node.index][sender_name][sender_index]
+                cur_parent = self.corr.graph[sender_name][sender_index]
 
-            self.corr.graph[self.current_node.name][self.current_node.index][sender_name][sender_node.index.index].present = False
+                if self.verbose:
+                    print(f"\nNode: {cur_parent=} ({self.current_node=})\n")
 
-            if early_stop: # for debugging the effects of one and only one forward pass WITH a corrupted edge
-                return self.model(toks_int_values)
+                edge.present = False
 
-            evaluated_metric = metric(self.model(toks_int_values))
+                if early_stop: # for debugging the effects of one and only one forward pass WITH a corrupted edge
+                    return self.model(self.ds)
 
-            if verbose:
-                print(
-                    "Metric after removing connection to",
-                    sender_name,
-                    sender_node.index.index,
-                    "is",
-                    evaluated_metric,
-                    "(and current metric " + str(cur_metric) + ")",
-                )
+                evaluated_metric = self.metric(self.model(self.ds))
 
-            result = evaluated_metric - cur_metric
+                if self.verbose:
+                    print(
+                        "Metric after removing connection to",
+                        sender_name,
+                        sender_index,
+                        "is",
+                        evaluated_metric,
+                        "(and current metric " + str(cur_metric) + ")",
+                    )
 
-            if verbose:
-                print("Result is", result, end="")
+                result = evaluated_metric - cur_metric
 
-            if result < threshold:
-                print("...so removing connection")
-                cur_metric = evaluated_metric
+                if self.verbose:
+                    print("Result is", result, end="")
 
-            else:
-                if verbose:
-                    print("...so keeping connection")
-                self.corr.graph[receiver_name][receiver_node.index][sender_name][
-                    sender_node.index.index
-                ].present = True
+                if result < self.threshold:
+                    print("...so removing connection")
+                    cur_metric = evaluated_metric
 
-            if using_wandb:
-                wandb.log({"num_edges": count_no_edges(self.corr.graph)})
+                else:
+                    if self.verbose:
+                        print("...so keeping connection")
+                    edge.present = True
 
-        cur_metric = metric(self.model(toks_int_values))
+                if self.using_wandb:
+                    wandb.log({"num_edges": self.count_no_edges()})
 
-        if all(
-            not self.corr.graph[receiver_name][receiver_node.index][sender_name][sender_node.index.index].present
-            for sender_name in self.corr.graph[receiver_name][receiver_node.index].keys()
-            for sender_node.index.index in self.corr.graph[receiver_name][receiver_node.index][sender_name]
-        ):
-            # removed all connections
-            print(
-                f"Warning: we added {receiver_name} at {receiver_node.index} earlier, but we just removed all its child connections. So we are{(' ' if remove_redundant else ' not ')}removing it and its redundant descendants now (remove_redundant={self.remove_redundant})"
-            )
+            cur_metric = self.metric(self.model(self.ds))
+
+        # TODO reimplement all_connections stuff
+        # if all(
+        #     not self.corr.graph[receiver_name][receiver_node.index][sender_name][sender_node.index.index].present
+        #     for sender_name in self.corr.graph[receiver_name][receiver_node.index].keys()
+        #     for sender_node.index.index in self.corr.graph[receiver_name][receiver_node.index][sender_name]
+        # ):
+        #     # removed all connections
+        #     print(
+        #         f"Warning: we added {receiver_name} at {receiver_node.index} earlier, but we just removed all its child connections. So we are{(' ' if remove_redundant else ' not ')}removing it and its redundant descendants now (remove_redundant={self.remove_redundant})"
+        #     )
 
     def count_no_edges(self):
+        return 69
         raise NotImplementedError() # TODO
     
         # num_edges = 0

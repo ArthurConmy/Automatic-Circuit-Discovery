@@ -57,9 +57,10 @@ class GlobalCache: # this dict stores the activations from the forward pass
 
     def clear(self, just_first_cache=False):
         
-        if just_first_cache:
+        if not just_first_cache:
             self.cache = OrderedDict()
         else:
+            raise NotImplementedError()
             self.__init__(self.device[0], self.device[1]) # lol
 
         import gc
