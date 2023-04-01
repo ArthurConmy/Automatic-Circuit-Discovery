@@ -42,6 +42,7 @@ import torch.optim as optim
 import numpy as np
 import einops
 from tqdm import tqdm
+import yaml
 from transformers import AutoModelForCausalLM, AutoConfig, AutoTokenizer
 
 import matplotlib.pyplot as plt
@@ -77,39 +78,36 @@ from transformer_lens.acdc.graphics import (
     build_colorscheme,
     show,
 )
-from transformer_lens.acdc.utils import count_no_edges
 import argparse
 
 #%%
 
 parser = argparse.ArgumentParser()
+parser.add_argument("--config", type=str, required=True, help="Path to YAML config file")
 parser.add_argument('--first-cache-cpu', type=bool, required=False, default=True, help='Value for FIRST_CACHE_CPU')
-parser.add_argument('--second-cache-cpu', type=bool, required=False, default=True, help='Value for SECOND_CACHE_CPU')
-# parser.add_argument('--num-examples', type=int, required=False, default=40, help='Value for NUM_EXAMPLES') # TODO integrate with utils files
-# parser.add_argument('--seq-len', type=int, required=False, default=300, help='Value for SEQ_LEN')
-parser.add_argument('--using-wandb', type=bool, required=False, default=True, help='Value for USING_WANDB')
+parser.add_argument('--second-cache-cpu', type=bool, required=False, default=True, help='Value for SECOND_CACHE_CPU') # TODO move these to the config file. ... or do YAML overrides
 parser.add_argument('--threshold', type=float, required=False, default=1.0, help='Value for THRESHOLD')
 parser.add_argument('--zero-ablation', action='store_true', help='A flag without a value')
 
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("".split())
-    # args = parser.parse_args("--zero-ablation".split())
+    args = parser.parse_args("--config ../../configs_acdc/base_config.yaml".split())
 else:
     args = parser.parse_args()
 
 FIRST_CACHE_CPU = args.first_cache_cpu
 SECOND_CACHE_CPU = args.second_cache_cpu
-# NUM_EXAMPLES = args.num_examples
-# SEQ_LEN = args.seq_len
-USING_WANDB = args.using_wandb
 THRESHOLD = args.threshold
 
-print(f"{args.zero_ablation=}")
+with open(args.config, 'r') as yaml_file:
+    yaml_config = yaml.safe_load(yaml_file)
+
+USING_WANDB = yaml_config['USING_WANDB']
 
 if args.zero_ablation:
     ZERO_ABLATION = True
 else:
     ZERO_ABLATION = False
+
 #%%
 
 tl_model = HookedTransformer.from_pretrained(
@@ -161,7 +159,6 @@ downstream_residual_nodes: List[TLACDCInterpNode] = []
 logits_node = TLACDCInterpNode(
     name=f"blocks.{tl_model.cfg.n_layers-1}.hook_resid_post",
     index=TorchIndex([None]),
-    mode="addition",
 )
 downstream_residual_nodes.append(logits_node)
 new_downstream_residual_nodes: List[TLACDCInterpNode] = []
@@ -179,12 +176,12 @@ for layer_idx in range(tl_model.cfg.n_layers - 1, -1, -1):
         cur_head = TLACDCInterpNode(
             name=cur_head_name,
             index=cur_head_slice,
-            mode="addition",
         )
         for residual_stream_node in downstream_residual_nodes:
             correspondence.add_edge(
                 parent_node=cur_head,
                 child_node=residual_stream_node,
+                edge=Edge(edge_type=EdgeType.ADDITION),
             )
 
         # TODO maybe this needs be moved out of this block??? IDK
@@ -192,17 +189,18 @@ for layer_idx in range(tl_model.cfg.n_layers - 1, -1, -1):
         for letter in "qkv":
             hook_letter_name = f"blocks.{layer_idx}.attn.hook_{letter}"
             hook_letter_slice = TorchIndex([None, None, head_idx])
-            hook_letter_node = TLACDCInterpNode(name=hook_letter_name, index=hook_letter_slice, mode="off")
+            hook_letter_node = TLACDCInterpNode(name=hook_letter_name, index=hook_letter_slice)
             
             hook_letter_input_name = f"blocks.{layer_idx}.hook_{letter}_input"
             hook_letter_input_slice = TorchIndex([None, None, head_idx])
             hook_letter_input_node = TLACDCInterpNode(
-                name=hook_letter_input_name, index=hook_letter_input_slice, mode="direct_computation"
+                name=hook_letter_input_name, index=hook_letter_input_slice,
             )
 
             correspondence.add_edge(
                 parent_node=hook_letter_input_node,
                 child_node=hook_letter_node,
+                edge=Edge(edge_type=EdgeType.DIRECT_COMPUTATION),
             )
 
             new_downstream_residual_nodes.append(hook_letter_input_node)
@@ -213,24 +211,29 @@ for layer_idx in range(tl_model.cfg.n_layers - 1, -1, -1):
 embedding_node = TLACDCInterpNode(
     name="blocks.0.hook_resid_pre",
     index=TorchIndex([None]),
-    mode="addition",
 )
 for node in downstream_residual_nodes:
     correspondence.add_edge(
         parent_node=embedding_node,
         child_node=node,
+        edge=Edge(edge_type=EdgeType.ADDITION),
     )
 
 #%%
+
+with open(__file__, "r") as f:
+    notes = f.read()
 
 exp = TLACDCExperiment(
     model=tl_model,
     ds=toks_int_values,
     ref_ds=toks_int_values_other,
-    template_corr=correspondence,
+    corr=correspondence,
     threshold=THRESHOLD,
     metric=metric,
     verbose=True,
+    wandb_notes=notes,
+    config=yaml_config,
 )
 
 # %%
@@ -258,89 +261,11 @@ assert abs(new_metric) < 1e-5, f"Metric {new_metric} is not zero"
 
 #%%
 
+exp.step()
+
+#%%
+
 show(correspondence, "test.png")
-
-# %%
-
-def step(
-    graph: TLACDCCorrespondence,
-    threshold,
-    verbose=True,
-    using_wandb=False,
-    remove_redundant=False,
-    early_stop=False,
-):
-    """
-    TOIMPLEMENT: (prioritise these)
-    - Incoming effect sizes on the nodes
-    - Dynamic threshold?
-    - Node stats
-    - Parallelism
-    - Not just monotone metric
-    - remove_redundant
-    - just record the metrics that we actually stick to
-    """
-
-    warnings.warn("Implement incoming effect sizes on the nodes")
-    start_step_time = time.time()
-
-    initial_metric = metric(tl_model(toks_int_values))
-    assert isinstance(initial_metric, float), "Make this float"
-    cur_metric = initial_metric
-    if verbose:
-        print("New metric:", cur_metric)
-
-    for sender_name in graph[receiver_name][receiver_node.index]:
-        print(f"\nNode name: {sender_name}\n")
-
-        for sender_node.index.index in graph[receiver_name][receiver_node.index][sender_name]:
-            graph[receiver_name][receiver_node.index][sender_name][sender_node.index.index].present = False
-
-            if early_stop: # for debugging the effects of one and only one forward pass WITH a corrupted edge
-                return tl_model(toks_int_values)
-
-            evaluated_metric = metric(tl_model(toks_int_values))
-
-            if verbose:
-                print(
-                    "Metric after removing connection to",
-                    sender_name,
-                    sender_node.index.index,
-                    "is",
-                    evaluated_metric,
-                    "(and current metric " + str(cur_metric) + ")",
-                )
-
-            result = evaluated_metric - cur_metric
-
-            if verbose:
-                print("Result is", result, end="")
-
-            if result < threshold:
-                print("...so removing connection")
-                cur_metric = evaluated_metric
-
-            else:
-                if verbose:
-                    print("...so keeping connection")
-                graph[receiver_name][receiver_node.index][sender_name][
-                    sender_node.index.index
-                ].present = True
-
-            if using_wandb:
-                wandb.log({"num_edges": count_no_edges(graph)})
-
-    cur_metric = metric(tl_model(toks_int_values))
-
-    if all(
-        not graph[receiver_name][receiver_node.index][sender_name][sender_node.index.index].present
-        for sender_name in graph[receiver_name][receiver_node.index].keys()
-        for sender_node.index.index in graph[receiver_name][receiver_node.index][sender_name]
-    ):
-        # removed all connections
-        print(
-            f"Warning: we added {receiver_name} at {receiver_node.index} earlier, but we just removed all its child connections. So we are{(' ' if remove_redundant else ' not ')}removing it and its redundant descendants now (remove_redundant={remove_redundant})"
-        )
 
 # %%
 

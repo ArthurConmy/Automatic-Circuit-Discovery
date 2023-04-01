@@ -1,0 +1,5 @@
+USING_WANDB: True
+WANDB_ENTITY_NAME: remix_school-of-rock
+WANDB_PROJECT_NAME: tl_induction_proper
+WANDB_RUN_NAME: dummy_yaml_name
+ZERO_ABLATION: False

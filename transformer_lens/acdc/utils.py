@@ -1,3 +1,4 @@
+import wandb
 from functools import partial
 from copy import deepcopy
 import warnings
@@ -7,6 +8,7 @@ from collections import defaultdict
 from enum import Enum
 from typing import Any, Literal, Dict, Tuple, Union, List, Optional, Callable, TypeVar, Generic, Iterable, Set, Type, cast, Sequence, Mapping, overload
 import torch
+import time
 from transformer_lens.HookedTransformer import HookedTransformer
 from collections import OrderedDict
 
@@ -38,7 +40,6 @@ class EdgeType(Enum):
 
     ADDITION = 0
     DIRECT_COMPUTATION = 1
-    ALWAYS_INCLUDED = 2
 
 class Edge:
     def __init__(
@@ -90,11 +91,10 @@ class TLACDCInterpNode:
         index: the index of the tensor that this node represents
         mode: how we deal with this node when we bump into it as a parent of another node. Addition: it's summed to make up the child. Direct_computation: it's the sole node used to compute the child. Off: it's not the parent of a child ever."""
         
-    def __init__(self, name: str, index: TorchIndex, mode: Literal["addition", "direct_computation", "off"] = "off"):
+    def __init__(self, name: str, index: TorchIndex):
         
         self.name = name
         self.index = index
-        self.mode = mode
         
         self.parents: List["TLACDCInterpNode"] = []
         self.children: List["TLACDCInterpNode"] = []
@@ -107,24 +107,38 @@ class TLACDCInterpNode:
         """Use the method on TLACDCCorrespondence instead of this one"""
         self.parents.append(parent_node)
 
+    def __repr__(self):
+        return f"TLACDCInterpNode({self.name}, {self.index})"
+
 class TLACDCCorrespondence:
     """Stores the full computational graph, similar to ACDCCorrespondence from the rust_circuit code"""
         
     def __init__(self):
-        self.graph: Dict[str, List[TLACDCInterpNode]] = OrderedDefaultdict(list) # need to put in `list`???
+        self.graph: OrderedDict[str, OrderedDict[TorchIndex, TLACDCInterpNode]] = OrderedDefaultdict(OrderedDict) # TODO rename "nodes?"
+ 
+        # TODO implement this
+        self.edges: OrderedDict[str, OrderedDict[TorchIndex, OrderedDict[str, OrderedDict[TorchIndex, Edge]]]] = OrderedDefaultdict(OrderedDict) # TODO need n=4 thing?
+
+        # this maps (child_name, child_index) to parent_node
+        # TODO maybe a further level of nesting: str, TorchIndex for the parent too ???
 
     def nodes(self) -> List[TLACDCInterpNode]:
         """Concatenate all nodes in the graph"""
-        return [node for node_list in self.graph.values() for node in node_list]
+        return [node for by_index_list in self.graph.values() for node in by_index_list.values()]
     
+    def all_edges(self) -> Dict[Tuple[str, TorchIndex, str, TorchIndex], Edge]:
+        """Concatenate all edges in the graph"""
+        return {(child_name, child_index, parent_name, parent_index): edge for child_name, by_child_index in self.edges.items() for child_index, by_parent_name in by_child_index.items() for parent_name, by_parent_index in by_parent_name.items() for parent_index, edge in by_parent_index.items()}
+
     def add_node(self, node: TLACDCInterpNode):
-        assert node not in self.graph, f"Node {node} already in graph"
-        self.graph[node.name].append(node)
+        assert node not in self.nodes(), f"Node {node} already in graph"
+        self.graph[node.name][node.index] = node
 
     def add_edge(
         self,
         parent_node: TLACDCInterpNode,
         child_node: TLACDCInterpNode,
+        edge: Edge,
     ):
         if parent_node not in self.nodes(): # TODO could be slow ???
             self.add_node(parent_node)
@@ -133,6 +147,12 @@ class TLACDCCorrespondence:
         
         parent_node._add_child(child_node)
         child_node._add_parent(parent_node)
+
+        self.edges[child_node.name][child_node.index][parent_node.name][parent_node.index] = edge
+
+    def setup_correspondence(self, model):
+        # TODO would be to just straight up create the thing from the Transformer Lens model here!
+        pass
 
 
 class TLACDCExperiment:
@@ -144,12 +164,12 @@ class TLACDCExperiment:
         model: HookedTransformer,
         ds: torch.Tensor,
         ref_ds: Optional[torch.Tensor],
-        template_corr: TLACDCCorrespondence,
+        corr: TLACDCCorrespondence,
         threshold: float,
         metric: Callable[[torch.Tensor, torch.Tensor], float], # dataset and logits to metric
         second_metric: Optional[Callable[[torch.Tensor, torch.Tensor], float]] = None,
         verbose: bool = False,
-        parallel_hypotheses: int = 1,
+        parallel_hypotheses: int = 1, # lol
         using_wandb: bool = False,
         remove_redundant: bool = False, # TODO implement
         monotone_metric: Literal[
@@ -158,14 +178,17 @@ class TLACDCExperiment:
         first_cache_cpu: bool = True,
         second_cache_cpu: bool = True,
         zero_ablation: bool = False, # use zero rather than 
+        config: Optional[Dict] = None,
+        wandb_notes: str = "",
     ):
         self.model = model
         self.zero_ablation = zero_ablation
         self.verbose = verbose
 
-        self.template_corr = template_corr
-        self.topologically_sort_corr()
-        self.corr = deepcopy(template_corr)
+        self.corr = corr
+        self.reverse_topologically_sort_corr()
+        self.current_node = self.corr.nodes()[0]
+        print(f"{self.current_node=}")
 
         self.ds = ds
         self.ref_ds = ref_ds
@@ -174,9 +197,25 @@ class TLACDCExperiment:
 
         self.setup_second_cache()
         
-        self.using_wandb = using_wandb
+        self.using_wandb = using_wandb # TODO sync with YAML
+        if config is not None and config["USING_WANDB"]:
+            wandb.init(
+                entity=config["WANDB_ENTITY_NAME"],
+                project=config["WANDB_PROJECT_NAME"], 
+                name=config["WANDB_RUN_NAME"],
+                notes=wandb_notes,
+            )
+
         self.threshold = threshold
         assert self.ref_ds is not None or self.zero_ablation, "If you're doing random ablation, you need a ref ds"
+
+        self.metric = metric
+        self.second_metric = second_metric
+        self.second_metric = second_metric
+
+        self.parallel_hypotheses = parallel_hypotheses
+        if self.parallel_hypotheses != 1:
+            raise NotImplementedError("Parallel hypotheses not implemented yet") # TODO?
 
         if self.using_wandb:
             self.metrics_to_plot = {}
@@ -190,7 +229,7 @@ class TLACDCExperiment:
             self.metrics_to_plot["acdc_step"] = 0
             self.metrics_to_plot["num_edges"] = []
 
-    def topologically_sort_corr(self):
+    def reverse_topologically_sort_corr(self):
         """Topologically sort the template corr"""
         for hook in self.model.hook_dict.values():
             assert len(hook.fwd_hooks) == 0, "Don't load the model with hooks *then* call this"
@@ -200,14 +239,18 @@ class TLACDCExperiment:
         self.model.cache_all(cache)
         self.model(torch.arange(5))
 
-        print(self.template_corr.graph.keys())
+        if self.verbose:
+            print(self.corr.graph.keys())
 
-        for hook_name in cache:
+        cache_keys = list(cache.keys())
+        cache_keys.reverse()
+
+        for hook_name in cache_keys:
             print(hook_name)            
-            if hook_name in self.template_corr.graph:
-                new_graph[hook_name] = self.template_corr.graph[hook_name]
+            if hook_name in self.corr.graph:
+                new_graph[hook_name] = self.corr.graph[hook_name]
 
-        self.template_corr.graph = new_graph
+        self.corr.graph = new_graph
 
     def sender_hook(self, z, hook, verbose=False, cache="first", device=None):
         """General, to cover online and corrupt caching"""
@@ -232,70 +275,67 @@ class TLACDCExperiment:
         return z
 
     def receiver_hook(self, z, hook, verbose=False):
-        for receiver_node in self.corr.graph[hook.name]:
+        receiver_node_name = hook.name
+        for receiver_node_index in self.corr.edges[hook.name]:
             direct_computation_nodes = []
-            for sender_node in receiver_node.parents:
+            for sender_node_name in self.corr.edges[hook.name][receiver_node_index]:
+                for sender_node_index in self.corr.edges[hook.name][receiver_node_index][sender_node_name]:
 
-                # implement skipping edges post-hoc
+                    edge = self.corr.edges[hook.name][receiver_node_index][sender_node_name][sender_node_index] # TODO maybe less crazy nested indexes ... just make local variables each time?
 
-                if verbose:
-                    print(
-                        hook.name, receiver_node.index, sender_node.name, sender_node.index.as_index
-                    )
-                    print("-------")
-                    if sender_node.mode == "addition":
+                    if edge.present:
+                        continue # don't do patching stuff, if it wastes time
+
+                    if verbose:
                         print(
-                            hook.global_cache.cache[sender_node.name].shape,
-                            sender_node.index.as_index,
+                            hook.name, receiver_node_index, sender_node_name, sender_node_index,
                         )
-                
-                if sender_node.mode == "addition": # TODO turn into ENUM
-                    z[receiver_node.index.as_index] -= hook.global_cache.cache[
-                        sender_node.name
-                    ][sender_node.index.as_index].to(z.device)
-                    z[receiver_node.index.as_index] += hook.global_cache.second_cache[
-                        sender_node.name
-                    ][sender_node.index.as_index].to(z.device)
+                        print("-------")
+                        if edge.edge_type == EdgeType.ADDITION:
+                            print(
+                                hook.global_cache.cache[sender_node_name].shape,
+                                sender_node_index,
+                            )
+                    
+                    if edge.edge_type == EdgeType.ADDITION:
+                        z[receiver_node_index] -= hook.global_cache.cache[
+                            sender_node_name
+                        ][sender_node_index.as_index].to(z.device)
+                        z[receiver_node_index.as_index] += hook.global_cache.second_cache[
+                            sender_node_name
+                        ][sender_node_index.as_index].to(z.device)
 
-                elif sender_node.mode == "direct_computation":
-                    direct_computation_nodes.append(sender_node)
-                    assert len(direct_computation_nodes) == 1, f"Found multiple direct computation nodes {direct_computation_nodes}"
+                    elif edge.edge_type == EdgeType.DIRECT_COMPUTATION:
+                        direct_computation_nodes.append(self.corr.graph[sender_node_name][sender_node_index])
+                        assert len(direct_computation_nodes) == 1, f"Found multiple direct computation nodes {direct_computation_nodes}"
 
-                    z[receiver_node.index.as_index] = hook.global_cache.second_cache[receiver_node.name][receiver_node.index.as_index].to(z.device)
+                        z[receiver_node_index.as_index] = hook.global_cache.second_cache[receiver_node_name][receiver_node_index.as_index].to(z.device)
 
-                else: 
-                    assert sender_node.mode == "off", f"Unknown edge type {sender_node.mode}"
+                    else: 
+                        raise ValueError(f"Unknown edge type {edge.edge_type}")
 
         return z
 
     def add_sender_hooks(self, reset=True, cache="first"):
+        if self.verbose:
+            print("Adding sender hooks...")
         if reset:
             self.model.reset_hooks()
         device = {
             "first": "cpu" if self.first_cache_cpu else None,
             "second": "cpu" if self.second_cache_cpu else None,
         }[cache]
-        for node in self.corr.nodes():
-            if node.mode != "addition":
-                continue
+        for big_tuple, edge in self.corr.all_edges().items():
+            if edge.edge_type == EdgeType.DIRECT_COMPUTATION:
+                node = self.corr.graph[big_tuple[0]][big_tuple[1]]
+            elif edge.edge_type == EdgeType.ADDITION:
+                node = self.corr.graph[big_tuple[2]][big_tuple[3]]
             if len(self.model.hook_dict[node.name].fwd_hooks) > 0:
                 continue
             self.model.add_hook(
                 name=node.name, 
                 hook=partial(self.sender_hook, verbose=self.verbose, cache=cache, device=device),
             )
-
-        # ugh sort of ugly, more nodes need to be added to above thing
-        for node in self.corr.nodes():
-            if node.mode == "direct_computation":
-                for child in node.children:
-                    if len(self.model.hook_dict[child.name].fwd_hooks) > 0:
-                        continue
-                    print(child.name)
-                    self.model.add_hook(
-                        name=child.name,
-                        hook=partial(self.sender_hook, verbose=self.verbose, cache="second", device=device),
-                    )
 
     def setup_second_cache(self):
         self.add_sender_hooks(cache="second")
@@ -323,6 +363,93 @@ class TLACDCExperiment:
                 hook=partial(self.receiver_hook, verbose=self.verbose),
             )
 
+    def step(self, early_stop=False):
+        """
+        TOIMPLEMENT: (prioritise these)
+        - Incoming effect sizes on the nodes
+        - Dynamic threshold?
+        - Node stats
+        - Parallelism
+        - Not just monotone metric
+        - remove_redundant
+        """
+
+        warnings.warn("Implement incoming effect sizes on the nodes")
+        start_step_time = time.time()
+
+        initial_metric = self.metric(self.model(self.ref_ds)) # toks_int_values))
+        assert isinstance(initial_metric, float), f"Initial metric is a {type(initial_metric)} not a float"
+
+        cur_metric = initial_metric
+        if self.verbose:
+            print("New metric:", cur_metric)
+
+        for sender_node in self.corr.graph[self.current_node.name][self.current_node.index]:
+            if self.verbose:
+                print(f"\nNode name: {sender_node.name}\n")
+
+            self.corr.graph[self.current_node.name][self.current_node.index][sender_name][sender_node.index.index].present = False
+
+            if early_stop: # for debugging the effects of one and only one forward pass WITH a corrupted edge
+                return self.model(toks_int_values)
+
+            evaluated_metric = metric(self.model(toks_int_values))
+
+            if verbose:
+                print(
+                    "Metric after removing connection to",
+                    sender_name,
+                    sender_node.index.index,
+                    "is",
+                    evaluated_metric,
+                    "(and current metric " + str(cur_metric) + ")",
+                )
+
+            result = evaluated_metric - cur_metric
+
+            if verbose:
+                print("Result is", result, end="")
+
+            if result < threshold:
+                print("...so removing connection")
+                cur_metric = evaluated_metric
+
+            else:
+                if verbose:
+                    print("...so keeping connection")
+                self.corr.graph[receiver_name][receiver_node.index][sender_name][
+                    sender_node.index.index
+                ].present = True
+
+            if using_wandb:
+                wandb.log({"num_edges": count_no_edges(self.corr.graph)})
+
+        cur_metric = metric(self.model(toks_int_values))
+
+        if all(
+            not self.corr.graph[receiver_name][receiver_node.index][sender_name][sender_node.index.index].present
+            for sender_name in self.corr.graph[receiver_name][receiver_node.index].keys()
+            for sender_node.index.index in self.corr.graph[receiver_name][receiver_node.index][sender_name]
+        ):
+            # removed all connections
+            print(
+                f"Warning: we added {receiver_name} at {receiver_node.index} earlier, but we just removed all its child connections. So we are{(' ' if remove_redundant else ' not ')}removing it and its redundant descendants now (remove_redundant={self.remove_redundant})"
+            )
+
+    def count_no_edges(self):
+        raise NotImplementedError() # TODO
+    
+        # num_edges = 0
+        # for receiver_name in graph.keys():
+        #     for receiver_slice_tuple in graph[receiver_name].keys():
+        #         for sender_hook_name in graph[receiver_name][receiver_slice_tuple].keys():
+        #             for sender_slice_tuple in graph[receiver_name][receiver_slice_tuple][sender_hook_name]:
+        #                 edge = graph[receiver_name][receiver_slice_tuple][sender_hook_name][sender_slice_tuple]
+
+        #                 if not edge.edge_type == EdgeType.ALWAYS_INCLUDED and edge.present:
+        #                     num_edges += 1
+        # return num_edges
+
 def make_nd_dict(end_type, n = 3) -> Any:
     """Make biiig default dicts : ) : )"""
 
@@ -334,15 +461,3 @@ def make_nd_dict(end_type, n = 3) -> Any:
 
     if n == 4:
         return OrderedDefaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(end_type))))
-    
-def count_no_edges(graph):
-    num_edges = 0
-    for receiver_name in graph.keys():
-        for receiver_slice_tuple in graph[receiver_name].keys():
-            for sender_hook_name in graph[receiver_name][receiver_slice_tuple].keys():
-                for sender_slice_tuple in graph[receiver_name][receiver_slice_tuple][sender_hook_name]:
-                    edge = graph[receiver_name][receiver_slice_tuple][sender_hook_name][sender_slice_tuple]
-
-                    if not edge.edge_type == EdgeType.ALWAYS_INCLUDED and edge.present:
-                        num_edges += 1
-    return num_edges
