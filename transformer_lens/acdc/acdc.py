@@ -261,6 +261,10 @@ with open(__file__, "r") as f:
 
 tl_model.global_cache.clear()
 tl_model.reset_hooks()
+
+if WANDB_RUN_NAME is None:
+    WANDB_RUN_NAME = f"{ct()}_{THRESHOLD}"
+
 exp = TLACDCExperiment(
     model=tl_model,
     threshold=THRESHOLD,

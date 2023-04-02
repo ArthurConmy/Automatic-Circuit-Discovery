@@ -235,11 +235,16 @@ class TLACDCExperiment:
         corrupt_stuff = self.model(self.ref_ds)
 
         if self.zero_ablation:
-            for name in self.model.global_cache.second_cache:
+            names = list(self.model.global_cache.second_cache.keys())
+            assert len(names)>0, "No second cache names found"
+            print("WE NAAMING")
+            for name in names:
                 self.model.global_cache.second_cache[name] = torch.zeros_like(
                     self.model.global_cache.second_cache[name]
                 )
                 torch.cuda.empty_cache()
+        else: 
+            assert False
 
         if self.second_cache_cpu:
             self.model.global_cache.to("cpu", which_caches="second")

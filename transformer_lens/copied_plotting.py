@@ -54,6 +54,11 @@ for pi, project_name in (enumerate(project_names)):
 
     for i, run in enumerate(tqdm(runs)):
         print(run.name, "state:", run.state)
+        
+        if "Sun_Apr_2_09" not in run.name and "Sun_Apr_2_10" not in run.name:
+            warnings.warn("Filtering for Sunday...")
+            continue
+        
         if run.state == "finished": #  or run.state == "failed":
             history = pd.DataFrame(run.scan_history())
             histories.append(history)
@@ -102,7 +107,7 @@ if torch.norm(torch.tensor(_initial_edges).float() - _initial_edges[0]) > 1e-5:
     warnings.warn(f"Initial edges are not the same, so this may be an unfair comparison of {_initial_edges=}")
 
 added_final_edges = False
-thresholds = [get_threshold_zero(name) for name in names]
+thresholds = [get_threshold_zero(name, -2) for name in names]
 
 #%%
 
