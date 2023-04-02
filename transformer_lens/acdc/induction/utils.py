@@ -18,19 +18,54 @@ from transformer_lens.acdc.utils import (
     Edge, 
     EdgeType,
 )  # these introduce several important classes !!!
+from transformer_lens import HookedTransformer
 
-# DEVICE = "cuda:0"
-# MODEL_ID = "attention_only_2"
-# PRINT_CIRCUITS = True
-# ACTUALLY_RUN = True
-# SLOW_EXPERIMENTS = True
-# EVAL_DEVICE = "cuda:0"
-# MAX_MEMORY = 20000000000
-# # BATCH_SIZE = 2000
-# USING_WANDB = True
-# MONOTONE_METRIC = "maximize"
-# START_TIME = datetime.datetime.now().strftime("%a-%d%b_%H%M%S")
-# PROJECT_NAME = f"induction_arthur"
+def get_model():
+    tl_model = HookedTransformer.from_pretrained(
+        "redwood_attn_2l",
+        use_global_cache=True,
+        fold_ln=False,
+        center_writing_weights=False,
+        center_unembed=False,
+    )
+    tl_model.set_use_attn_result(True)
+    tl_model.set_use_split_qkv_input(True) 
+    return tl_model
+
+def get_validation_data(num_examples=None, seq_len=None):
+    validation_fname = huggingface_hub.hf_hub_download(
+        repo_id="ArthurConmy/redwood_attn_2l", filename="validation_data.pt"
+    )
+    validation_data = torch.load(validation_fname)
+
+    if num_examples is None:
+        return validation_data
+    else:
+        return validation_data[:num_examples][:seq_len]
+
+def get_good_induction_candidates(num_examples=None, seq_len=None):
+    """Not needed?"""
+    good_induction_candidates_fname = huggingface_hub.hf_hub_download(
+        repo_id="ArthurConmy/redwood_attn_2l", filename="good_induction_candidates.pt"
+    )
+    good_induction_candidates = torch.load(good_induction_candidates_fname)
+
+    if num_examples is None:
+        return good_induction_candidates
+    else:
+        return good_induction_candidates[:num_examples][:seq_len]
+
+def get_mask_repeat_candidates(num_examples=None, seq_len=None):
+    mask_repeat_candidates_fname = huggingface_hub.hf_hub_download(
+        repo_id="ArthurConmy/redwood_attn_2l", filename="mask_repeat_candidates.pkl"
+    )
+    mask_repeat_candidates = torch.load(mask_repeat_candidates_fname)
+    mask_repeat_candidates.requires_grad = False
+
+    if num_examples is None:
+        return mask_repeat_candidates
+    else:
+        return mask_repeat_candidates[:num_examples, :seq_len]
 
 def kl_divergence(
     logits: torch.Tensor,

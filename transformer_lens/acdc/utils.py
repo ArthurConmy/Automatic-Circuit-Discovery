@@ -12,6 +12,11 @@ import time
 from transformer_lens.HookedTransformer import HookedTransformer
 from collections import OrderedDict
 
+def shuffle_tensor(tens, seed=42):
+    """Shuffle tensor along first dimension"""
+    torch.random.manual_seed(seed)
+    return tens[torch.randperm(tens.shape[0])]
+
 class OrderedDefaultdict(collections.OrderedDict):
     """ A defaultdict with OrderedDict as its base class. 
     Thanks to https://stackoverflow.com/a/6190500/1090562"""

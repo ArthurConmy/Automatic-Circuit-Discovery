@@ -50,7 +50,74 @@ class TLACDCCorrespondence:
         child_node._add_parent(parent_node)
 
         self.edges[child_node.name][child_node.index][parent_node.name][parent_node.index] = edge
+    
+    @classmethod
+    def setup_from_model(cls, model):
 
-    def setup_correspondence(self, model):
-        # TODO would be to just straight up create the thing from the Transformer Lens model here!
-        pass
+        correspondence = cls()
+
+        downstream_residual_nodes: List[TLACDCInterpNode] = []
+        logits_node = TLACDCInterpNode(
+            name=f"blocks.{model.cfg.n_layers-1}.hook_resid_post",
+            index=TorchIndex([None]),
+        )
+        downstream_residual_nodes.append(logits_node)
+        new_downstream_residual_nodes: List[TLACDCInterpNode] = []
+
+        for layer_idx in range(model.cfg.n_layers - 1, -1, -1):
+            # connect MLPs
+            if not model.cfg.attn_only:
+                raise NotImplementedError()  # TODO
+
+            # connect attention heads
+            for head_idx in range(model.cfg.n_heads - 1, -1, -1):
+                # this head writes to all future residual stream things
+                cur_head_name = f"blocks.{layer_idx}.attn.hook_result"
+                cur_head_slice = TorchIndex([None, None, head_idx])
+                cur_head = TLACDCInterpNode(
+                    name=cur_head_name,
+                    index=cur_head_slice,
+                )
+                for residual_stream_node in downstream_residual_nodes:
+                    correspondence.add_edge(
+                        parent_node=cur_head,
+                        child_node=residual_stream_node,
+                        edge=Edge(edge_type=EdgeType.ADDITION),
+                    )
+
+                # TODO maybe this needs be moved out of this block??? IDK
+                hook_letter_inputs = {}
+                for letter in "qkv":
+                    hook_letter_name = f"blocks.{layer_idx}.attn.hook_{letter}"
+                    hook_letter_slice = TorchIndex([None, None, head_idx])
+                    hook_letter_node = TLACDCInterpNode(name=hook_letter_name, index=hook_letter_slice)
+                    
+                    hook_letter_input_name = f"blocks.{layer_idx}.hook_{letter}_input"
+                    hook_letter_input_slice = TorchIndex([None, None, head_idx])
+                    hook_letter_input_node = TLACDCInterpNode(
+                        name=hook_letter_input_name, index=hook_letter_input_slice,
+                    )
+
+                    correspondence.add_edge(
+                        parent_node=hook_letter_input_node,
+                        child_node=hook_letter_node,
+                        edge=Edge(edge_type=EdgeType.DIRECT_COMPUTATION),
+                    )
+
+                    new_downstream_residual_nodes.append(hook_letter_input_node)
+            downstream_residual_nodes.extend(new_downstream_residual_nodes)
+
+        # add the embedding node
+
+        embedding_node = TLACDCInterpNode(
+            name="blocks.0.hook_resid_pre",
+            index=TorchIndex([None]),
+        )
+        for node in downstream_residual_nodes:
+            correspondence.add_edge(
+                parent_node=embedding_node,
+                child_node=node,
+                edge=Edge(edge_type=EdgeType.ADDITION),
+            )
+    
+        return correspondence

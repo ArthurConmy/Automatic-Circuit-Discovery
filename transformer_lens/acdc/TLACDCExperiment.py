@@ -28,7 +28,6 @@ class TLACDCExperiment:
         model: HookedTransformer,
         ds: torch.Tensor,
         ref_ds: Optional[torch.Tensor],
-        corr: TLACDCCorrespondence,
         threshold: float,
         metric: Callable[[torch.Tensor, torch.Tensor], float], # dataset and logits to metric
         second_metric: Optional[Callable[[torch.Tensor, torch.Tensor], float]] = None,
@@ -58,7 +57,7 @@ class TLACDCExperiment:
         if skip_edges != "yes":
             raise NotImplementedError() # TODO if edge counts are slow...
 
-        self.corr = corr
+        self.corr = TLACDCCorrespondence.setup_from_model(self.model)
         self.reverse_topologically_sort_corr()
         self.current_node = self.corr.nodes()[0]
         print(f"{self.current_node=}")
