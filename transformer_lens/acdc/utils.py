@@ -533,6 +533,11 @@ class TLACDCExperiment:
 
         if self.current_node is not None and not self.current_node_connected():
             print("But it's bad")
+
+            for parent_node_name in self.corr.edges[self.current_node.name][self.current_node.index]:
+                for parent_node_index in self.corr.edges[self.current_node.name][self.current_node.index][parent_node_name]:
+                    self.corr.edges[self.current_node.name][self.current_node.index][parent_node_name][parent_node_index].present = False
+
             self.increment_current_node()
 
     def count_no_edges(self):
