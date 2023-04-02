@@ -52,119 +52,134 @@ def build_colorscheme(node_names, colorscheme: str = "Pastel2") -> Dict[str, str
         colors[str(node)] = generate_random_color(colorscheme)
     return colors
 
+# -------------------------------------------
+# GRAPHVIZ
+# -------------------------------------------
 
-def make_graph_name(
-    hook_name: str,
-    hook_slice_tuple,
-):
-    return f"{hook_name}_{hook_slice_tuple.hashable_tuple}"
+# def show(
+#     TLACDCCorrespondence,
+#     fname=None,
+#     colorscheme: str = "Pastel2",
+#     minimum_penwidth: float = 0.3,
+#     show: bool = True,
+# ):
+#     """
+#     takes matplotlib colormaps
+#     """
+#     g = graphviz.Digraph(format="png")
 
+#     colors = self.build_colorscheme(colorscheme)
 
-def vizualize_graph(graph):
-    """Make an nx.DiGraph from our 4D Dict
-    Edges are weight 1 if not present, weight 2 if present"""
+#     # create all nodes
+#     for index, child in enumerate(self.corr):
+#         parent: ACDCInterpNode
+#         child = typing.cast(ACDCInterpNode, child)
+#         if len(child.parents) > 0 or index == 0:
+#             g.node(
+#                 show_node_name(child),
+#                 fillcolor=colors[child.name],
+#                 style="filled, rounded",
+#                 shape="box",
+#                 fontname="Helvetica",
+#             )
 
-    G = nx.DiGraph()
-    all_nodes = set()
+#     # connect the nodes
+#     for child in self.corr:
+#         parent: ACDCInterpNode
+#         child = typing.cast(ACDCInterpNode, child)
+#         for parent in child.parents:
+#             penwidth = self.get_connection_strengths(
+#                 parent, child, minimum_penwidth
+#             )
+#             g.edge(
+#                 show_node_name(child),
+#                 show_node_name(parent),
+#                 penwidth=penwidth,
+#                 color=colors[child.name],
+#             )
+#         if self.input_node not in ["off", None] and len(child.parents) == 0:
+#             # make dotted line to self.input_node
+#             g.edge(
+#                 show_node_name(child),
+#                 show_node_name(self.input_node),
+#                 penwidth=minimum_penwidth,
+#                 color=colors[child.name],
+#                 style="dotted",
+#             )
 
-    for receiver_hook_name in graph.keys():
-        for receiver_slice_tuple in graph[receiver_hook_name].keys():
-            for sender_hook_name in graph[receiver_hook_name][
-                receiver_slice_tuple
-            ].keys():
-                for sender_slice_tuple in graph[receiver_hook_name][
-                    receiver_slice_tuple
-                ][sender_hook_name]:
-                    if (
-                        graph[receiver_hook_name][receiver_slice_tuple][
-                            sender_hook_name
-                        ]
-                        is False
-                    ):
-                        continue
+#     if fname is not None:
+#         assert fname.endswith(
+#             ".png"
+#         ), "Must save as png (... or you can take this g object and read the graphviz docs)"
+#         g.render(outfile=fname, format="png")
+#     if show:
+#         return g
 
-                    sender_node = make_graph_name(sender_hook_name, sender_slice_tuple)
-                    receiver_node = make_graph_name(
-                        receiver_hook_name, receiver_slice_tuple
-                    )
-                    all_nodes.add((sender_hook_name, sender_slice_tuple))
-                    all_nodes.add((receiver_hook_name, receiver_slice_tuple))
+# def get_connection_strengths(
+#     self,
+#     parent: ACDCInterpNode,
+#     child: ACDCInterpNode,
+#     minimum_penwidth: float = 0.1,
+# ) -> str:
+#     potential_key = str(parent.name) + "->" + str(child.name)
+#     if potential_key in self.connection_strengths.keys():
+#         penwidth = self.connection_strengths[potential_key]
+#         list_of_connection_strengths = [
+#             i for i in self.connection_strengths.values()
+#         ]
+#         penwidth = (
+#             10
+#             * (penwidth - min(list_of_connection_strengths))
+#             / (
+#                 1e-5
+#                 + (
+#                     max(list_of_connection_strengths)
+#                     - min(list_of_connection_strengths)
+#                 )
+#             )
+#         )
+#         if penwidth < minimum_penwidth:
+#             penwidth = minimum_penwidth
+#     else:
+#         warnings.warn(
+#             "A potential key is not in connection strength keys"
+#         )  # f"{potential_key} not in f{self.connection_strengths.keys()}")
+#         penwidth = 1
+#     return str(float(penwidth))
 
-                    sender_layer = int(sender_hook_name.split(".")[1])
-                    receiver_layer = int(receiver_hook_name.split(".")[1])
+# def build_networkx_graph(self):
+#     # create all nodes
+#     import networkx as nx
 
-                    # set node position at this layer???
-                    print(sender_node)
-                    G.add_nodes_from([(sender_node, {"layer": sender_layer})])
-                    G.add_nodes_from([(receiver_node, {"layer": receiver_layer})])
+#     g = nx.DiGraph()
 
-                    G.add_edge(
-                        sender_node,
-                        receiver_node,
-                        weight=1
-                        + graph[receiver_hook_name][receiver_slice_tuple][
-                            sender_hook_name
-                        ][sender_slice_tuple].edge_type.value,
-                    )
+#     for index, child in enumerate(self.corr):
+#         parent: ACDCInterpNode
+#         comp_type: str
+#         child = typing.cast(ACDCInterpNode, child)
+#         if len(child.parents) > 0 or index == 0:
+#             g.add_node(child.name)
 
-    return G, all_nodes
+#     # connect the nodes
+#     for child in self.corr:
+#         parent: ACDCInterpNode
+#         child = typing.cast(ACDCInterpNode, child)
+#         for parent in child.parents:
+#             g.add_edge(
+#                 child.name, parent.name,
+#             )
+#     return g
 
+# def extract_connection_strengths(self, a_node):
+#     connection_strengths = []
+#     for a_key in self.connection_strengths.keys():
+#         if a_node in a_key.split("->")[1]:
+#             connection_strengths.append(self.connection_strengths[a_key])
+#     return connection_strengths
 
-def calculate_layer(name, slice_tuple):
-    ret = 0
-    ret += 30 * int(name.split(".")[1])
-    ret += 15 * int("result" in name)
-    ret += 28 * int("post" in name)
-
-    print(name, slice_tuple.as_index)
-
-    if len(slice_tuple.as_index) > 1:
-        ret += slice_tuple.as_index[2]
-    return ret
-
-def show(
-    old_graph: Dict,
-    fname: str,
-    colorscheme: str = "Pastel2",
-):
-    """
-    Takes matplotlib colormaps
-    """
-    graph, all_nodes = vizualize_graph(old_graph)
-    g = graphviz.Digraph("G", format="png")
-
-    all_layers = defaultdict(list) # {node: calculate_layer(node[0], node[1]) for node in all_nodes}
-    for node in all_nodes:
-        all_layers[calculate_layer(node[0], node[1])].append(node)
-
-    # add each layer as a subgraph with rank=same
-    for layer in range(max(all_layers.keys())):
-        with g.subgraph() as s:
-            s.attr(rank="same")
-            for node in all_layers[layer]:
-                s.node(make_graph_name(node[0], node[1]))
-
-    colors = build_colorscheme(list(graph.nodes))
-    warnings.warn("This hardcodes in the allsendersnames")
-
-    for child in graph.nodes:
-        for parent in graph[child]:
-            penwidth = {1: 1, 2: 5, 3: 9}[
-                graph[child][parent]["weight"]
-            ]  # experiment.get_connection_strengths(parent, child, minimum_penwidth)
-
-            g.edge(
-                child,
-                parent,
-                penwidth=str(penwidth),
-                color=colors[child],
-            )
-
-    assert fname.endswith(
-        ".png"
-    ), "Must save as png (... or you can take this g object and read the graphviz docs)"
-    g.render(outfile=fname, format="png")
-    return g
+# -------------------------------------------
+# WANDB
+# -------------------------------------------
 
 def do_plotly_plot_and_log(
     experiment, x: List[int], y: List[float], plot_name: str, metadata: Optional[List[str]] = None,

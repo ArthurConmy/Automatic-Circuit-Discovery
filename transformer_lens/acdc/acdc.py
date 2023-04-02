@@ -61,20 +61,22 @@ from transformer_lens.HookedTransformer import (
 from transformer_lens.acdc.utils import (
     make_nd_dict,
     ct,
-    TLACDCInterpNode,
-    TLACDCCorrespondence,
-    TLACDCExperiment,
     TorchIndex,
     Edge,
     EdgeType,
 )  # these introduce several important classes !!!
+
+from transformer_lens.acdc.TLACDCCorrespondence import TLACDCCorrespondence
+from transformer_lens.acdc.TLACDCInterpNode import TLACDCInterpNode
+from transformer_lens.acdc.TLACDCExperiment import TLACDCExperiment
+
 from collections import defaultdict, deque, OrderedDict
 from transformer_lens.acdc.induction.utils import (
     kl_divergence,
 )
 from transformer_lens.acdc.graphics import (
     build_colorscheme,
-    show,
+    # show,
 )
 import argparse
 
