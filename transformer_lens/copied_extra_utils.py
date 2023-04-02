@@ -87,7 +87,7 @@ def get_longest_float(s, end_cutoff=None):
 def get_threshold_zero(s, num=3):
     return float(s.split("_")[num])
 
-def process_nan(tens, unsafe=False):
+def process_nan(tens, reverse=False):
     # turn nans into -1s
     assert isinstance(tens, np.ndarray)
     assert len(tens.shape) == 1, tens.shape
@@ -96,9 +96,22 @@ def process_nan(tens, unsafe=False):
     
     # turn -1s into the minimum value
     tens[np.where(tens == -1)] = 1000
-    
-    for i in range(1, len(tens)):
-        tens[i] = min(tens[i], tens[i-1])
+
+    if reverse:
+        for i in range(len(tens)-2, -1, -1):
+            tens[i] = min(tens[i], tens[i+1])
+        
+        for i in range(1, len(tens)):
+            if tens[i] == 1000:
+                tens[i] = tens[i-1]
+
+    else:    
+        for i in range(1, len(tens)):
+            tens[i] = min(tens[i], tens[i-1])
+
+        for i in range(1, len(tens)):
+            if tens[i] == 1000:
+                tens[i] = tens[i-1]
 
     return tens
 

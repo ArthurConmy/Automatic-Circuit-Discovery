@@ -47,21 +47,18 @@ histories = []
 min_metrics = []
 
 def filter(name):
-    # return name.endswith("_reversed") and not name.endswith("zero_reversed")
-    return name.endswith("zero_reversed")
+    return name.endswith("_reversed") and not name.endswith("zero_reversed")
+    # return name.endswith("zero_reversed") or name.endswith("zero")
 
 for pi, project_name in (enumerate(project_names)):
     print("Finding runs...")
     runs = list(api.runs(f"remix_school-of-rock/{project_name}"))
     print("Found runs!")
 
-
     for i, run in enumerate(tqdm(runs)):
         print(run.name, "state:", run.state)
-        
         if not filter(run.name):
             continue
-
         if run.state == "finished": #  or run.state == "failed":
             history = pd.DataFrame(run.scan_history())
             histories.append(history)
@@ -83,6 +80,7 @@ for pi, project_name in (enumerate(project_names)):
 
             all_metrics = history["metric"].values
             all_edges = history["num_edges"].values
+            all_metrics = process_nan(all_metrics, reverse=True)
             all_edges = process_nan(all_edges)
 
             found_thing = False
@@ -113,7 +111,13 @@ if torch.norm(torch.tensor(_initial_edges).float() - _initial_edges[0]) > 1e-5:
     warnings.warn(f"Initial edges are not the same, so this may be an unfair comparison of {_initial_edges=}")
 
 added_final_edges = False
-thresholds = [get_threshold_zero(name, -2) for name in names]
+
+thresholds = []
+for name in names:
+    if name.endswith("zero") or (name.endswith("reversed") and not name.endswith("zero_reversed")):
+        thresholds.append(get_threshold_zero(name, -2))
+    else:
+        thresholds.append(get_threshold_zero(name, -3))
 
 #%%
 

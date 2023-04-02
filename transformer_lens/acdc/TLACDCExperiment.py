@@ -112,8 +112,9 @@ class TLACDCExperiment:
             self.metrics_to_plot["acdc_step"] = 0
             self.metrics_to_plot["num_edges"] = []
 
-    def update_cur_metric(self, initial=False):
-        self.cur_metric = self.metric(self.model(self.ds))
+    def update_cur_metric(self, recalc=True, initial=False):
+        if recalc:
+            self.cur_metric = self.metric(self.model(self.ds))
 
         if initial:
             assert abs(self.cur_metric) < 1e-5, f"Metric {self.cur_metric=} is not zero"
@@ -337,6 +338,7 @@ class TLACDCExperiment:
                     if self.verbose:
                         print("...so keeping connection")
                     edge.present = True
+                    self.update_cur_metric(recalc = False)
 
                 if self.using_wandb:
                     log_metrics_to_wandb(
