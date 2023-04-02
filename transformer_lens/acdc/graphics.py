@@ -6,19 +6,24 @@ import torch
 import huggingface_hub
 import datetime
 from typing import Dict
+import wandb
+import plotly.graph_objects as go
 import torch
 import random
 import torch.nn as nn
 import torch.nn.functional as F
+from typing import List, Optional
 import warnings
 import networkx as nx
 import graphviz
-from transformer_lens.acdc.utils import (
-    make_nd_dict,
-    TorchIndex,
-    Edge, 
-    EdgeType,
-)  # these introduce several important classes !!!
+
+# # I hope that it's reasona
+# from transformer_lens.acdc.utils import (
+#     make_nd_dict,
+#     TorchIndex,
+#     Edge, 
+#     EdgeType,
+# )  # these introduce several important classes !!!
 
 # -------------------------------------------
 # SOME GRAPHICS
@@ -50,7 +55,7 @@ def build_colorscheme(node_names, colorscheme: str = "Pastel2") -> Dict[str, str
 
 def make_graph_name(
     hook_name: str,
-    hook_slice_tuple: TorchIndex,
+    hook_slice_tuple,
 ):
     return f"{hook_name}_{hook_slice_tuple.hashable_tuple}"
 
@@ -146,7 +151,7 @@ def show(
         for parent in graph[child]:
             penwidth = {1: 1, 2: 5, 3: 9}[
                 graph[child][parent]["weight"]
-            ]  # self.get_connection_strengths(parent, child, minimum_penwidth)
+            ]  # experiment.get_connection_strengths(parent, child, minimum_penwidth)
 
             g.edge(
                 child,
@@ -160,3 +165,84 @@ def show(
     ), "Must save as png (... or you can take this g object and read the graphviz docs)"
     g.render(outfile=fname, format="png")
     return g
+
+def do_plotly_plot_and_log(
+    experiment, x: List[int], y: List[float], plot_name: str, metadata: Optional[List[str]] = None,
+) -> None:
+
+    # Create a plotly plot with metadata
+    fig = go.Figure(
+        data=[go.Scatter(x=x, y=y, mode="lines+markers", text=metadata)]
+    )
+    wandb.log({plot_name: fig})
+
+def log_metrics_to_wandb(
+    experiment,
+    current_metric: Optional[float] = None,
+    parent_name = None,
+    child_name = None,
+    evaluated_metric = None,
+    result = None,
+    picture_fname = None,
+) -> None:
+    """Arthur added Nones so that just some of the metrics can be plotted"""
+
+    experiment.metrics_to_plot["new_metrics"].append(experiment.cur_metric)
+    experiment.metrics_to_plot["list_of_nodes_evaluated"].append(str(experiment.current_node))
+    if parent_name is not None:
+        experiment.metrics_to_plot["list_of_parents_evaluated"].append(parent_name)
+    if child_name is not None:
+        experiment.metrics_to_plot["list_of_children_evaluated"].append(child_name)
+    if evaluated_metric is not None:
+        experiment.metrics_to_plot["evaluated_metrics"].append(evaluated_metric)
+    if current_metric is not None:
+        experiment.metrics_to_plot["current_metrics"].append(current_metric)
+    if result is not None:
+        experiment.metrics_to_plot["results"].append(result)
+    if experiment.skip_edges != "yes":
+        experiment.metrics_to_plot["num_edges"].append(experiment.get_no_edges())
+
+    experiment.metrics_to_plot["acdc_step"] += 1
+    list_of_timesteps = [i + 1 for i in range(experiment.metrics_to_plot["acdc_step"])]
+    if experiment.metrics_to_plot["acdc_step"] > 1:
+        if result is not None:
+            do_plotly_plot_and_log(
+                experiment,
+                x=list_of_timesteps,
+                y=experiment.metrics_to_plot["results"],
+                metadata=[
+                    f"{parent_string} to {child_string}"
+                    for parent_string, child_string in zip(
+                        experiment.metrics_to_plot["list_of_parents_evaluated"],
+                        experiment.metrics_to_plot["list_of_children_evaluated"],
+                    )
+                ],
+                plot_name="results",
+            )
+        if evaluated_metric is not None:
+            do_plotly_plot_and_log(
+                experiment,
+                x=list_of_timesteps,
+                y=experiment.metrics_to_plot["evaluated_metrics"],
+                metadata=experiment.metrics_to_plot["list_of_nodes_evaluated"],
+                plot_name="evaluated_metrics",
+            )
+            do_plotly_plot_and_log(
+                experiment,
+                x=list_of_timesteps,
+                y=experiment.metrics_to_plot["current_metrics"],
+                metadata=experiment.metrics_to_plot["list_of_nodes_evaluated"],
+                plot_name="current_metrics",
+            )
+
+        # Arthur added... I think wandb graphs have a lot of desirable properties
+        if experiment.skip_edges != "yes":
+            wandb.log({"num_edges_total": experiment.metrics_to_plot["num_edges"][-1]})
+        wandb.log({"experiment.cur_metric": experiment.metrics_to_plot["current_metrics"][-1]})
+        if experiment.second_metric is not None:
+            wandb.log({"experiment.second_metric": experiment.cur_second_metric})
+
+        if picture_fname is not None:  # presumably this is more expensive_update_cur
+            wandb.log(
+                {"acdc_graph": wandb.Image(picture_fname),}
+            )

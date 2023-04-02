@@ -88,7 +88,7 @@ parser.add_argument('--threshold', type=float, required=False, default=-1.0, hel
 parser.add_argument('--zero-ablation', action='store_true', help='A flag without a value')
 
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("--config ../../configs_acdc/base_config.yaml".split())
+    args = parser.parse_args("--config ../../configs_acdc/base_config.yaml --zero-ablation".split())
 else:
     args = parser.parse_args()
 
@@ -262,7 +262,7 @@ config_overrides = {}
 if THRESHOLD >= 0.0: # we actually added this
     config_overrides["THRESHOLD"] = THRESHOLD
 
-config_overrides["WANDB_RUN_NAME"] = ct()
+config_overrides["WANDB_RUN_NAME"] = f"{ct()}_{THRESHOLD if THRESHOLD >= 0.0 else yaml_config['THRESHOLD']}"
 
 for key, value in config_overrides.items():
     yaml_config[key] = value
@@ -282,120 +282,7 @@ exp = TLACDCExperiment(
 
 #%%
 
-exp.step()
-
-    #%%
-
-show(correspondence, "test.png")
+while exp.current_node is not None:
+    exp.step()
 
 # %%
-
-old = tl_model(toks_int_values)
-print(count_no_edges(full_graph), "is the full number of edges")
-
-# %%
-
-# Let's do some ACDC !!!
-
-import wandb
-import random
-
-file_content = ""
-with open(__file__, "r") as f:
-    file_content = f.read()
-
-threshold = THRESHOLD
-
-#%%
-
-if USING_WANDB:
-    wandb.init(
-        entity="remix_school-of-rock", 
-        project="tl_induction_proper", 
-        name="arthurs_example_threshold_" + str(threshold) + "_" + ("_zero" if ZERO_ABLATION else "") + str(random.randint(0, 1000000)),
-        notes=file_content,
-    )
-
-for receiver_name in full_graph.keys():
-    for receiver_node.index in full_graph[receiver_name]:
-        print("Currently at ", receiver_name, "and the tuple is", receiver_node.index)
-
-        # TODO c'mon... you must be able to implement a speedup where you check if this position doesn't matter at all...
-
-        step(
-            graph=full_graph,
-            threshold=threshold,
-            receiver_name=receiver_name,
-            receiver_node_index=receiver_node.index,
-            verbose=True,
-            early_stop=False,
-            using_wandb=USING_WANDB,
-        )
-
-        # TODO implement not backtracking where it doesn't matter
-
-print("Done!!!")
-final_edges = count_no_edges(full_graph)
-print(final_edges) # ... I think that this is the number of edges!
-
-if USING_WANDB:
-    wandb.log({"num_edges": final_edges})
-    wandb.finish()
-
-#%%
-
-show(full_graph, f"ims/{threshold}.png")
-
-
-for receiver_name in full_graph.keys():
-    for receiver_node.index in full_graph[receiver_name]:
-        for sender_name in full_graph[receiver_name][receiver_node.index].keys():
-            for sender_node.index.index in full_graph[receiver_name][receiver_node.index][sender_name]:
-                if full_graph[receiver_name][receiver_node.index][sender_name][sender_node.index.index].present:
-                    print("Connection from", sender_name, sender_node.index.index, "to", receiver_name, receiver_node.index)
-
-# %%
-
-if False:
-    """A good way to sanity check our wild hooking stuff is to check zero ablating everything is the same as zero ablating everything in the normal way. For now this is not implemented"""
-
-    def zero_hook(z, hook):
-        return torch.zeros_like(z)
-
-    def run_in_normal_way(tl_model):
-        tl_model.reset_hooks()
-        for hook_name in [
-            "blocks.0.attn.hook_result",
-            "blocks.0.hook_resid_pre",
-            "blocks.1.attn.hook_result",
-        ]:
-            tl_model.add_hook(hook_name, zero_hook)
-        answer = tl_model(torch.arange(5))
-        tl_model.reset_hooks()
-        return answer
-
-
-    b2 = run_in_normal_way(tl_model)
-    assert torch.allclose(b, b2)  # TODO fix this, I dunno if we have settings for the
-
-#%% [markdown]
-
-class MyClass:
-    def __init__(self, model):
-        self.model = model
-        self.a = 4
-
-    def class_hook(self, z, hook):
-        print(f"{hook.name=}")
-        print(self.a)
-        return z
-    
-    def add_hook(self):
-        self.model.add_hook("blocks.0.attn.hook_result", self.class_hook)
-
-#%%
-
-m = MyClass(tl_model)
-
-# %%
-

@@ -10,7 +10,15 @@ from typing import Any, Literal, Dict, Tuple, Union, List, Optional, Callable, T
 import torch
 import time
 from transformer_lens.HookedTransformer import HookedTransformer
+from transformer_lens.acdc.graphics import (
+    log_metrics_to_wandb,
+)
 from collections import OrderedDict
+
+def next_key(ordered_dict: OrderedDict, current_key):
+    key_iterator = iter(ordered_dict)
+    next((key for key in key_iterator if key == current_key), None)
+    return next(key_iterator, None)
 
 class OrderedDefaultdict(collections.OrderedDict):
     """ A defaultdict with OrderedDict as its base class. 
@@ -119,6 +127,10 @@ class TLACDCInterpNode:
     def __repr__(self):
         return f"TLACDCInterpNode({self.name}, {self.index})"
 
+    def __str__(self) -> str:
+        index_str = "" if len(self.index.hashable_tuple) < 3 else f"_{self.index.hashable_tuple[2]}"
+        return f"{self.name}{self.index}"
+
 class TLACDCCorrespondence:
     """Stores the full computational graph, similar to ACDCCorrespondence from the rust_circuit code"""
         
@@ -190,7 +202,6 @@ class TLACDCExperiment:
         verbose: bool = False,
         hook_verbose: bool = False,
         parallel_hypotheses: int = 1, # lol
-        using_wandb: bool = False,
         remove_redundant: bool = False, # TODO implement
         monotone_metric: Literal[
             "off", "maximize", "minimize"
@@ -200,11 +211,15 @@ class TLACDCExperiment:
         zero_ablation: bool = False, # use zero rather than 
         config: Optional[Dict] = None,
         wandb_notes: str = "",
+        skip_edges = "yes",
     ):
         self.model = model
         self.zero_ablation = zero_ablation
         self.verbose = verbose
         self.hook_verbose = hook_verbose
+        self.skip_edges = skip_edges
+        if skip_edges != "yes":
+            raise NotImplementedError() # TODO
 
         self.corr = corr
         self.reverse_topologically_sort_corr()
@@ -220,8 +235,9 @@ class TLACDCExperiment:
             self.model.global_cache.to("cpu", which_caches="second")
         self.setup_model_hooks()
 
-        self.using_wandb = using_wandb # TODO sync with YAML
         if config is not None and config["USING_WANDB"]:
+            self.using_wandb = config["USING_WANDB"]
+
             wandb.init(
                 entity=config["WANDB_ENTITY_NAME"],
                 project=config["WANDB_PROJECT_NAME"], 
@@ -415,6 +431,9 @@ class TLACDCExperiment:
         - remove_redundant
         """
 
+        if self.current_node is None:
+            return
+
         warnings.warn("Implement incoming effect sizes on the nodes")
         start_step_time = time.time()
 
@@ -465,35 +484,68 @@ class TLACDCExperiment:
                     edge.present = True
 
                 if self.using_wandb:
+                    log_metrics_to_wandb(
+                        self,
+                        current_metric = cur_metric,
+                        parent_name = str(self.corr.graph[sender_name][sender_index]),
+                        child_name = str(self.current_node),
+                        result = result,
+                    )
                     wandb.log({"num_edges": self.count_no_edges()})
 
             cur_metric = self.metric(self.model(self.ds))
 
-        # TODO reimplement all_connections stuff
-        # if all(
-        #     not self.corr.graph[receiver_name][receiver_node.index][sender_name][sender_node.index.index].present
-        #     for sender_name in self.corr.graph[receiver_name][receiver_node.index].keys()
-        #     for sender_node.index.index in self.corr.graph[receiver_name][receiver_node.index][sender_name]
-        # ):
-        #     # removed all connections
-        #     print(
-        #         f"Warning: we added {receiver_name} at {receiver_node.index} earlier, but we just removed all its child connections. So we are{(' ' if remove_redundant else ' not ')}removing it and its redundant descendants now (remove_redundant={self.remove_redundant})"
-        #     )
+        # increment the current node
+        self.increment_current_node()
+
+    def current_node_connected(self):
+        not_presents_exist = False
+
+        for child_name, rest1 in self.corr.edges.items():
+            for child_index, rest2 in rest1.items():
+                if self.current_node.name in rest2 and self.current_node.index in rest2[self.current_node.name]:
+                    if rest2[self.current_node.name][self.current_node.index].present:
+                        return True
+                    else:
+                        not_presents_exist = True
+
+                # if child_name == self.current_node.name and child_index == self.current_node.index and len(rest2) == 0: # [self.current_node.name][self.current_node.index]:
+                #     return True
+        
+        return not not_presents_exist
+
+    def find_next_node(self) -> Optional[TLACDCInterpNode]:
+        next_index = next_key(self.corr.graph[self.current_node.name], self.current_node.index)
+        if next_index is not None:
+            return self.corr.graph[self.current_node.name][next_index]
+
+        next_name = next_key(self.corr.graph, self.current_node.name)
+
+        if next_name is not None:
+            return list(self.corr.graph[next_name].values())[0]
+            
+        warnings.warn("Finished iterating")
+        return None
+
+    def increment_current_node(self) -> None:
+        self.current_node = self.find_next_node()
+        print("We moved to ", self.current_node)
+
+        if self.current_node is not None and not self.current_node_connected():
+            print("But it's bad")
+            self.increment_current_node()
 
     def count_no_edges(self):
-        return 69
-        raise NotImplementedError() # TODO
-    
-        # num_edges = 0
-        # for receiver_name in graph.keys():
-        #     for receiver_slice_tuple in graph[receiver_name].keys():
-        #         for sender_hook_name in graph[receiver_name][receiver_slice_tuple].keys():
-        #             for sender_slice_tuple in graph[receiver_name][receiver_slice_tuple][sender_hook_name]:
-        #                 edge = graph[receiver_name][receiver_slice_tuple][sender_hook_name][sender_slice_tuple]
 
-        #                 if not edge.edge_type == EdgeType.ALWAYS_INCLUDED and edge.present:
-        #                     num_edges += 1
-        # return num_edges
+        # TODO if this is slow (check) find a faster way
+
+        cnt = 0
+
+        for edge in self.corr.all_edges().values():
+            if edge.present:
+                cnt += 1
+
+        return cnt
 
 def make_nd_dict(end_type, n = 3) -> Any:
     """Make biiig default dicts : ) : )"""
