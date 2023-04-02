@@ -1,4 +1,5 @@
 histories/
+transformer_lens/media/
 *.png
 *.gv
 __pycache__

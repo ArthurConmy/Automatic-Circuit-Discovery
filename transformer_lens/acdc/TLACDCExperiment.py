@@ -165,7 +165,7 @@ class TLACDCExperiment:
         for receiver_node_index in self.corr.edges[hook.name]:
             direct_computation_nodes = []
             for sender_node_name in self.corr.edges[hook.name][receiver_node_index]:
-                for sender_node_index in self.corr.edges[hook.name][receiver_node_index][sender_node_name]:
+                for sender_node_index in list(reversed(self.corr.edges[hook.name][receiver_node_index][sender_node_name])):
 
                     edge = self.corr.edges[hook.name][receiver_node_index][sender_node_name][sender_node_index] # TODO maybe less crazy nested indexes ... just make local variables each time?
 
