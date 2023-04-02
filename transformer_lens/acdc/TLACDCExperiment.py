@@ -310,7 +310,7 @@ class TLACDCExperiment:
                     )
 
                 result = evaluated_metric - cur_metric
-                edge.result = result
+                edge.effect_size = result
 
                 if self.verbose:
                     print("Result is", result, end="")

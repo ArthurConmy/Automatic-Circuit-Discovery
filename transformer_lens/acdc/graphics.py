@@ -127,7 +127,7 @@ def show(
                     parent_name = get_node_name(parent)
                     child_name = get_node_name(child)
 
-                    if edge.present:
+                    if edge.present and edge.effect_size is not None:
                         for node_name in [parent_name, child_name]:
                             g.node(
                                 node_name,
@@ -141,7 +141,7 @@ def show(
                         g.edge(
                             parent_name,
                             child_name,
-                            penwidth=str(minimum_penwidth),
+                            penwidth=str(edge.effect_size),
                             color=colors[parent_name],
                         )
 

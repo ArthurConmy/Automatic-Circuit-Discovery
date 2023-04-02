@@ -128,7 +128,7 @@ with open(__file__, "r") as f:
 tl_model.global_cache.clear()
 tl_model.reset_hooks()
 
-if WANDB_RUN_NAME is None:
+if WANDB_RUN_NAME is None or IPython.get_ipython() is not None:
     WANDB_RUN_NAME = f"{ct()}_{THRESHOLD}{'_zero' if ZERO_ABLATION else ''}_reversed"
 else:
     assert False # I want named runs, always
@@ -148,15 +148,17 @@ exp = TLACDCExperiment(
     verbose=True,
 )
 
+# %%
+
+exp.step()
+show(
+    exp.corr,
+    "arthur_spice.png"
+)
+
 #%%
 
 while exp.current_node is not None:
     exp.step()
 
-# %%
-
-show(
-    correspondence,
-    "arthur_spice.png"
-)
 # %%
