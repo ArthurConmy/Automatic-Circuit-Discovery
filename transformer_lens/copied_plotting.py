@@ -47,8 +47,8 @@ histories = []
 min_metrics = []
 
 def filter(name):
-    return name.endswith("_reversed") and not name.endswith("zero_reversed")
-    # return name.endswith("zero_reversed") or name.endswith("zero")
+    # return name.endswith("_reversed") and not name.endswith("zero_reversed")
+    return name.endswith("zero_reversed") or name.endswith("zero")
 
 for pi, project_name in (enumerate(project_names)):
     print("Finding runs...")
@@ -141,7 +141,7 @@ if REVERSE_SIGN:
 
 fig = go.Figure()
 
-LOG_X_AXIS = True
+LOG_X_AXIS = False
 if LOG_X_AXIS:
     final_edges = np.log(final_edges)
 
@@ -153,62 +153,63 @@ fig.update_layout(
 
 # add title
 fig.update_layout(
-    title="Number of edges vs metric, induction in 2L model",
+    title="ACDC compared to SP (zero ablation)",
 )
 
 #%%
 
-def get_edge_sp_things():
-    api = wandb.Api()
+if False:
+    def get_edge_sp_things():
+        api = wandb.Api()
 
-    project_names = ["subnetwork_probing_edges"]
-    histories = []
+        project_names = ["subnetwork_probing_edges"]
+        histories = []
 
-    lambdas=[]
-    edges=[]
-    kls=[]
+        lambdas=[]
+        edges=[]
+        kls=[]
 
-    for pi, project_name in (enumerate(project_names)):
-        print("Finding runs...")
-        runs = list(api.runs(f"remix_school-of-rock/{project_name}"))
-        print("Found runs!")
+        for pi, project_name in (enumerate(project_names)):
+            print("Finding runs...")
+            runs = list(api.runs(f"remix_school-of-rock/{project_name}"))
+            print("Found runs!")
 
-        for i, run in enumerate(tqdm(runs)):
-            print(run.name, "state:", run.state)
-            if run.state == "finished" or run.state == "crashed":
-                history = pd.DataFrame(run.scan_history())
-                histories.append(history)
-                try:
-                    cur_lambda =(float(run.name.split("_")[2]))
-                except:
-                    print(run.name, "didn't have lambda shit")
-                    continue
+            for i, run in enumerate(tqdm(runs)):
+                print(run.name, "state:", run.state)
+                if run.state == "finished" or run.state == "crashed":
+                    history = pd.DataFrame(run.scan_history())
+                    histories.append(history)
+                    try:
+                        cur_lambda =(float(run.name.split("_")[2]))
+                    except:
+                        print(run.name, "didn't have lambda shit")
+                        continue
 
-                # if "number_of_edges" in history.columns:
+                    # if "number_of_edges" in history.columns:
 
-                for i in range(-1, -10, -1):
-                    lambdas.append(cur_lambda)
-                    edges.append(history.iloc[i]["number_of_edges"])
-                    kls.append(history.iloc[i]["acc_loss"])
+                    for i in range(-1, -10, -1):
+                        lambdas.append(cur_lambda)
+                        edges.append(history.iloc[i]["number_of_edges"])
+                        kls.append(history.iloc[i]["acc_loss"])
 
-                warnings.warn("We take min of both, plausibly the (edges, kl) result is actually unattainable")
+                    warnings.warn("We take min of both, plausibly the (edges, kl) result is actually unattainable")
 
-    log_edges = torch.tensor(edges).log()
-    kls = torch.tensor(kls)
-    return log_edges, kls, lambdas
+        labels = fig2.data[0]["regularization_params"]
+        kls = torch.tensor(kls)
+        return log_edges, kls, lambdas
 
-# skip this if don't want to include other things
+    # skip this if don't want to include other things
 
-log_edges, kls, lambdas = get_edge_sp_things()
+    log_edges, kls, lambdas = get_edge_sp_things()
 
-final_edges = torch.cat([torch.tensor(final_edges), log_edges])
-final_metric = torch.cat([torch.tensor(final_metric), kls])
-names = names + [f"lambda={l}" for l in lambdas]
-thresholds = thresholds + [-1.0 for _ in lambdas]
+    final_edges = torch.cat([torch.tensor(final_edges), log_edges])
+    final_metric = torch.cat([torch.tensor(final_metric), kls])
+    names = names + [f"lambda={l}" for l in lambdas]
+    thresholds = thresholds + [-1.0 for _ in lambdas]
 
 #%%
 
-if True:
+if False:
     # clear out the scraped lambdas
     final_edges = final_edges[:-len(lambdas)]
     final_metric = final_metric[:-len(lambdas)]
@@ -234,8 +235,8 @@ fig.add_trace(
                 title="Threshold",
                 titleside="right",
                 tickmode="array",
-                tickvals=np.arange(0, 16)/10,
-                ticktext=np.arange(0, 16)/10,
+                tickvals=np.arange(0, 13)/5,
+                ticktext=np.arange(0, 13)/5,
             ),
         ),
         text=names,
@@ -245,6 +246,43 @@ fig.add_trace(
 
 #%%
 
+fig2 = plotly.io.read_json("media_zero_json.json")
+
+# get points
+x = fig2.data[0]["x"]
+y = fig2.data[0]["y"]
+labels = fig2.data[0]["customdata"]
+labels = [x for x, _ in labels]
+
+#%%
+
+fig.add_trace(
+    go.Scatter(
+        x=x,
+        y=y,
+        mode="markers",
+        marker=dict(
+            size=10,
+            color="black",
+            symbol="x",
+        ),
+        text=labels,
+        name="SP"
+    )
+)
+
+#%%
+
+# add legend
+
+fig.update_layout(
+    legend=dict(
+        yanchor="top",
+        y=0.99,
+        xanchor="right",
+        x=0.99,
+    )
+)
 
 #%%
 run = api.run("acdcremix/pareto-subnetwork-probing/runs/2zzctq6x")
