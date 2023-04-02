@@ -93,7 +93,7 @@ parser.add_argument('--wandb-project-name', type=str, required=False, default="a
 parser.add_argument('--wandb-run-name', type=str, required=False, default=ct()+"_auto_name", help='Value for WANDB_RUN_NAME')
 
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("--threshold 0.32 --zero-ablation".split())
+    args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
 else:
     args = parser.parse_args()
 
@@ -253,11 +253,6 @@ for node in downstream_residual_nodes:
         child_node=node,
         edge=Edge(edge_type=EdgeType.ADDITION),
     )
-#%%
-
-show(
-    correspondence,
-)
 
 #%%
 
@@ -287,4 +282,10 @@ exp = TLACDCExperiment(
 while exp.current_node is not None:
     exp.step()
 
+# %%
+
+show(
+    correspondence,
+    "arthur_spice.png"
+)
 # %%
