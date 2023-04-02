@@ -263,7 +263,7 @@ tl_model.global_cache.clear()
 tl_model.reset_hooks()
 
 if WANDB_RUN_NAME is None:
-    WANDB_RUN_NAME = f"{ct()}_{THRESHOLD}"
+    WANDB_RUN_NAME = f"{ct()}_{THRESHOLD}{'_zero' if ZERO_ABLATION else ''}_reversed"
 
 exp = TLACDCExperiment(
     model=tl_model,
@@ -280,46 +280,6 @@ exp = TLACDCExperiment(
     metric=metric,
     verbose=True,
 )
-
-#%% [markdown]
-# Hacking around in order to see WTF Augustine found!
-
-# remove all edges except 0.0 and 1.6 things...
-cnt=0
-for child_name, rest1 in exp.corr.edges.items():
-    for child_index, rest2 in rest1.items():
-        for parent_name, rest3 in rest2.items():
-            for parent_index, edge in rest3.items():
-                parent_node = exp.corr.graph[parent_name][parent_index]
-                child_node = exp.corr.graph[child_name][child_index]
-
-                from transformer_lens.acdc.graphics import get_node_name
-
-                names = [get_node_name(parent_node), get_node_name(child_node)]
-                print(names)
-
-                good_edge = True
-
-                for name in names:
-                    if "0.0" not in name and "1.6" not in name and "embed" not in name and "resid" not in name:
-                        good_edge = False
-                
-                if good_edge:
-                    cnt += 1
-                    print("good edge!")
-
-                else:
-                    edge.present = False
-
-print(cnt)
-
-#%%
-
-exp.update_cur_metric()
-
-#%%
-
-
 
 #%%
 
