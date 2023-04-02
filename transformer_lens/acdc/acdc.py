@@ -261,6 +261,8 @@ with open(__file__, "r") as f:
 config_overrides = {}
 if THRESHOLD >= 0.0: # we actually added this
     config_overrides["THRESHOLD"] = THRESHOLD
+if ZERO_ABLATION:
+    config_overrides["ZERO_ABLATION"] = ZERO_ABLATION
 
 config_overrides["WANDB_RUN_NAME"] = f"{ct()}_threshold_{THRESHOLD if THRESHOLD >= 0.0 else yaml_config['THRESHOLD']}{'_zero' if ZERO_ABLATION else ''}"
 

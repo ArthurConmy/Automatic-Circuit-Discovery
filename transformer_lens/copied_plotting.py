@@ -16,6 +16,7 @@ from tqdm import tqdm
 import pandas as pd
 import wandb
 import numpy as np
+from transformer_lens.acdc.utils import ct
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from copied_extra_utils import get_nonan, get_corresponding_element, get_first_element, get_longest_float, process_nan, get_threshold_zero
@@ -23,7 +24,7 @@ from copied_extra_utils import get_nonan, get_corresponding_element, get_first_e
 #%%
 
 project_names = [
-    "tl_induction",
+    "tl_induction_proper",
 ]
 
 api = wandb.Api()
@@ -57,6 +58,9 @@ for pi, project_name in (enumerate(project_names)):
             history = pd.DataFrame(run.scan_history())
             histories.append(history)
 
+            # rename the column "experiment.cur_metric" to "metric"
+            history = history.rename(columns={"experiment.cur_metric": "metric"})
+
             min_edges = history["num_edges"].min()
             max_edges = history["num_edges"].max()
             
@@ -86,6 +90,11 @@ for pi, project_name in (enumerate(project_names)):
 
                     colors.append("black")
                 print(len(colors))
+
+# save list of dataframes
+with open("acdc/histories/" + ct() + ".pkl", "wb") as f:
+    import pickle
+    pickle.dump(histories, f)
 
 if torch.norm(torch.tensor(_initial_losses) - _initial_losses[0]) > 1e-5:
     warnings.warn(f"Initial losses are not the same, so this may be an unfair comparison of {_initial_losses=}")

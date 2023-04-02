@@ -1,3 +1,16 @@
+#%%
+
+import pickle
+import matplotlib.pyplot as plt
+import numpy as np
+
+fname = "/mnt/ssd-0/arthurworkspace/TransformerLens/transformer_lens/acdc/histories/Sun_Apr_2_09_22_56_2023.pkl"
+
+with open(fname, "rb") as f:
+    history = pickle.load(f)
+
+#%%
+
 import subprocess
 import numpy as np 
 from math import gcd

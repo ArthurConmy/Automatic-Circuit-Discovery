@@ -84,8 +84,8 @@ def get_longest_float(s, end_cutoff=None):
     assert ans is not None
     return ans
 
-def get_threshold_zero(s):
-    return float(s.split("_")[3])
+def get_threshold_zero(s, num=3):
+    return float(s.split("_")[num])
 
 def process_nan(tens):
     # turn nans into -1s
