@@ -81,30 +81,28 @@ import argparse
 #%%
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--config", type=str, required=False, help="Path to YAML config file", default="../../configs_acdc/base_config.yaml")
+parser.add_argument('--threshold', type=float, required=True, help='Value for THRESHOLD')
 parser.add_argument('--first-cache-cpu', type=bool, required=False, default=True, help='Value for FIRST_CACHE_CPU')
-parser.add_argument('--second-cache-cpu', type=bool, required=False, default=True, help='Value for SECOND_CACHE_CPU') # TODO move these to the config file. ... or do YAML overrides
-parser.add_argument('--threshold', type=float, required=False, default=-1.0, help='Value for THRESHOLD') # defaults to fake value
+parser.add_argument('--second-cache-cpu', type=bool, required=False, default=True, help='Value for SECOND_CACHE_CPU')
 parser.add_argument('--zero-ablation', action='store_true', help='A flag without a value')
+parser.add_argument('--using-wandb', action='store_true', help='A flag without a value')
+parser.add_argument('--wandb-entity-name', type=str, required=False, default="remix_school-of-rock", help='Value for WANDB_ENTITY_NAME')
+parser.add_argument('--wandb-project-name', type=str, required=False, default="acdc", help='Value for WANDB_PROJECT_NAME')
+parser.add_argument('--wandb-run-name', type=str, required=False, default=ct()+"_auto_name", help='Value for WANDB_RUN_NAME')
 
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("--config ../../configs_acdc/base_config.yaml --zero-ablation".split())
+    args = parser.parse_args("--threshold 0.32 --zero-ablation".split())
 else:
     args = parser.parse_args()
 
 FIRST_CACHE_CPU = args.first_cache_cpu
 SECOND_CACHE_CPU = args.second_cache_cpu
 THRESHOLD = args.threshold # only used if >= 0.0
-
-with open(args.config, 'r') as yaml_file:
-    yaml_config = yaml.safe_load(yaml_file)
-
-USING_WANDB = yaml_config['USING_WANDB']
-
-if args.zero_ablation:
-    ZERO_ABLATION = True
-else:
-    ZERO_ABLATION = False
+ZERO_ABLATION = True if args.zero_ablation else False
+USING_WANDB = True if args.using_wandb else False
+WANDB_ENTITY_NAME = args.wandb_entity_name
+WANDB_PROJECT_NAME = args.wandb_project_name
+WANDB_RUN_NAME = args.wandb_run_name
 
 #%%
 
@@ -258,28 +256,22 @@ for node in downstream_residual_nodes:
 with open(__file__, "r") as f:
     notes = f.read()
 
-config_overrides = {}
-if THRESHOLD >= 0.0: # we actually added this
-    config_overrides["THRESHOLD"] = THRESHOLD
-if ZERO_ABLATION:
-    config_overrides["ZERO_ABLATION"] = ZERO_ABLATION
-
-config_overrides["WANDB_RUN_NAME"] = f"{ct()}_threshold_{THRESHOLD if THRESHOLD >= 0.0 else yaml_config['THRESHOLD']}{'_zero' if ZERO_ABLATION else ''}"
-
-for key, value in config_overrides.items():
-    yaml_config[key] = value
-
 tl_model.global_cache.clear()
 tl_model.reset_hooks()
 exp = TLACDCExperiment(
     model=tl_model,
+    threshold=THRESHOLD,
+    using_wandb=USING_WANDB,
+    wandb_entity_name=WANDB_ENTITY_NAME,
+    wandb_project_name=WANDB_PROJECT_NAME,
+    wandb_run_name=WANDB_RUN_NAME,
+    wandb_notes=notes,
+    zero_ablation=ZERO_ABLATION,
     ds=toks_int_values,
     ref_ds=toks_int_values_other,
     corr=correspondence,
     metric=metric,
     verbose=True,
-    wandb_notes=notes,
-    config=yaml_config,
 )
 
 #%%

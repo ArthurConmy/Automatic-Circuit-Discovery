@@ -197,6 +197,7 @@ class TLACDCExperiment:
         ds: torch.Tensor,
         ref_ds: Optional[torch.Tensor],
         corr: TLACDCCorrespondence,
+        threshold: float,
         metric: Callable[[torch.Tensor, torch.Tensor], float], # dataset and logits to metric
         second_metric: Optional[Callable[[torch.Tensor, torch.Tensor], float]] = None,
         verbose: bool = False,
@@ -209,17 +210,21 @@ class TLACDCExperiment:
         first_cache_cpu: bool = True,
         second_cache_cpu: bool = True,
         zero_ablation: bool = False, # use zero rather than 
-        config: Optional[Dict] = None,
+        using_wandb: bool = False,
+        wandb_entity_name: str = "",
+        wandb_project_name: str = "",
+        wandb_run_name: str = "",
         wandb_notes: str = "",
         skip_edges = "yes",
     ):
+        
         self.model = model
         self.zero_ablation = zero_ablation
         self.verbose = verbose
         self.hook_verbose = hook_verbose
         self.skip_edges = skip_edges
         if skip_edges != "yes":
-            raise NotImplementedError() # TODO
+            raise NotImplementedError() # TODO if edge counts are slow...
 
         self.corr = corr
         self.reverse_topologically_sort_corr()
@@ -235,13 +240,12 @@ class TLACDCExperiment:
             self.model.global_cache.to("cpu", which_caches="second")
         self.setup_model_hooks()
 
-        if config is not None and config["USING_WANDB"]:
-            self.using_wandb = config["USING_WANDB"]
-
+        self.using_wandb = using_wandb
+        if using_wandb:
             wandb.init(
-                entity=config["WANDB_ENTITY_NAME"],
-                project=config["WANDB_PROJECT_NAME"], 
-                name=config["WANDB_RUN_NAME"],
+                entity=wandb_entity_name,
+                project=wandb_project_name,
+                name=wandb_run_name,
                 notes=wandb_notes,
             )
 
@@ -250,7 +254,7 @@ class TLACDCExperiment:
         self.second_metric = second_metric
         self.update_cur_metric()
 
-        self.threshold = config["THRESHOLD"]
+        self.threshold = threshold
         assert self.ref_ds is not None or self.zero_ablation, "If you're doing random ablation, you need a ref ds"
 
         self.parallel_hypotheses = parallel_hypotheses
@@ -421,16 +425,6 @@ class TLACDCExperiment:
             )
 
     def step(self, early_stop=False):
-        """
-        TOIMPLEMENT: (prioritise these)
-        - Incoming effect sizes on the nodes
-        - Dynamic threshold?
-        - Node stats
-        - Parallelism
-        - Not just monotone metric
-        - remove_redundant
-        """
-
         if self.current_node is None:
             return
 
