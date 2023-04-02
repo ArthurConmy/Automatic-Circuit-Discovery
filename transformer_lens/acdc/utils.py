@@ -560,4 +560,4 @@ def make_nd_dict(end_type, n = 3) -> Any:
         return OrderedDefaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(end_type))))
 
 def ct():
-    return time.ctime().replace(" ", "_").replace(":", "_")
+    return time.ctime().replace(" ", "_").replace(":", "_").replace("__", "_")

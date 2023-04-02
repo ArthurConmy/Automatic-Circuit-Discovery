@@ -262,7 +262,7 @@ config_overrides = {}
 if THRESHOLD >= 0.0: # we actually added this
     config_overrides["THRESHOLD"] = THRESHOLD
 
-config_overrides["WANDB_RUN_NAME"] = f"{ct()}_{THRESHOLD if THRESHOLD >= 0.0 else yaml_config['THRESHOLD']}"
+config_overrides["WANDB_RUN_NAME"] = f"{ct()}_threshold_{THRESHOLD if THRESHOLD >= 0.0 else yaml_config['THRESHOLD']}{'_zero' if ZERO_ABLATION else ''}"
 
 for key, value in config_overrides.items():
     yaml_config[key] = value
