@@ -76,7 +76,7 @@ from transformer_lens.acdc.induction.utils import (
 )
 from transformer_lens.acdc.graphics import (
     build_colorscheme,
-    # show,
+    show,
 )
 import argparse
 
@@ -253,6 +253,12 @@ for node in downstream_residual_nodes:
         child_node=node,
         edge=Edge(edge_type=EdgeType.ADDITION),
     )
+#%%
+
+show(
+    correspondence,
+)
+
 #%%
 
 with open(__file__, "r") as f:

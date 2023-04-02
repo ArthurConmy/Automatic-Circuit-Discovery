@@ -16,6 +16,8 @@ from typing import List, Optional
 import warnings
 import networkx as nx
 import graphviz
+from transformer_lens.acdc.TLACDCCorrespondence import TLACDCCorrespondence
+from transformer_lens.acdc.TLACDCInterpNode import TLACDCInterpNode
 
 # # I hope that it's reasona
 # from transformer_lens.acdc.utils import (
@@ -45,75 +47,111 @@ def generate_random_color(colorscheme: str) -> str:
 
     return rgb2hex(cmapy.color("Pastel2", random.randrange(0, 256), rgb_order=True))
 
-
-def build_colorscheme(node_names, colorscheme: str = "Pastel2") -> Dict[str, str]:
-    colors = {}
-    for node in node_names:
-        colors[str(node)] = generate_random_color(colorscheme)
-    return colors
-
 # -------------------------------------------
 # GRAPHVIZ
 # -------------------------------------------
 
-# def show(
-#     TLACDCCorrespondence,
-#     fname=None,
-#     colorscheme: str = "Pastel2",
-#     minimum_penwidth: float = 0.3,
-#     show: bool = True,
-# ):
-#     """
-#     takes matplotlib colormaps
-#     """
-#     g = graphviz.Digraph(format="png")
+def get_node_name(node: TLACDCInterpNode):
+    # TODO handle MLPs
 
-#     colors = self.build_colorscheme(colorscheme)
+    name = ""
+    qkv_substrings = [f"hook_{letter}" for letter in ["q", "k", "v"]]
 
-#     # create all nodes
-#     for index, child in enumerate(self.corr):
-#         parent: ACDCInterpNode
-#         child = typing.cast(ACDCInterpNode, child)
-#         if len(child.parents) > 0 or index == 0:
-#             g.node(
-#                 show_node_name(child),
-#                 fillcolor=colors[child.name],
-#                 style="filled, rounded",
-#                 shape="box",
-#                 fontname="Helvetica",
-#             )
+    # Handle embedz
+    if "resid_pre" in node.name:
+        assert "0" in node.name and not any([str(i) in node.name for i in range(1, 10)])
+        name += "embed"
+        if len(node.index.hashable_tuple) > 2:
+            name += f"_[{node.index.hashable_tuple[2]}]"
+        return name
 
-#     # connect the nodes
-#     for child in self.corr:
-#         parent: ACDCInterpNode
-#         child = typing.cast(ACDCInterpNode, child)
-#         for parent in child.parents:
-#             penwidth = self.get_connection_strengths(
-#                 parent, child, minimum_penwidth
-#             )
-#             g.edge(
-#                 show_node_name(child),
-#                 show_node_name(parent),
-#                 penwidth=penwidth,
-#                 color=colors[child.name],
-#             )
-#         if self.input_node not in ["off", None] and len(child.parents) == 0:
-#             # make dotted line to self.input_node
-#             g.edge(
-#                 show_node_name(child),
-#                 show_node_name(self.input_node),
-#                 penwidth=minimum_penwidth,
-#                 color=colors[child.name],
-#                 style="dotted",
-#             )
+    # Handle q_input and hook_q etc
+    elif any([qkv_substring in node.name for qkv_substring in qkv_substrings]):
+        relevant_letter = None
+        for letter, qkv_substring in zip(["q", "k", "v"], qkv_substrings):
+            if qkv_substring in node.name:
+                assert relevant_letter is None
+                relevant_letter = letter
+        name += "a" + node.name.split(".")[1] + "." + str(node.index.hashable_tuple[2]) + "_" + relevant_letter
 
-#     if fname is not None:
-#         assert fname.endswith(
-#             ".png"
-#         ), "Must save as png (... or you can take this g object and read the graphviz docs)"
-#         g.render(outfile=fname, format="png")
-#     if show:
-#         return g
+    # Handle attention hook_result
+    elif "hook_result" in node.name:
+        name = "a" + node.name.split(".")[1] + "." + str(node.index.hashable_tuple[2])
+
+    # Handle MLPs
+    # TODO
+
+    # Handle resid_post
+    elif "resid_post" in node.name:
+        name += "resid_post"
+
+    else:
+        raise ValueError(f"Unrecognized node name {node.name}")
+
+    name += f"_{str(node.index)}"
+
+    return "<" + name + ">"
+
+def build_colorscheme(correspondence, colorscheme: str = "Pastel2") -> Dict[str, str]:
+    colors = {}
+    for node in correspondence.nodes():
+        colors[get_node_name(node)] = generate_random_color(colorscheme)
+    return colors
+
+
+def show(
+    correspondence: TLACDCCorrespondence,
+    fname=None,
+    colorscheme: str = "Pastel2",
+    minimum_penwidth: float = 0.3,
+    show: bool = True,
+):
+    """
+    takes matplotlib colormaps
+    """
+    g = graphviz.Digraph(format="png")
+
+    colors = build_colorscheme(correspondence, colorscheme)
+
+    # create all nodes
+    for child_hook_name in correspondence.edges:
+        for child_index in correspondence.edges[child_hook_name]:
+            for parent_hook_name in correspondence.edges[child_hook_name][child_index]:
+                for parent_index in correspondence.edges[child_hook_name][child_index][parent_hook_name]:
+                    edge = correspondence.edges[child_hook_name][child_index][parent_hook_name][parent_index]
+                    
+                    parent = correspondence.graph[parent_hook_name][parent_index]
+                    child = correspondence.graph[child_hook_name][child_index]
+
+                    parent_name = get_node_name(parent)
+                    child_name = get_node_name(child)
+
+                    if edge.present:
+                        for node_name in [parent_name, child_name]:
+                            g.node(
+                                node_name,
+                                fillcolor=colors[node_name],
+                                style="filled, rounded",
+                                shape="box",
+                                fontname="Helvetica",
+                            )
+                        
+                        # TODO widths !!!
+                        g.edge(
+                            child_name,
+                            parent_name,
+                            penwidth=str(minimum_penwidth),
+                            color=colors[node_name],
+                        )
+
+    if fname is not None:
+        assert fname.endswith(
+            ".png"
+        ), "Must save as png (... or you can take this g object and read the graphviz docs)"
+        g.render(outfile=fname, format="png")
+
+    if show:
+        return g
 
 # def get_connection_strengths(
 #     self,

@@ -10,9 +10,6 @@ from typing import Any, Literal, Dict, Tuple, Union, List, Optional, Callable, T
 import torch
 import time
 from transformer_lens.HookedTransformer import HookedTransformer
-from transformer_lens.acdc.graphics import (
-    log_metrics_to_wandb,
-)
 from collections import OrderedDict
 
 class OrderedDefaultdict(collections.OrderedDict):
@@ -91,7 +88,18 @@ class TorchIndex:
         return self.hashable_tuple == other.hashable_tuple
 
     def __repr__(self) -> str:
-        return f"TorchIndex({self.hashable_tuple})"
+        ret = "["
+        for idx, x in enumerate(self.hashable_tuple):
+            if idx > 0:
+                ret += ", "
+            if x is None:
+                ret += "COL"
+            elif type(x) == int:
+                ret += str(x)
+            else:
+                raise NotImplementedError(x)
+        ret += "]"
+        return ret
 
 def make_nd_dict(end_type, n = 3) -> Any:
     """Make biiig default dicts : ) : )"""
