@@ -1,4 +1,5 @@
 from typing import Callable, Optional, Literal, List, Dict, Any, Tuple, Union, Set, Iterable, TypeVar, Type
+import random
 from dataclasses import dataclass
 import torch
 from torch import nn
@@ -47,11 +48,14 @@ class TLACDCExperiment:
         wandb_run_name: str = "",
         wandb_notes: str = "",
         skip_edges = "yes",
-        indices_reversed: bool = True, # last minute we found that this helps quite a lot with zero ablation case
-        names_reversed: bool = False,
+        indices_mode: Literal["normal", "reverse", "shuffle"] = "normal", # last minute we found that this helps quite a lot with zero ablation case
+        names_mode: Literal["normal", "reverse", "shuffle"] = "normal",
     ):
-        self.indices_reversed = indices_reversed
-        self.names_reversed = names_reversed
+        """Initialize the ACDC experiment"""
+
+        self.indices_mode = indices_mode
+        self.names_mode = names_mode
+
         self.model = model
         self.zero_ablation = zero_ablation
         self.verbose = verbose
@@ -276,13 +280,18 @@ class TLACDCExperiment:
             print("New metric:", cur_metric)
 
         sender_names_list = list(self.corr.edges[self.current_node.name][self.current_node.index])
-        if self.names_reversed:
+        
+        if self.names_mode == "random":
+            random.shuffle(sender_names_list)
+        elif self.names_mode == "reverse":
             sender_names_list = list(reversed(sender_names_list))
 
         for sender_name in sender_names_list:
             sender_indices_list = list(self.corr.edges[self.current_node.name][self.current_node.index][sender_name])
 
-            if self.indices_reversed:
+            if self.indices_mode == "random":
+                random.shuffle(sender_indices_list)
+            elif self.indices_mode == "reverse":
                 sender_indices_list = list(reversed(sender_indices_list))
 
             for sender_index in sender_indices_list:

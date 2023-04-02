@@ -47,7 +47,8 @@ histories = []
 min_metrics = []
 
 def filter(name):
-    return name.endswith("_reversed") and not name.endswith("zero_reversed")
+    # return name.endswith("_reversed") and not name.endswith("zero_reversed")
+    name.endswith("zero_reversed")
 
 for pi, project_name in (enumerate(project_names)):
     print("Finding runs...")

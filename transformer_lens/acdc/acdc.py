@@ -97,6 +97,8 @@ parser.add_argument('--using-wandb', action='store_true', help='A flag without a
 parser.add_argument('--wandb-entity-name', type=str, required=False, default="remix_school-of-rock", help='Value for WANDB_ENTITY_NAME')
 parser.add_argument('--wandb-project-name', type=str, required=False, default="acdc", help='Value for WANDB_PROJECT_NAME')
 parser.add_argument('--wandb-run-name', type=str, required=False, default=None, help='Value for WANDB_RUN_NAME')
+parser.add_argument('--indices-mode', type=str, default="normal")
+parser.add_argument('--names-mode', type=str, default="normal")
 
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
     args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
@@ -111,6 +113,8 @@ USING_WANDB = True if args.using_wandb else False
 WANDB_ENTITY_NAME = args.wandb_entity_name
 WANDB_PROJECT_NAME = args.wandb_project_name
 WANDB_RUN_NAME = args.wandb_run_name
+INDICES_MODE = args.indices_mode
+NAMES_MODE = args.names_mode
 
 #%% [markdown]
 # Setup induction
@@ -123,7 +127,7 @@ tl_model, toks_int_values, toks_int_values_other, metric = get_all_induction_thi
 #%% [markdown]
 # Setup tracr
 
-
+# TODO 
 
 #%%
 
@@ -151,6 +155,8 @@ exp = TLACDCExperiment(
     ref_ds=toks_int_values_other,
     metric=metric,
     verbose=True,
+    indices_mode=INDICES_MODE,
+    names_mode=NAMES_MODE,
 )
 
 # %%
