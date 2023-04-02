@@ -90,7 +90,7 @@ parser.add_argument('--zero-ablation', action='store_true', help='A flag without
 parser.add_argument('--using-wandb', action='store_true', help='A flag without a value')
 parser.add_argument('--wandb-entity-name', type=str, required=False, default="remix_school-of-rock", help='Value for WANDB_ENTITY_NAME')
 parser.add_argument('--wandb-project-name', type=str, required=False, default="acdc", help='Value for WANDB_PROJECT_NAME')
-parser.add_argument('--wandb-run-name', type=str, required=False, default=ct()+"_auto_name", help='Value for WANDB_RUN_NAME')
+parser.add_argument('--wandb-run-name', type=str, required=False, default=None, help='Value for WANDB_RUN_NAME')
 
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
     args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
@@ -264,6 +264,8 @@ tl_model.reset_hooks()
 
 if WANDB_RUN_NAME is None:
     WANDB_RUN_NAME = f"{ct()}_{THRESHOLD}{'_zero' if ZERO_ABLATION else ''}_reversed"
+else:
+    assert False
 
 exp = TLACDCExperiment(
     model=tl_model,
