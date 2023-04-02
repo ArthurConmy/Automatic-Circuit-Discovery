@@ -243,8 +243,6 @@ class TLACDCExperiment:
                     self.model.global_cache.second_cache[name]
                 )
                 torch.cuda.empty_cache()
-        else: 
-            assert False
 
         if self.second_cache_cpu:
             self.model.global_cache.to("cpu", which_caches="second")
