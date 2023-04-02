@@ -112,13 +112,18 @@ WANDB_ENTITY_NAME = args.wandb_entity_name
 WANDB_PROJECT_NAME = args.wandb_project_name
 WANDB_RUN_NAME = args.wandb_run_name
 
-#%%
+#%% [markdown]
+# Setup induction
 
 num_examples = 400
 seq_len = 30
 device = "cuda" if torch.cuda.is_available() else "cpu"
-
 tl_model, toks_int_values, toks_int_values_other, metric = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=device)
+
+#%% [markdown]
+# Setup tracr
+
+
 
 #%%
 

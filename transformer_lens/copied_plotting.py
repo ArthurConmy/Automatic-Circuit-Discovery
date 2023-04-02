@@ -24,7 +24,8 @@ from copied_extra_utils import get_nonan, get_corresponding_element, get_first_e
 #%%
 
 project_names = [
-    "tl_induction_proper",
+    # "tl_induction_proper",
+    "acdc",
 ]
 
 api = wandb.Api()
@@ -45,20 +46,21 @@ _initial_edges = [] # [11663 for _ in range(len(names))]
 histories = []
 min_metrics = []
 
+def filter(name):
+    return name.endswith("_reversed") and not name.endswith("zero_reversed")
+
 for pi, project_name in (enumerate(project_names)):
     print("Finding runs...")
     runs = list(api.runs(f"remix_school-of-rock/{project_name}"))
     print("Found runs!")
 
-    print("This is fairly slow... maybe remove some of the many >130 edges cases???")
 
     for i, run in enumerate(tqdm(runs)):
         print(run.name, "state:", run.state)
         
-        if "Sun_Apr_2_09" not in run.name and "Sun_Apr_2_10" not in run.name:
-            warnings.warn("Filtering for Sunday...")
+        if not filter(run.name):
             continue
-        
+
         if run.state == "finished": #  or run.state == "failed":
             history = pd.DataFrame(run.scan_history())
             histories.append(history)
@@ -82,19 +84,17 @@ for pi, project_name in (enumerate(project_names)):
             all_edges = history["num_edges"].values
             all_edges = process_nan(all_edges)
 
-            # if True:
-            if "zero" in run.name: # if "num_edges_total" in history.keys() and "self.cur_metric" in history.keys() and run.name not in names and "kl_" in run.name: # run.name.startswith("acdc-run-arthur_fixed_edges"):
-                for i in range(1, 61):
-                    if np.isnan(all_metrics[-i]) or len(all_edges) < i:
-                        continue
-                    names.append(run.name)
-                    final_edges.append(all_edges[-i])
-                    _initial_edges.append(max_edges)
-                    _initial_losses.append(start_metric)
-                    final_metric.append(all_metrics[-i])
+            for i in range(1, 61):
+                if np.isnan(all_metrics[-i]) or len(all_edges) < i:
+                    continue
+                names.append(run.name)
+                final_edges.append(all_edges[-i])
+                _initial_edges.append(max_edges)
+                _initial_losses.append(start_metric)
+                final_metric.append(all_metrics[-i])
 
-                    colors.append("black")
-                print(len(colors))
+                colors.append("black")
+            print(len(colors))
 
 # save list of dataframes
 with open("acdc/histories/" + ct() + ".pkl", "wb") as f:
