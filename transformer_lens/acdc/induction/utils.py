@@ -1,3 +1,4 @@
+from functools import partial
 import wandb
 import os
 from collections import defaultdict
@@ -17,6 +18,7 @@ from transformer_lens.acdc.utils import (
     TorchIndex,
     Edge, 
     EdgeType,
+    shuffle_tensor,
 )  # these introduce several important classes !!!
 from transformer_lens import HookedTransformer
 
@@ -89,3 +91,29 @@ def kl_divergence(
     answer = (kl_div.sum() / mask_repeat_candidates.int().sum().item()).item()
 
     return answer
+
+def get_all_induction_things(num_examples, seq_len, device):
+    tl_model = get_model()
+    tl_model.to(device)
+
+    validation_data = get_validation_data()
+    mask_repeat_candidates = get_mask_repeat_candidates(num_examples, seq_len)
+    toks_int_values = validation_data[:num_examples, :seq_len].to(device).long()
+    toks_int_values_other = (
+        shuffle_tensor(validation_data[:num_examples, :seq_len]).to(device).long()
+    )
+
+    labels = validation_data[:num_examples, 1 : seq_len + 1].to(device).long()
+
+    base_model_logits = tl_model(toks_int_values)
+    base_model_probs = F.softmax(base_model_logits, dim=-1)
+
+    raw_metric = partial(kl_divergence, base_model_probs=base_model_probs, mask_repeat_candidates=mask_repeat_candidates)
+    metric = partial(kl_divergence, base_model_probs=base_model_probs, mask_repeat_candidates=mask_repeat_candidates)
+
+    return (
+        tl_model,
+        toks_int_values,
+        toks_int_values_other,
+        metric,
+    )

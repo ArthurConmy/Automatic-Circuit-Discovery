@@ -47,8 +47,11 @@ class TLACDCExperiment:
         wandb_run_name: str = "",
         wandb_notes: str = "",
         skip_edges = "yes",
+        indices_reversed: bool = True, # last minute we found that this helps quite a lot with zero ablation case
+        names_reversed: bool = False,
     ):
-        
+        self.indices_reversed = indices_reversed
+        self.names_reversed = names_reversed
         self.model = model
         self.zero_ablation = zero_ablation
         self.verbose = verbose
@@ -272,8 +275,17 @@ class TLACDCExperiment:
         if self.verbose:
             print("New metric:", cur_metric)
 
-        for sender_name in self.corr.edges[self.current_node.name][self.current_node.index]:
-            for sender_index in list(reversed(self.corr.edges[self.current_node.name][self.current_node.index][sender_name])):
+        sender_names_list = list(self.corr.edges[self.current_node.name][self.current_node.index])
+        if self.names_reversed:
+            sender_names_list = list(reversed(sender_names_list))
+
+        for sender_name in sender_names_list:
+            sender_indices_list = list(self.corr.edges[self.current_node.name][self.current_node.index][sender_name])
+
+            if self.indices_reversed:
+                sender_indices_list = list(reversed(sender_indices_list))
+
+            for sender_index in sender_indices_list:
                 edge = self.corr.edges[self.current_node.name][self.current_node.index][sender_name][sender_index]
                 cur_parent = self.corr.graph[sender_name][sender_index]
 
@@ -298,6 +310,7 @@ class TLACDCExperiment:
                     )
 
                 result = evaluated_metric - cur_metric
+                edge.result = result
 
                 if self.verbose:
                     print("Result is", result, end="")

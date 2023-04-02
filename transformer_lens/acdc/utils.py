@@ -55,9 +55,11 @@ class Edge:
         self,
         edge_type: EdgeType,
         present: bool = True,
+        effect_size: Optional[float] = None,
     ):
         self.edge_type = edge_type
         self.present = present
+        self.effect_size = effect_size
 
     def __repr__(self) -> str:
         return f"Edge({self.edge_type}, {self.present})"

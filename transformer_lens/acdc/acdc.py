@@ -74,6 +74,7 @@ from transformer_lens.acdc.TLACDCExperiment import TLACDCExperiment
 from collections import defaultdict, deque, OrderedDict
 from transformer_lens.acdc.induction.utils import (
     kl_divergence,
+    get_all_induction_things,
     get_model,
     get_validation_data,
     get_good_induction_candidates,
@@ -111,34 +112,13 @@ WANDB_ENTITY_NAME = args.wandb_entity_name
 WANDB_PROJECT_NAME = args.wandb_project_name
 WANDB_RUN_NAME = args.wandb_run_name
 
-#%% [markdown]
-# Model
-
-tl_model = get_model()
-
-# %% [markdown]
-# Data
-
-NUM_EXAMPLES = 40
-SEQ_LEN = 300
-validation_data = get_validation_data()
-mask_repeat_candidates = get_mask_repeat_candidates(NUM_EXAMPLES, SEQ_LEN)
-toks_int_values = validation_data[:NUM_EXAMPLES, :SEQ_LEN].to(device).long()
-toks_int_values_other = (
-    shuffle_tensor(validation_data[:NUM_EXAMPLES, :SEQ_LEN]).to(device).long()
-)
-
-labels = validation_data[:NUM_EXAMPLES, 1 : SEQ_LEN + 1].to(device).long()
-
 #%%
 
-base_model_logits = tl_model(toks_int_values)
-base_model_probs = F.softmax(base_model_logits, dim=-1)
+num_examples = 400
+seq_len = 30
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
-#%%
-
-raw_metric = partial(kl_divergence, base_model_probs=base_model_probs, mask_repeat_candidates=mask_repeat_candidates)
-metric = partial(kl_divergence, base_model_probs=base_model_probs, mask_repeat_candidates=mask_repeat_candidates)
+tl_model, toks_int_values, toks_int_values_other, metric = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=device)
 
 #%%
 

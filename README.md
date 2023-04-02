@@ -8,6 +8,14 @@ cd Automatic-Circuit-Discovery
 pip install -e .
 ```
 
+## Tests (hopefully mantained!)
+
+From the root directory, run 
+
+```bash
+pytest tests/acdc -vv
+```
+
 # [DEPRECATED] <a href="https://github.com/ArthurConmy/Automatic-Circuit-Discovery/commit/f18007e53b8f96cc49c53f372bae7fa798fc7322)">Old Implementation</a>
 
 This repository contains the code for direct path patching experiments as described <a href="https://arthurconmy.github.io/automatic_circuit_discovery/">on my blog</a>.
