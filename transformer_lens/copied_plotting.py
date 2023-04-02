@@ -48,7 +48,7 @@ min_metrics = []
 
 def filter(name):
     # return name.endswith("_reversed") and not name.endswith("zero_reversed")
-    name.endswith("zero_reversed")
+    return name.endswith("zero_reversed")
 
 for pi, project_name in (enumerate(project_names)):
     print("Finding runs...")
@@ -85,9 +85,14 @@ for pi, project_name in (enumerate(project_names)):
             all_edges = history["num_edges"].values
             all_edges = process_nan(all_edges)
 
+            found_thing = False
+
             for i in range(1, 61):
                 if np.isnan(all_metrics[-i]) or len(all_edges) < i:
                     continue
+                if found_thing:
+                    break
+                found_thing = True
                 names.append(run.name)
                 final_edges.append(all_edges[-i])
                 _initial_edges.append(max_edges)

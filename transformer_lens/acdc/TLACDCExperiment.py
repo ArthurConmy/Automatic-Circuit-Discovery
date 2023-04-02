@@ -119,7 +119,12 @@ class TLACDCExperiment:
             assert abs(self.cur_metric) < 1e-5, f"Metric {self.cur_metric=} is not zero"
 
         if self.using_wandb:
-            wandb.log({"cur_metric": self.cur_metric})
+            wandb.log(
+                {
+                    "cur_metric": self.cur_metric,
+                    "num_edges": self.count_no_edges(),
+                }
+            )
 
     def reverse_topologically_sort_corr(self):
         """Topologically sort the template corr"""
@@ -341,7 +346,6 @@ class TLACDCExperiment:
                         child_name = str(self.current_node),
                         result = result,
                     )
-                    wandb.log({"num_edges": self.count_no_edges()})
 
             cur_metric = self.metric(self.model(self.ds))
 

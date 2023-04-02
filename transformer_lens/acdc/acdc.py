@@ -138,7 +138,7 @@ tl_model.global_cache.clear()
 tl_model.reset_hooks()
 
 if WANDB_RUN_NAME is None or IPython.get_ipython() is not None:
-    WANDB_RUN_NAME = f"{ct()}_{THRESHOLD}{'_zero' if ZERO_ABLATION else ''}_reversed"
+    WANDB_RUN_NAME = f"{ct()}{'_randomindices' if INDICES_MODE=='random' else ''}_{THRESHOLD}{'_zero' if ZERO_ABLATION else ''}_reversed"
 else:
     assert False # I want named runs, always
 
