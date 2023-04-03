@@ -105,7 +105,7 @@ parser.add_argument('--names-mode', type=str, default="normal")
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
     # args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
     # args = parser.parse_args("--threshold 0.001 --using-wandb".split())
-    args = parser.parse_args("--threshold 0.001".split())
+    args = parser.parse_args("--threshold 0.001 --zero-ablation".split())
 else:
     args = parser.parse_args()
 
@@ -126,6 +126,8 @@ DEVICE = "cuda"
 
 if True: # do tracr
     task= "reverse"
+    # this implementation doesn't ablate the position embeddings (which the plots in the paper do do), so results are different. See the rust_circuit implemntation if this need be checked
+    # also there's no splitting by neuron yet TODO
     _, tl_model = get_model_input_and_tl_model(task=task)
     toks_int_values, toks_int_values_other, metric = get_data(tl_model, task=task)
 
