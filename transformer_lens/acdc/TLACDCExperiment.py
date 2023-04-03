@@ -56,6 +56,8 @@ class TLACDCExperiment:
         self.indices_mode = indices_mode
         self.names_mode = names_mode
 
+        assert model.cfg.use_attn_result, "Need to be able to see split by head outputs"
+        assert model.cfg.use_split_qkv_input, "Need to be able to see split by head outputs"
         self.model = model
         self.zero_ablation = zero_ablation
         self.verbose = verbose
@@ -65,6 +67,7 @@ class TLACDCExperiment:
             raise NotImplementedError() # TODO if edge counts are slow...
 
         self.corr = TLACDCCorrespondence.setup_from_model(self.model)
+
         self.reverse_topologically_sort_corr()
         self.current_node = self.corr.nodes()[0]
         print(f"{self.current_node=}")

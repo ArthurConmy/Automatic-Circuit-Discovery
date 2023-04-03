@@ -53,11 +53,11 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
 pio.renderers.default = "colab"
-device = "cuda" if torch.cuda.is_available() else "cpu" # TODO check CPU support
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 from transformer_lens.HookedTransformer import (
     HookedTransformer,
 )
+from transformer_lens.acdc.tracr.utils import *
 from transformer_lens.acdc.utils import (
     make_nd_dict,
     shuffle_tensor,
@@ -72,8 +72,10 @@ from transformer_lens.acdc.TLACDCInterpNode import TLACDCInterpNode
 from transformer_lens.acdc.TLACDCExperiment import TLACDCExperiment
 
 from collections import defaultdict, deque, OrderedDict
-from transformer_lens.acdc.induction.utils import (
+from transformer_lens.acdc.utils import (
     kl_divergence,
+)
+from transformer_lens.acdc.induction.utils import (
     get_all_induction_things,
     get_model,
     get_validation_data,
@@ -101,7 +103,9 @@ parser.add_argument('--indices-mode', type=str, default="normal")
 parser.add_argument('--names-mode', type=str, default="normal")
 
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
+    # args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
+    # args = parser.parse_args("--threshold 0.001 --using-wandb".split())
+    args = parser.parse_args("--threshold 0.001".split())
 else:
     args = parser.parse_args()
 
@@ -115,19 +119,20 @@ WANDB_PROJECT_NAME = args.wandb_project_name
 WANDB_RUN_NAME = args.wandb_run_name
 INDICES_MODE = args.indices_mode
 NAMES_MODE = args.names_mode
+DEVICE = "cuda"
 
 #%% [markdown]
-# Setup induction
+# Setup
 
-num_examples = 400
-seq_len = 30
-device = "cuda" if torch.cuda.is_available() else "cpu"
-tl_model, toks_int_values, toks_int_values_other, metric = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=device)
+if True: # do tracr
+    task= "reverse"
+    _, tl_model = get_model_input_and_tl_model(task=task)
+    toks_int_values, toks_int_values_other, metric = get_data(tl_model, task=task)
 
-#%% [markdown]
-# Setup tracr
-
-# TODO 
+else:
+    num_examples = 400
+    seq_len = 30
+    tl_model, toks_int_values, toks_int_values_other, metric = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE)
 
 #%%
 

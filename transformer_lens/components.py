@@ -725,7 +725,7 @@ class TransformerBlock(nn.Module):
                 self.mlp(normalized_resid_mid)
             )  # [batch, pos, d_model]
             resid_post = self.hook_resid_post(
-                resid_mid + mlp_out
+                resid_pre + attn_out + mlp_out
             )  # [batch, pos, d_model]
         elif self.cfg.parallel_attn_mlp:
             # Dumb thing done by GPT-J, both MLP and Attn read from resid_pre and write to resid_post, no resid_mid used.

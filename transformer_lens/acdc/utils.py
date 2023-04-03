@@ -9,6 +9,7 @@ from enum import Enum
 from typing import Any, Literal, Dict, Tuple, Union, List, Optional, Callable, TypeVar, Generic, Iterable, Set, Type, cast, Sequence, Mapping, overload
 import torch
 import time
+import torch.nn.functional as F
 from transformer_lens.HookedTransformer import HookedTransformer
 from collections import OrderedDict
 
@@ -122,3 +123,29 @@ def make_nd_dict(end_type, n = 3) -> Any:
 
 def ct():
     return time.ctime().replace(" ", "_").replace(":", "_").replace("__", "_")
+
+def kl_divergence(
+    logits: torch.Tensor,
+    base_model_probs: torch.Tensor,
+    mask_repeat_candidates: Optional[torch.Tensor],
+):
+    """Compute KL divergence between base_model_probs and probs"""
+    probs = F.softmax(logits, dim=-1)
+
+    assert probs.min() >= 0.0
+    assert probs.max() <= 1.0
+
+    kl_div = (base_model_probs * (base_model_probs.log() - probs.log())).sum(dim=-1)
+
+    if mask_repeat_candidates is not None:
+        assert kl_div.shape == mask_repeat_candidates.shape, (
+            kl_div.shape,
+            mask_repeat_candidates.shape,
+        )
+        kl_div = kl_div * mask_repeat_candidates.long()
+        answer = (kl_div.sum() / mask_repeat_candidates.long().sum().item()).item()
+
+    else:
+        answer = kl_div.mean().item()
+
+    return answer

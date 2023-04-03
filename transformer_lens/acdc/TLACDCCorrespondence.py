@@ -53,7 +53,6 @@ class TLACDCCorrespondence:
     
     @classmethod
     def setup_from_model(cls, model):
-
         correspondence = cls()
 
         downstream_residual_nodes: List[TLACDCInterpNode] = []
@@ -66,7 +65,7 @@ class TLACDCCorrespondence:
 
         for layer_idx in range(model.cfg.n_layers - 1, -1, -1):
             # connect MLPs
-            if not model.cfg.attn_only:
+            if not model.cfg.attn_only: 
                 # this MLP writed to all future residual stream things
                 cur_mlp_name = f"blocks.{layer_idx}.hook_mlp_out"
                 cur_mlp_slice = TorchIndex([None])
@@ -81,13 +80,13 @@ class TLACDCCorrespondence:
                         edge=Edge(edge_type=EdgeType.ADDITION),
                     )
 
-                cur_mlp_input_name = f"blocks.{layer_idx}.hook_mlp_in"
+                cur_mlp_input_name = f"blocks.{layer_idx}.hook_resid_mid"
                 cur_mlp_input_slice = TorchIndex([None])
                 cur_mlp_input = TLACDCInterpNode(
                     name=cur_mlp_input_name,
                     index=cur_mlp_input_slice,
                 )
-                new_downstream_residual_nodes.append(cur_mlp_input)
+                downstream_residual_nodes.append(cur_mlp_input)
 
             # connect attention heads
             for head_idx in range(model.cfg.n_heads - 1, -1, -1):

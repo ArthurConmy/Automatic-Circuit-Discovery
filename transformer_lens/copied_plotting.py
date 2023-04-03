@@ -25,7 +25,8 @@ from copied_extra_utils import get_nonan, get_corresponding_element, get_first_e
 
 project_names = [
     # "tl_induction_proper",
-    "acdc",
+    # "acdc",
+    "induction_arthur",
 ]
 
 api = wandb.Api()
@@ -47,8 +48,10 @@ histories = []
 min_metrics = []
 
 def filter(name):
+    return "kl_divergence" in name
+    # return name.endswith("reversed") and "zero"
     # return name.endswith("_reversed") and not name.endswith("zero_reversed")
-    return name.endswith("zero_reversed") or name.endswith("zero")
+    # return name.endswith("zero_reversed") or name.endswith("zero")
 
 for pi, project_name in (enumerate(project_names)):
     print("Finding runs...")
@@ -64,8 +67,7 @@ for pi, project_name in (enumerate(project_names)):
             histories.append(history)
 
             # rename the column "experiment.cur_metric" to "metric"
-            history = history.rename(columns={"experiment.cur_metric": "metric"})
-
+            history = history.rename(columns={"experiment.cur_metric": "metric", 'num_edges_total': 'num_edges', "self.cur_metric": "metric"})
             min_edges = history["num_edges"].min()
             max_edges = history["num_edges"].max()
             
@@ -153,7 +155,7 @@ fig.update_layout(
 
 # add title
 fig.update_layout(
-    title="ACDC compared to SP (zero ablation)",
+    title="ACDC compared to SP (random ablation)",
 )
 
 #%%
@@ -246,7 +248,9 @@ fig.add_trace(
 
 #%%
 
-fig2 = plotly.io.read_json("media_zero_json.json")
+# fname = "media_zero_json.json"
+fname = "augustine_random.json"
+fig2 = plotly.io.read_json(fname)
 
 # get points
 x = fig2.data[0]["x"]
@@ -258,7 +262,7 @@ labels = [x for x, _ in labels]
 
 fig.add_trace(
     go.Scatter(
-        x=x,
+        x=torch.exp(torch.tensor(list(x))),
         y=y,
         mode="markers",
         marker=dict(

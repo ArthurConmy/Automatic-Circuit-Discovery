@@ -11,6 +11,13 @@ import torch
 import random
 import torch.nn as nn
 import torch.nn.functional as F
+from typing import (
+    List,
+    Tuple,
+    Dict,
+    Any,
+    Optional,
+)
 import warnings
 import networkx as nx
 from transformer_lens.acdc.utils import (
@@ -68,29 +75,6 @@ def get_mask_repeat_candidates(num_examples=None, seq_len=None):
         return mask_repeat_candidates
     else:
         return mask_repeat_candidates[:num_examples, :seq_len]
-
-def kl_divergence(
-    logits: torch.Tensor,
-    base_model_probs: torch.Tensor,
-    mask_repeat_candidates: torch.Tensor,
-):
-    """Compute KL divergence between base_model_probs and probs"""
-    probs = F.softmax(logits, dim=-1)
-
-    assert probs.min() >= 0.0
-    assert probs.max() <= 1.0
-
-    kl_div = (base_model_probs * (base_model_probs.log() - probs.log())).sum(dim=-1)
-
-    assert kl_div.shape == mask_repeat_candidates.shape, (
-        kl_div.shape,
-        mask_repeat_candidates.shape,
-    )
-    kl_div = kl_div * mask_repeat_candidates.long()
-
-    answer = (kl_div.sum() / mask_repeat_candidates.int().sum().item()).item()
-
-    return answer
 
 def get_all_induction_things(num_examples, seq_len, device):
     tl_model = get_model()

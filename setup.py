@@ -20,6 +20,7 @@ setup(
         "fancy_einsum",
         "torchtyping",
         "rich",
+        "git+https://github.com/deepmind/tracr.git", # sad does not work
     ],
     extras_require={"dev": ["pytest", "mypy", "pytest-cov"]},
 )
