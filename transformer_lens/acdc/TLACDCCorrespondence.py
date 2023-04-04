@@ -12,6 +12,8 @@ class TLACDCCorrespondence:
  
         self.edges: OrderedDict[str, OrderedDict[TorchIndex, OrderedDict[str, OrderedDict[TorchIndex, Optional[Edge]]]]] = make_nd_dict(end_type=None, n=4)
 
+        self.is_sender: Set[str] = set() # tracks whether we've registered this as a sender hook, important for efficiency
+
     def nodes(self) -> List[TLACDCInterpNode]:
         """Concatenate all nodes in the graph"""
         return [node for by_index_list in self.graph.values() for node in by_index_list.values()]
@@ -31,8 +33,9 @@ class TLACDCCorrespondence:
         
         return big_dict
 
-    def add_node(self, node: TLACDCInterpNode):
-        assert node not in self.nodes(), f"Node {node} already in graph"
+    def add_node(self, node: TLACDCInterpNode, safe=True):
+        if safe:
+            assert node not in self.nodes(), f"Node {node} already in graph"
         self.graph[node.name][node.index] = node
 
     def add_edge(
@@ -40,11 +43,13 @@ class TLACDCCorrespondence:
         parent_node: TLACDCInterpNode,
         child_node: TLACDCInterpNode,
         edge: Edge,
+        safe=True,
     ):
-        if parent_node not in self.nodes(): # TODO could be slow ???
-            self.add_node(parent_node)
-        if child_node not in self.nodes():
-            self.add_node(child_node)
+        if not safe:
+            if parent_node not in self.nodes(): # TODO could be slow ???
+                self.add_node(parent_node)
+            if child_node not in self.nodes():
+                self.add_node(child_node)
         
         parent_node._add_child(child_node)
         child_node._add_parent(parent_node)
@@ -60,6 +65,7 @@ class TLACDCCorrespondence:
             name=f"blocks.{model.cfg.n_layers-1}.hook_resid_post",
             index=TorchIndex([None]),
         )
+        correspondence.add_node(logits_node) 
         downstream_residual_nodes.append(logits_node)
         new_downstream_residual_nodes: List[TLACDCInterpNode] = []
 
@@ -73,11 +79,13 @@ class TLACDCCorrespondence:
                     name=cur_mlp_name,
                     index=cur_mlp_slice,
                 )
+                correspondence.add_node(cur_mlp)
                 for residual_stream_node in downstream_residual_nodes:
                     correspondence.add_edge(
                         parent_node=cur_mlp,
                         child_node=residual_stream_node,
                         edge=Edge(edge_type=EdgeType.ADDITION),
+                        safe=False,
                     )
 
                 cur_mlp_input_name = f"blocks.{layer_idx}.hook_resid_mid"
@@ -86,6 +94,7 @@ class TLACDCCorrespondence:
                     name=cur_mlp_input_name,
                     index=cur_mlp_input_slice,
                 )
+                correspondence.add_node(cur_mlp_input)
                 downstream_residual_nodes.append(cur_mlp_input)
 
             # connect attention heads
@@ -97,11 +106,13 @@ class TLACDCCorrespondence:
                     name=cur_head_name,
                     index=cur_head_slice,
                 )
+                correspondence.add_node(cur_head)
                 for residual_stream_node in downstream_residual_nodes:
                     correspondence.add_edge(
                         parent_node=cur_head,
                         child_node=residual_stream_node,
                         edge=Edge(edge_type=EdgeType.ADDITION),
+                        safe=False,
                     )
 
                 # TODO maybe this needs be moved out of this block??? IDK
@@ -110,17 +121,20 @@ class TLACDCCorrespondence:
                     hook_letter_name = f"blocks.{layer_idx}.attn.hook_{letter}"
                     hook_letter_slice = TorchIndex([None, None, head_idx])
                     hook_letter_node = TLACDCInterpNode(name=hook_letter_name, index=hook_letter_slice)
-                    
+                    correspondence.add_node(hook_letter_node)
+
                     hook_letter_input_name = f"blocks.{layer_idx}.hook_{letter}_input"
                     hook_letter_input_slice = TorchIndex([None, None, head_idx])
                     hook_letter_input_node = TLACDCInterpNode(
                         name=hook_letter_input_name, index=hook_letter_input_slice,
                     )
+                    correspondence.add_node(hook_letter_input_node)
 
                     correspondence.add_edge(
                         parent_node=hook_letter_input_node,
                         child_node=hook_letter_node,
                         edge=Edge(edge_type=EdgeType.DIRECT_COMPUTATION),
+                        safe=False,
                     )
 
                     new_downstream_residual_nodes.append(hook_letter_input_node)
@@ -132,11 +146,13 @@ class TLACDCCorrespondence:
             name="blocks.0.hook_resid_pre",
             index=TorchIndex([None]),
         )
+        correspondence.add_node(embedding_node)
         for node in downstream_residual_nodes:
             correspondence.add_edge(
                 parent_node=embedding_node,
                 child_node=node,
                 edge=Edge(edge_type=EdgeType.ADDITION),
+                safe=False,
             )
     
         return correspondence

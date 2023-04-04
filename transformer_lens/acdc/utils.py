@@ -127,7 +127,7 @@ def ct():
 def kl_divergence(
     logits: torch.Tensor,
     base_model_probs: torch.Tensor,
-    mask_repeat_candidates: Optional[torch.Tensor],
+    mask_repeat_candidates: Optional[torch.Tensor] = None,
 ):
     """Compute KL divergence between base_model_probs and probs"""
     probs = F.softmax(logits, dim=-1)

@@ -68,7 +68,7 @@ from transformer_lens.acdc.induction.utils import (
     get_good_induction_candidates,
     get_mask_repeat_candidates,
 )
-from transformer_lens.acdc.tracr.utils import get_model_input_and_tl_model
+from transformer_lens.acdc.tracr.utils import get_tracr_model_input_and_tl_model
 from transformer_lens.acdc.graphics import (
     build_colorscheme,
     show,
@@ -165,7 +165,7 @@ def test_tracr_port():
         0.0000000e+00, 0.0000000e+00, 1.0000000e+00, 0.0000000e+00,
         0.0000000e+00]])
 
-    im = torch.tensor(get_model_input_and_tl_model(task="reverse", return_im = True))
+    im = torch.tensor(get_tracr_model_input_and_tl_model(task="reverse", return_im = True))
 
     assert torch.allclose(
         im,

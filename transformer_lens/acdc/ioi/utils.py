@@ -1,55 +1,44 @@
-#%%
-# type: ignore
+from functools import partial
 from copy import deepcopy
 import torch.nn.functional as F
 from typing import List
 import click
 import IPython
+from transformer_lens.acdc.utils import kl_divergence
 import torch
 from transformer_lens.acdc.ioi.ioi_dataset import IOIDataset  # NOTE: we now import this LOCALLY so it is deterministic
 from tqdm import tqdm
-
-if IPython.get_ipython() is not None:
-    IPython.get_ipython().run_line_magic("load_ext", "autoreload")  # type: ignore
-    IPython.get_ipython().run_line_magic("autoreload", "2")  # type: ignore
 import wandb
+from transformer_lens.HookedTransformer import HookedTransformer
 
-with open(__file__, "r") as f:
-    file_content = f.read()
-    
-USING_WANDB = True
+def get_ioi_gpt2_small():
+    tl_model = HookedTransformer.from_pretrained("gpt2", use_global_cache=True)
+    tl_model.set_use_attn_result(True)
+    tl_model.set_use_split_qkv_input(True)
+    return tl_model
 
-#%% [markdown]
-# <h2>Setup dataset</h2>
-#
-# Here, we define a dataset from IOI. We always use the same template: all sentences are of the pretty much the same form
-# Don't worry about the IOIDataset object, it's just for convenience of some things that we do with IOI data.
-#
-# ACDC requires a dataset of pairs: default and patch datapoints. Nodes on the current hypothesis graph will receive default datapoints as input, while all other nodes will receive patch datapoints. As we test a child node for its importance, we'll swap the default datapoint for a patch datapoint, and see if the metric changes. In this implementation, we perform this test over all datapoint pairs, where the child node of interest is always receiving patch datapoints and the other children receive default datapoints.
+def get_ioi_data(tl_model, N):
+    ioi_dataset = IOIDataset(
+        prompt_type="ABBA",
+        N=N,
+        nb_templates=1,
+        seed = 0,
+    )
 
+    abc_dataset = (
+        ioi_dataset.gen_flipped_prompts(("IO", "RAND"), seed=1)
+        .gen_flipped_prompts(("S", "RAND"), seed=2)
+        .gen_flipped_prompts(("S1", "RAND"), seed=3)
+    )
 
-N = 50
-ioi_dataset = IOIDataset(
-    prompt_type="ABBA",
-    N=N,
-    nb_templates=1,
-    seed = 0,
-)
+    seq_len = ioi_dataset.toks.shape[1]
+    assert seq_len == 16, f"Well, I thought ABBA #1 was 16 not {seq_len} tokens long..."
 
-abc_dataset = (
-    ioi_dataset.gen_flipped_prompts(("IO", "RAND"), seed=1)
-    .gen_flipped_prompts(("S", "RAND"), seed=2)
-    .gen_flipped_prompts(("S1", "RAND"), seed=3)
-)
+    default_data = ioi_dataset.toks.long()[:N, : seq_len - 1]
+    patch_data = abc_dataset.toks.long()[:N, : seq_len - 1]
 
-seq_len = ioi_dataset.toks.shape[1]
-assert seq_len == 16, f"Well, I thought ABBA #1 was 16 not {seq_len} tokens long..."
+    base_model_logits = tl_model(default_data)
+    base_model_probs = F.softmax(base_model_logits, dim=-1)
 
-default_data = ioi_dataset.toks.long()[:N, : seq_len - 1]
-patch_data = abc_dataset.toks.long()[:N, : seq_len - 1]
-
-# tokens_device_dtype = rc.TorchDeviceDtype("cuda:0", "int64")
-# default_data = make_arr(
-#     ioi_dataset.toks.long()[:N, : seq_len - 1],
-
-# %%
+    metric = partial(kl_divergence, base_model_probs=base_model_probs)
+    return default_data, patch_data, metric

@@ -43,7 +43,8 @@ class HookPoint(nn.Module):
     def add_perma_hook(self, hook, dir="fwd") -> None:
         self.add_hook(hook, dir=dir, is_permanent=True)
 
-    def add_hook(self, hook, dir="fwd", is_permanent=False) -> None:
+    def add_hook(self, hook, dir="fwd", is_permanent=False) -> LensHandle: # TODO make sure all updates to this are legit...
+        
         # Hook format is fn(activation, hook_name)
         # Change it into PyTorch hook format (this includes input and output,
         # which are the same for a HookPoint)
@@ -65,6 +66,8 @@ class HookPoint(nn.Module):
             self.bwd_hooks.append(handle)
         else:
             raise ValueError(f"Invalid direction {dir}")
+
+        return handle
 
     def remove_hooks(self, dir="fwd", including_permanent=False) -> None:
         def _remove_hooks(handles: List[LensHandle]) -> None:
@@ -246,16 +249,20 @@ class HookedRootModule(nn.Module):
 
     def check_and_add_hook(self, hook_point, hook_point_name, hook, dir="fwd", is_permanent=False) -> None:
         """Override this function to add checks on which hooks should be added"""
-        hook_point.add_hook(hook, dir=dir, is_permanent=is_permanent)
+        return hook_point.add_hook(hook, dir=dir, is_permanent=is_permanent)
 
     def add_hook(self, name, hook, dir="fwd", is_permanent=False) -> None:
         if type(name) == str:
-            self.check_and_add_hook(self.mod_dict[name], name, hook, dir=dir, is_permanent=is_permanent)
+            return self.check_and_add_hook(self.mod_dict[name], name, hook, dir=dir, is_permanent=is_permanent)
         else:
+            handles = []
+
             # Otherwise, name is a Boolean function on names
             for hook_point_name, hp in self.hook_dict.items():
                 if name(hook_point_name):
-                    self.check_and_add_hook(hp, hook_point_name, hook, dir=dir, is_permanent=is_permanent)
+                    handles.append(self.check_and_add_hook(hp, hook_point_name, hook, dir=dir, is_permanent=is_permanent))
+            
+            return handles
 
     def add_perma_hook(self, name, hook, dir="fwd") -> None:
         self.add_hook(name, hook, dir=dir, is_permanent=True)

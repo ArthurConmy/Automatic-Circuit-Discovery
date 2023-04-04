@@ -15,7 +15,7 @@ from tracr.compiler import compiling
 
 bos = "BOS"
 
-def get_model_input_and_tl_model(task: Literal["reverse", "proportion"], return_im = False):
+def get_tracr_model_input_and_tl_model(task: Literal["reverse", "proportion"], return_im = False):
     """
     This function adapts Neel's TransformerLens porting of tracr
     """
@@ -233,7 +233,7 @@ def get_perm(n, no_fp = True):
         perm = torch.randperm(n)
     return perm
 
-def get_data(tl_model, task: Literal["reverse", "proportion"]):
+def get_tracr_data(tl_model, task: Literal["reverse", "proportion"]):
     if task == "reverse":
         batch_size = 6
         seq_len = 4

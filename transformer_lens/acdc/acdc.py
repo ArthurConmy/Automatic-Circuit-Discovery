@@ -1,4 +1,8 @@
-# %%
+# %% [markdown]
+# This notebook / script shows several use cases of ACDC
+# 
+# (The code relies on our modification of the TransformerLens codebase, 
+# mainly giving all HookPoints access to a global cache)
 
 import IPython
 
@@ -57,7 +61,7 @@ from transformer_lens.hook_points import HookedRootModule, HookPoint
 from transformer_lens.HookedTransformer import (
     HookedTransformer,
 )
-from transformer_lens.acdc.tracr.utils import *
+from transformer_lens.acdc.tracr.utils import get_tracr_data, get_tracr_model_input_and_tl_model
 from transformer_lens.acdc.utils import (
     make_nd_dict,
     shuffle_tensor,
@@ -75,6 +79,10 @@ from collections import defaultdict, deque, OrderedDict
 from transformer_lens.acdc.utils import (
     kl_divergence,
 )
+from transformer_lens.acdc.ioi.utils import (
+    get_ioi_data,
+    get_ioi_gpt2_small,
+)
 from transformer_lens.acdc.induction.utils import (
     get_all_induction_things,
     get_model,
@@ -91,6 +99,7 @@ import argparse
 #%%
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--task', type=str, required=True)
 parser.add_argument('--threshold', type=float, required=True, help='Value for THRESHOLD')
 parser.add_argument('--first-cache-cpu', type=bool, required=False, default=True, help='Value for FIRST_CACHE_CPU')
 parser.add_argument('--second-cache-cpu', type=bool, required=False, default=True, help='Value for SECOND_CACHE_CPU')
@@ -102,13 +111,14 @@ parser.add_argument('--wandb-run-name', type=str, required=False, default=None, 
 parser.add_argument('--indices-mode', type=str, default="normal")
 parser.add_argument('--names-mode', type=str, default="normal")
 
-if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
+if True or IPython.get_ipython() is not None: # heheh get around this failing in notebooks # TODO allow CLI; this failed with py-spy
     # args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
     # args = parser.parse_args("--threshold 0.001 --using-wandb".split())
-    args = parser.parse_args("--threshold 0.001 --zero-ablation".split())
+    args = parser.parse_args("--task ioi --threshold 0.3 --zero-ablation".split())
 else:
     args = parser.parse_args()
 
+TASK = args.task
 FIRST_CACHE_CPU = args.first_cache_cpu
 SECOND_CACHE_CPU = args.second_cache_cpu
 THRESHOLD = args.threshold # only used if >= 0.0
@@ -124,17 +134,28 @@ DEVICE = "cuda"
 #%% [markdown]
 # Setup
 
-if True: # do tracr
-    task= "reverse"
+if TASK == "ioi":
+    num_examples = 100
+    tl_model = get_ioi_gpt2_small()
+    toks_int_values, toks_int_values_other, metric = get_ioi_data(tl_model, num_examples)
+
+elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
+    tracr_task = TASK.split("-")[-1] # "reverse"
+   
     # this implementation doesn't ablate the position embeddings (which the plots in the paper do do), so results are different. See the rust_circuit implemntation if this need be checked
     # also there's no splitting by neuron yet TODO
-    _, tl_model = get_model_input_and_tl_model(task=task)
-    toks_int_values, toks_int_values_other, metric = get_data(tl_model, task=task)
+   
+    _, tl_model = get_tracr_model_input_and_tl_model(task=TASK)
+    toks_int_values, toks_int_values_other, metric = get_tracr_data(tl_model, task=TASK)
 
-else:
+elif TASK == "induction":
     num_examples = 400
     seq_len = 30
+    # TODO initialize the `tl_model` with the right model
     tl_model, toks_int_values, toks_int_values_other, metric = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE)
+
+else:
+    raise ValueError(f"Unknown task {TASK}")
 
 #%%
 
@@ -171,7 +192,7 @@ exp = TLACDCExperiment(
 exp.step()
 show(
     exp.corr,
-    "arthur_spice.png"
+    "arthur_spice.png",
 )
 
 #%%

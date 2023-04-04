@@ -265,7 +265,7 @@ class TLACDCExperiment:
         self.model.reset_hooks()
 
     def setup_model_hooks(self):
-        self.add_sender_hooks(cache="first")
+        # self.add_sender_hooks(cache="first") # remove because efficiency 
 
         receiver_node_names = list(set([node.name for node in self.corr.nodes()]))
         for receiver_name in receiver_node_names: # TODO could remove the nodes that don't have any parents...
@@ -312,6 +312,20 @@ class TLACDCExperiment:
 
                 edge.present = False
 
+                relevant_node = None
+                if edge.edge_type == EdgeType.ADDITION:
+                    relevant_node = cur_parent
+                if edge.edge_type == EdgeType.DIRECT_COMPUTATION:
+                    relevant_node = self.current_node
+
+                added_sender = False
+                if relevant_node.name not in self.corr.is_sender:
+                    added_sender = True
+                    handle = self.model.add_hook(
+                        name=relevant_node.name, 
+                        hook=partial(self.sender_hook, verbose=self.hook_verbose, cache="first", device=self.model.cfg.device),
+                    )
+                
                 if early_stop: # for debugging the effects of one and only one forward pass WITH a corrupted edge
                     return self.model(self.ds)
 
@@ -341,7 +355,11 @@ class TLACDCExperiment:
                     if self.verbose:
                         print("...so keeping connection")
                     edge.present = True
-                    self.update_cur_metric(recalc = False)
+
+                    if added_sender:
+                        handle.hook.remove() # save on sender hooks!
+
+                    self.update_cur_metric(recalc = False) # so we log current state to wandb
 
                 if self.using_wandb:
                     log_metrics_to_wandb(
