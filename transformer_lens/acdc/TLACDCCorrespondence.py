@@ -45,7 +45,7 @@ class TLACDCCorrespondence:
         edge: Edge,
         safe=True,
     ):
-        if not safe:
+        if safe:
             if parent_node not in self.nodes(): # TODO could be slow ???
                 self.add_node(parent_node)
             if child_node not in self.nodes():

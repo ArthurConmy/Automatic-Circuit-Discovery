@@ -51,7 +51,7 @@ def generate_random_color(colorscheme: str) -> str:
 # GRAPHVIZ
 # -------------------------------------------
 
-def get_node_name(node: TLACDCInterpNode):
+def get_node_name(node: TLACDCInterpNode, show_full_index=True):
     # TODO handle MLPs
 
     name = ""
@@ -90,14 +90,15 @@ def get_node_name(node: TLACDCInterpNode):
     else:
         raise ValueError(f"Unrecognized node name {node.name}")
 
-    name += f"_{str(node.index)}"
+    if show_full_index:
+        name += f"_{str(node.index)}"
 
     return "<" + name + ">"
 
-def build_colorscheme(correspondence, colorscheme: str = "Pastel2") -> Dict[str, str]:
+def build_colorscheme(correspondence, colorscheme: str = "Pastel2", show_full_index=True) -> Dict[str, str]:
     colors = {}
     for node in correspondence.nodes():
-        colors[get_node_name(node)] = generate_random_color(colorscheme)
+        colors[get_node_name(node, show_full_index=show_full_index)] = generate_random_color(colorscheme)
     return colors
 
 
@@ -107,13 +108,14 @@ def show(
     colorscheme: str = "Pastel2",
     minimum_penwidth: float = 0.3,
     show: bool = True,
+    show_full_index: bool = True,
 ):
     """
     takes matplotlib colormaps
     """
     g = graphviz.Digraph(format="png")
 
-    colors = build_colorscheme(correspondence, colorscheme)
+    colors = build_colorscheme(correspondence, colorscheme, show_full_index=show_full_index)
 
     # create all nodes
     for child_hook_name in correspondence.edges:
@@ -125,8 +127,8 @@ def show(
                     parent = correspondence.graph[parent_hook_name][parent_index]
                     child = correspondence.graph[child_hook_name][child_index]
 
-                    parent_name = get_node_name(parent)
-                    child_name = get_node_name(child)
+                    parent_name = get_node_name(parent, show_full_index=show_full_index)
+                    child_name = get_node_name(child, show_full_index=show_full_index)
 
                     if edge.present and edge.effect_size is not None:
                         for node_name in [parent_name, child_name]:

@@ -95,6 +95,7 @@ from transformer_lens.acdc.graphics import (
     show,
 )
 import argparse
+torch.autograd.set_grad_enabled(False)
 
 #%%
 
@@ -114,7 +115,7 @@ parser.add_argument('--names-mode', type=str, default="normal")
 if True or IPython.get_ipython() is not None: # heheh get around this failing in notebooks # TODO allow CLI; this failed with py-spy
     # args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
     # args = parser.parse_args("--threshold 0.001 --using-wandb".split())
-    args = parser.parse_args("--task ioi --threshold 0.3 --zero-ablation".split())
+    args = parser.parse_args("--task ioi --threshold 0.03".split())
 else:
     args = parser.parse_args()
 
@@ -159,6 +160,11 @@ else:
 
 #%%
 
+def cleanup():
+    import gc
+    gc.collect()
+    torch.cuda.empty_cache()
+
 with open(__file__, "r") as f:
     notes = f.read()
 
@@ -186,7 +192,6 @@ exp = TLACDCExperiment(
     indices_mode=INDICES_MODE,
     names_mode=NAMES_MODE,
 )
-assert False, "Stop giving me just 11.0..."
 
 # %%
 

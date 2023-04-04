@@ -28,6 +28,7 @@ from transformer_lens.acdc.utils import (
     shuffle_tensor,
 )  # these introduce several important classes !!!
 from transformer_lens import HookedTransformer
+from transformer_lens.acdc.utils import kl_divergence
 
 def get_model():
     tl_model = HookedTransformer.from_pretrained(

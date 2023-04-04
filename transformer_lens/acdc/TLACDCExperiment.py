@@ -1,3 +1,4 @@
+import gc
 from typing import Callable, Optional, Literal, List, Dict, Any, Tuple, Union, Set, Iterable, TypeVar, Type
 import random
 from dataclasses import dataclass
@@ -156,6 +157,8 @@ class TLACDCExperiment:
     def sender_hook(self, z, hook, verbose=False, cache="first", device=None):
         """General, to cover online and corrupt caching"""
 
+        assert device == "cpu"
+
         if device == "cpu": # maaaybe saves memory??
             tens = z.cpu()
         else:
@@ -218,6 +221,17 @@ class TLACDCExperiment:
 
         return z
 
+    def see_gpu_things(self):
+        import gc
+        cnt=0
+        for obj in gc.get_objects():
+            try:
+                if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
+                    cnt+=1
+            except:
+                pass
+        return cnt
+
     def add_sender_hooks(self, reset=True, cache="first"):    
         if self.verbose:
             print("Adding sender hooks...")
@@ -246,8 +260,17 @@ class TLACDCExperiment:
             )
 
     def setup_second_cache(self):
+        if self.verbose:
+            print("Adding sender hooks...")
         self.add_sender_hooks(cache="second")
+
+        if self.verbose:
+            print("Now corrupting things..")
+
         corrupt_stuff = self.model(self.ref_ds)
+
+        if self.verbose:
+            print("Done corrupting things")
 
         if self.zero_ablation:
             names = list(self.model.global_cache.second_cache.keys())
@@ -323,13 +346,18 @@ class TLACDCExperiment:
                     added_sender = True
                     handle = self.model.add_hook(
                         name=relevant_node.name, 
-                        hook=partial(self.sender_hook, verbose=self.hook_verbose, cache="first", device=self.model.cfg.device),
+                        hook=partial(self.sender_hook, verbose=self.hook_verbose, cache="first", device="cpu"), # self.model.cfg.device),
                     )
+                    self.corr.is_sender.add(relevant_node.name) # = relevant_node
                 
                 if early_stop: # for debugging the effects of one and only one forward pass WITH a corrupted edge
                     return self.model(self.ds)
 
+                if self.verbose:
+                    print("Before", self.see_gpu_things())
                 evaluated_metric = self.metric(self.model(self.ds))
+                if self.verbose:
+                    print("After", self.see_gpu_things())
 
                 if self.verbose:
                     print(
@@ -358,6 +386,8 @@ class TLACDCExperiment:
 
                     if added_sender:
                         handle.hook.remove() # save on sender hooks!
+                        gc.collect()
+                        torch.cuda.empty_cache()
 
                     self.update_cur_metric(recalc = False) # so we log current state to wandb
 
