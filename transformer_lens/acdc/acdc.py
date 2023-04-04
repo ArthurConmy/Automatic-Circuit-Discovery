@@ -186,14 +186,16 @@ exp = TLACDCExperiment(
     indices_mode=INDICES_MODE,
     names_mode=NAMES_MODE,
 )
+assert False, "Stop giving me just 11.0..."
 
 # %%
 
-exp.step()
-show(
-    exp.corr,
-    "arthur_spice.png",
-)
+for i in range(1000):
+    exp.step()
+    show(
+        exp.corr,
+        f"ims/img{i}.png",
+    )
 
 #%%
 
