@@ -139,7 +139,7 @@ class TLACDCExperiment:
         new_graph = OrderedDict()
         cache=OrderedDict() # what if?
         self.model.cache_all(cache)
-        self.model(torch.arange(5))
+        self.model(torch.arange(5)) # some random forward pass so that we can see all the hook names
 
         if self.verbose:
             print(self.corr.graph.keys())
@@ -157,9 +157,7 @@ class TLACDCExperiment:
     def sender_hook(self, z, hook, verbose=False, cache="first", device=None):
         """General, to cover online and corrupt caching"""
 
-        assert device == "cpu"
-
-        if device == "cpu": # maaaybe saves memory??
+        if device == "cpu":
             tens = z.cpu()
         else:
             tens = z.clone()
@@ -221,18 +219,7 @@ class TLACDCExperiment:
 
         return z
 
-    def see_gpu_things(self):
-        import gc
-        cnt=0
-        for obj in gc.get_objects():
-            try:
-                if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
-                    cnt+=1
-            except:
-                pass
-        return cnt
-
-    def add_sender_hooks(self, reset=True, cache="first"):    
+    def add_sender_hooks(self, reset=True, cache="first"):
         if self.verbose:
             print("Adding sender hooks...")
         if reset:
@@ -346,18 +333,14 @@ class TLACDCExperiment:
                     added_sender = True
                     handle = self.model.add_hook(
                         name=relevant_node.name, 
-                        hook=partial(self.sender_hook, verbose=self.hook_verbose, cache="first", device="cpu"), # self.model.cfg.device),
+                        hook=partial(self.sender_hook, verbose=self.hook_verbose, cache="first", device="cpu" if self.first_cache_cpu else None),
                     )
                     self.corr.is_sender.add(relevant_node.name) # = relevant_node
                 
                 if early_stop: # for debugging the effects of one and only one forward pass WITH a corrupted edge
                     return self.model(self.ds)
 
-                if self.verbose:
-                    print("Before", self.see_gpu_things())
                 evaluated_metric = self.metric(self.model(self.ds))
-                if self.verbose:
-                    print("After", self.see_gpu_things())
 
                 if self.verbose:
                     print(
@@ -406,20 +389,20 @@ class TLACDCExperiment:
         self.increment_current_node()
 
     def current_node_connected(self):
-        not_presents_exist = False
+
+        any_connections = False
 
         for child_name, rest1 in self.corr.edges.items():
             for child_index, rest2 in rest1.items():
                 if self.current_node.name in rest2 and self.current_node.index in rest2[self.current_node.name]:
                     if rest2[self.current_node.name][self.current_node.index].present:
+                        print(self.current_node.name, self.current_node.index, "is connected to", child_name, child_index)
                         return True
-                    else:
-                        not_presents_exist = True
 
-                # if child_name == self.current_node.name and child_index == self.current_node.index and len(rest2) == 0: # [self.current_node.name][self.current_node.index]:
-                #     return True
-        
-        return not not_presents_exist
+                    any_connections = True
+
+        return not any_connections # lets include all things with no outputs by default
+        # a bit slow since we iterate over all QKV always, but let's take the hit
 
     def find_next_node(self) -> Optional[TLACDCInterpNode]:
         next_index = next_key(self.corr.graph[self.current_node.name], self.current_node.index)

@@ -191,6 +191,8 @@ exp = TLACDCExperiment(
     verbose=True,
     indices_mode=INDICES_MODE,
     names_mode=NAMES_MODE,
+    second_cache_cpu=SECOND_CACHE_CPU,
+    first_cache_cpu=FIRST_CACHE_CPU,
 )
 
 # %%
@@ -199,7 +201,7 @@ for i in range(1000):
     exp.step()
     show(
         exp.corr,
-        f"ims/img{i}.png",
+        f"ims/img{i+1}.png",
     )
 
 #%%

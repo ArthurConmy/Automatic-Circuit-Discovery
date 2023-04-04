@@ -95,6 +95,13 @@ class TLACDCCorrespondence:
                     index=cur_mlp_input_slice,
                 )
                 correspondence.add_node(cur_mlp_input)
+                correspondence.add_edge(
+                    parent_node=cur_mlp_input,
+                    child_node=cur_mlp,
+                    edge=Edge(edge_type=EdgeType.DIRECT_COMPUTATION),
+                    safe=False,
+                )
+
                 downstream_residual_nodes.append(cur_mlp_input)
 
             # connect attention heads
