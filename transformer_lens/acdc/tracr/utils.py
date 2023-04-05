@@ -5,6 +5,7 @@ if IPython.get_ipython() is not None:
         
 from typing import Literal, List, Tuple, Dict, Any, Optional, Union, Callable, TypeVar, Iterable, Set
 from transformer_lens import HookedTransformer, HookedTransformerConfig
+import warnings
 import einops
 import torch
 import numpy as np
@@ -247,6 +248,7 @@ def get_tracr_data(tl_model, task: Literal["reverse", "proportion"]):
         n = len(data_tens)
         data_tens = data_tens.long()
         patch_data_indices = get_perm(n)
+        warnings.warn("Test that this only considers the relevant part of the sequence...")
         patch_data_tens = data_tens[patch_data_indices]
         base_model_probs = tl_model(data_tens)
         metric = partial(kl_divergence, base_model_probs=base_model_probs, mask_repeat_candidates=None)

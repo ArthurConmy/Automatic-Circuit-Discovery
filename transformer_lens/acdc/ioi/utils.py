@@ -1,3 +1,4 @@
+import warnings
 from functools import partial
 from copy import deepcopy
 import torch.nn.functional as F
@@ -39,6 +40,8 @@ def get_ioi_data(tl_model, N):
 
     base_model_logits = tl_model(default_data)
     base_model_probs = F.softmax(base_model_logits, dim=-1)
+    base_model_probs = base_model_probs[:, -1]
+    warnings.warn("Test this!")
 
-    metric = partial(kl_divergence, base_model_probs=base_model_probs)
+    metric = partial(kl_divergence, base_model_probs=base_model_probs, last_seq_element_only=True)
     return default_data, patch_data, metric

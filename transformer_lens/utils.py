@@ -50,7 +50,6 @@ def download_file_from_hf(
         print("File type not supported:", file_path.split(".")[-1])
         return file_path
 
-
 def print_gpu_mem(step_name=""):
     print(
         f"{step_name} ~ {np.round(torch.cuda.memory_allocated()/2e30, 2)} GiB allocated on GPU."

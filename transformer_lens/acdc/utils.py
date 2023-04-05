@@ -13,6 +13,11 @@ import torch.nn.functional as F
 from transformer_lens.HookedTransformer import HookedTransformer
 from collections import OrderedDict
 
+def cleanup():
+    import gc
+    gc.collect()
+    torch.cuda.empty_cache()
+
 def shuffle_tensor(tens, seed=42):
     """Shuffle tensor along first dimension"""
     torch.random.manual_seed(seed)
@@ -128,8 +133,16 @@ def kl_divergence(
     logits: torch.Tensor,
     base_model_probs: torch.Tensor,
     mask_repeat_candidates: Optional[torch.Tensor] = None,
+    last_seq_element_only: bool = True,
+    base_model_probs_last_seq_element_only: bool = False,
 ):
     """Compute KL divergence between base_model_probs and probs"""
+
+    if last_seq_element_only:
+        logits = logits[:, -1, :]
+    if base_model_probs_last_seq_element_only:
+        base_model_probs = base_model_probs[:, -1, :]
+
     probs = F.softmax(logits, dim=-1)
 
     assert probs.min() >= 0.0

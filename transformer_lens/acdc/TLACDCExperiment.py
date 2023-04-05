@@ -57,9 +57,8 @@ class TLACDCExperiment:
         self.indices_mode = indices_mode
         self.names_mode = names_mode
 
-        assert model.cfg.use_attn_result, "Need to be able to see split by head outputs"
-        assert model.cfg.use_split_qkv_input, "Need to be able to see split by head outputs"
         self.model = model
+        self.verify_model_setup()
         self.zero_ablation = zero_ablation
         self.verbose = verbose
         self.hook_verbose = hook_verbose
@@ -115,6 +114,12 @@ class TLACDCExperiment:
             self.metrics_to_plot["results"] = []
             self.metrics_to_plot["acdc_step"] = 0
             self.metrics_to_plot["num_edges"] = []
+
+    def verify_model_setup(self):
+        assert self.model.cfg.use_attn_result, "Need to be able to see split by head outputs"
+        assert self.model.cfg.use_split_qkv_input, "Need to be able to see split by head QKV inputs"
+        assert self.model.cfg.use_global_cache, "Need to be able to use global chache to do ACDC"
+
 
     def update_cur_metric(self, recalc=True, initial=False):
         if recalc:
