@@ -49,6 +49,7 @@ class TLACDCExperiment:
         wandb_run_name: str = "",
         wandb_notes: str = "",
         skip_edges = "yes",
+        add_sender_hooks: bool = True,
         indices_mode: Literal["normal", "reverse", "shuffle"] = "normal", # last minute we found that this helps quite a lot with zero ablation case
         names_mode: Literal["normal", "reverse", "shuffle"] = "normal",
     ):
@@ -79,7 +80,7 @@ class TLACDCExperiment:
         self.setup_second_cache()
         if self.second_cache_cpu:
             self.model.global_cache.to("cpu", which_caches="second")
-        self.setup_model_hooks()
+        self.setup_model_hooks(add_sender_hooks)
 
         self.using_wandb = using_wandb
         if using_wandb:
@@ -183,6 +184,7 @@ class TLACDCExperiment:
 
     def receiver_hook(self, z, hook, verbose=False):
         receiver_node_name = hook.name
+        print(f"{receiver_node_name=}")
         for receiver_node_index in self.corr.edges[hook.name]:
             direct_computation_nodes = []
             for sender_node_name in self.corr.edges[hook.name][receiver_node_index]:
@@ -279,8 +281,9 @@ class TLACDCExperiment:
 
         self.model.reset_hooks()
 
-    def setup_model_hooks(self):
-        # self.add_sender_hooks(cache="first") # remove because efficiency 
+    def setup_model_hooks(self, add_sender_hooks=False):
+        if add_sender_hooks:
+            self.add_sender_hooks(cache="first") # remove because efficiency 
 
         receiver_node_names = list(set([node.name for node in self.corr.nodes()]))
         for receiver_name in receiver_node_names: # TODO could remove the nodes that don't have any parents...

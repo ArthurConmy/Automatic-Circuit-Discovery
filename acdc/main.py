@@ -195,7 +195,15 @@ exp = TLACDCExperiment(
     names_mode=NAMES_MODE,
     second_cache_cpu=SECOND_CACHE_CPU,
     first_cache_cpu=FIRST_CACHE_CPU,
+    add_sender_hooks=True,
 )
+
+#%% [markdown] DELETE (FOR STEFAN)
+
+print("KL div:", exp.metric(exp.model(exp.ds)), "no_edges", exp.count_no_edges())
+exp.corr.edges["blocks.0.hook_q_input"][TorchIndex([None, None, 3])]["blocks.0.hook_resid_pre"][TorchIndex([None])].present = False
+exp.add_sender_hooks(reset=False)
+print("KL div:", exp.metric(exp.model(exp.ds)), "no_edges", exp.count_no_edges())
 
 # %%
 
