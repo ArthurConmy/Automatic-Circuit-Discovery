@@ -1,11 +1,11 @@
 [tool.poetry]
-name = "transformer-lens"
+name = "acdc"
 version = "0.0.0" # This is automatically set by the CD pipeline on release
-description = "An implementation of transformers tailored for mechanistic interpretability."
-authors = ["Neel Nanda <77788841+neelnanda-io@users.noreply.github.com>"]
+description = "ACDC; on top of TL: an implementation of transformers tailored for mechanistic interpretability."
+authors = ["Neel Nanda, Arthur Conmy"]
 license = "MIT"
 readme = "README.md"
-packages = [{include = "transformer_lens"}]
+packages = [{include = "acdc"}]
 
 [tool.poetry.dependencies]
 python = "^3.7"
