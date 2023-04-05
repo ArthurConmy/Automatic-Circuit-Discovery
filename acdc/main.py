@@ -114,10 +114,11 @@ parser.add_argument('--wandb-run-name', type=str, required=False, default=None, 
 parser.add_argument('--indices-mode', type=str, default="normal")
 parser.add_argument('--names-mode', type=str, default="normal")
 
-if True or IPython.get_ipython() is not None: # heheh get around this failing in notebooks # TODO allow CLI; this failed with py-spy
+# for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
+if True or IPython.get_ipython() is not None: # heheh get around this failing in notebooks
     # args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
     # args = parser.parse_args("--threshold 0.001 --using-wandb".split())
-    args = parser.parse_args("--task docstring --threshold 0.3".split())
+    args = parser.parse_args("--task docstring --threshold 0.03".split())
 else:
     args = parser.parse_args()
 
@@ -195,15 +196,9 @@ exp = TLACDCExperiment(
     names_mode=NAMES_MODE,
     second_cache_cpu=SECOND_CACHE_CPU,
     first_cache_cpu=FIRST_CACHE_CPU,
-    add_sender_hooks=True,
+    add_sender_hooks=False, # attempting to be efficient...
+    add_receiver_hooks=False,
 )
-
-#%% [markdown] DELETE (FOR STEFAN)
-
-print("KL div:", exp.metric(exp.model(exp.ds)), "no_edges", exp.count_no_edges())
-exp.corr.edges["blocks.0.hook_q_input"][TorchIndex([None, None, 3])]["blocks.0.hook_resid_pre"][TorchIndex([None])].present = False
-exp.add_sender_hooks(reset=False)
-print("KL div:", exp.metric(exp.model(exp.ds)), "no_edges", exp.count_no_edges())
 
 # %%
 

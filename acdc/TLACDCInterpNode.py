@@ -11,13 +11,15 @@ class TLACDCInterpNode:
         index: the index of the tensor that this node represents
         mode: how we deal with this node when we bump into it as a parent of another node. Addition: it's summed to make up the child. Direct_computation: it's the sole node used to compute the child. Off: it's not the parent of a child ever."""
         
-    def __init__(self, name: str, index: TorchIndex):
+    def __init__(self, name: str, index: TorchIndex, incoming_edge_type: EdgeType):
         
         self.name = name
         self.index = index
         
         self.parents: List["TLACDCInterpNode"] = []
         self.children: List["TLACDCInterpNode"] = []
+
+        self.incoming_edge_type = incoming_edge_type
 
     def _add_child(self, child_node: "TLACDCInterpNode"):
         """Use the method on TLACDCCorrespondence instead of this one"""

@@ -32,6 +32,9 @@ class HookPoint(nn.Module):
         super().__init__()
         self.fwd_hooks: List[LensHandle] = []
         self.bwd_hooks: List[LensHandle] = []
+
+        self.fwd_hook_functions = [] # Added for ACDC...
+
         self.ctx = {}
         if global_cache is not None:
             self.global_cache = global_cache
@@ -48,6 +51,10 @@ class HookPoint(nn.Module):
         # Hook format is fn(activation, hook_name)
         # Change it into PyTorch hook format (this includes input and output,
         # which are the same for a HookPoint)
+
+        if is_permanent:
+            warnings.warn("Arthur used some self.fwd_hook_functions stuff that won't play nicely with permanent hooks, take real care here")
+
         if dir == "fwd":
 
             def full_hook(module, module_input, module_output):
@@ -67,6 +74,8 @@ class HookPoint(nn.Module):
         else:
             raise ValueError(f"Invalid direction {dir}")
 
+        self.fwd_hook_functions.append(hook)
+
         return handle
 
     def remove_hooks(self, dir="fwd", including_permanent=False) -> None:
@@ -85,6 +94,8 @@ class HookPoint(nn.Module):
             self.bwd_hooks = _remove_hooks(self.bwd_hooks)
         if dir not in ["fwd", "bwd", "both"]:
             raise ValueError(f"Invalid direction {dir}")
+
+        self.fwd_hook_functions = [] # lol, support for permanents and partial removal of hooks will be bad
 
     def clear_context(self):
         del self.ctx
@@ -234,6 +245,7 @@ class HookedRootModule(nn.Module):
     def remove_all_hook_fns(self, direction="both", including_permanent=False):
         for hp in self.hook_points():
             hp.remove_hooks(direction, including_permanent=including_permanent)
+
 
     def clear_contexts(self):
         for hp in self.hook_points():

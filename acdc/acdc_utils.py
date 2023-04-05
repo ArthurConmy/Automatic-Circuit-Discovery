@@ -43,14 +43,28 @@ class OrderedDefaultdict(collections.OrderedDict):
         return '%s(%r, %r)' % (self.__class__.__name__, self.default_factory, self.items())
 
 class EdgeType(Enum):
-    """Property of edges in the computational graph - either 
+    """TODO Arthur explain this more clearly and use GPT-4 for clarity/coherence. Ping Arthur if you want a better explanation and this isn't done!!!
+    Property of edges in the computational graph - either 
     
-    1. The parent adds to the child (e.g residual stream)
-    2. The *single* child is a function of and only of the parent (e.g the value hooked by hook_q is a function of what hook_q_input saves)
-    3. Generally like 2. but where there are generally multiple parents, so it's hard to separate effects. E.g hook_result is a function of hook_q, _k and _v but once we've computed hook_result it's difficult to edit one input"""
+    ADDITION: the child (hook_name, index) is a sum of the parent (hook_name, index)s
+    DIRECT_COMPUTATION The *single* child is a function of and only of the parent (e.g the value hooked by hook_q is a function of what hook_q_input saves).
+    PLACEHOLDER generally like 2. but where there are generally multiple parents. Here in ACDC we just include these edges by default when we find them. Explained below?
+    
+    Q: Why do we do this?
+
+    A: We need something inside TransformerLens to represent the edges of a computational graph.
+    The object we choose is pairs (hook_name, index). For example the output of Layer 11 Heads is a hook (blocks.11.attn.hook_result) and to sepcify the 3rd head we add the index [:, :, 3]. Then we can build a computational graph on these! 
+
+    However, when we do ACDC there turn out to be two conflicting things "removing edges" wants to do: 
+    i) for things in the residual stream, we want to remove the sum of the effects from previous hooks 
+    ii) for things that are not linear we want to *recompute* e.g the result inside the hook 
+    blocks.11.attn.hook_result from a corrupted Q and normal K and V
+
+    The easiest way I thought of of reconciling these different cases, while also having a connected computational graph, is to have three types of edges: addition for the residual case, direct computation for easy cases where we can just replace hook_q with a cached value when we e.g cut it off from hook_q_input, and placeholder to make the graph connected (when hook_result is connected to hook_q and hook_k and hook_v)"""
 
     ADDITION = 0
     DIRECT_COMPUTATION = 1
+    PLACEHOLDER
 
     def __eq__(self, other):
         # TODO WTF? Why do I need this?? To busy to look into now, check the commit where we add this later
@@ -78,7 +92,11 @@ class TorchIndex:
     
     `HookReference`s are essentially indices that say which part of the tensor is being affected. 
     
-    E.g (slice(None), slice(None), 3) means index [:, :, 3]"""
+    E.g (slice(None), slice(None), 3) means index [:, :, 3]
+    
+    Also we want to be able to go my_dictionary[my_torch_index] hence the hashable tuple stuff
+    
+    EXAMPLES: Initialise [:, :, 3] with TorchIndex([None, None, 3]) and [:] with TorchIndex([None])"""
 
     def __init__(
         self, 
