@@ -5,12 +5,12 @@ import torch.nn.functional as F
 from typing import List
 import click
 import IPython
-from transformer_lens.acdc.utils import kl_divergence
+from acdc.utils import kl_divergence
 import torch
-from transformer_lens.acdc.ioi.ioi_dataset import IOIDataset  # NOTE: we now import this LOCALLY so it is deterministic
+from acdc.ioi.ioi_dataset import IOIDataset  # NOTE: we now import this LOCALLY so it is deterministic
 from tqdm import tqdm
 import wandb
-from transformer_lens.HookedTransformer import HookedTransformer
+from acdc.HookedTransformer import HookedTransformer
 
 def get_ioi_gpt2_small():
     tl_model = HookedTransformer.from_pretrained("gpt2", use_global_cache=True)

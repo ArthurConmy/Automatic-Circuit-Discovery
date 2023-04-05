@@ -20,8 +20,8 @@ from typing import (
 )
 import warnings
 import networkx as nx
-import transformer_lens.acdc.docstring.prompts as prompts
-from transformer_lens.acdc.utils import (
+import acdc.docstring.prompts as prompts
+from acdc.utils import (
     make_nd_dict,
     TorchIndex,
     Edge, 
@@ -29,7 +29,7 @@ from transformer_lens.acdc.utils import (
     shuffle_tensor,
 )  # these introduce several important classes !!!
 from transformer_lens import HookedTransformer
-from transformer_lens.acdc.utils import kl_divergence
+from acdc.utils import kl_divergence
 
 def get_all_docstring_things(num_examples, seq_len, device):
     tl_model = HookedTransformer.from_pretrained(

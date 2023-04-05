@@ -1,7 +1,7 @@
 # %%
 from __future__ import annotations
-import transformer_lens.utils as utils
-from transformer_lens.utils import Slice, SliceInput
+import acdc.utils as utils
+from acdc.utils import Slice, SliceInput
 import torch
 import einops
 from fancy_einsum import einsum
@@ -12,7 +12,7 @@ import re
 import numpy as np
 import logging
 
-from transformer_lens.torchtyping_helper import T
+from acdc.torchtyping_helper import T
 
 
 class ActivationCache:

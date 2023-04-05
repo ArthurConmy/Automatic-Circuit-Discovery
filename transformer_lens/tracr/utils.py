@@ -10,7 +10,7 @@ import einops
 import torch
 import numpy as np
 from functools import partial
-from transformer_lens.acdc.utils import kl_divergence
+from acdc.utils import kl_divergence
 from tracr.rasp import rasp
 from tracr.compiler import compiling
 

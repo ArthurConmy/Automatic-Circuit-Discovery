@@ -1,4 +1,4 @@
-from transformer_lens.acdc.utils import TorchIndex, Edge, EdgeType
+from acdc.utils import TorchIndex, Edge, EdgeType
 from typing import List, Dict, Optional, Tuple, Union, Set, Callable, TypeVar, Iterable, Any
 
 class TLACDCInterpNode:

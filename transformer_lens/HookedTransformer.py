@@ -20,17 +20,17 @@ from transformers import (
 )
 from datasets.load import load_dataset
 
-from transformer_lens.hook_points import HookedRootModule, HookPoint
+from acdc.hook_points import HookedRootModule, HookPoint
 from transformer_lens import HookedTransformerConfig
-from transformer_lens.ActivationCache import ActivationCache
-from transformer_lens.FactoredMatrix import FactoredMatrix
+from acdc.ActivationCache import ActivationCache
+from acdc.FactoredMatrix import FactoredMatrix
 
 # Note - activation cache is used with run_with_cache, past_key_value_caching is used for generation.
-from transformer_lens.past_key_value_caching import HookedTransformerKeyValueCache
+from acdc.past_key_value_caching import HookedTransformerKeyValueCache
 
-from transformer_lens.components import *
-import transformer_lens.loading_from_pretrained as loading
-from transformer_lens.torchtyping_helper import T
+from acdc.components import *
+import acdc.loading_from_pretrained as loading
+from acdc.torchtyping_helper import T
 from collections import OrderedDict
 
 SingleLoss = TT[()]  # Type alias for a single element tensor

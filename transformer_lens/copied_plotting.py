@@ -16,7 +16,7 @@ from tqdm import tqdm
 import pandas as pd
 import wandb
 import numpy as np
-from transformer_lens.acdc.utils import ct
+from acdc.utils import ct
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from copied_extra_utils import get_nonan, get_corresponding_element, get_first_element, get_longest_float, process_nan, get_threshold_zero

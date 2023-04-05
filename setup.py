@@ -1,11 +1,11 @@
 from setuptools import setup
 
 setup(
-    name="transformer_lens",
+    name="acdc",
     version="0.1.0",
-    packages=["transformer_lens"],
+    packages=["acdc"],
     license="LICENSE",
-    description="An implementation of transformers tailored for mechanistic interpretability.",
+    description="ACDC: built on top of TransformerLens: an implementation of transformers tailored for mechanistic interpretability.",
     long_description=open("README.md").read(),
     install_requires=[
         "einops",
@@ -19,6 +19,10 @@ setup(
         "wandb",
         "fancy_einsum",
         "torchtyping",
+        "huggingface_hub",
+        "cmapy",
+        "graphviz", 
+        "networkx",
         "rich",
         "git+https://github.com/deepmind/tracr.git", # sad does not work
     ],

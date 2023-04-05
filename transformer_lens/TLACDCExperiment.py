@@ -5,13 +5,13 @@ from dataclasses import dataclass
 import torch
 from torch import nn
 from torch.nn import functional as F
-from transformer_lens.acdc.TLACDCInterpNode import TLACDCInterpNode
-from transformer_lens.acdc.TLACDCCorrespondence import TLACDCCorrespondence
-from transformer_lens.HookedTransformer import HookedTransformer
-from transformer_lens.acdc.graphics import log_metrics_to_wandb
+from acdc.TLACDCInterpNode import TLACDCInterpNode
+from acdc.TLACDCCorrespondence import TLACDCCorrespondence
+from acdc.HookedTransformer import HookedTransformer
+from acdc.graphics import log_metrics_to_wandb
 import warnings
 import wandb
-from transformer_lens.acdc.utils import TorchIndex, Edge, EdgeType
+from acdc.utils import TorchIndex, Edge, EdgeType
 from collections import OrderedDict
 from functools import partial
 import time

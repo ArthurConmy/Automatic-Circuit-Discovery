@@ -16,11 +16,11 @@ from typing import List, Optional
 import warnings
 import networkx as nx
 import graphviz
-from transformer_lens.acdc.TLACDCCorrespondence import TLACDCCorrespondence
-from transformer_lens.acdc.TLACDCInterpNode import TLACDCInterpNode
+from acdc.TLACDCCorrespondence import TLACDCCorrespondence
+from acdc.TLACDCInterpNode import TLACDCInterpNode
 
 # # I hope that it's reasonable...
-# from transformer_lens.acdc.utils import (
+# from acdc.utils import (
 #     make_nd_dict,
 #     TorchIndex,
 #     Edge, 

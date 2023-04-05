@@ -2,7 +2,7 @@ import pytest
 import torch
 import numpy as np
 
-import transformer_lens.utils as utils
+import acdc.utils as utils
 
 ref_tensor = torch.tensor([[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]])
 shape = ref_tensor.shape

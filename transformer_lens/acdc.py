@@ -57,13 +57,13 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
 pio.renderers.default = "colab"
-from transformer_lens.hook_points import HookedRootModule, HookPoint
-from transformer_lens.HookedTransformer import (
+from acdc.hook_points import HookedRootModule, HookPoint
+from acdc.HookedTransformer import (
     HookedTransformer,
 )
-from transformer_lens.acdc.tracr.utils import get_tracr_data, get_tracr_model_input_and_tl_model
-from transformer_lens.acdc.docstring.utils import get_all_docstring_things
-from transformer_lens.acdc.utils import (
+from acdc.tracr.utils import get_tracr_data, get_tracr_model_input_and_tl_model
+from acdc.docstring.utils import get_all_docstring_things
+from acdc.utils import (
     make_nd_dict,
     shuffle_tensor,
     cleanup,
@@ -73,26 +73,26 @@ from transformer_lens.acdc.utils import (
     EdgeType,
 )  # these introduce several important classes !!!
 
-from transformer_lens.acdc.TLACDCCorrespondence import TLACDCCorrespondence
-from transformer_lens.acdc.TLACDCInterpNode import TLACDCInterpNode
-from transformer_lens.acdc.TLACDCExperiment import TLACDCExperiment
+from acdc.TLACDCCorrespondence import TLACDCCorrespondence
+from acdc.TLACDCInterpNode import TLACDCInterpNode
+from acdc.TLACDCExperiment import TLACDCExperiment
 
 from collections import defaultdict, deque, OrderedDict
-from transformer_lens.acdc.utils import (
+from acdc.utils import (
     kl_divergence,
 )
-from transformer_lens.acdc.ioi.utils import (
+from acdc.ioi.utils import (
     get_ioi_data,
     get_ioi_gpt2_small,
 )
-from transformer_lens.acdc.induction.utils import (
+from acdc.induction.utils import (
     get_all_induction_things,
     get_model,
     get_validation_data,
     get_good_induction_candidates,
     get_mask_repeat_candidates,
 )
-from transformer_lens.acdc.graphics import (
+from acdc.graphics import (
     build_colorscheme,
     show,
 )

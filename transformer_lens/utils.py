@@ -1,4 +1,19 @@
 from __future__ import annotations
+import wandb
+from functools import partial
+from copy import deepcopy
+import warnings
+import collections
+import random
+from collections import defaultdict
+from enum import Enum
+from typing import Any, Literal, Dict, Tuple, Union, List, Optional, Callable, TypeVar, Generic, Iterable, Set, Type, cast, Sequence, Mapping, overload
+import torch
+import time
+import torch.nn.functional as F
+from acdc.HookedTransformer import HookedTransformer
+from collections import OrderedDict
+
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -15,11 +30,11 @@ from huggingface_hub import hf_hub_download
 import re
 from rich import print as rprint
 
-# from datasets.arrow_dataset import Dataset
-# from datasets.load import load_dataset
+from datasets.arrow_dataset import Dataset
+from datasets.load import load_dataset
 
 from transformer_lens import FactoredMatrix
-from transformer_lens.torchtyping_helper import T
+from acdc.torchtyping_helper import T
 from collections import defaultdict
 
 CACHE_DIR = transformers.TRANSFORMERS_CACHE
@@ -32,7 +47,6 @@ def download_file_from_hf(
 ):
     """
     Helper function to download files from the HuggingFace Hub, from subfolder/file_name in repo_name, saving locally to cache_dir and returning the loaded file (if a json or Torch object) and the file path otherwise.
-
     If it's a Torch file without the ".pth" extension, set force_is_torch=True to load it as a Torch object.
     """
     file_path = hf_hub_download(
@@ -87,7 +101,6 @@ def lm_cross_entropy_loss(
     per_token: bool = False,
 ) -> Union[TT[()], TT[T.batch, T.pos]]:
     """Cross entropy loss for the language model, gives the loss for predicting the NEXT token.
-
     Args:
         logits (torch.Tensor): Logits. Shape [batch, pos, d_vocab]
         tokens (torch.Tensor[int64]): Input tokens. Shape [batch, pos]
@@ -112,7 +125,6 @@ def lm_accuracy(
     per_token: bool = False,
 ) -> Union[TT[()], TT[T.batch, T.pos]]:
     """Cross-Entropy Accuracy for Language Modelling. We measure the accuracy on the logits for predicting the NEXT token.
-
     If per_token is True, returns the boolean for top 1 accuracy for each token in the batch. Note that this has size [batch, seq_len-1], as we cannot predict the first token.
     """
     top_prediction = logits.argmax(dim=-1)
@@ -149,7 +161,6 @@ def solu(input: TT[T.batch, T.pos, T.d_mlp]) -> TT[T.batch, T.pos, T.d_mlp]:
     """
     SoLU activation function as described by
     https://transformer-circuits.pub/2022/solu/index.html.
-
     LayerNorm implemented by the MLP class.
     """
     return input * F.softmax(input, dim=-1)
@@ -175,9 +186,7 @@ def tokenize_and_concatenate(
     num_proc: int = 10,
 ) -> Dataset:
     """Helper function to tokenizer and concatenate a dataset of text. This converts the text to tokens, concatenates them (separated by EOS tokens) and then reshapes them into a 2D array of shape (____, sequence_length), dropping the last batch. Tokenizers are much faster if parallelised, so we chop the string into 20, feed it into the tokenizer, in parallel with padding, then remove padding at the end.
-
     This tokenization is useful for training language models, as it allows us to efficiently train on a large corpus of text of varying lengths (without, eg, a lot of truncation or padding). Further, for models with absolute positional encodings, this avoids privileging early tokens (eg, news articles often begin with CNN, and models may learn to use early positional encodings to predict these)
-
     Args:
         dataset (Dataset): The dataset to tokenize, assumed to be a HuggingFace text dataset.
         tokenizer (AutoTokenizer): The tokenizer. Assumed to have a bos_token_id and an eos_token_id.
@@ -185,10 +194,8 @@ def tokenize_and_concatenate(
         max_length (int, optional): The length of the context window of the sequence. Defaults to 1024.
         column_name (str, optional): The name of the text column in the dataset. Defaults to 'text'.
         add_bos_token (bool, optional): . Defaults to True.
-
     Returns:
         Dataset: Returns the tokenized dataset, as a dataset of tensors, with a single column called "tokens"
-
     Note: There is a bug when inputting very small datasets (eg, <1 batch per process) where it just outputs nothing. I'm not super sure why
     """
     dataset = keep_single_column(dataset, column_name)
@@ -242,7 +249,6 @@ def tokenize_and_concatenate(
 
 """ 
 Test ^
-
 data = Dataset.from_dict({"text":[str(i) for i in range(1000)]})
 tokenizer = AutoTokenizer.from_pretrained("NeelNanda/gpt-neox-tokenizer-digits")
 print(data)
@@ -260,13 +266,10 @@ def sample_logits(
 ) -> TT[T.batch]:
     """
     Sample from the logits, in order to generate text
-
     final_logits has shape [batch, vocab_size]
     We divide the logits by temperature before softmaxing and sampling - high temperature = more uniform, low = more argmaxy. Temp = 0.0 is greedy sampling
     We apply top_k and top_p filtering to the logits, to encourage diversity. top_k = 10 means we only sample from the 10 most likely tokens. top_p = 0.9 means we only sample from the top 90% of tokens, and then renormalise the distribution. top_k and top_p are mutually exclusive. By default we apply neither and just sample from the full distribution.
-
     Frequency penalty is a penalty on the probability of a token, proportional to the number of times it has been generated so far. This encourages the model to generate new tokens, rather than repeating itself. It is a hyperparameter, and should be tuned. It is applied to the logits before sampling. If this is non-zero it is required to input the input_tokens
-
     #! TODO: Finish testing all the edge cases here. Useful testing code:
     logits = torch.randn(4)
     print(logits)
@@ -322,15 +325,12 @@ SliceInput: Type = Optional[
 class Slice:
     """
     We use a custom slice syntax because Python/Torch's don't let us reduce the number of dimensions:
-
     Note that slicing with input_slice=None means do nothing, NOT add an extra dimension (use unsqueeze for that)
-
     There are several modes:
     int - just index with that integer (decreases number of dimensions)
     slice - Input is a tuple converted to a slice ((k,) means :k, (k, m) means m:k, (k, m, n) means m:k:n)
     array - Input is a list or tensor or numpy array, converted to a numpy array, and we take the stack of values at those indices
     identity - Input is None, leave it unchanged.
-
     Examples for dim=0:
     if input_slice=0, tensor -> tensor[0]
     elif input_slice = (1, 5), tensor -> tensor[1:5]
@@ -345,7 +345,6 @@ class Slice:
     ):
         """
         Modular component for slicing tensors. Can be used to slice a tensor along a given dimension, or to index into a tensor along a given dimension.
-
         Args:
             input_slice (SliceInput): The slice to apply. Can be an int, a tuple, a list, a torch.Tensor, or None. If None, do nothing.
             
@@ -381,11 +380,9 @@ class Slice:
         ) -> torch.Tensor:
         """
         Takes in a tensor and a slice, and applies the slice to the given dimension (supports positive and negative dimension syntax). Returns the sliced tensor.
-
         Args:
             tensor (torch.Tensor): The tensor to slice.
             dim (int, optional): The dimension to slice along. Supports positive and negative dimension syntax.
-
         Returns:
             torch.Tensor: The sliced tensor.
         """
@@ -400,13 +397,10 @@ class Slice:
         ) -> Union[np.ndarray, np.int64]:
         """
         Returns the indices when this slice is applied to an axis of size max_ctx. Returns them as a numpy array, for integer slicing it is eg array([4])
-
         Args:
             max_ctx (int, optional): The size of the axis to slice. Only used if the slice is not an integer.
-
         Returns:
             np.ndarray: The indices that this slice will select.
-
         Raises:
             ValueError: If the slice is not an integer and max_ctx is not specified.
         """
@@ -432,7 +426,6 @@ def get_act_name(
 ):
     """
     Helper function to convert shorthand to an activation name. Pretty hacky, intended to be useful for short feedback loop hacking stuff together, more so than writing good, readable code. But it is deterministic!
-
     eg:
     get_act_name('k', 6, 'a')=='blocks.6.attn.hook_k'
     get_act_name('pre', 2)=='blocks.2.mlp.hook_pre'
@@ -523,9 +516,7 @@ def test_prompt(
 ):
     """
     Function to test whether a model can give the correct answer to a prompt. Intended for exploratory analysis, so it prints things out rather than returning things.
-
     Works for multi-token answers and multi-token prompts.
-
     Will always print the ranks of the answer tokens, and if print_details will print the logit and prob for the answer tokens and the top k tokens returned for each answer position.
     """
     if prepend_space_to_answer and not answer.startswith(" "):
@@ -605,11 +596,8 @@ def composition_scores(
 def get_dataset(dataset_name: str, **kwargs) -> Dataset:
     """
     Returns a small HuggingFace dataset, for easy testing and exploration. Accesses several convenience datasets with 10,000 elements (dealing with the enormous 100GB - 2TB datasets is a lot of effort!). Note that it returns a dataset (ie a dictionary containing all the data), *not* a DataLoader (iterator over the data + some fancy features). But you can easily convert it to a DataLoader.
-
     Each dataset has a 'text' field, which contains the relevant info, some also have several meta data fields
-
     Kwargs will be passed to the huggingface dataset loading function, e.g. "data_dir"
-
     Possible inputs:
     * openwebtext (approx the GPT-2 training data https://huggingface.co/datasets/openwebtext)
     * pile (The Pile, a big mess of tons of diverse data https://pile.eleuther.ai/)
@@ -634,3 +622,153 @@ def get_dataset(dataset_name: str, **kwargs) -> Dataset:
     else:
         raise ValueError(f"Dataset {dataset_name} not supported")
     return dataset
+
+def cleanup():
+    import gc
+    gc.collect()
+    torch.cuda.empty_cache()
+
+def shuffle_tensor(tens, seed=42):
+    """Shuffle tensor along first dimension"""
+    torch.random.manual_seed(seed)
+    return tens[torch.randperm(tens.shape[0])]
+
+class OrderedDefaultdict(collections.OrderedDict):
+    """ A defaultdict with OrderedDict as its base class. 
+    Thanks to https://stackoverflow.com/a/6190500/1090562"""
+
+    def __init__(self, default_factory=None, *args, **kwargs):
+        if not (default_factory is None or callable(default_factory)):
+            raise TypeError('first argument must be callable or None')
+        super(OrderedDefaultdict, self).__init__(*args, **kwargs)
+        self.default_factory = default_factory  # called by __missing__()
+
+    def __missing__(self, key):
+        if self.default_factory is None:
+            raise KeyError(key,)
+        self[key] = value = self.default_factory()
+        return value
+
+    def __repr__(self):  # Optional.
+        return '%s(%r, %r)' % (self.__class__.__name__, self.default_factory, self.items())
+
+class EdgeType(Enum):
+    """Property of edges in the computational graph - either 
+    
+    1. The parent adds to the child (e.g residual stream)
+    2. The *single* child is a function of and only of the parent (e.g the value hooked by hook_q is a function of what hook_q_input saves)
+    3. Generally like 2. but where there are generally multiple parents, so it's hard to separate effects. E.g hook_result is a function of hook_q, _k and _v but once we've computed hook_result it's difficult to edit one input"""
+
+    ADDITION = 0
+    DIRECT_COMPUTATION = 1
+
+    def __eq__(self, other):
+        # TODO WTF? Why do I need this?? To busy to look into now, check the commit where we add this later
+        return self.value == other.value
+
+class Edge:
+    def __init__(
+        self,
+        edge_type: EdgeType,
+        present: bool = True,
+        effect_size: Optional[float] = None,
+    ):
+        self.edge_type = edge_type
+        self.present = present
+        self.effect_size = effect_size
+
+    def __repr__(self) -> str:
+        return f"Edge({self.edge_type}, {self.present})"
+
+# TODO attrs.frozen???
+class TorchIndex:
+    """There is not a clean bijection between things we 
+    want in the computational graph, and things that are hooked
+    (e.g hook_result covers all heads in a layer)
+    
+    `HookReference`s are essentially indices that say which part of the tensor is being affected. 
+    
+    E.g (slice(None), slice(None), 3) means index [:, :, 3]"""
+
+    def __init__(
+        self, 
+        list_of_things_in_tuple
+    ):
+        for arg in list_of_things_in_tuple: # TODO write this less verbosely. Just typehint + check typeguard saves us??
+            if type(arg) in [type(None), int]:
+                continue
+            else:
+                assert isinstance(arg, list)
+                assert all([type(x) == int for x in arg])
+
+        self.as_index = tuple([slice(None) if x is None else x for x in list_of_things_in_tuple])
+        self.hashable_tuple = tuple(list_of_things_in_tuple)
+
+    def __hash__(self):
+        return hash(self.hashable_tuple)
+
+    def __eq__(self, other):
+        return self.hashable_tuple == other.hashable_tuple
+
+    def __repr__(self) -> str:
+        ret = "["
+        for idx, x in enumerate(self.hashable_tuple):
+            if idx > 0:
+                ret += ", "
+            if x is None:
+                ret += "COL"
+            elif type(x) == int:
+                ret += str(x)
+            else:
+                raise NotImplementedError(x)
+        ret += "]"
+        return ret
+
+def make_nd_dict(end_type, n = 3) -> Any:
+    """Make biiig default dicts : ) : )"""
+
+    if n not in [3, 4]:
+        raise NotImplementedError("Only implemented for 3/4")
+        
+    if n == 3:
+        return OrderedDefaultdict(lambda: defaultdict(lambda: defaultdict(end_type)))
+
+    if n == 4:
+        return OrderedDefaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(end_type))))
+
+def ct():
+    return time.ctime().replace(" ", "_").replace(":", "_").replace("__", "_")
+
+def kl_divergence(
+    logits: torch.Tensor,
+    base_model_probs: torch.Tensor,
+    mask_repeat_candidates: Optional[torch.Tensor] = None,
+    last_seq_element_only: bool = True,
+    base_model_probs_last_seq_element_only: bool = False,
+):
+    """Compute KL divergence between base_model_probs and probs"""
+
+    if last_seq_element_only:
+        logits = logits[:, -1, :]
+    if base_model_probs_last_seq_element_only:
+        base_model_probs = base_model_probs[:, -1, :]
+
+    probs = F.softmax(logits, dim=-1)
+
+    assert probs.min() >= 0.0
+    assert probs.max() <= 1.0
+
+    kl_div = (base_model_probs * (base_model_probs.log() - probs.log())).sum(dim=-1)
+
+    if mask_repeat_candidates is not None:
+        assert kl_div.shape == mask_repeat_candidates.shape, (
+            kl_div.shape,
+            mask_repeat_candidates.shape,
+        )
+        kl_div = kl_div * mask_repeat_candidates.long()
+        answer = (kl_div.sum() / mask_repeat_candidates.long().sum().item()).item()
+
+    else:
+        answer = kl_div.mean().item()
+
+    return answer

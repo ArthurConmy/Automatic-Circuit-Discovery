@@ -20,7 +20,7 @@ from typing import (
 )
 import warnings
 import networkx as nx
-from transformer_lens.acdc.utils import (
+from acdc.utils import (
     make_nd_dict,
     TorchIndex,
     Edge, 
@@ -28,7 +28,7 @@ from transformer_lens.acdc.utils import (
     shuffle_tensor,
 )  # these introduce several important classes !!!
 from transformer_lens import HookedTransformer
-from transformer_lens.acdc.utils import kl_divergence
+from acdc.utils import kl_divergence
 
 def get_model():
     tl_model = HookedTransformer.from_pretrained(
