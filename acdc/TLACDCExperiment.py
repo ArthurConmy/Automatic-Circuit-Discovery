@@ -352,10 +352,12 @@ class TLACDCExperiment:
         if self.verbose:
             print("New metric:", cur_metric)
 
-        node_type = self.corr.get_node_type(self.current_node.name)
+        if self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value:
+            # Add this node as a receiver hook, now
+            added_receiver_hook = self.add_receiver_hook(self.current_node)
+        else:
+            added_receiver_hook = False
 
-        # Add this node as a receiver hook, now
-        added_receiver_hook = self.add_receiver_hook(self.current_node)
         is_this_node_used = False
 
         sender_names_list = list(self.corr.edges[self.current_node.name][self.current_node.index])
@@ -377,6 +379,9 @@ class TLACDCExperiment:
                 edge = self.corr.edges[self.current_node.name][self.current_node.index][sender_name][sender_index]
                 cur_parent = self.corr.graph[sender_name][sender_index]
 
+                if edge.edge_type == EdgeType.PLACEHOLDER:
+                    continue # include by default
+
                 if self.verbose:
                     print(f"\nNode: {cur_parent=} ({self.current_node=})\n")
 
@@ -384,13 +389,11 @@ class TLACDCExperiment:
 
                 relevant_node = None
                 if edge.edge_type == EdgeType.ADDITION:
-                    relevant_node = cur_parent
-                if edge.edge_type == EdgeType.DIRECT_COMPUTATION:
-                    relevant_node = self.current_node
-
-                added_sender_hook = self.add_sender_hook(
-                    relevant_node,
-                )
+                    added_sender_hook = self.add_sender_hook(
+                        cur_parent,
+                    )
+                else:
+                    added_sender_hook = False
                 
                 if early_stop: # for debugging the effects of one and only one forward pass WITH a corrupted edge
                     return self.model(self.ds)

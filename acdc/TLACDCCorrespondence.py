@@ -127,17 +127,16 @@ class TLACDCCorrespondence:
                     )
 
                 # TODO maybe this needs be moved out of this block??? IDK
-                hook_letter_inputs = {}
                 for letter in "qkv":
                     hook_letter_name = f"blocks.{layer_idx}.attn.hook_{letter}"
                     hook_letter_slice = TorchIndex([None, None, head_idx])
-                    hook_letter_node = TLACDCInterpNode(name=hook_letter_name, index=hook_letter_slice)
+                    hook_letter_node = TLACDCInterpNode(name=hook_letter_name, index=hook_letter_slice, incoming_edge_type=EdgeType.DIRECT_COMPUTATION)
                     correspondence.add_node(hook_letter_node)
 
                     hook_letter_input_name = f"blocks.{layer_idx}.hook_{letter}_input"
                     hook_letter_input_slice = TorchIndex([None, None, head_idx])
                     hook_letter_input_node = TLACDCInterpNode(
-                        name=hook_letter_input_name, index=hook_letter_input_slice,
+                        name=hook_letter_input_name, index=hook_letter_input_slice, incoming_edge_type=EdgeType.ADDITION
                     )
                     correspondence.add_node(hook_letter_input_node)
 
@@ -156,6 +155,7 @@ class TLACDCCorrespondence:
         embedding_node = TLACDCInterpNode(
             name="blocks.0.hook_resid_pre",
             index=TorchIndex([None]),
+            incoming_edge_type=EdgeType.PLACEHOLDER, # TODO maybe add some NoneType or something???
         )
         correspondence.add_node(embedding_node)
         for node in downstream_residual_nodes:

@@ -64,7 +64,7 @@ class EdgeType(Enum):
 
     ADDITION = 0
     DIRECT_COMPUTATION = 1
-    PLACEHOLDER
+    PLACEHOLDER = 2
 
     def __eq__(self, other):
         # TODO WTF? Why do I need this?? To busy to look into now, check the commit where we add this later
