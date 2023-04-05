@@ -21,7 +21,7 @@ from transformers import (
 from datasets.load import load_dataset
 
 from acdc.hook_points import HookedRootModule, HookPoint
-from transformer_lens import HookedTransformerConfig
+from acdc import HookedTransformerConfig
 from acdc.ActivationCache import ActivationCache
 from acdc.FactoredMatrix import FactoredMatrix
 

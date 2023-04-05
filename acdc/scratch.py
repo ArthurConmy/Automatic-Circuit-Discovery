@@ -6,7 +6,7 @@ if ipython is not None:
     ipython.magic("load_ext autoreload")
     ipython.magic("autoreload 2")
 
-from transformer_lens import HookedTransformer
+from acdc import HookedTransformer
 import torch
 
 # %%

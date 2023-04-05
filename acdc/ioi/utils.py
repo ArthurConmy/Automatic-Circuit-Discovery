@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from typing import List
 import click
 import IPython
-from acdc.utils import kl_divergence
+from acdc.acdc_utils import kl_divergence
 import torch
 from acdc.ioi.ioi_dataset import IOIDataset  # NOTE: we now import this LOCALLY so it is deterministic
 from tqdm import tqdm

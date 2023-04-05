@@ -1,6 +1,6 @@
 import pytest
 
-from transformer_lens import HookedTransformer
+from acdc import HookedTransformer
 
 model_names = [
     "attn-only-demo",

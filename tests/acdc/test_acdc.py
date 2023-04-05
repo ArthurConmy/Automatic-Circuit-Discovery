@@ -47,7 +47,7 @@ from acdc.hook_points import HookedRootModule, HookPoint
 from acdc.HookedTransformer import (
     HookedTransformer,
 )
-from acdc.utils import (
+from acdc.acdc_utils import (
     make_nd_dict,
     shuffle_tensor,
     ct,

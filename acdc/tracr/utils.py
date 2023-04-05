@@ -4,13 +4,13 @@ if IPython.get_ipython() is not None:
     IPython.get_ipython().magic('autoreload 2')
         
 from typing import Literal, List, Tuple, Dict, Any, Optional, Union, Callable, TypeVar, Iterable, Set
-from transformer_lens import HookedTransformer, HookedTransformerConfig
+from acdc import HookedTransformer, HookedTransformerConfig
 import warnings
 import einops
 import torch
 import numpy as np
 from functools import partial
-from acdc.utils import kl_divergence
+from acdc.acdc_utils import kl_divergence
 from tracr.rasp import rasp
 from tracr.compiler import compiling
 

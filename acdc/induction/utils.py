@@ -20,15 +20,15 @@ from typing import (
 )
 import warnings
 import networkx as nx
-from acdc.utils import (
+from acdc.acdc_utils import (
     make_nd_dict,
     TorchIndex,
     Edge, 
     EdgeType,
     shuffle_tensor,
 )  # these introduce several important classes !!!
-from transformer_lens import HookedTransformer
-from acdc.utils import kl_divergence
+from acdc import HookedTransformer
+from acdc.acdc_utils import kl_divergence
 
 def get_model():
     tl_model = HookedTransformer.from_pretrained(

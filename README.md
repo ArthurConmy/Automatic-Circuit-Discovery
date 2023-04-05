@@ -8,7 +8,15 @@ cd Automatic-Circuit-Discovery
 pip install -e .
 ```
 
-## Tests (hopefully mantained!)
+You may need to install DeepMind's `tracr` if you're dealing with that and you may also need do this
+
+```bash
+sudo apt-get update && sudo apt-get install ffmpeg libsm6 libxext6
+```
+
+in order to install graphics dependencies on linux.
+
+## Tests (not currently mantained!)
 
 From the root directory, run 
 

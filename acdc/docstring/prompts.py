@@ -11,7 +11,7 @@ from typing import List, Union, Dict, Optional, Tuple, Any
 import torch
 import random
 from dataclasses import dataclass
-from transformer_lens import HookedTransformer
+from acdc import HookedTransformer
 from typeguard import typechecked
 from torchtyping import patch_typeguard, TensorType as TT
 patch_typeguard()

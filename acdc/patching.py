@@ -15,7 +15,7 @@ from typing_extensions import Literal
 from torchtyping import TensorType as TT
 
 from acdc.torchtyping_helper import T
-from transformer_lens import HookedTransformer, ActivationCache
+from acdc import HookedTransformer, ActivationCache
 import acdc.utils as utils
 import pandas as pd
 import itertools

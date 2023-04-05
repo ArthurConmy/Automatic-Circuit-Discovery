@@ -11,7 +11,7 @@ from acdc.HookedTransformer import HookedTransformer
 from acdc.graphics import log_metrics_to_wandb
 import warnings
 import wandb
-from acdc.utils import TorchIndex, Edge, EdgeType
+from acdc.acdc_utils import TorchIndex, Edge, EdgeType
 from collections import OrderedDict
 from functools import partial
 import time

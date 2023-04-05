@@ -1,6 +1,6 @@
 import torch
 from fancy_einsum import einsum
-from transformer_lens import HookedTransformer
+from acdc import HookedTransformer
 
 # Create IOI prompts
 ioi_prompt_formats = [

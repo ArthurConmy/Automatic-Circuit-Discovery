@@ -63,7 +63,7 @@ from acdc.HookedTransformer import (
 )
 from acdc.tracr.utils import get_tracr_data, get_tracr_model_input_and_tl_model
 from acdc.docstring.utils import get_all_docstring_things
-from acdc.utils import (
+from acdc.acdc_utils import (
     make_nd_dict,
     shuffle_tensor,
     cleanup,
@@ -78,7 +78,7 @@ from acdc.TLACDCInterpNode import TLACDCInterpNode
 from acdc.TLACDCExperiment import TLACDCExperiment
 
 from collections import defaultdict, deque, OrderedDict
-from acdc.utils import (
+from acdc.acdc_utils import (
     kl_divergence,
 )
 from acdc.ioi.utils import (

@@ -1,5 +1,5 @@
-from transformer_lens import HookedTransformer
-from transformer_lens import HookedTransformerConfig
+from acdc import HookedTransformer
+from acdc import HookedTransformerConfig
 from dataclasses import dataclass
 from typing import Optional, Callable
 from torch.utils.data import Dataset, DataLoader
