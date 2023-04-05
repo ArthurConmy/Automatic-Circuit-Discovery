@@ -88,6 +88,7 @@ class TLACDCExperiment:
 
         self.using_wandb = using_wandb
         if using_wandb:
+            warnings.warn("Still need to update edge implementation, see slack message and ping Arthur")
             wandb.init(
                 entity=wandb_entity_name,
                 project=wandb_project_name,
