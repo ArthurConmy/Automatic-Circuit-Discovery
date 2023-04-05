@@ -202,6 +202,7 @@ for i in range(1000):
     show(
         exp.corr,
         f"ims/img{i+1}.png",
+        show_full_index=False, # hopefully works
     )
 
 #%%
