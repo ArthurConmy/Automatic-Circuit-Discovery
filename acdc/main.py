@@ -118,7 +118,7 @@ parser.add_argument('--names-mode', type=str, default="normal")
 if True or IPython.get_ipython() is not None: # heheh get around this failing in notebooks
     # args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
     # args = parser.parse_args("--threshold 0.001 --using-wandb".split())
-    args = parser.parse_args("--task docstring --threshold 0.3".split())
+    args = parser.parse_args("--task docstring --threshold 0.02".split())
 else:
     args = parser.parse_args()
 
@@ -161,7 +161,7 @@ elif TASK == "induction":
 elif TASK == "docstring":
     num_examples = 50
     seq_len = 41
-    tl_model, toks_int_values, toks_int_values_other, metric = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE)
+    tl_model, toks_int_values, toks_int_values_other, metric = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric_name="docstring_metric")
     
 else:
     raise ValueError(f"Unknown task {TASK}")
