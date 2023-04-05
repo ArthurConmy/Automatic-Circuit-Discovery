@@ -202,6 +202,26 @@ exp = TLACDCExperiment(
 
 # %%
 
+if False: # Stefan snippet
+    print("KL div:", exp.metric(exp.model(exp.ds)), "no_edges", exp.count_no_edges())
+
+    receiver_name = "blocks.0.hook_q_input"
+    receiver_index = TorchIndex([None, None, 3])
+    receiver_node = exp.corr.graph[receiver_name][receiver_index]
+
+    sender_name = "blocks.0.hook_resid_pre"
+    sender_index = TorchIndex([None])
+    sender_node = exp.corr.graph[sender_name][sender_index]
+
+    exp.add_sender_hook(sender_node)
+    exp.add_receiver_hook(receiver_node)
+
+    exp.corr.edges[receiver_name][receiver_index][sender_name][sender_index].present = False
+
+    print("KL div:", exp.metric(exp.model(exp.ds)), "no_edges", exp.count_no_edges())
+
+#%%
+
 for i in range(1000):
     exp.step()
     show(
