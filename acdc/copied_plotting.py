@@ -75,7 +75,7 @@ for pi, project_name in (enumerate(project_names)):
             max_edges = history["num_edges"].max()
             
             if min_edges <= 0:
-                assert False
+                print("ewwwwww this was no edges")
                 histories.pop()
                 continue
             
@@ -256,6 +256,7 @@ fig.add_trace(
 
 #%%
 
+import plotly
 # fname = "media_zero_json.json"
 fname = "augustine_random.json"
 fig2 = plotly.io.read_json(fname)
