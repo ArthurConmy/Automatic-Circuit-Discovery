@@ -452,6 +452,7 @@ class TLACDCExperiment:
 
         # increment the current node
         self.increment_current_node()
+        self.update_cur_metric(recalc=False)
 
     def current_node_connected(self):
 
@@ -463,10 +464,10 @@ class TLACDCExperiment:
 
         # if this is NOT connected, then remove all incoming edges, too
 
-        for parent_name, rest1 in self.corr.edges.items():
+        for parent_name, rest1 in self.corr.edges[self.current_node.name][self.current_node.index].items():
             for parent_index, rest2 in rest1.items():
-                if self.current_node.name in rest2 and self.current_node.index in rest2[self.current_node.name]:
-                    rest2[self.current_node.name][self.current_node.index].present = False
+                edge = self.corr.edges[self.current_node.name][self.current_node.index][parent_name][parent_index]
+                edge.present=False
 
         return False
 
@@ -498,4 +499,6 @@ class TLACDCExperiment:
             if edge.present and edge.edge_type != EdgeType.PLACEHOLDER:
                 cnt += 1
 
+        if self.verbose:
+            print("No edge", cnt)
         return cnt
