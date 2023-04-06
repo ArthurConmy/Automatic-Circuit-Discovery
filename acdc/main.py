@@ -61,7 +61,7 @@ from acdc.hook_points import HookedRootModule, HookPoint
 from acdc.HookedTransformer import (
     HookedTransformer,
 )
-from acdc.tracr.utils import get_tracr_data, get_tracr_model_input_and_tl_model
+#from acdc.tracr.utils import get_tracr_data, get_tracr_model_input_and_tl_model
 from acdc.docstring.utils import get_all_docstring_things
 from acdc.acdc_utils import (
     make_nd_dict,
@@ -118,7 +118,7 @@ parser.add_argument('--names-mode', type=str, default="normal")
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
     # args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
     # args = parser.parse_args("--threshold 0.001 --using-wandb".split())
-    args = parser.parse_args("--task induction --threshold 2.0".split()) # TODO figure out why this is such high edge count...
+    args = parser.parse_args("--task docstring --threshold 2.0".split()) # TODO figure out why this is such high edge count...
 else:
     args = parser.parse_args()
 
@@ -161,15 +161,15 @@ elif TASK == "induction":
 elif TASK == "docstring":
     num_examples = 50
     seq_len = 41
-    tl_model, toks_int_values, toks_int_values_other, metric = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric_name="docstring_metric", randomize_data=False)
+    tl_model, toks_int_values, toks_int_values_other, metric = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric_name="docstring_metric")
     
 else:
     raise ValueError(f"Unknown task {TASK}")
 
 #%%
 
-with open(__file__, "r") as f:
-    notes = f.read()
+#with open(__file__, "r") as f:
+#    notes = f.read()
 
 tl_model.global_cache.clear()
 tl_model.reset_hooks()
@@ -186,7 +186,7 @@ exp = TLACDCExperiment(
     wandb_entity_name=WANDB_ENTITY_NAME,
     wandb_project_name=WANDB_PROJECT_NAME,
     wandb_run_name=WANDB_RUN_NAME,
-    wandb_notes=notes,
+    wandb_notes="dummy",
     zero_ablation=ZERO_ABLATION,
     ds=toks_int_values,
     ref_ds=toks_int_values_other,
@@ -202,44 +202,53 @@ exp = TLACDCExperiment(
 
 # %%
 
-if False: # Stefan snippet
-    print("KL div:", exp.metric(exp.model(exp.ds)), "no_edges", exp.count_no_edges())
+# Indices to save writing lots
+COL = TorchIndex([None])
+H0 = TorchIndex([None, None, 0])
+H4 = TorchIndex([None, None, 4])
+H6 = TorchIndex([None, None, 6])
+L3H = H0
 
-    receiver_name = "blocks.0.hook_q_input"
-    receiver_index = TorchIndex([None, None, 3])
-    receiver_node = exp.corr.graph[receiver_name][receiver_index]
 
-    sender_name = "blocks.0.hook_resid_pre"
-    sender_index = TorchIndex([None])
+def add_edge(receiver_name, receiver_index, sender_name, sender_index):
     sender_node = exp.corr.graph[sender_name][sender_index]
-
+    receiver_node = exp.corr.graph[receiver_name][receiver_index]
     exp.add_sender_hook(sender_node)
     exp.add_receiver_hook(receiver_node)
-
     exp.corr.edges[receiver_name][receiver_index][sender_name][sender_index].present = False
+
+if True: # Stefan snippet
+    print("KL div:", exp.metric(exp.model(exp.ds)), "no_edges", exp.count_no_edges())
+
+    # Original:
+    #add_edge("blocks.0.hook_q_input", TorchIndex([None, None, 3]), "blocks.0.hook_resid_pre", TorchIndex([None]))
+
+    add_edge("blocks.3.hook_resid_post", COL, "blocks.3.attn.hook_result", L3H)
+    add_edge("blocks.3.attn.hook_q", L3H, "blocks.3.hook_q_input", L3H)
+    add_edge("blocks.3.hook_q_input", L3H, "blocks.1.attn.hook_result", H4)
+    add_edge("blocks.1.attn.hook_v", H4, "blocks.1.hook_v_input", H4)
+    add_edge("blocks.1.hook_v_input", H4, "blocks.0.hook_resid_pre", COL)
+    add_edge("blocks.3.attn.hook_v", L3H, "blocks.3.hook_v_input", L3H)
+    add_edge("blocks.3.hook_v_input", L3H, "blocks.0.hook_resid_pre", COL)
+    add_edge("blocks.3.attn.hook_k", L3H, "blocks.3.hook_k_input", L3H)
+    add_edge("blocks.3.hook_k_input", L3H, "blocks.2.attn.hook_result", H0)
+    add_edge("blocks.2.attn.hook_q", H0, "blocks.2.hook_q_input", H0)
+    add_edge("blocks.2.hook_q_input", H0, "blocks.0.hook_resid_pre", COL)
+    add_edge("blocks.2.attn.hook_v", H0, "blocks.2.hook_v_input", H0)
+    add_edge("blocks.2.hook_v_input", H0, "blocks.1.attn.hook_result", H4)
+    add_edge("blocks.1.attn.hook_v", H4, "blocks.1.hook_v_input", H4)
+    add_edge("blocks.1.hook_v_input", H4, "blocks.0.hook_resid_pre", COL)
+
+    #receiver_name = "blocks.0.hook_q_input"
+    #receiver_index = TorchIndex([None, None, 3])
+    #receiver_node = exp.corr.graph[receiver_name][receiver_index]
+    #sender_name = "blocks.0.hook_resid_pre"
+    #sender_index = TorchIndex([None])
+    #sender_node = exp.corr.graph[sender_name][sender_index]
+    #exp.add_sender_hook(sender_node)
+    #exp.add_receiver_hook(receiver_node)
+    #exp.corr.edges[receiver_name][receiver_index][sender_name][sender_index].present = False
 
     print("KL div:", exp.metric(exp.model(exp.ds)), "no_edges", exp.count_no_edges())
 
 #%%
-
-for i in range(1000):
-    exp.step()
-    show(
-        exp.corr,
-        f"ims/img_new_{i+1}.png",
-        show_full_index=False, # hopefully works
-    )
-    print(i, "-" * 50)
-    print(exp.count_no_edges())
-    break
-
-    if exp.current_node is None:
-        break
-
-
-#%%
-
-while exp.current_node is not None:
-    exp.step()
-
-# %%
