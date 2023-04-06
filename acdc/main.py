@@ -179,7 +179,7 @@ if WANDB_RUN_NAME is None or IPython.get_ipython() is not None:
 else:
     assert False # I want named runs, always
 
-exp = TLACDCExperiment(
+exp_orig = TLACDCExperiment(
     model=tl_model,
     threshold=THRESHOLD,
     using_wandb=USING_WANDB,
@@ -200,55 +200,78 @@ exp = TLACDCExperiment(
     add_receiver_hooks=False,
 )
 
-# %%
+exp = TLACDCExperiment(
+    model=tl_model,
+    threshold=THRESHOLD,
+    using_wandb=USING_WANDB,
+    wandb_entity_name=WANDB_ENTITY_NAME,
+    wandb_project_name=WANDB_PROJECT_NAME,
+    wandb_run_name=WANDB_RUN_NAME,
+    wandb_notes="dummy",
+    zero_ablation=ZERO_ABLATION,
+    ds=toks_int_values_other,
+    ref_ds=toks_int_values,
+    metric=metric,
+    verbose=True,
+    indices_mode=INDICES_MODE,
+    names_mode=NAMES_MODE,
+    second_cache_cpu=SECOND_CACHE_CPU,
+    first_cache_cpu=FIRST_CACHE_CPU,
+    add_sender_hooks=False, # attempting to be efficient...
+    add_receiver_hooks=False,
+)
+
+#%%
+
+print("Full circuit metric:", exp_orig.metric(exp_orig.model(exp_orig.ds)), f"#edges={exp_orig.count_no_edges()}")
+print("Fully corrupted metric:", exp.metric(exp.model(exp.ds)), f"#edges={exp_orig.count_no_edges() - exp.count_no_edges()}")
+
 
 # Indices to save writing lots
 COL = TorchIndex([None])
 H0 = TorchIndex([None, None, 0])
 H4 = TorchIndex([None, None, 4])
+H5 = TorchIndex([None, None, 5])
 H6 = TorchIndex([None, None, 6])
-L3H = H0
 
 
-def add_edge(receiver_name, receiver_index, sender_name, sender_index):
+
+def remove_edge(receiver_name, receiver_index, sender_name, sender_index):
     sender_node = exp.corr.graph[sender_name][sender_index]
     receiver_node = exp.corr.graph[receiver_name][receiver_index]
-    exp.add_sender_hook(sender_node)
+    edge = exp.corr.edges[receiver_name][receiver_index][sender_name][sender_index]
+
+    if edge.edge_type.value == EdgeType.ADDITION.value:
+        exp.add_sender_hook(sender_node)
     exp.add_receiver_hook(receiver_node)
-    exp.corr.edges[receiver_name][receiver_index][sender_name][sender_index].present = False
+    edge.present = False
 
-if True: # Stefan snippet
-    print("KL div:", exp.metric(exp.model(exp.ds)), "no_edges", exp.count_no_edges())
+for L3H in [H0, H6]:
+    remove_edge("blocks.3.hook_resid_post", COL, "blocks.3.attn.hook_result", L3H)
+    remove_edge("blocks.3.attn.hook_q", L3H, "blocks.3.hook_q_input", L3H)
+    remove_edge("blocks.3.hook_q_input", L3H, "blocks.1.attn.hook_result", H4)
+    remove_edge("blocks.1.attn.hook_v", H4, "blocks.1.hook_v_input", H4)
+    remove_edge("blocks.1.hook_v_input", H4, "blocks.0.hook_resid_pre", COL)
+    remove_edge("blocks.1.hook_v_input", H4, "blocks.0.attn.hook_result", H5)
+    remove_edge("blocks.0.attn.hook_v", H5, "blocks.0.hook_v_input", H5)
+    remove_edge("blocks.0.hook_v_input", H5, "blocks.0.hook_resid_pre", COL)
+    remove_edge("blocks.3.attn.hook_v", L3H, "blocks.3.hook_v_input", L3H)
+    remove_edge("blocks.3.hook_v_input", L3H, "blocks.0.hook_resid_pre", COL)
+    remove_edge("blocks.3.hook_v_input", H4, "blocks.0.attn.hook_result", H5)
+    remove_edge("blocks.0.attn.hook_v", H5, "blocks.0.hook_v_input", H5)
+    remove_edge("blocks.0.hook_v_input", H5, "blocks.0.hook_resid_pre", COL)
+    remove_edge("blocks.3.attn.hook_k", L3H, "blocks.3.hook_k_input", L3H)
+    remove_edge("blocks.3.hook_k_input", L3H, "blocks.2.attn.hook_result", H0)
+    remove_edge("blocks.2.attn.hook_q", H0, "blocks.2.hook_q_input", H0)
+    remove_edge("blocks.2.hook_q_input", H0, "blocks.0.hook_resid_pre", COL)
+    remove_edge("blocks.2.hook_q_input", H4, "blocks.0.attn.hook_result", H5)
+    remove_edge("blocks.0.attn.hook_v", H5, "blocks.0.hook_v_input", H5)
+    remove_edge("blocks.0.hook_v_input", H5, "blocks.0.hook_resid_pre", COL)
+    remove_edge("blocks.2.attn.hook_v", H0, "blocks.2.hook_v_input", H0)
+    remove_edge("blocks.2.hook_v_input", H0, "blocks.1.attn.hook_result", H4)
+    remove_edge("blocks.1.attn.hook_v", H4, "blocks.1.hook_v_input", H4)
+    remove_edge("blocks.1.hook_v_input", H4, "blocks.0.hook_resid_pre", COL)
 
-    # Original:
-    #add_edge("blocks.0.hook_q_input", TorchIndex([None, None, 3]), "blocks.0.hook_resid_pre", TorchIndex([None]))
-
-    add_edge("blocks.3.hook_resid_post", COL, "blocks.3.attn.hook_result", L3H)
-    add_edge("blocks.3.attn.hook_q", L3H, "blocks.3.hook_q_input", L3H)
-    add_edge("blocks.3.hook_q_input", L3H, "blocks.1.attn.hook_result", H4)
-    add_edge("blocks.1.attn.hook_v", H4, "blocks.1.hook_v_input", H4)
-    add_edge("blocks.1.hook_v_input", H4, "blocks.0.hook_resid_pre", COL)
-    add_edge("blocks.3.attn.hook_v", L3H, "blocks.3.hook_v_input", L3H)
-    add_edge("blocks.3.hook_v_input", L3H, "blocks.0.hook_resid_pre", COL)
-    add_edge("blocks.3.attn.hook_k", L3H, "blocks.3.hook_k_input", L3H)
-    add_edge("blocks.3.hook_k_input", L3H, "blocks.2.attn.hook_result", H0)
-    add_edge("blocks.2.attn.hook_q", H0, "blocks.2.hook_q_input", H0)
-    add_edge("blocks.2.hook_q_input", H0, "blocks.0.hook_resid_pre", COL)
-    add_edge("blocks.2.attn.hook_v", H0, "blocks.2.hook_v_input", H0)
-    add_edge("blocks.2.hook_v_input", H0, "blocks.1.attn.hook_result", H4)
-    add_edge("blocks.1.attn.hook_v", H4, "blocks.1.hook_v_input", H4)
-    add_edge("blocks.1.hook_v_input", H4, "blocks.0.hook_resid_pre", COL)
-
-    #receiver_name = "blocks.0.hook_q_input"
-    #receiver_index = TorchIndex([None, None, 3])
-    #receiver_node = exp.corr.graph[receiver_name][receiver_index]
-    #sender_name = "blocks.0.hook_resid_pre"
-    #sender_index = TorchIndex([None])
-    #sender_node = exp.corr.graph[sender_name][sender_index]
-    #exp.add_sender_hook(sender_node)
-    #exp.add_receiver_hook(receiver_node)
-    #exp.corr.edges[receiver_name][receiver_index][sender_name][sender_index].present = False
-
-    print("KL div:", exp.metric(exp.model(exp.ds)), "no_edges", exp.count_no_edges())
+    print("Docstring circuit metric:", exp.metric(exp.model(exp.ds)), f"#edges={exp_orig.count_no_edges() - exp.count_no_edges()}")
 
 #%%
