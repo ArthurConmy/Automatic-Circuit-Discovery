@@ -269,6 +269,27 @@ labels = [x for x, _ in labels]
 
 #%%
 
+fname = "profile_rand_plot.json"
+fig3 = plotly.io.read_json(fname)
+
+# get points
+myx = fig3.data[0]["x"]
+myy = fig3.data[0]["y"]
+old_labels = fig3.data[0]["text"]
+
+#%%
+
+indices = [i for i in range(len(labels)) if myx[i] >= 40] #  in old_labels]
+myx = [myx[i] for i in indices]
+myy = [myy[i] for i in indices]
+
+final_edges.extend([final_edges[i] for i in indices])
+final_metric.extend([final_metric[i] for i in indices])
+thresholds.extend([float(old_labels[i].split("_")[-1]) for i in indices])
+names.extend([old_labels[i] for i in indices])
+
+#%%
+
 fig.add_trace(
     go.Scatter(
         x=torch.exp(torch.tensor(list(x))),
