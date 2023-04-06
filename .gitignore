@@ -1,5 +1,6 @@
 histories/
 transformer_lens/media/
+profile*.json
 *.png
 *.gv
 __pycache__

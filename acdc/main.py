@@ -114,10 +114,11 @@ parser.add_argument('--wandb-run-name', type=str, required=False, default=None, 
 parser.add_argument('--indices-mode', type=str, default="normal")
 parser.add_argument('--names-mode', type=str, default="normal")
 
-if True or IPython.get_ipython() is not None: # heheh get around this failing in notebooks # TODO allow CLI; this failed with py-spy
+# for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
+if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
     # args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
     # args = parser.parse_args("--threshold 0.001 --using-wandb".split())
-    args = parser.parse_args("--task docstring --threshold 0.3".split())
+    args = parser.parse_args("--task induction --threshold 2.0".split()) # TODO figure out why this is such high edge count...
 else:
     args = parser.parse_args()
 
@@ -155,12 +156,12 @@ elif TASK == "induction":
     num_examples = 400
     seq_len = 30
     # TODO initialize the `tl_model` with the right model
-    tl_model, toks_int_values, toks_int_values_other, metric = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE)
+    tl_model, toks_int_values, toks_int_values_other, metric = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, randomize_data=False)
 
 elif TASK == "docstring":
     num_examples = 50
     seq_len = 41
-    tl_model, toks_int_values, toks_int_values_other, metric = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE)
+    tl_model, toks_int_values, toks_int_values_other, metric = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric_name="docstring_metric", randomize_data=False)
     
 else:
     raise ValueError(f"Unknown task {TASK}")
@@ -195,25 +196,46 @@ exp = TLACDCExperiment(
     names_mode=NAMES_MODE,
     second_cache_cpu=SECOND_CACHE_CPU,
     first_cache_cpu=FIRST_CACHE_CPU,
-    add_sender_hooks=True,
+    add_sender_hooks=False, # attempting to be efficient...
+    add_receiver_hooks=False,
 )
 
-#%% [markdown] DELETE (FOR STEFAN)
-
-print("KL div:", exp.metric(exp.model(exp.ds)), "no_edges", exp.count_no_edges())
-exp.corr.edges["blocks.0.hook_q_input"][TorchIndex([None, None, 3])]["blocks.0.hook_resid_pre"][TorchIndex([None])].present = False
-exp.add_sender_hooks(reset=False)
-print("KL div:", exp.metric(exp.model(exp.ds)), "no_edges", exp.count_no_edges())
-
 # %%
+
+if False: # Stefan snippet
+    print("KL div:", exp.metric(exp.model(exp.ds)), "no_edges", exp.count_no_edges())
+
+    receiver_name = "blocks.0.hook_q_input"
+    receiver_index = TorchIndex([None, None, 3])
+    receiver_node = exp.corr.graph[receiver_name][receiver_index]
+
+    sender_name = "blocks.0.hook_resid_pre"
+    sender_index = TorchIndex([None])
+    sender_node = exp.corr.graph[sender_name][sender_index]
+
+    exp.add_sender_hook(sender_node)
+    exp.add_receiver_hook(receiver_node)
+
+    exp.corr.edges[receiver_name][receiver_index][sender_name][sender_index].present = False
+
+    print("KL div:", exp.metric(exp.model(exp.ds)), "no_edges", exp.count_no_edges())
+
+#%%
 
 for i in range(1000):
     exp.step()
     show(
         exp.corr,
-        f"ims/img{i+1}.png",
+        f"ims/img_new_{i+1}.png",
         show_full_index=False, # hopefully works
     )
+    print(i, "-" * 50)
+    print(exp.count_no_edges())
+    break
+
+    if exp.current_node is None:
+        break
+
 
 #%%
 
