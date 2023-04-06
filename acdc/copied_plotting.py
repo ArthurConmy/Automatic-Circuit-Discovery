@@ -27,7 +27,8 @@ project_names = [
     # "tl_induction_proper",
     # "acdc",
     # "induction_arthur",
-    "shuffle_the_dataset",
+    # "shuffle_the_dataset",
+    "arthurinduction_randomabl_reverse",
 ]
 
 api = wandb.Api()
@@ -74,8 +75,10 @@ for pi, project_name in (enumerate(project_names)):
             max_edges = history["num_edges"].max()
             
             if min_edges <= 0:
+                assert False
                 histories.pop()
                 continue
+            
             assert 1e30 > max_edges, max_edges
 
             start_metric = get_first_element(history, "metric")
@@ -102,6 +105,9 @@ for pi, project_name in (enumerate(project_names)):
                 final_metric.append(all_metrics[-i])
                 colors.append("black")
 
+            else:
+                assert False # ???
+
             print(len(colors))
 
 # save list of dataframes
@@ -121,7 +127,7 @@ for name in names:
     if name.endswith("zero") or (name.endswith("reversed") and not name.endswith("zero_reversed")):
         thresholds.append(get_threshold_zero(name, -2))
     else:
-        thresholds.append(get_threshold_zero(name, -3))
+        thresholds.append(get_threshold_zero(name, -1)) # or -3...
 
 #%%
 

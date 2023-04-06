@@ -450,6 +450,10 @@ class TLACDCExperiment:
             added_receiver_hook = self.model.hook_dict[self.current_node.name].fwd_hooks.pop()
             added_receiver_hook.hook.remove()
 
+        if not is_this_node_used:
+            # TODO check that it's not some placeholder, but then clear out all children too...
+            pass
+
         # increment the current node
         self.increment_current_node()
         self.update_cur_metric(recalc=False)
