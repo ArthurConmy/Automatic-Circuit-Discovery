@@ -141,6 +141,13 @@ class TLACDCCorrespondence:
                     correspondence.add_node(hook_letter_input_node)
 
                     correspondence.add_edge(
+                        parent_node = hook_letter_node,
+                        child_node = cur_head,
+                        edge = Edge(edge_type=EdgeType.PLACEHOLDER),
+                        safe = False,
+                    )
+
+                    correspondence.add_edge(
                         parent_node=hook_letter_input_node,
                         child_node=hook_letter_node,
                         edge=Edge(edge_type=EdgeType.DIRECT_COMPUTATION),

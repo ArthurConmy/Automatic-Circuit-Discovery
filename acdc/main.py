@@ -115,10 +115,10 @@ parser.add_argument('--indices-mode', type=str, default="normal")
 parser.add_argument('--names-mode', type=str, default="normal")
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
-if True or IPython.get_ipython() is not None: # heheh get around this failing in notebooks
+if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
     # args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
     # args = parser.parse_args("--threshold 0.001 --using-wandb".split())
-    args = parser.parse_args("--task docstring --threshold 0.02".split())
+    args = parser.parse_args("--task ioi --using-wandb --threshold 0.0575".split())
 else:
     args = parser.parse_args()
 
@@ -230,6 +230,10 @@ for i in range(1000):
         show_full_index=False, # hopefully works
     )
     print(i, "-" * 50)
+
+    if exp.current_node is None:
+        break
+
 
 #%%
 

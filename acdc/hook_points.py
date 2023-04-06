@@ -75,7 +75,6 @@ class HookPoint(nn.Module):
             raise ValueError(f"Invalid direction {dir}")
 
         self.fwd_hook_functions.append(hook)
-
         return handle
 
     def remove_hooks(self, dir="fwd", including_permanent=False) -> None:

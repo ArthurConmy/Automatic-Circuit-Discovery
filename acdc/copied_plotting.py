@@ -26,7 +26,8 @@ from copied_extra_utils import get_nonan, get_corresponding_element, get_first_e
 project_names = [
     # "tl_induction_proper",
     # "acdc",
-    "induction_arthur",
+    # "induction_arthur",
+    "shuffle_the_dataset",
 ]
 
 api = wandb.Api()
@@ -48,7 +49,8 @@ histories = []
 min_metrics = []
 
 def filter(name):
-    return "kl_divergence" in name
+    return True
+    # return "kl_divergence" in name
     # return name.endswith("reversed") and "zero"
     # return name.endswith("_reversed") and not name.endswith("zero_reversed")
     # return name.endswith("zero_reversed") or name.endswith("zero")
@@ -98,12 +100,12 @@ for pi, project_name in (enumerate(project_names)):
                 _initial_edges.append(max_edges)
                 _initial_losses.append(start_metric)
                 final_metric.append(all_metrics[-i])
-
                 colors.append("black")
+
             print(len(colors))
 
 # save list of dataframes
-with open("acdc/histories/" + ct() + ".pkl", "wb") as f:
+with open("histories/" + ct() + ".pkl", "wb") as f:
     import pickle
     pickle.dump(histories, f)
 
@@ -237,8 +239,8 @@ fig.add_trace(
                 title="Threshold",
                 titleside="right",
                 tickmode="array",
-                tickvals=np.arange(0, 13)/5,
-                ticktext=np.arange(0, 13)/5,
+                tickvals=np.arange(0, 13)/1,
+                ticktext=np.arange(0, 13)/4,
             ),
         ),
         text=names,

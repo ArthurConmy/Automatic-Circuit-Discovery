@@ -77,24 +77,28 @@ def get_mask_repeat_candidates(num_examples=None, seq_len=None):
     else:
         return mask_repeat_candidates[:num_examples, :seq_len]
 
-def get_all_induction_things(num_examples, seq_len, device):
+def get_all_induction_things(num_examples, seq_len, device, data_seed=42):
     tl_model = get_model()
     tl_model.to(device)
 
     validation_data = get_validation_data()
-    mask_repeat_candidates = get_mask_repeat_candidates(num_examples, seq_len)
-    toks_int_values = validation_data[:num_examples, :seq_len].to(device).long()
-    toks_int_values_other = (
-        shuffle_tensor(validation_data[:num_examples, :seq_len]).to(device).long()
-    )
+    mask_repeat_candidates = get_mask_repeat_candidates(num_examples=None) # None so we get all
 
-    labels = validation_data[:num_examples, 1 : seq_len + 1].to(device).long()
+    assert len(mask_repeat_candidates) == len(validation_data), (len(mask_repeat_candidates), len(validation_data))
+    torch.random.manual_seed(data_seed)
+    rand_perm = torch.randperm(len(validation_data))
+    rand_perm = rand_perm[:num_examples]
+    mask_repeat_candidates = mask_repeat_candidates[rand_perm][:num_examples, :seq_len]
+
+    toks_int_values = validation_data[rand_perm][:num_examples, :seq_len].to(device).long()
+    toks_int_values_other = (
+        shuffle_tensor(validation_data[rand_perm][:num_examples, :seq_len], seed=data_seed).to(device).long()
+    )
 
     base_model_logits = tl_model(toks_int_values)
     base_model_probs = F.softmax(base_model_logits, dim=-1)
 
-    raw_metric = partial(kl_divergence, base_model_probs=base_model_probs, mask_repeat_candidates=mask_repeat_candidates)
-    metric = partial(kl_divergence, base_model_probs=base_model_probs, mask_repeat_candidates=mask_repeat_candidates)
+    metric = partial(kl_divergence, base_model_probs=base_model_probs, mask_repeat_candidates=mask_repeat_candidates, last_seq_element_only=False)
 
     return (
         tl_model,

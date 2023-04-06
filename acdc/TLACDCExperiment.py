@@ -88,7 +88,6 @@ class TLACDCExperiment:
 
         self.using_wandb = using_wandb
         if using_wandb:
-            warnings.warn("Still need to update edge implementation, see slack message and ping Arthur")
             wandb.init(
                 entity=wandb_entity_name,
                 project=wandb_project_name,
@@ -247,7 +246,7 @@ class TLACDCExperiment:
                 node = self.corr.graph[big_tuple[0]][big_tuple[1]]
             elif edge.edge_type == EdgeType.ADDITION:
                 node = self.corr.graph[big_tuple[2]][big_tuple[3]]
-            else:
+            elif edge.edge_type != EdgeType.PLACEHOLDER:
                 print(edge.edge_type.value, EdgeType.ADDITION.value, edge.edge_type.value == EdgeType.ADDITION.value, type(edge.edge_type.value), type(EdgeType.ADDITION.value))
                 raise ValueError(f"{str(big_tuple)} {str(edge)} failed")
 
@@ -356,11 +355,12 @@ class TLACDCExperiment:
         if self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value:
             # Add this node as a receiver hook, now
             added_receiver_hook = self.add_receiver_hook(self.current_node)
+            if added_receiver_hook:
+                added_receiver_hook = self.model.hook_dict[self.current_node.name].fwd_hooks[-1]
         else:
             added_receiver_hook = False
 
         is_this_node_used = False
-
         sender_names_list = list(self.corr.edges[self.current_node.name][self.current_node.index])
 
         if self.names_mode == "random":
@@ -381,6 +381,7 @@ class TLACDCExperiment:
                 cur_parent = self.corr.graph[sender_name][sender_index]
 
                 if edge.edge_type == EdgeType.PLACEHOLDER:
+                    is_this_node_used = True
                     continue # include by default
 
                 if self.verbose:
@@ -445,26 +446,29 @@ class TLACDCExperiment:
             cur_metric = self.metric(self.model(self.ds))
 
         if added_receiver_hook and not is_this_node_used:
-            self.model.hook_dict[self.current_node.name].remove_hooks()
+            assert self.model.hook_dict[self.current_node.name].fwd_hooks[-1] == added_receiver_hook, f"You should not have added additional hooks to {self.current_node.name}..."
+            added_receiver_hook = self.model.hook_dict[self.current_node.name].fwd_hooks.pop()
+            added_receiver_hook.hook.remove()
 
         # increment the current node
         self.increment_current_node()
 
     def current_node_connected(self):
 
-        any_connections = False
-
-        for child_name, rest1 in self.corr.edges.items():
+        for child_name, rest1 in self.corr.edges.items(): # rest1 just meaning "rest of dictionary.. I'm tired"
             for child_index, rest2 in rest1.items():
                 if self.current_node.name in rest2 and self.current_node.index in rest2[self.current_node.name]:
                     if rest2[self.current_node.name][self.current_node.index].present:
-                        print(self.current_node.name, self.current_node.index, "is connected to", child_name, child_index)
                         return True
 
-                    any_connections = True
+        # if this is NOT connected, then remove all incoming edges, too
 
-        return not any_connections # lets include all things with no outputs by default
-        # a bit slow since we iterate over all QKV always, but let's take the hit
+        for parent_name, rest1 in self.corr.edges.items():
+            for parent_index, rest2 in rest1.items():
+                if self.current_node.name in rest2 and self.current_node.index in rest2[self.current_node.name]:
+                    rest2[self.current_node.name][self.current_node.index].present = False
+
+        return False
 
     def find_next_node(self) -> Optional[TLACDCInterpNode]:
         next_index = next_key(self.corr.graph[self.current_node.name], self.current_node.index)
@@ -485,11 +489,6 @@ class TLACDCExperiment:
 
         if self.current_node is not None and not self.current_node_connected():
             print("But it's bad")
-
-            for parent_node_name in self.corr.edges[self.current_node.name][self.current_node.index]:
-                for parent_node_index in self.corr.edges[self.current_node.name][self.current_node.index][parent_node_name]:
-                    self.corr.edges[self.current_node.name][self.current_node.index][parent_node_name][parent_node_index].present = False
-
             self.increment_current_node()
 
     def count_no_edges(self):
