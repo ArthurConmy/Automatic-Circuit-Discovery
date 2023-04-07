@@ -467,10 +467,11 @@ class TLACDCExperiment:
 
             self.update_cur_metric()
 
-        if added_receiver_hook and not is_this_node_used:
-            assert self.model.hook_dict[self.current_node.name].fwd_hooks[-1] == added_receiver_hook, f"You should not have added additional hooks to {self.current_node.name}..."
-            added_receiver_hook = self.model.hook_dict[self.current_node.name].fwd_hooks.pop()
-            added_receiver_hook.hook.remove()
+        # TODO find an efficient way to do this...
+        # if added_receiver_hook and not is_this_node_used:
+        #     assert self.model.hook_dict[self.current_node.name].fwd_hooks[-1] == added_receiver_hook, f"You should not have added additional hooks to {self.current_node.name}..."
+        #     added_receiver_hook = self.model.hook_dict[self.current_node.name].fwd_hooks.pop()
+        #     added_receiver_hook.hook.remove()
 
         if is_this_node_used and self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value:
             fname = f"ims/img_new_{self.step_idx}.png"
@@ -497,10 +498,16 @@ class TLACDCExperiment:
 
         # if this is NOT connected, then remove all incoming edges, too
 
+        self.update_cur_metric()
+        old_metric = self.cur_metric
+
         for parent_name, rest1 in self.corr.edges[self.current_node.name][self.current_node.index].items():
             for parent_index, rest2 in rest1.items():
                 edge = self.corr.edges[self.current_node.name][self.current_node.index][parent_name][parent_index]
                 edge.present=False
+
+                self.update_cur_metric()
+                assert abs(self.cur_metric - old_metric) < 1e-3, ("Removing all incoming edges should not change the metric", self.cur_metric, old_metric, self.current_node, parent_name, parent_index)
 
         return False
 

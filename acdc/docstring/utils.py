@@ -31,7 +31,14 @@ from acdc.acdc_utils import (
 from acdc import HookedTransformer
 from acdc.acdc_utils import kl_divergence
 
-def get_all_docstring_things(num_examples, seq_len, device, metric_name="kl_divergence", dataset_version="random_random"):
+def get_all_docstring_things(
+    num_examples, 
+    seq_len, 
+    device, 
+    metric_name="kl_divergence", 
+    dataset_version="random_random", 
+    correct_incorrect_wandb=False,
+):
     tl_model = HookedTransformer.from_pretrained(
         "attn-only-4l",
         use_global_cache=True,
@@ -64,9 +71,9 @@ def get_all_docstring_things(num_examples, seq_len, device, metric_name="kl_dive
         last_seq_element_only=True,
     )
 
-    def docstring_metric(
+    def raw_docstring_metric(
         logits: torch.Tensor,
-        wandb_too: bool = False,
+        log_correct_incorrect_wandb: bool = False,
     ):
         """With neg sign so we minimize this"""
         
@@ -74,13 +81,13 @@ def get_all_docstring_things(num_examples, seq_len, device, metric_name="kl_dive
         incorrect_logits = logits[torch.arange(len(logits)).unsqueeze(-1), -1, batched_prompts.wrong_tokens]
         assert incorrect_logits.shape == batched_prompts.wrong_tokens.shape, (incorrect_logits.shape, batched_prompts.wrong_tokens.shape)
         
-        if wandb_too:
+        if log_correct_incorrect_wandb:
             wandb.log({"correct_logits": correct_logits.mean().item(), "incorrect_logits": incorrect_logits.max(dim=-1).values.mean().item()})
 
-        # note neg sing!!!
+        # note neg sign!!!
         return - (correct_logits.mean() - incorrect_logits.max(dim=-1).values.mean()).item()
 
-    metric = docstring_metric
+    docstring_metric = partial(raw_docstring_metric, log_correct_incorrect_wandb=correct_incorrect_wandb)
     
     if metric_name == "kl_divergence":
         metric = kl_metric
