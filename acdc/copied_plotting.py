@@ -270,6 +270,7 @@ labels = [x for x, _ in labels]
 
 #%%
 
+import plotly
 fname = "profile_rand_plot.json"
 fig3 = plotly.io.read_json(fname)
 
