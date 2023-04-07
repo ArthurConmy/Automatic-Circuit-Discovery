@@ -1,3 +1,5 @@
+:warning: This codebase is still under construction :warning:
+
 This repository contains the code for direct path patching experiments as described <a href="https://arthurconmy.github.io/automatic_circuit_discovery/">on my blog</a>.
 
 <img src="https://i.imgur.com/3ONKQBB.png">
