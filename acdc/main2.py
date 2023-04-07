@@ -228,34 +228,44 @@ def remove_edge(receiver_name, receiver_index, sender_name, sender_index):
 
 #%%
 
-edges_to_keep = []
+if False:
+    edges_to_keep = []
+    for L3H in [H0, H6]:
+        edges_to_keep.append(("blocks.3.hook_resid_post", COL, "blocks.3.attn.hook_result", L3H))
+        edges_to_keep.append(("blocks.3.attn.hook_q", L3H, "blocks.3.hook_q_input", L3H))
+        edges_to_keep.append(("blocks.3.hook_q_input", L3H, "blocks.1.attn.hook_result", H4))
+        edges_to_keep.append(("blocks.1.attn.hook_v", H4, "blocks.1.hook_v_input", H4))
+        edges_to_keep.append(("blocks.1.hook_v_input", H4, "blocks.0.hook_resid_pre", COL))
+        edges_to_keep.append(("blocks.1.hook_v_input", H4, "blocks.0.attn.hook_result", H5))
+        edges_to_keep.append(("blocks.0.attn.hook_v", H5, "blocks.0.hook_v_input", H5))
+        edges_to_keep.append(("blocks.0.hook_v_input", H5, "blocks.0.hook_resid_pre", COL))
+        edges_to_keep.append(("blocks.3.attn.hook_v", L3H, "blocks.3.hook_v_input", L3H))
+        edges_to_keep.append(("blocks.3.hook_v_input", L3H, "blocks.0.hook_resid_pre", COL))
+        edges_to_keep.append(("blocks.3.hook_v_input", L3H, "blocks.0.attn.hook_result", H5))
+        edges_to_keep.append(("blocks.0.attn.hook_v", H5, "blocks.0.hook_v_input", H5))
+        edges_to_keep.append(("blocks.0.hook_v_input", H5, "blocks.0.hook_resid_pre", COL))
+        edges_to_keep.append(("blocks.3.attn.hook_k", L3H, "blocks.3.hook_k_input", L3H))
+        edges_to_keep.append(("blocks.3.hook_k_input", L3H, "blocks.2.attn.hook_result", H0))
+        edges_to_keep.append(("blocks.2.attn.hook_q", H0, "blocks.2.hook_q_input", H0))
+        edges_to_keep.append(("blocks.2.hook_q_input", H0, "blocks.0.hook_resid_pre", COL))
+        edges_to_keep.append(("blocks.2.hook_q_input", H0, "blocks.0.attn.hook_result", H5))
+        edges_to_keep.append(("blocks.0.attn.hook_v", H5, "blocks.0.hook_v_input", H5))
+        edges_to_keep.append(("blocks.0.hook_v_input", H5, "blocks.0.hook_resid_pre", COL))
+        edges_to_keep.append(("blocks.2.attn.hook_v", H0, "blocks.2.hook_v_input", H0))
+        edges_to_keep.append(("blocks.2.hook_v_input", H0, "blocks.1.attn.hook_result", H4))
+        edges_to_keep.append(("blocks.1.attn.hook_v", H4, "blocks.1.hook_v_input", H4))
+        edges_to_keep.append(("blocks.1.hook_v_input", H4, "blocks.0.hook_resid_pre", COL))
 
-for L3H in [H0, H6]:
-    edges_to_keep.append(("blocks.3.hook_resid_post", COL, "blocks.3.attn.hook_result", L3H))
-    edges_to_keep.append(("blocks.3.attn.hook_q", L3H, "blocks.3.hook_q_input", L3H))
-    edges_to_keep.append(("blocks.3.hook_q_input", L3H, "blocks.1.attn.hook_result", H4))
-    edges_to_keep.append(("blocks.1.attn.hook_v", H4, "blocks.1.hook_v_input", H4))
-    edges_to_keep.append(("blocks.1.hook_v_input", H4, "blocks.0.hook_resid_pre", COL))
-    edges_to_keep.append(("blocks.1.hook_v_input", H4, "blocks.0.attn.hook_result", H5))
-    edges_to_keep.append(("blocks.0.attn.hook_v", H5, "blocks.0.hook_v_input", H5))
-    edges_to_keep.append(("blocks.0.hook_v_input", H5, "blocks.0.hook_resid_pre", COL))
-    edges_to_keep.append(("blocks.3.attn.hook_v", L3H, "blocks.3.hook_v_input", L3H))
-    edges_to_keep.append(("blocks.3.hook_v_input", L3H, "blocks.0.hook_resid_pre", COL))
-    edges_to_keep.append(("blocks.3.hook_v_input", L3H, "blocks.0.attn.hook_result", H5))
-    edges_to_keep.append(("blocks.0.attn.hook_v", H5, "blocks.0.hook_v_input", H5))
-    edges_to_keep.append(("blocks.0.hook_v_input", H5, "blocks.0.hook_resid_pre", COL))
-    edges_to_keep.append(("blocks.3.attn.hook_k", L3H, "blocks.3.hook_k_input", L3H))
-    edges_to_keep.append(("blocks.3.hook_k_input", L3H, "blocks.2.attn.hook_result", H0))
-    edges_to_keep.append(("blocks.2.attn.hook_q", H0, "blocks.2.hook_q_input", H0))
-    edges_to_keep.append(("blocks.2.hook_q_input", H0, "blocks.0.hook_resid_pre", COL))
-    edges_to_keep.append(("blocks.2.hook_q_input", H0, "blocks.0.attn.hook_result", H5))
-    edges_to_keep.append(("blocks.0.attn.hook_v", H5, "blocks.0.hook_v_input", H5))
-    edges_to_keep.append(("blocks.0.hook_v_input", H5, "blocks.0.hook_resid_pre", COL))
-    edges_to_keep.append(("blocks.2.attn.hook_v", H0, "blocks.2.hook_v_input", H0))
-    edges_to_keep.append(("blocks.2.hook_v_input", H0, "blocks.1.attn.hook_result", H4))
-    edges_to_keep.append(("blocks.1.attn.hook_v", H4, "blocks.1.hook_v_input", H4))
-    edges_to_keep.append(("blocks.1.hook_v_input", H4, "blocks.0.hook_resid_pre", COL))
+#%%
 
+if True:
+    import pickle
+    with open("final_edges.pkl", "rb") as f:  # Use "rb" instead of "r"
+        final_edges = pickle.load(f)
+    edges_to_keep = []
+    for e in final_edges:
+        edges_to_keep.append(e[0])
+# %%
 
 for t in exp.corr.all_edges():
     if t not in edges_to_keep:
@@ -265,43 +275,13 @@ for t in exp.corr.all_edges():
         edge.effect_size = 1
         print("Keeping", t)
 
-
 print("Docstring circuit metric:", exp.metric(exp.model(exp.ds)), f"#edges={ exp.count_no_edges()}")
 
 show(
     exp.corr,
-    f"docstring_1.png",
+    f"docstring_2.png",
     show_full_index=False, # hopefully works
 )
 
-#%%
-if False:
-#for L3H in [H0, H6]:
-    remove_edge("blocks.3.hook_resid_post", COL, "blocks.3.attn.hook_result", L3H)
-    remove_edge("blocks.3.attn.hook_q", L3H, "blocks.3.hook_q_input", L3H)
-    remove_edge("blocks.3.hook_q_input", L3H, "blocks.1.attn.hook_result", H4)
-    remove_edge("blocks.1.attn.hook_v", H4, "blocks.1.hook_v_input", H4)
-    remove_edge("blocks.1.hook_v_input", H4, "blocks.0.hook_resid_pre", COL)
-    remove_edge("blocks.1.hook_v_input", H4, "blocks.0.attn.hook_result", H5)
-    remove_edge("blocks.0.attn.hook_v", H5, "blocks.0.hook_v_input", H5)
-    remove_edge("blocks.0.hook_v_input", H5, "blocks.0.hook_resid_pre", COL)
-    remove_edge("blocks.3.attn.hook_v", L3H, "blocks.3.hook_v_input", L3H)
-    remove_edge("blocks.3.hook_v_input", L3H, "blocks.0.hook_resid_pre", COL)
-    remove_edge("blocks.3.hook_v_input", H4, "blocks.0.attn.hook_result", H5)
-    remove_edge("blocks.0.attn.hook_v", H5, "blocks.0.hook_v_input", H5)
-    remove_edge("blocks.0.hook_v_input", H5, "blocks.0.hook_resid_pre", COL)
-    remove_edge("blocks.3.attn.hook_k", L3H, "blocks.3.hook_k_input", L3H)
-    remove_edge("blocks.3.hook_k_input", L3H, "blocks.2.attn.hook_result", H0)
-    remove_edge("blocks.2.attn.hook_q", H0, "blocks.2.hook_q_input", H0)
-    remove_edge("blocks.2.hook_q_input", H0, "blocks.0.hook_resid_pre", COL)
-    remove_edge("blocks.2.hook_q_input", H4, "blocks.0.attn.hook_result", H5)
-    remove_edge("blocks.0.attn.hook_v", H5, "blocks.0.hook_v_input", H5)
-    remove_edge("blocks.0.hook_v_input", H5, "blocks.0.hook_resid_pre", COL)
-    remove_edge("blocks.2.attn.hook_v", H0, "blocks.2.hook_v_input", H0)
-    remove_edge("blocks.2.hook_v_input", H0, "blocks.1.attn.hook_result", H4)
-    remove_edge("blocks.1.attn.hook_v", H4, "blocks.1.hook_v_input", H4)
-    remove_edge("blocks.1.hook_v_input", H4, "blocks.0.hook_resid_pre", COL)
 
-    print("Docstring circuit metric:", exp.metric(exp.model(exp.ds)), f"#edges={exp_orig.count_no_edges() - exp.count_no_edges()}")
-
-#%%
+# %%
