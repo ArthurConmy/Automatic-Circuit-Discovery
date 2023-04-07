@@ -241,14 +241,14 @@ for L3H in [H0, H6]:
     edges_to_keep.append(("blocks.0.hook_v_input", H5, "blocks.0.hook_resid_pre", COL))
     edges_to_keep.append(("blocks.3.attn.hook_v", L3H, "blocks.3.hook_v_input", L3H))
     edges_to_keep.append(("blocks.3.hook_v_input", L3H, "blocks.0.hook_resid_pre", COL))
-    edges_to_keep.append(("blocks.3.hook_v_input", H4, "blocks.0.attn.hook_result", H5))
+    edges_to_keep.append(("blocks.3.hook_v_input", L3H, "blocks.0.attn.hook_result", H5))
     edges_to_keep.append(("blocks.0.attn.hook_v", H5, "blocks.0.hook_v_input", H5))
     edges_to_keep.append(("blocks.0.hook_v_input", H5, "blocks.0.hook_resid_pre", COL))
     edges_to_keep.append(("blocks.3.attn.hook_k", L3H, "blocks.3.hook_k_input", L3H))
     edges_to_keep.append(("blocks.3.hook_k_input", L3H, "blocks.2.attn.hook_result", H0))
     edges_to_keep.append(("blocks.2.attn.hook_q", H0, "blocks.2.hook_q_input", H0))
     edges_to_keep.append(("blocks.2.hook_q_input", H0, "blocks.0.hook_resid_pre", COL))
-    edges_to_keep.append(("blocks.2.hook_q_input", H4, "blocks.0.attn.hook_result", H5))
+    edges_to_keep.append(("blocks.2.hook_q_input", H0, "blocks.0.attn.hook_result", H5))
     edges_to_keep.append(("blocks.0.attn.hook_v", H5, "blocks.0.hook_v_input", H5))
     edges_to_keep.append(("blocks.0.hook_v_input", H5, "blocks.0.hook_resid_pre", COL))
     edges_to_keep.append(("blocks.2.attn.hook_v", H0, "blocks.2.hook_v_input", H0))
@@ -261,7 +261,10 @@ for t in exp.corr.all_edges():
     if t not in edges_to_keep:
         remove_edge(t[0], t[1], t[2], t[3])
     else:
+        edge = exp.corr.edges[t[0]][t[1]][t[2]][t[3]]
+        edge.effect_size = 1
         print("Keeping", t)
+
 
 print("Docstring circuit metric:", exp.metric(exp.model(exp.ds)), f"#edges={ exp.count_no_edges()}")
 
