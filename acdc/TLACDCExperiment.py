@@ -99,7 +99,6 @@ class TLACDCExperiment:
 
         self.metric = metric
         self.second_metric = second_metric
-        self.second_metric = second_metric
         self.update_cur_metric()
 
         self.threshold = threshold
@@ -131,17 +130,21 @@ class TLACDCExperiment:
     def update_cur_metric(self, recalc=True, initial=False):
         if recalc:
             self.cur_metric = self.metric(self.model(self.ds))
+            if self.second_metric is not None:
+                self.second_cur_metric = self.second_metric(self.model(self.ref_ds))
 
         if initial:
             assert abs(self.cur_metric) < 1e-5, f"Metric {self.cur_metric=} is not zero"
 
         if self.using_wandb:
-            wandb.log(
-                {
-                    "cur_metric": self.cur_metric,
-                    "num_edges": self.count_no_edges(),
-                }
-            )
+            wandb_return_dict = {
+                "cur_metric": self.cur_metric,
+                "num_edges": self.count_no_edges(),
+            }
+            if self.second_metric is not None:
+                wandb_return_dict["second_cur_metric"] = self.second_cur_metric
+
+                wandb.log(wandb_return_dict)
 
     def reverse_topologically_sort_corr(self):
         """Topologically sort the template corr"""
