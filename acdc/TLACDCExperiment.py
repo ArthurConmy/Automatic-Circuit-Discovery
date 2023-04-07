@@ -3,6 +3,7 @@ from typing import Callable, Optional, Literal, List, Dict, Any, Tuple, Union, S
 import random
 from dataclasses import dataclass
 import torch
+from acdc.graphics import show
 from torch import nn
 from torch.nn import functional as F
 from acdc.TLACDCInterpNode import TLACDCInterpNode
@@ -51,7 +52,7 @@ class TLACDCExperiment:
         skip_edges = "yes",
         add_sender_hooks: bool = True,
         add_receiver_hooks: bool = False,
-        indices_mode: Literal["normal", "reverse", "shuffle"] = "normal", # last minute we found that this helps quite a lot with zero ablation case
+        indices_mode: Literal["normal", "reverse", "shuffle"] = "reverse", # we get best performance with reverse I think
         names_mode: Literal["normal", "reverse", "shuffle"] = "normal",
     ):
         """Initialize the ACDC experiment"""
@@ -63,6 +64,7 @@ class TLACDCExperiment:
         self.verify_model_setup()
         self.zero_ablation = zero_ablation
         self.verbose = verbose
+        self.step_idx = 0
         self.hook_verbose = hook_verbose
         self.skip_edges = skip_edges
         if skip_edges != "yes":
@@ -344,6 +346,7 @@ class TLACDCExperiment:
             return
 
         start_step_time = time.time()
+        self.step_idx += 1
 
         initial_metric = self.metric(self.model(self.ds)) # toks_int_values))
         assert isinstance(initial_metric, float), f"Initial metric is a {type(initial_metric)} not a float"
@@ -450,9 +453,17 @@ class TLACDCExperiment:
             added_receiver_hook = self.model.hook_dict[self.current_node.name].fwd_hooks.pop()
             added_receiver_hook.hook.remove()
 
-        if not is_this_node_used:
-            # TODO check that it's not some placeholder, but then clear out all children too...
-            pass
+        if is_this_node_used and self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value:
+            fname = f"ims/img_new_{self.step_idx}.png"
+            show(
+                self.corr,
+                fname=fname,
+                show_full_index=False, # hopefully works
+            )
+            if self.using_wandb:
+                wandb.log(
+                    {"acdc_graph": wandb.Image(fname),}
+                )
 
         # increment the current node
         self.increment_current_node()

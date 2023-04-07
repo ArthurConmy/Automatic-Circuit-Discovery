@@ -53,7 +53,7 @@ def get_all_docstring_things(num_examples, seq_len, device, metric_name="kl_dive
     batched_prompts = prompts.BatchedPrompts(prompts=raw_prompts, model=tl_model)
     toks_int_values = batched_prompts.clean_tokens
     # warnings.warn("Trying out random_random, may wish to switch back to random_doc")
-    toks_int_values_other = batched_prompts.corrupt_tokens["random_doc"] # to test
+    toks_int_values_other = batched_prompts.corrupt_tokens["random_random"] # to test
 
     base_model_logits = tl_model(toks_int_values)[:, -1]
     base_model_probs = F.softmax(base_model_logits, dim=-1)

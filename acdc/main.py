@@ -118,7 +118,7 @@ parser.add_argument('--names-mode', type=str, default="normal")
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
     # args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
     # args = parser.parse_args("--threshold 0.001 --using-wandb".split())
-    args = parser.parse_args("--task docstring --threshold 0.1".split()) # TODO figure out why this is such high edge count...
+    args = parser.parse_args("--task docstring --using-wandb --threshold 0.1".split()) # TODO figure out why this is such high edge count...
 else:
     args = parser.parse_args()
 
@@ -231,7 +231,7 @@ for i in range(1000):
     )
     print(i, "-" * 50)
     print(exp.count_no_edges())
-    
+
     if exp.current_node is None:
         break
 
