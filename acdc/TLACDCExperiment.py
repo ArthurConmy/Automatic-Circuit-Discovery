@@ -1,3 +1,4 @@
+import pickle
 import gc
 from typing import Callable, Optional, Literal, List, Dict, Any, Tuple, Union, Set, Iterable, TypeVar, Type
 import random
@@ -129,9 +130,10 @@ class TLACDCExperiment:
 
     def update_cur_metric(self, recalc=True, initial=False):
         if recalc:
-            self.cur_metric = self.metric(self.model(self.ds))
+            logits = self.model(self.ds)
+            self.cur_metric = self.metric(logits)
             if self.second_metric is not None:
-                self.second_cur_metric = self.second_metric(self.model(self.ref_ds))
+                self.cur_second_metric = self.second_metric(logits)
 
         if initial:
             assert abs(self.cur_metric) < 1e-5, f"Metric {self.cur_metric=} is not zero"
@@ -142,8 +144,7 @@ class TLACDCExperiment:
                 "num_edges": self.count_no_edges(),
             }
             if self.second_metric is not None:
-                wandb_return_dict["second_cur_metric"] = self.second_cur_metric
-
+                wandb_return_dict["second_cur_metric"] = self.cur_second_metric
                 wandb.log(wandb_return_dict)
 
     def reverse_topologically_sort_corr(self):
@@ -315,6 +316,18 @@ class TLACDCExperiment:
                     hook=partial(self.receiver_hook, verbose=self.hook_verbose),
                 )
 
+    def save_edges(self, fname):
+        """Stefan's idea for fast saving!
+        TODO pickling of the whole experiment work"""
+
+        edges_list = []
+        for t, e in self.corr.all_edges().items():
+            if e.present and e.edge_type != EdgeType.PLACEHOLDER:
+                edges_list.append((t, e.effect_size))
+        
+        with open(fname, "wb") as f:
+            pickle.dump(edges_list, f)
+
     def add_sender_hook(self, node):
         if len(self.model.hook_dict[node.name].fwd_hooks) > 0:
             for hook_func_maybe_partial in self.model.hook_dict[node.name].fwd_hook_functions:
@@ -351,7 +364,8 @@ class TLACDCExperiment:
         start_step_time = time.time()
         self.step_idx += 1
 
-        initial_metric = self.metric(self.model(self.ds)) # toks_int_values))
+        self.update_cur_metric()
+        initial_metric = self.cur_metric
         assert isinstance(initial_metric, float), f"Initial metric is a {type(initial_metric)} not a float"
 
         cur_metric = initial_metric
@@ -406,7 +420,9 @@ class TLACDCExperiment:
                 if early_stop: # for debugging the effects of one and only one forward pass WITH a corrupted edge
                     return self.model(self.ds)
 
-                evaluated_metric = self.metric(self.model(self.ds))
+                old_metric = self.cur_metric
+                self.update_cur_metric()
+                evaluated_metric = self.cur_metric # self.metric(self.model(self.ds)) # OK, don't calculate second metric?
 
                 if self.verbose:
                     print(
@@ -418,7 +434,7 @@ class TLACDCExperiment:
                         "(and current metric " + str(cur_metric) + ")",
                     )
 
-                result = evaluated_metric - cur_metric
+                result = evaluated_metric - old_metric
                 edge.effect_size = result
 
                 if self.verbose:
@@ -426,7 +442,7 @@ class TLACDCExperiment:
 
                 if result < self.threshold:
                     print("...so removing connection")
-                    cur_metric = evaluated_metric
+                    self.cur_metric = evaluated_metric
 
                 else: # include this edge in the graph
                     is_this_node_used = True
@@ -449,7 +465,7 @@ class TLACDCExperiment:
                         result = result,
                     )
 
-            cur_metric = self.metric(self.model(self.ds))
+            self.update_cur_metric()
 
         if added_receiver_hook and not is_this_node_used:
             assert self.model.hook_dict[self.current_node.name].fwd_hooks[-1] == added_receiver_hook, f"You should not have added additional hooks to {self.current_node.name}..."

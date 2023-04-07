@@ -31,7 +31,7 @@ from acdc.acdc_utils import (
 from acdc import HookedTransformer
 from acdc.acdc_utils import kl_divergence
 
-def get_all_docstring_things(num_examples, seq_len, device, metric_name="kl_divergence"):
+def get_all_docstring_things(num_examples, seq_len, device, metric_name="kl_divergence", dataset_version="random_random"):
     tl_model = HookedTransformer.from_pretrained(
         "attn-only-4l",
         use_global_cache=True,
@@ -52,42 +52,49 @@ def get_all_docstring_things(num_examples, seq_len, device, metric_name="kl_dive
     raw_prompts = [prompts.docstring_induction_prompt_generator("rest", **docstring_ind_prompt_kwargs, seed=i) for i in range(num_examples)]
     batched_prompts = prompts.BatchedPrompts(prompts=raw_prompts, model=tl_model)
     toks_int_values = batched_prompts.clean_tokens
-    # warnings.warn("Trying out random_random, may wish to switch back to random_doc")
-    toks_int_values_other = batched_prompts.corrupt_tokens["random_random"] # to test
+    toks_int_values_other = batched_prompts.corrupt_tokens[dataset_version]
 
     base_model_logits = tl_model(toks_int_values)[:, -1]
     base_model_probs = F.softmax(base_model_logits, dim=-1)
     assert len(base_model_probs.shape) == 2, base_model_probs.shape
 
+    kl_metric = partial(
+        kl_divergence, 
+        base_model_probs=base_model_probs, 
+        last_seq_element_only=True,
+    )
+
+    def docstring_metric(
+        logits: torch.Tensor,
+        wandb_too: bool = False,
+    ):
+        """With neg sign so we minimize this"""
+        
+        correct_logits = logits[torch.arange(len(logits)), -1, batched_prompts.correct_tokens.cpu().squeeze()]
+        incorrect_logits = logits[torch.arange(len(logits)).unsqueeze(-1), -1, batched_prompts.wrong_tokens]
+        assert incorrect_logits.shape == batched_prompts.wrong_tokens.shape, (incorrect_logits.shape, batched_prompts.wrong_tokens.shape)
+        
+        if wandb_too:
+            wandb.log({"correct_logits": correct_logits.mean().item(), "incorrect_logits": incorrect_logits.max(dim=-1).values.mean().item()})
+
+        # note neg sing!!!
+        return - (correct_logits.mean() - incorrect_logits.max(dim=-1).values.mean()).item()
+
+    metric = docstring_metric
+    
     if metric_name == "kl_divergence":
-        metric = partial(
-            kl_divergence, 
-            base_model_probs=base_model_probs, 
-            last_seq_element_only=True,
-        )
-
+        metric = kl_metric
+        second_metric = docstring_metric
     elif metric_name == "docstring_metric":
-        def docstring_metric(
-            logits: torch.Tensor,
-            wandb_too: bool = False,
-        ):
-            """With neg sign so we minimize this"""
-            
-            correct_logits = logits[torch.arange(len(logits)), -1, batched_prompts.correct_tokens.cpu().squeeze()]
-            incorrect_logits = logits[torch.arange(len(logits)).unsqueeze(-1), -1, batched_prompts.wrong_tokens]
-            assert incorrect_logits.shape == batched_prompts.wrong_tokens.shape, (incorrect_logits.shape, batched_prompts.wrong_tokens.shape)
-            
-            if wandb_too:
-                wandb.log({"correct_logits": correct_logits.mean().item(), "incorrect_logits": incorrect_logits.max(dim=-1).values.mean().item()})
-
-            # note neg sing!!!
-            return - (correct_logits.mean() - incorrect_logits.max(dim=-1).values.mean()).item()
-
         metric = docstring_metric
+        second_metric = kl_metric
+    else:
+        raise ValueError(f"metric_name {metric_name} not recognized")
 
     return (
         tl_model,
         toks_int_values,
         toks_int_values_other,
         metric,
+        second_metric,
     )

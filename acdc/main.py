@@ -115,10 +115,10 @@ parser.add_argument('--indices-mode', type=str, default="normal")
 parser.add_argument('--names-mode', type=str, default="normal")
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
-if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
+if True or IPython.get_ipython() is not None: # heheh get around this failing in notebooks
     # args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
     # args = parser.parse_args("--threshold 0.001 --using-wandb".split())
-    args = parser.parse_args("--task docstring --using-wandb --threshold 0.1".split()) # TODO figure out why this is such high edge count...
+    args = parser.parse_args("--task docstring --using-wandb --threshold 0.075".split()) # TODO figure out why this is such high edge count...
 else:
     args = parser.parse_args()
 
@@ -137,6 +137,8 @@ DEVICE = "cuda"
 
 #%% [markdown]
 # Setup
+
+second_metric = None # some tasks only have one metric
 
 if TASK == "ioi":
     num_examples = 100
@@ -161,7 +163,7 @@ elif TASK == "induction":
 elif TASK == "docstring":
     num_examples = 50
     seq_len = 41
-    tl_model, toks_int_values, toks_int_values_other, metric = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric_name="kl_divergence")
+    tl_model, toks_int_values, toks_int_values_other, metric, second_metric = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric_name="docstring_metric")
     
 else:
     raise ValueError(f"Unknown task {TASK}")
@@ -191,6 +193,7 @@ exp = TLACDCExperiment(
     ds=toks_int_values,
     ref_ds=toks_int_values_other,
     metric=metric,
+    second_metric=second_metric,
     verbose=True,
     indices_mode=INDICES_MODE,
     names_mode=NAMES_MODE,
@@ -222,7 +225,7 @@ if False: # Stefan snippet
 
 #%%
 
-for i in range(1000):
+for i in range(100_000):
     exp.step()
     show(
         exp.corr,
@@ -232,13 +235,12 @@ for i in range(1000):
     print(i, "-" * 50)
     print(exp.count_no_edges())
 
+    if i==0:
+        exp.save_edges("edges.pkl")
+
     if exp.current_node is None:
         break
 
-
 #%%
 
-while exp.current_node is not None:
-    exp.step()
-
-# %%
+# TODO 
