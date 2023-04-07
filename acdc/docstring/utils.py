@@ -85,9 +85,9 @@ def get_all_docstring_things(num_examples, seq_len, device, metric_name="kl_dive
 
         metric = docstring_metric
 
-        return (
-            tl_model,
-            toks_int_values,
-            toks_int_values_other,
-            metric,
-        )
+    return (
+        tl_model,
+        toks_int_values,
+        toks_int_values_other,
+        metric,
+    )
