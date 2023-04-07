@@ -1,3 +1,4 @@
+*.pkl
 histories/
 transformer_lens/media/
 profile*.json
