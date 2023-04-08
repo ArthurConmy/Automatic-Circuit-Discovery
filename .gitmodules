@@ -1,0 +1,6 @@
+[submodule "subnetwork-probing"]
+	path = subnetwork-probing
+	url = ./subnetwork-probing
+[submodule "tracr"]
+	path = tracr
+	url = ./tracr
