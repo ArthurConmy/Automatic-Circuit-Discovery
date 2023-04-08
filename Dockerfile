@@ -21,4 +21,4 @@ RUN if ! { [ -z "$(git status --porcelain --ignored=traditional)" ] \
     && [ -z "$(cd tracr && git status --porcelain --ignored=traditional)" ] \
     && [ -z "$(cd subnetwork-probing && git status --porcelain --ignored=traditional)" ] \
     ; }; then exit 1; fi
-RUN pip install -e tracr -e subnetwork-probing -e . && rm -rf "${HOME}/.cache"
+RUN pip install -e tracr -e . && rm -rf "${HOME}/.cache"
