@@ -115,7 +115,7 @@ parser.add_argument('--indices-mode', type=str, default="normal")
 parser.add_argument('--names-mode', type=str, default="normal")
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
-if True or IPython.get_ipython() is not None: # heheh get around this failing in notebooks
+if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
     # args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
     # args = parser.parse_args("--threshold 0.001 --using-wandb".split())
     args = parser.parse_args("--task docstring --using-wandb --threshold 0.075".split()) # TODO figure out why this is such high edge count...
@@ -199,7 +199,7 @@ exp = TLACDCExperiment(
     names_mode=NAMES_MODE,
     second_cache_cpu=SECOND_CACHE_CPU,
     first_cache_cpu=FIRST_CACHE_CPU,
-    add_sender_hooks=False, # attempting to be efficient...
+    add_sender_hooks=True, # attempting to be efficient...
     add_receiver_hooks=False,
 )
 
@@ -242,89 +242,3 @@ for i in range(100_000):
         break
 
 exp.save_edges("another_final_edges.pkl")
-
-#%%
-
-print("Ful circ metric:", exp.metric(exp.model(exp.ds)), f"#edges={exp.count_no_edges()}")
-
-# Indices to save writing lots
-COL = TorchIndex([None])
-H0 = TorchIndex([None, None, 0])
-H4 = TorchIndex([None, None, 4])
-H5 = TorchIndex([None, None, 5])
-H6 = TorchIndex([None, None, 6])
-
-def remove_edge(receiver_name, receiver_index, sender_name, sender_index):
-    sender_node = exp.corr.graph[sender_name][sender_index]
-    receiver_node = exp.corr.graph[receiver_name][receiver_index]
-    edge = exp.corr.edges[receiver_name][receiver_index][sender_name][sender_index]
-    edge_type_print = "ADDITION" if edge.edge_type.value == EdgeType.ADDITION.value else "PLACEHOLDER" if edge.edge_type.value == EdgeType.PLACEHOLDER.value else "DIRECT_COMPUTATION" if edge.edge_type.value == EdgeType.DIRECT_COMPUTATION.value else "UNKNOWN"
-    print(f"Removing edge {receiver_name} {receiver_index} <- {sender_name} {sender_index} with type {edge_type_print}")
-    if edge.edge_type.value == EdgeType.DIRECT_COMPUTATION.value:
-        exp.add_receiver_hook(receiver_node)
-    if edge.edge_type.value == EdgeType.ADDITION.value:
-        exp.add_sender_hook(sender_node)
-        exp.add_receiver_hook(receiver_node)
-    if edge.edge_type.value == EdgeType.PLACEHOLDER.value:
-        pass
-    edge.present = False
-
-#%%
-
-if False:
-    edges_to_keep = []
-    for L3H in [H0, H6]:
-        edges_to_keep.append(("blocks.3.hook_resid_post", COL, "blocks.3.attn.hook_result", L3H))
-        edges_to_keep.append(("blocks.3.attn.hook_q", L3H, "blocks.3.hook_q_input", L3H))
-        edges_to_keep.append(("blocks.3.hook_q_input", L3H, "blocks.1.attn.hook_result", H4))
-        edges_to_keep.append(("blocks.1.attn.hook_v", H4, "blocks.1.hook_v_input", H4))
-        edges_to_keep.append(("blocks.1.hook_v_input", H4, "blocks.0.hook_resid_pre", COL))
-        edges_to_keep.append(("blocks.1.hook_v_input", H4, "blocks.0.attn.hook_result", H5))
-        edges_to_keep.append(("blocks.0.attn.hook_v", H5, "blocks.0.hook_v_input", H5))
-        edges_to_keep.append(("blocks.0.hook_v_input", H5, "blocks.0.hook_resid_pre", COL))
-        edges_to_keep.append(("blocks.3.attn.hook_v", L3H, "blocks.3.hook_v_input", L3H))
-        edges_to_keep.append(("blocks.3.hook_v_input", L3H, "blocks.0.hook_resid_pre", COL))
-        edges_to_keep.append(("blocks.3.hook_v_input", L3H, "blocks.0.attn.hook_result", H5))
-        edges_to_keep.append(("blocks.0.attn.hook_v", H5, "blocks.0.hook_v_input", H5))
-        edges_to_keep.append(("blocks.0.hook_v_input", H5, "blocks.0.hook_resid_pre", COL))
-        edges_to_keep.append(("blocks.3.attn.hook_k", L3H, "blocks.3.hook_k_input", L3H))
-        edges_to_keep.append(("blocks.3.hook_k_input", L3H, "blocks.2.attn.hook_result", H0))
-        edges_to_keep.append(("blocks.2.attn.hook_q", H0, "blocks.2.hook_q_input", H0))
-        edges_to_keep.append(("blocks.2.hook_q_input", H0, "blocks.0.hook_resid_pre", COL))
-        edges_to_keep.append(("blocks.2.hook_q_input", H0, "blocks.0.attn.hook_result", H5))
-        edges_to_keep.append(("blocks.0.attn.hook_v", H5, "blocks.0.hook_v_input", H5))
-        edges_to_keep.append(("blocks.0.hook_v_input", H5, "blocks.0.hook_resid_pre", COL))
-        edges_to_keep.append(("blocks.2.attn.hook_v", H0, "blocks.2.hook_v_input", H0))
-        edges_to_keep.append(("blocks.2.hook_v_input", H0, "blocks.1.attn.hook_result", H4))
-        edges_to_keep.append(("blocks.1.attn.hook_v", H4, "blocks.1.hook_v_input", H4))
-        edges_to_keep.append(("blocks.1.hook_v_input", H4, "blocks.0.hook_resid_pre", COL))
-
-
-#%%
-
-if True:
-    import pickle
-    with open("another_final_edges.pkl", "rb") as f:  # Use "rb" instead of "r"
-        final_edges = pickle.load(f)
-    edges_to_keep = []
-    for e in final_edges:
-        edges_to_keep.append(e[0])
-
-# %%
-
-exp.model.reset_hooks() # essential, I would guess
-exp.setup_second_cache()
-
-#... then recall 
-
-for t in exp.corr.all_edges():
-    if t not in edges_to_keep:
-        remove_edge(t[0], t[1], t[2], t[3])
-    else:
-        edge = exp.corr.edges[t[0]][t[1]][t[2]][t[3]]
-        edge.effect_size = 1
-        print("Keeping", t)
-
-print("Docstring circuit metric:", exp.metric(exp.model(exp.ds)), f"#edges={ exp.count_no_edges()}")
-
-# %%

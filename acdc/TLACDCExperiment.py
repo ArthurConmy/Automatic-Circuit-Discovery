@@ -236,7 +236,7 @@ class TLACDCExperiment:
 
         return z
 
-    def add_all_sender_hooks(self, reset=True, cache="first"):
+    def add_all_sender_hooks(self, reset=True, cache="first", skip_direct_computation=False):
         """We use add_sender_hook for lazily adding *some* sender hooks"""
 
         if self.verbose:
@@ -249,7 +249,8 @@ class TLACDCExperiment:
         }[cache]
         for big_tuple, edge in self.corr.all_edges().items():
             if edge.edge_type == EdgeType.DIRECT_COMPUTATION:
-                node = self.corr.graph[big_tuple[0]][big_tuple[1]]
+                if not skip_direct_computation:
+                    node = self.corr.graph[big_tuple[0]][big_tuple[1]]
             elif edge.edge_type == EdgeType.ADDITION:
                 node = self.corr.graph[big_tuple[2]][big_tuple[3]]
             elif edge.edge_type != EdgeType.PLACEHOLDER:
@@ -303,7 +304,7 @@ class TLACDCExperiment:
         add_receiver_hooks=False,
     ):
         if add_sender_hooks:
-            self.add_all_sender_hooks(cache="first") # remove because efficiency 
+            self.add_all_sender_hooks(cache="first", skip_direct_computation=True) # remove because efficiency 
 
         if add_receiver_hooks:
             
