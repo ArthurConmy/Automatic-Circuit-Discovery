@@ -16,6 +16,11 @@ RUN pip install -r requirements.txt && rm -rf "${HOME}/.cache"
 
 # Copy whole repo
 COPY --chown=root:root . .
+RUN apt-get update -q \
+    && apt-get install -y --no-install-recommends \
+    git-lfs \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 # Abort if repo is dirty
 RUN if ! { [ -z "$(git status --porcelain --ignored=traditional)" ] \
     && [ -z "$(cd tracr && git status --porcelain --ignored=traditional)" ] \
