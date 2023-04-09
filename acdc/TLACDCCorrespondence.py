@@ -174,3 +174,29 @@ class TLACDCCorrespondence:
             )
     
         return correspondence
+
+    def show_graph(self, file_name='correspondence.gv'):
+        import graphviz
+
+        def to_str(name: str, index: TorchIndex) -> Optional[str]:
+            if index == TorchIndex([None]):
+                return name
+            elif index.as_index[:2] == (slice(None), slice(None)):
+                if index.as_index[2] == 0:
+                    return f"{name}[{index.as_index[2]}]"
+            else:
+                raise NotImplementedError
+
+        G = graphviz.Digraph()
+        for node in self.nodes():
+            sn = to_str(node.name, node.index)
+            if sn is not None:
+                G.node(sn)
+
+        for child_name, child_idx, parent_name, parent_idx, in self.all_edges():
+            sp = to_str(parent_name, parent_idx)
+            sc = to_str(child_name, child_idx)
+            if sp is not None and sc is not None:
+                G.edge(sp, sc)
+
+        G.render(file_name, view=True)
