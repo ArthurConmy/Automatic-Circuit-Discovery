@@ -120,3 +120,5 @@ wcwidth==0.2.6
 xxhash==3.2.0
 yarl==1.8.2
 zope.interface==6.0
+
+pygraphviz==1.10
