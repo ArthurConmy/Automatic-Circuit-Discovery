@@ -14,16 +14,17 @@ WORKDIR "/Automatic-Circuit-Discovery"
 COPY --chown=root:root requirements.txt ./
 RUN pip install -r requirements.txt && rm -rf "${HOME}/.cache"
 
-# Copy whole repo
-COPY --chown=root:root . .
 RUN apt-get update -q \
     && apt-get install -y --no-install-recommends \
     git-lfs \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Copy whole repo
+COPY --chown=root:root . .
 # Abort if repo is dirty
 RUN if ! { [ -z "$(git status --porcelain --ignored=traditional)" ] \
     && [ -z "$(cd tracr && git status --porcelain --ignored=traditional)" ] \
     && [ -z "$(cd subnetwork-probing && git status --porcelain --ignored=traditional)" ] \
     ; }; then exit 1; fi
-RUN pip install -e tracr -e . && rm -rf "${HOME}/.cache"
+RUN pip install -e tracr -e . -e subnetwork-probing/transformer_lens && rm -rf "${HOME}/.cache"
