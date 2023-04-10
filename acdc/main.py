@@ -163,7 +163,7 @@ elif TASK == "induction":
 elif TASK == "docstring":
     num_examples = 50
     seq_len = 41
-    tl_model, toks_int_values, toks_int_values_other, metric, second_metric = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric_name="docstring_metric", correct_incorrect_wandb=True)
+    tl_model, toks_int_values, toks_int_values_other, metric, second_metric = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric_name="kl_divergence", correct_incorrect_wandb=True)
 
 else:
     raise ValueError(f"Unknown task {TASK}")
@@ -228,7 +228,7 @@ if False: # Stefan snippet
 for i in range(100_000):
     exp.step()
     show(
-        exp.corr,
+        exp.template_corr,
         f"ims/img_new_{i+1}.png",
         show_full_index=False, # hopefully works
     )

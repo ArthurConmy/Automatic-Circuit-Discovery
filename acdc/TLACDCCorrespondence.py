@@ -9,7 +9,6 @@ class TLACDCCorrespondence:
         
     def __init__(self):
         self.graph: OrderedDict[str, OrderedDict[TorchIndex, TLACDCInterpNode]] = OrderedDefaultdict(OrderedDict) # TODO rename "nodes?"
- 
         self.edges: OrderedDict[str, OrderedDict[TorchIndex, OrderedDict[str, OrderedDict[TorchIndex, Optional[Edge]]]]] = make_nd_dict(end_type=None, n=4)
 
     def nodes(self) -> List[TLACDCInterpNode]:
@@ -174,3 +173,10 @@ class TLACDCCorrespondence:
             )
     
         return correspondence
+
+class TLACDCCorrespondenceFast:
+    """This only stores the edges in the ACDC graph picture, for speed"""
+
+    @classmethod
+    def setup_from_model(cls):
+        raise NotImplementedError("Don't create fast correspondences from the whole subgraph!")

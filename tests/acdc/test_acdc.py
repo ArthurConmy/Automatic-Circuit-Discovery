@@ -99,10 +99,10 @@ def test_induction_step_one(): # sad, currently failings. Bin search from this c
     present_edges = []
     edge_strengths = []
 
-    for child_name in exp.corr.edges["blocks.1.hook_resid_post"][TorchIndex([None])]:
-        for child_index in exp.corr.edges["blocks.1.hook_resid_post"][TorchIndex([None])][child_name]:
-            edge_strengths.append(exp.corr.edges["blocks.1.hook_resid_post"][TorchIndex([None])][child_name][child_index].effect_size)
-            if exp.corr.edges["blocks.1.hook_resid_post"][TorchIndex([None])][child_name][child_index].present:
+    for child_name in exp.template_corr.edges["blocks.1.hook_resid_post"][TorchIndex([None])]:
+        for child_index in exp.template_corr.edges["blocks.1.hook_resid_post"][TorchIndex([None])][child_name]:
+            edge_strengths.append(exp.template_corr.edges["blocks.1.hook_resid_post"][TorchIndex([None])][child_name][child_index].effect_size)
+            if exp.template_corr.edges["blocks.1.hook_resid_post"][TorchIndex([None])][child_name][child_index].present:
                 present_edges.append((child_name, child_index))
 
     assert present_edges == [
