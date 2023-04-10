@@ -28,7 +28,8 @@ project_names = [
     # "acdc",
     # "induction_arthur",
     # "shuffle_the_dataset",
-    "arthurinduction_randomabl_reverse",
+    # "arthurinduction_randomabl_reverse",
+    "arthurinduction_zeroabl_reverse",
 ]
 
 api = wandb.Api()
@@ -279,12 +280,12 @@ old_labels = fig3.data[0]["text"]
 
 #%%
 
-indices = [i for i in range(len(labels)) if myx[i] >= 40] #  in old_labels]
+indices = [i for i in range(len(old_labels)) if myx[i] >= 40] #  in old_labels]
 myx = [myx[i] for i in indices]
 myy = [myy[i] for i in indices]
 
-final_edges.extend([final_edges[i] for i in indices])
-final_metric.extend([final_metric[i] for i in indices])
+final_edges.extend(myx)
+final_metric.extend(myy) # [myy[i] for i in indices])
 thresholds.extend([float(old_labels[i].split("_")[-1]) for i in indices])
 names.extend([old_labels[i] for i in indices])
 
