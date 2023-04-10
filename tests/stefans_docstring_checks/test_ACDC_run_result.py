@@ -141,7 +141,7 @@ notes = "dummy"
 assert TASK == "docstring"
 num_examples = 50
 seq_len = 41
-tl_model, toks_int_values, toks_int_values_other, metric, second_metric = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric_name="docstring_metric", correct_incorrect_wandb=False)
+tl_model, toks_int_values, toks_int_values_other, metric, second_metric = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric_name="docstring_stefan", correct_incorrect_wandb=False)
 tl_model.global_cache.clear()
 tl_model.reset_hooks()
 
@@ -168,7 +168,6 @@ def remove_edge(receiver_name, receiver_index, sender_name, sender_index):
         pass
     edge.present = False
 
-# %%
 
 exp = TLACDCExperiment(
     model=tl_model,
@@ -191,13 +190,15 @@ exp = TLACDCExperiment(
     add_sender_hooks=False, # attempting to be efficient...
     add_receiver_hooks=False,
 )
-#%%
 exp.model.reset_hooks() # essential, I would guess
 exp.setup_second_cache()
 
+print("FULL circuit Logit Diff:", exp.metric(exp.model(exp.ds)))
+print(f"Fraction of LogitDiff>0: {second_metric(exp.model(exp.ds)):.0%}")
+
 
 import pickle
-with open("final_edges.pkl", "rb") as f:  # Use "rb" instead of "r"
+with open("another_final_edges.pkl", "rb") as f:  # Use "rb" instead of "r"
     final_edges = pickle.load(f)
 edges_to_keep = []
 for e in final_edges:
@@ -214,5 +215,4 @@ for t in exp.corr.all_edges():
 
 exp.count_no_edges()
 print("ACDC circuit Logit Diff:", exp.metric(exp.model(exp.ds)))
-
-# %%
+print(f"Fraction of LogitDiff>0: {second_metric(exp.model(exp.ds)):.0%}")

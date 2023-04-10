@@ -194,7 +194,8 @@ exp = TLACDCExperiment(
 exp.model.reset_hooks() # essential, I would guess
 exp.setup_second_cache()
 
-heads_to_keep = [(0, 2), (0, 5), (1, 4), (2, 0), (3, 0), (3, 6)] #44%, mean=-0.85
+heads_to_keep = [(0, 2), (0, 5), (1,2), (1, 4), (2, 0), (3, 0), (3, 6)] #post
+#heads_to_keep = [(0, 2), (0, 5), (1, 4), (2, 0), (3, 0), (3, 6)] #44%, mean=-0.85
 #heads_to_keep = [(0, 1), (0, 2), (0, 3), (0, 5), (1, 0), (1, 2), (1, 4), (2, 0), (2, 3), (3, 0), (3, 6)] #64%, mean=0.24
 
 edges_to_keep = []
