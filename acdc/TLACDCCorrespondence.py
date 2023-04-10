@@ -9,7 +9,6 @@ class TLACDCCorrespondence:
         
     def __init__(self):
         self.graph: OrderedDict[str, OrderedDict[TorchIndex, TLACDCInterpNode]] = OrderedDefaultdict(OrderedDict) # TODO rename "nodes?"
- 
         self.edges: OrderedDict[str, OrderedDict[TorchIndex, OrderedDict[str, OrderedDict[TorchIndex, Optional[Edge]]]]] = make_nd_dict(end_type=None, n=4)
 
     def nodes(self) -> List[TLACDCInterpNode]:
