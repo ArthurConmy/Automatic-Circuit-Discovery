@@ -11,6 +11,9 @@ class TLACDCCorrespondence:
         self.graph: OrderedDict[str, OrderedDict[TorchIndex, TLACDCInterpNode]] = OrderedDefaultdict(OrderedDict) # TODO rename "nodes?"
         self.edges: OrderedDict[str, OrderedDict[TorchIndex, OrderedDict[str, OrderedDict[TorchIndex, Optional[Edge]]]]] = make_nd_dict(end_type=None, n=4)
 
+    def first_node(self):
+        return self.graph[list(self.graph.keys())[0]][list(self.graph[list(self.graph.keys())[0]].keys())[0]]
+
     def nodes(self) -> List[TLACDCInterpNode]:
         """Concatenate all nodes in the graph"""
         return [node for by_index_list in self.graph.values() for node in by_index_list.values()]

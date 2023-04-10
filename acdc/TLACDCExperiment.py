@@ -55,6 +55,7 @@ class TLACDCExperiment:
         add_receiver_hooks: bool = False,
         indices_mode: Literal["normal", "reverse", "shuffle"] = "reverse", # we get best performance with reverse I think
         names_mode: Literal["normal", "reverse", "shuffle"] = "normal",
+        fast_mode=False,
     ):
         """Initialize the ACDC experiment"""
 
@@ -66,18 +67,24 @@ class TLACDCExperiment:
         self.zero_ablation = zero_ablation
         self.verbose = verbose
         self.step_idx = 0
+        self.fast_mode = fast_mode
         self.hook_verbose = hook_verbose
         self.skip_edges = skip_edges
         if skip_edges != "yes":
             raise NotImplementedError() # TODO if edge counts are slow...
 
-        self.template_corr = TLACDCCorrespondence.setup_from_model(self.model)
+        self.corr = TLACDCCorrespondence.setup_from_model(self.model)
             
         self.reverse_topologically_sort_corr()
-        self.current_node = self.template_corr.nodes()[0]
+        self.current_node = self.corr.first_node()
         print(f"{self.current_node=}")
-        self.corr = TLACDCCorrespondenceFast()
-        self.add_node(self.current_node) # start with just the output node
+
+        if self.fast_mode:
+            raise NotImplementedError("Need to turn other things into template_corr...")
+            self.corr = TLACDCCorrespondenceFast()
+            self.add_node(self.current_node) # start with just the output node
+        else:
+            self.corr = self.corr
 
         self.ds = ds
         self.ref_ds = ref_ds
@@ -141,9 +148,9 @@ class TLACDCExperiment:
         )
 
         # add all the god-damn edges too?
-        for sender_name in self.template_corr[node.name][node.index]:
-            for sender_idx in self.template_corr[node.name][node.index][sender_name]:
-                self.corr.edges[node.name][node.index][sender_name][sender_idx] = self.template_corr.edges[node.name][node.index][sender_name][sender_idx]
+        for sender_name in self.corr[node.name][node.index]:
+            for sender_idx in self.corr[node.name][node.index][sender_name]:
+                self.corr.edges[node.name][node.index][sender_name][sender_idx] = self.corr.edges[node.name][node.index][sender_name][sender_idx]
                 assert False
 
     def update_cur_metric(self, recalc=True, initial=False):
@@ -177,17 +184,17 @@ class TLACDCExperiment:
         self.model.reset_hooks()
 
         if self.verbose:
-            print(self.template_corr.graph.keys())
+            print(self.corr.graph.keys())
 
         cache_keys = list(cache.keys())
         cache_keys.reverse()
 
         for hook_name in cache_keys:
             print(hook_name)            
-            if hook_name in self.template_corr.graph:
-                new_graph[hook_name] = self.template_corr.graph[hook_name]
+            if hook_name in self.corr.graph:
+                new_graph[hook_name] = self.corr.graph[hook_name]
 
-        self.template_corr.graph = new_graph
+        self.corr.graph = new_graph
 
     def sender_hook(self, z, hook, verbose=False, cache="first", device=None):
         """General, to cover online and corrupt caching"""
@@ -213,14 +220,17 @@ class TLACDCExperiment:
 
     def receiver_hook(self, z, hook, verbose=False):
         receiver_node_name = hook.name
-        for receiver_node_index in self.template_corr.edges[hook.name]:
+
+        z[:] = self.model.global_cache.second_cache[hook.name].to(z.device) # TODO - is this slow ???
+
+        for receiver_node_index in self.corr.edges[hook.name]:
             direct_computation_nodes = []
-            for sender_node_name in self.template_corr.edges[hook.name][receiver_node_index]:
-                for sender_node_index in self.template_corr.edges[hook.name][receiver_node_index][sender_node_name]:
+            for sender_node_name in self.corr.edges[hook.name][receiver_node_index]:
+                for sender_node_index in self.corr.edges[hook.name][receiver_node_index][sender_node_name]:
 
-                    edge = self.template_corr.edges[hook.name][receiver_node_index][sender_node_name][sender_node_index] # TODO maybe less crazy nested indexes ... just make local variables each time?
+                    edge = self.corr.edges[hook.name][receiver_node_index][sender_node_name][sender_node_index] # TODO maybe less crazy nested indexes ... just make local variables each time?
 
-                    if edge.present:
+                    if not edge.present:
                         continue # don't do patching stuff, if it wastes time
 
                     if verbose:
@@ -235,15 +245,15 @@ class TLACDCExperiment:
                             )
                     
                     if edge.edge_type == EdgeType.ADDITION:
-                        z[receiver_node_index.as_index] -= hook.global_cache.cache[
+                        z[receiver_node_index.as_index] += hook.global_cache.cache[
                             sender_node_name
                         ][sender_node_index.as_index].to(z.device)
-                        z[receiver_node_index.as_index] += hook.global_cache.second_cache[
+                        z[receiver_node_index.as_index] -= hook.global_cache.second_cache[
                             sender_node_name
                         ][sender_node_index.as_index].to(z.device)
 
                     elif edge.edge_type == EdgeType.DIRECT_COMPUTATION:
-                        direct_computation_nodes.append(self.template_corr.graph[sender_node_name][sender_node_index])
+                        direct_computation_nodes.append(self.corr.graph[sender_node_name][sender_node_index])
                         assert len(direct_computation_nodes) == 1, f"Found multiple direct computation nodes {direct_computation_nodes}"
 
                         z[receiver_node_index.as_index] = hook.global_cache.second_cache[receiver_node_name][receiver_node_index.as_index].to(z.device)
@@ -254,7 +264,7 @@ class TLACDCExperiment:
 
         return z
 
-    def add_all_sender_hooks(self, reset=True, cache="first", skip_direct_computation=False):
+    def add_all_sender_hooks(self, reset=True, cache="first", skip_direct_computation=False, add_all_hooks=False):
         """We use add_sender_hook for lazily adding *some* sender hooks"""
 
         if self.verbose:
@@ -265,33 +275,40 @@ class TLACDCExperiment:
             "first": "cpu" if self.first_cache_cpu else None,
             "second": "cpu" if self.second_cache_cpu else None,
         }[cache]
-        for big_tuple, edge in self.template_corr.all_edges().items():
+
+        nodes = []
+
+        for big_tuple, edge in self.corr.all_edges().items():
             if edge.edge_type == EdgeType.DIRECT_COMPUTATION:
                 if not skip_direct_computation:
-                    node = self.template_corr.graph[big_tuple[0]][big_tuple[1]]
+                    nodes.append(self.corr.graph[big_tuple[0]][big_tuple[1]])
+                    if add_all_hooks:
+                        nodes.append(self.corr.graph[big_tuple[2]][big_tuple[3]])
             elif edge.edge_type == EdgeType.ADDITION:
-                node = self.template_corr.graph[big_tuple[2]][big_tuple[3]]
+                nodes.append(self.corr.graph[big_tuple[2]][big_tuple[3]])
+                if add_all_hooks:
+                    nodes.append(self.corr.graph[big_tuple[0]][big_tuple[1]])
             elif edge.edge_type != EdgeType.PLACEHOLDER:
                 print(edge.edge_type.value, EdgeType.ADDITION.value, edge.edge_type.value == EdgeType.ADDITION.value, type(edge.edge_type.value), type(EdgeType.ADDITION.value))
                 raise ValueError(f"{str(big_tuple)} {str(edge)} failed")
-
             print(big_tuple, "worked!")
 
-            if len(self.model.hook_dict[node.name].fwd_hooks) > 0:
-                for hook_func_maybe_partial in self.model.hook_dict[node.name].fwd_hook_functions:
-                    hook_func_name = hook_func_maybe_partial.func.__name__ if isinstance(hook_func_maybe_partial, partial) else hook_func_maybe_partial.__name__
-                    assert "sender_hook" in hook_func_name, f"You should only add sender hooks to {node.name}, and this: {hook_func_name} doesn't look like a sender hook"
-                continue
+            for node in nodes:
+                if len(self.model.hook_dict[node.name].fwd_hooks) > 0:
+                    for hook_func_maybe_partial in self.model.hook_dict[node.name].fwd_hook_functions:
+                        hook_func_name = hook_func_maybe_partial.func.__name__ if isinstance(hook_func_maybe_partial, partial) else hook_func_maybe_partial.__name__
+                        assert "sender_hook" in hook_func_name, f"You should only add sender hooks to {node.name}, and this: {hook_func_name} doesn't look like a sender hook"
+                    continue
 
-            self.model.add_hook(
-                name=node.name, 
-                hook=partial(self.sender_hook, verbose=self.hook_verbose, cache=cache, device=device),
-            )
+                self.model.add_hook(
+                    name=node.name, 
+                    hook=partial(self.sender_hook, verbose=self.hook_verbose, cache=cache, device=device),
+                )
 
     def setup_second_cache(self):
         if self.verbose:
             print("Adding sender hooks...")
-        self.add_all_sender_hooks(cache="second")
+        self.add_all_sender_hooks(cache="second", add_all_hooks=True)
 
         if self.verbose:
             print("Now corrupting things..")
@@ -328,7 +345,7 @@ class TLACDCExperiment:
             
             warnings.warn("Deprecating adding receiver hooks before launching into ACDC runs, this may be totally broke")
 
-            receiver_node_names = list(set([node.name for node in self.template_corr.nodes()]))
+            receiver_node_names = list(set([node.name for node in self.corr.nodes()]))
             for receiver_name in receiver_node_names: # TODO could remove the nodes that don't have any parents...
                 self.model.add_hook(
                     name=receiver_name,
@@ -340,7 +357,7 @@ class TLACDCExperiment:
         TODO pickling of the whole experiment work"""
 
         edges_list = []
-        for t, e in self.template_corr.all_edges().items():
+        for t, e in self.corr.all_edges().items():
             if e.present and e.edge_type != EdgeType.PLACEHOLDER:
                 edges_list.append((t, e.effect_size))
         
@@ -400,7 +417,7 @@ class TLACDCExperiment:
             added_receiver_hook = False
 
         is_this_node_used = False
-        sender_names_list = list(self.template_corr.edges[self.current_node.name][self.current_node.index])
+        sender_names_list = list(self.corr.edges[self.current_node.name][self.current_node.index])
 
         if self.names_mode == "random":
             random.shuffle(sender_names_list)
@@ -408,7 +425,7 @@ class TLACDCExperiment:
             sender_names_list = list(reversed(sender_names_list))
 
         for sender_name in sender_names_list:
-            sender_indices_list = list(self.template_corr.edges[self.current_node.name][self.current_node.index][sender_name])
+            sender_indices_list = list(self.corr.edges[self.current_node.name][self.current_node.index][sender_name])
 
             if self.indices_mode == "random":
                 random.shuffle(sender_indices_list)
@@ -416,8 +433,8 @@ class TLACDCExperiment:
                 sender_indices_list = list(reversed(sender_indices_list))
 
             for sender_index in sender_indices_list:
-                edge = self.template_corr.edges[self.current_node.name][self.current_node.index][sender_name][sender_index]
-                cur_parent = self.template_corr.graph[sender_name][sender_index]
+                edge = self.corr.edges[self.current_node.name][self.current_node.index][sender_name][sender_index]
+                cur_parent = self.corr.graph[sender_name][sender_index]
 
                 if edge.edge_type == EdgeType.PLACEHOLDER:
                     is_this_node_used = True
@@ -428,7 +445,6 @@ class TLACDCExperiment:
 
                 edge.present = False
 
-                relevant_node = None
                 if edge.edge_type == EdgeType.ADDITION:
                     added_sender_hook = self.add_sender_hook(
                         cur_parent,
@@ -436,12 +452,12 @@ class TLACDCExperiment:
                 else:
                     added_sender_hook = False
                 
-                if early_stop: # for debugging the effects of one and only one forward pass WITH a corrupted edge
-                    return self.model(self.ds)
-
                 old_metric = self.cur_metric
                 self.update_cur_metric()
                 evaluated_metric = self.cur_metric # self.metric(self.model(self.ds)) # OK, don't calculate second metric?
+
+                if early_stop: # for debugging the effects of one and only one forward pass WITH a corrupted edge
+                    return
 
                 if self.verbose:
                     print(
@@ -479,7 +495,7 @@ class TLACDCExperiment:
                     log_metrics_to_wandb(
                         self,
                         current_metric = cur_metric,
-                        parent_name = str(self.template_corr.graph[sender_name][sender_index]),
+                        parent_name = str(self.corr.graph[sender_name][sender_index]),
                         child_name = str(self.current_node),
                         result = result,
                     )
@@ -495,7 +511,7 @@ class TLACDCExperiment:
         if is_this_node_used and self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value:
             fname = f"ims/img_new_{self.step_idx}.png"
             show(
-                self.template_corr,
+                self.corr,
                 fname=fname,
                 show_full_index=False, # hopefully works
             )
@@ -509,7 +525,7 @@ class TLACDCExperiment:
         self.update_cur_metric(recalc=False)
 
     def current_node_connected(self):
-        for child_name, rest1 in self.template_corr.edges.items(): # rest1 just meaning "rest of dictionary.. I'm tired"
+        for child_name, rest1 in self.corr.edges.items(): # rest1 just meaning "rest of dictionary.. I'm tired"
             for child_index, rest2 in rest1.items():
                 if self.current_node.name in rest2 and self.current_node.index in rest2[self.current_node.name]:
                     if rest2[self.current_node.name][self.current_node.index].present:
@@ -520,9 +536,9 @@ class TLACDCExperiment:
         self.update_cur_metric()
         old_metric = self.cur_metric
 
-        for parent_name, rest1 in self.template_corr.edges[self.current_node.name][self.current_node.index].items():
+        for parent_name, rest1 in self.corr.edges[self.current_node.name][self.current_node.index].items():
             for parent_index, rest2 in rest1.items():
-                edge = self.template_corr.edges[self.current_node.name][self.current_node.index][parent_name][parent_index]
+                edge = self.corr.edges[self.current_node.name][self.current_node.index][parent_name][parent_index]
                 edge.present=False
 
                 self.update_cur_metric()
@@ -531,14 +547,14 @@ class TLACDCExperiment:
         return False
 
     def find_next_node(self) -> Optional[TLACDCInterpNode]:
-        next_index = next_key(self.template_corr.graph[self.current_node.name], self.current_node.index)
+        next_index = next_key(self.corr.graph[self.current_node.name], self.current_node.index)
         if next_index is not None:
-            return self.template_corr.graph[self.current_node.name][next_index]
+            return self.corr.graph[self.current_node.name][next_index]
 
-        next_name = next_key(self.template_corr.graph, self.current_node.name)
+        next_name = next_key(self.corr.graph, self.current_node.name)
 
         if next_name is not None:
-            return list(self.template_corr.graph[next_name].values())[0]
+            return list(self.corr.graph[next_name].values())[0]
             
         warnings.warn("Finished iterating")
         return None
@@ -551,12 +567,13 @@ class TLACDCExperiment:
             print("But it's bad")
             self.increment_current_node()
 
-        self.add_node(self.current_node, safe=True)
+        if self.fast_mode:
+            self.add_node(self.current_node, safe=True)
 
     def count_no_edges(self):
         cnt = 0
 
-        for edge in self.template_corr.all_edges().values():
+        for edge in self.corr.all_edges().values():
             if edge.present and edge.edge_type != EdgeType.PLACEHOLDER:
                 cnt += 1
 

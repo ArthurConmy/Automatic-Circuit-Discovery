@@ -201,34 +201,17 @@ exp = TLACDCExperiment(
     first_cache_cpu=FIRST_CACHE_CPU,
     add_sender_hooks=True, # attempting to be efficient...
     add_receiver_hooks=False,
+    # early_stop=True,
+    hook_verbose=True,
 )
-
-# %%
-
-if False: # Stefan snippet
-    print("KL div:", exp.metric(exp.model(exp.ds)), "no_edges", exp.count_no_edges())
-
-    receiver_name = "blocks.0.hook_q_input"
-    receiver_index = TorchIndex([None, None, 3])
-    receiver_node = exp.corr.graph[receiver_name][receiver_index]
-
-    sender_name = "blocks.0.hook_resid_pre"
-    sender_index = TorchIndex([None])
-    sender_node = exp.corr.graph[sender_name][sender_index]
-
-    exp.add_sender_hook(sender_node)
-    exp.add_receiver_hook(receiver_node)
-
-    exp.corr.edges[receiver_name][receiver_index][sender_name][sender_index].present = False
-
-    print("KL div:", exp.metric(exp.model(exp.ds)), "no_edges", exp.count_no_edges())
 
 #%%
 
 for i in range(100_000):
     exp.step()
+
     show(
-        exp.template_corr,
+        exp.corr,
         f"ims/img_new_{i+1}.png",
         show_full_index=False, # hopefully works
     )
@@ -242,3 +225,5 @@ for i in range(100_000):
         break
 
 exp.save_edges("another_final_edges.pkl")
+
+# %%
