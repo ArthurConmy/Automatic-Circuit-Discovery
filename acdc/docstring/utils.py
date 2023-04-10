@@ -88,13 +88,26 @@ def get_all_docstring_things(
         return - (correct_logits.mean() - incorrect_logits.max(dim=-1).values.mean()).item()
 
     docstring_metric = partial(raw_docstring_metric, log_correct_incorrect_wandb=correct_incorrect_wandb)
-    
+
+    def ldgz_docstring_metric(
+            logits: torch.Tensor,
+            wandb_too: bool = False,
+        ):
+            """Logit diff greater zero fraction (with neg sign)"""
+            pos_logits = logits[:, -1, :]
+            max_correct, _ = torch.gather(pos_logits, index=batched_prompts.correct_tokens, dim=1).max(dim=1)
+            max_wrong, _   = torch.gather(pos_logits, index=batched_prompts.wrong_tokens,   dim=1).max(dim=1)
+            return -((max_correct - max_wrong > 0).sum()/len(max_correct)).item()
+
     if metric_name == "kl_divergence":
         metric = kl_metric
         second_metric = docstring_metric
     elif metric_name == "docstring_metric":
         metric = docstring_metric
         second_metric = kl_metric
+    elif metric_name == "docstring_stefan":
+        metric = docstring_metric
+        second_metric = ldgz_docstring_metric
     else:
         raise ValueError(f"metric_name {metric_name} not recognized")
 
