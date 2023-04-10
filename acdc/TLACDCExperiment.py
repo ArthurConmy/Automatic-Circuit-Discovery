@@ -130,6 +130,8 @@ class TLACDCExperiment:
             self.metrics_to_plot["results"] = []
             self.metrics_to_plot["acdc_step"] = 0
             self.metrics_to_plot["num_edges"] = []
+            self.metrics_to_plot["times"] = []
+            self.metrics_to_plot["times_diff"] = []
 
     def verify_model_setup(self):
         assert self.model.cfg.use_attn_result, "Need to be able to see split by head outputs"
@@ -498,6 +500,7 @@ class TLACDCExperiment:
                         parent_name = str(self.corr.graph[sender_name][sender_index]),
                         child_name = str(self.current_node),
                         result = result,
+                        times = time.time(),
                     )
 
             self.update_cur_metric()

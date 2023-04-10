@@ -241,6 +241,7 @@ def log_metrics_to_wandb(
     evaluated_metric = None,
     result = None,
     picture_fname = None,
+    times = None,
 ) -> None:
     """Arthur added Nones so that just some of the metrics can be plotted"""
 
@@ -258,24 +259,29 @@ def log_metrics_to_wandb(
         experiment.metrics_to_plot["results"].append(result)
     if experiment.skip_edges != "yes":
         experiment.metrics_to_plot["num_edges"].append(experiment.get_no_edges())
+    if times is not None:
+        experiment.metrics_to_plot["times"].append(times)
+        experiment.metrics_to_plot["times_diff"].append(times - experiment.metrics_to_plot["times"][0])
 
     experiment.metrics_to_plot["acdc_step"] += 1
     list_of_timesteps = [i + 1 for i in range(experiment.metrics_to_plot["acdc_step"])]
     if experiment.metrics_to_plot["acdc_step"] > 1:
         if result is not None:
-            do_plotly_plot_and_log(
-                experiment,
-                x=list_of_timesteps,
-                y=experiment.metrics_to_plot["results"],
-                metadata=[
-                    f"{parent_string} to {child_string}"
-                    for parent_string, child_string in zip(
-                        experiment.metrics_to_plot["list_of_parents_evaluated"],
-                        experiment.metrics_to_plot["list_of_children_evaluated"],
-                    )
-                ],
-                plot_name="results",
-            )
+            for y_name in ["results", "times_diff"]:
+                do_plotly_plot_and_log(
+                    experiment,
+                    x=list_of_timesteps,
+                    y=experiment.metrics_to_plot[y_name],
+                    metadata=[
+                        f"{parent_string} to {child_string}"
+                        for parent_string, child_string in zip(
+                            experiment.metrics_to_plot["list_of_parents_evaluated"],
+                            experiment.metrics_to_plot["list_of_children_evaluated"],
+                        )
+                    ],
+                    plot_name=y_name,
+                )
+
         if evaluated_metric is not None:
             do_plotly_plot_and_log(
                 experiment,
