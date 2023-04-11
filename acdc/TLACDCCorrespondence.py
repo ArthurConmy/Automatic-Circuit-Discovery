@@ -200,3 +200,11 @@ class TLACDCCorrespondence:
                 G.edge(sp, sc)
 
         G.render(file_name, view=True)
+
+
+    def count_no_edges(self) -> int:
+        cnt = 0
+        for edge in self.all_edges().values():
+            if edge.present and edge.edge_type != EdgeType.PLACEHOLDER:
+                cnt += 1
+        return cnt

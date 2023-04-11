@@ -532,13 +532,8 @@ class TLACDCExperiment:
             print("But it's bad")
             self.increment_current_node()
 
-    def count_no_edges(self):
-        cnt = 0
-
-        for edge in self.corr.all_edges().values():
-            if edge.present and edge.edge_type != EdgeType.PLACEHOLDER:
-                cnt += 1
-
+    def count_no_edges(self) -> int:
+        cnt = self.corr.count_no_edges()
         if self.verbose:
             print("No edge", cnt)
         return cnt
