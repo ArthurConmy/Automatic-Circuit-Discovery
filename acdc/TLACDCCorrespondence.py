@@ -58,6 +58,36 @@ class TLACDCCorrespondence:
 
         self.edges[child_node.name][child_node.index][parent_node.name][parent_node.index] = edge
     
+    def remove_edge(
+        self,
+        child_name: str,
+        child_index: TorchIndex,
+        parent_name: str,
+        parent_index: TorchIndex,
+    ):
+        try:
+            edge = self.edges[child_name][child_index][parent_name][parent_index]
+        except Exception as e:
+            print("Couldn't index in - are you sure this edge exists???")
+            raise e
+
+        edge.present=False
+        del self.edges[child_name][child_index][parent_name][parent_index]
+
+        # more efficiency things...
+        if len(self.edges[child_name][child_index][parent_name]) == 0:
+            del self.edges[child_name][child_index][parent_name]
+        if len(self.edges[child_name][child_index]) == 0:
+            del self.edges[child_name][child_index]
+        if len(self.edges[child_name]) == 0:
+            del self.edges[child_name]
+
+        parent = self.graph[parent_name][parent_index]
+        child = self.graph[child_name][child_index]
+
+        parent.children.remove(child)
+        child.parents.remove(parent)        
+
     @classmethod
     def setup_from_model(cls, model):
         correspondence = cls()
