@@ -480,7 +480,10 @@ class TLACDCExperiment:
                 if result < self.threshold:
                     print("...so removing connection")
                     self.cur_metric = evaluated_metric
-
+                    self.corr.remove_edge(
+                        self.current_node.name, self.current_node.index, sender_name, sender_index
+                    )
+                    
                 else: # include this edge in the graph
                     is_this_node_used = True
 
