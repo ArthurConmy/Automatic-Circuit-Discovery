@@ -66,7 +66,6 @@ class TLACDCExperiment:
         self.zero_ablation = zero_ablation
         self.verbose = verbose
         self.step_idx = 0
-        self.fast_mode = fast_mode
         self.hook_verbose = hook_verbose
         self.skip_edges = skip_edges
         if skip_edges != "yes":
@@ -200,9 +199,8 @@ class TLACDCExperiment:
         receiver_node_name = hook.name
 
         z[:] = self.model.global_cache.second_cache[hook.name].to(z.device) # TODO - is this slow ???
-
         for receiver_node_index in self.corr.edges[hook.name]:
-            direct_computation_nodes = []
+            direct_computation_edges = []
             for sender_node_name in self.corr.edges[hook.name][receiver_node_index]:
                 for sender_node_index in self.corr.edges[hook.name][receiver_node_index][sender_node_name]:
 
@@ -231,19 +229,19 @@ class TLACDCExperiment:
                         ][sender_node_index.as_index].to(z.device)
 
                     elif edge.edge_type == EdgeType.DIRECT_COMPUTATION:
-                        direct_computation_nodes.append(self.corr.graph[sender_node_name][sender_node_index])
-                        assert len(direct_computation_nodes) == 1, f"Found multiple direct computation nodes {direct_computation_nodes}"
+                        direct_computation_edges.append(edge)
+                        assert len(direct_computation_edges) == 1, f"Found multiple direct computation nodes {direct_computation_edges}"
 
                     else: 
                         print(edge)
                         raise ValueError(f"Unknown edge type {edge.edge_type}")
 
-                        assert len(direct_computation_nodes) == 1, f"Found multiple direct computation nodes {direct_computation_nodes}"
+                        assert len(direct_computation_edges) == 1, f"Found multiple direct computation nodes {direct_computation_edges}"
 
-        if edge.edge_type == EdgeType.DIRECT_COMPUTATION:
-            assert len(direct_computation_nodes) == 1, f"Found multiple direct computation nodes {direct_computation_nodes}"
-            if edge.present:
-                z[:] = hook.global_cache.cache[receiver_node_name][TorchIndex([None])].to(z.device)
+            if self.corr.graph[receiver_node_name][receiver_node_index].incoming_edge_type == EdgeType.DIRECT_COMPUTATION:
+                assert len(direct_computation_edges) <= 1, f"Found multiple direct computation nodes {direct_computation_edges}"
+                if len(direct_computation_edges) == 1 and direct_computation_edges[0].present:
+                    z[receiver_node_index.as_index] = hook.global_cache.cache[receiver_node_name][receiver_node_index.as_index].to(z.device)
 
         return z
 
@@ -361,8 +359,8 @@ class TLACDCExperiment:
 
         return True
 
-    def add_receiver_hook(self, node):
-        if len(self.model.hook_dict[node.name].fwd_hooks) > 0: # repeating code from add_sender_hooks
+    def add_receiver_hook(self, node, override=False):
+        if not override and len(self.model.hook_dict[node.name].fwd_hooks) > 0: # repeating code from add_sender_hooks
             for hook_func_maybe_partial in self.model.hook_dict[node.name].fwd_hook_functions:
                 hook_func_name = hook_func_maybe_partial.func.__name__ if isinstance(hook_func_maybe_partial, partial) else hook_func_maybe_partial.__name__
                 assert "receiver_hook" in hook_func_name, f"You should only add receiver hooks to {node.name}, and this: {hook_func_name} doesn't look like a receiver hook"
@@ -391,17 +389,17 @@ class TLACDCExperiment:
         if self.verbose:
             print("New metric:", cur_metric)
 
+        if self.current_node.incoming_edge_type.value == EdgeType.DIRECT_COMPUTATION.value and len(self.model.hook_dict[self.current_node.name].fwd_hooks) == 0:
+            # Add this node as a sender hook, now
+            added_sender_hook = self.add_sender_hook(self.current_node)
+
         if self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value:
             # Add this node as a receiver hook, now
-            added_receiver_hook = self.add_receiver_hook(self.current_node)
+            added_receiver_hook = self.add_receiver_hook(self.current_node, override=True)
             if added_receiver_hook:
                 added_receiver_hook = self.model.hook_dict[self.current_node.name].fwd_hooks[-1]
         else:
             added_receiver_hook = False
-
-        if self.current_node.incoming_edge_type.value == EdgeType.DIRECT_COMPUTATION.value:
-            # Add this node as a sender hook, now
-            added_sender_hook = self.add_sender_hook(self.current_node)
 
         is_this_node_used = False
         sender_names_list = list(self.corr.edges[self.current_node.name][self.current_node.index])
