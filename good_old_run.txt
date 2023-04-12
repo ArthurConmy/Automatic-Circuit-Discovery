@@ -1,0 +1,1972 @@
+No edge 305
+New metric: 0.0
+
+Node: cur_parent=TLACDCInterpNode(blocks.1.attn.hook_result, [COL, COL, 7]) (self.current_node=TLACDCInterpNode(blocks.1.hook_resid_post, [COL]))
+
+No edge 304
+Metric after removing connection to blocks.1.attn.hook_result [COL, COL, 7] is 0.025931857526302338 (and current metric 0.0)
+Result is 0.025931857526302338...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.1.attn.hook_result, [COL, COL, 6]) (self.current_node=TLACDCInterpNode(blocks.1.hook_resid_post, [COL]))
+
+No edge 303
+Metric after removing connection to blocks.1.attn.hook_result [COL, COL, 6] is 0.41185447573661804 (and current metric 0.0)
+Result is 0.3859226182103157...so keeping connection
+No edge 304
+
+Node: cur_parent=TLACDCInterpNode(blocks.1.attn.hook_result, [COL, COL, 5]) (self.current_node=TLACDCInterpNode(blocks.1.hook_resid_post, [COL]))
+
+No edge 303
+Metric after removing connection to blocks.1.attn.hook_result [COL, COL, 5] is 0.6414362788200378 (and current metric 0.0)
+Result is 0.2295818030834198...so keeping connection
+No edge 304
+
+Node: cur_parent=TLACDCInterpNode(blocks.1.attn.hook_result, [COL, COL, 4]) (self.current_node=TLACDCInterpNode(blocks.1.hook_resid_post, [COL]))
+
+No edge 303
+Metric after removing connection to blocks.1.attn.hook_result [COL, COL, 4] is 0.03936678543686867 (and current metric 0.0)
+Result is -0.6020694933831692...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.1.attn.hook_result, [COL, COL, 3]) (self.current_node=TLACDCInterpNode(blocks.1.hook_resid_post, [COL]))
+
+No edge 302
+Metric after removing connection to blocks.1.attn.hook_result [COL, COL, 3] is 0.07190770655870438 (and current metric 0.0)
+Result is 0.03254092112183571...so keeping connection
+No edge 303
+
+Node: cur_parent=TLACDCInterpNode(blocks.1.attn.hook_result, [COL, COL, 2]) (self.current_node=TLACDCInterpNode(blocks.1.hook_resid_post, [COL]))
+
+No edge 302
+Metric after removing connection to blocks.1.attn.hook_result [COL, COL, 2] is 0.054511766880750656 (and current metric 0.0)
+Result is -0.01739593967795372...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.1.attn.hook_result, [COL, COL, 1]) (self.current_node=TLACDCInterpNode(blocks.1.hook_resid_post, [COL]))
+
+No edge 301
+Metric after removing connection to blocks.1.attn.hook_result [COL, COL, 1] is 0.07972753793001175 (and current metric 0.0)
+Result is 0.025215771049261093...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.1.attn.hook_result, [COL, COL, 0]) (self.current_node=TLACDCInterpNode(blocks.1.hook_resid_post, [COL]))
+
+No edge 300
+Metric after removing connection to blocks.1.attn.hook_result [COL, COL, 0] is 0.11955901980400085 (and current metric 0.0)
+Result is 0.039831481873989105...so keeping connection
+No edge 301
+No edge 301
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 7]) (self.current_node=TLACDCInterpNode(blocks.1.hook_resid_post, [COL]))
+
+No edge 300
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 7] is 0.0942968875169754 (and current metric 0.0)
+Result is 0.014569349586963654...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 6]) (self.current_node=TLACDCInterpNode(blocks.1.hook_resid_post, [COL]))
+
+No edge 299
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 6] is 0.11984864622354507 (and current metric 0.0)
+Result is 0.02555175870656967...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 5]) (self.current_node=TLACDCInterpNode(blocks.1.hook_resid_post, [COL]))
+
+No edge 298
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 5] is 0.17966997623443604 (and current metric 0.0)
+Result is 0.05982133001089096...so keeping connection
+No edge 299
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 4]) (self.current_node=TLACDCInterpNode(blocks.1.hook_resid_post, [COL]))
+
+No edge 298
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 4] is 0.17716529965400696 (and current metric 0.0)
+Result is -0.002504676580429077...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 3]) (self.current_node=TLACDCInterpNode(blocks.1.hook_resid_post, [COL]))
+
+No edge 297
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 3] is 0.23905391991138458 (and current metric 0.0)
+Result is 0.061888620257377625...so keeping connection
+No edge 298
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 2]) (self.current_node=TLACDCInterpNode(blocks.1.hook_resid_post, [COL]))
+
+No edge 297
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 2] is 0.23955118656158447 (and current metric 0.0)
+Result is 0.0004972666501998901...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 1]) (self.current_node=TLACDCInterpNode(blocks.1.hook_resid_post, [COL]))
+
+No edge 296
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 1] is 0.38220807909965515 (and current metric 0.0)
+Result is 0.14265689253807068...so keeping connection
+No edge 297
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 0]) (self.current_node=TLACDCInterpNode(blocks.1.hook_resid_post, [COL]))
+
+No edge 296
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 0] is 0.26593783497810364 (and current metric 0.0)
+Result is -0.11627024412155151...so removing connection
+No edge 296
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.1.hook_resid_post, [COL]))
+
+No edge 295
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 0.6917608380317688 (and current metric 0.0)
+Result is 0.42582300305366516...so keeping connection
+No edge 296
+No edge 296
+We moved to  blocks.1.attn.hook_result[COL, COL, 7]
+No edge 296
+No edge 296
+No edge 296
+No edge 296
+But it's bad
+We moved to  blocks.1.attn.hook_result[COL, COL, 6]
+No edge 296
+0 --------------------------------------------------
+No edge 296
+296
+No edge 296
+New metric: 0.26593783497810364
+No edge 296
+No edge 296
+No edge 296
+We moved to  blocks.1.attn.hook_result[COL, COL, 5]
+No edge 296
+1 --------------------------------------------------
+No edge 296
+296
+No edge 296
+New metric: 0.26593783497810364
+No edge 296
+No edge 296
+No edge 296
+We moved to  blocks.1.attn.hook_result[COL, COL, 4]
+No edge 296
+No edge 296
+No edge 296
+No edge 296
+But it's bad
+We moved to  blocks.1.attn.hook_result[COL, COL, 3]
+No edge 296
+2 --------------------------------------------------
+No edge 296
+296
+No edge 296
+New metric: 0.26593783497810364
+No edge 296
+No edge 296
+No edge 296
+We moved to  blocks.1.attn.hook_result[COL, COL, 2]
+No edge 296
+No edge 296
+No edge 296
+No edge 296
+But it's bad
+We moved to  blocks.1.attn.hook_result[COL, COL, 1]
+No edge 296
+No edge 296
+No edge 296
+No edge 296
+But it's bad
+We moved to  blocks.1.attn.hook_result[COL, COL, 0]
+No edge 296
+3 --------------------------------------------------
+No edge 296
+296
+No edge 296
+New metric: 0.26593783497810364
+No edge 296
+No edge 296
+No edge 296
+We moved to  blocks.1.attn.hook_v[COL, COL, 7]
+No edge 296
+No edge 295
+But it's bad
+We moved to  blocks.1.attn.hook_v[COL, COL, 6]
+No edge 295
+4 --------------------------------------------------
+No edge 295
+295
+No edge 295
+New metric: 0.26593783497810364
+
+Node: cur_parent=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 6]) (self.current_node=TLACDCInterpNode(blocks.1.attn.hook_v, [COL, COL, 6]))
+
+No edge 294
+Metric after removing connection to blocks.1.hook_v_input [COL, COL, 6] is 2.3927226066589355 (and current metric 0.26593783497810364)
+Result is 2.126784771680832...so keeping connection
+No edge 295
+No edge 295
+We moved to  blocks.1.attn.hook_v[COL, COL, 5]
+No edge 295
+5 --------------------------------------------------
+No edge 295
+295
+No edge 295
+New metric: 0.265937864780426
+
+Node: cur_parent=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 5]) (self.current_node=TLACDCInterpNode(blocks.1.attn.hook_v, [COL, COL, 5]))
+
+No edge 294
+Metric after removing connection to blocks.1.hook_v_input [COL, COL, 5] is 2.3668107986450195 (and current metric 0.265937864780426)
+Result is 2.1008729338645935...so keeping connection
+No edge 295
+No edge 295
+We moved to  blocks.1.attn.hook_v[COL, COL, 4]
+No edge 295
+No edge 294
+But it's bad
+We moved to  blocks.1.attn.hook_v[COL, COL, 3]
+No edge 294
+6 --------------------------------------------------
+No edge 294
+294
+No edge 294
+New metric: 0.26593780517578125
+
+Node: cur_parent=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 3]) (self.current_node=TLACDCInterpNode(blocks.1.attn.hook_v, [COL, COL, 3]))
+
+No edge 293
+Metric after removing connection to blocks.1.hook_v_input [COL, COL, 3] is 0.313495010137558 (and current metric 0.26593780517578125)
+Result is 0.04755720496177673...so keeping connection
+No edge 294
+No edge 294
+We moved to  blocks.1.attn.hook_v[COL, COL, 2]
+No edge 294
+No edge 293
+But it's bad
+We moved to  blocks.1.attn.hook_v[COL, COL, 1]
+No edge 293
+No edge 292
+But it's bad
+We moved to  blocks.1.attn.hook_v[COL, COL, 0]
+No edge 292
+7 --------------------------------------------------
+No edge 292
+292
+No edge 292
+New metric: 0.265937864780426
+
+Node: cur_parent=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 0]) (self.current_node=TLACDCInterpNode(blocks.1.attn.hook_v, [COL, COL, 0]))
+
+No edge 291
+Metric after removing connection to blocks.1.hook_v_input [COL, COL, 0] is 0.3756619393825531 (and current metric 0.265937864780426)
+Result is 0.10972407460212708...so keeping connection
+No edge 292
+No edge 292
+We moved to  blocks.1.attn.hook_k[COL, COL, 7]
+No edge 292
+No edge 291
+But it's bad
+We moved to  blocks.1.attn.hook_k[COL, COL, 6]
+No edge 291
+8 --------------------------------------------------
+No edge 291
+291
+No edge 291
+New metric: 0.265937864780426
+
+Node: cur_parent=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 6]) (self.current_node=TLACDCInterpNode(blocks.1.attn.hook_k, [COL, COL, 6]))
+
+No edge 290
+Metric after removing connection to blocks.1.hook_k_input [COL, COL, 6] is 1.1569877862930298 (and current metric 0.265937864780426)
+Result is 0.8910499215126038...so keeping connection
+No edge 291
+No edge 291
+We moved to  blocks.1.attn.hook_k[COL, COL, 5]
+No edge 291
+9 --------------------------------------------------
+No edge 291
+291
+No edge 291
+New metric: 0.265937864780426
+
+Node: cur_parent=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 5]) (self.current_node=TLACDCInterpNode(blocks.1.attn.hook_k, [COL, COL, 5]))
+
+No edge 290
+Metric after removing connection to blocks.1.hook_k_input [COL, COL, 5] is 1.2136770486831665 (and current metric 0.265937864780426)
+Result is 0.9477391839027405...so keeping connection
+No edge 291
+No edge 291
+We moved to  blocks.1.attn.hook_k[COL, COL, 4]
+No edge 291
+No edge 290
+But it's bad
+We moved to  blocks.1.attn.hook_k[COL, COL, 3]
+No edge 290
+10 --------------------------------------------------
+No edge 290
+290
+No edge 290
+New metric: 0.265937864780426
+
+Node: cur_parent=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 3]) (self.current_node=TLACDCInterpNode(blocks.1.attn.hook_k, [COL, COL, 3]))
+
+No edge 289
+Metric after removing connection to blocks.1.hook_k_input [COL, COL, 3] is 0.31128373742103577 (and current metric 0.265937864780426)
+Result is 0.04534587264060974...so keeping connection
+No edge 290
+No edge 290
+We moved to  blocks.1.attn.hook_k[COL, COL, 2]
+No edge 290
+No edge 289
+But it's bad
+We moved to  blocks.1.attn.hook_k[COL, COL, 1]
+No edge 289
+No edge 288
+But it's bad
+We moved to  blocks.1.attn.hook_k[COL, COL, 0]
+No edge 288
+11 --------------------------------------------------
+No edge 288
+288
+No edge 288
+New metric: 0.265937864780426
+
+Node: cur_parent=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 0]) (self.current_node=TLACDCInterpNode(blocks.1.attn.hook_k, [COL, COL, 0]))
+
+No edge 287
+Metric after removing connection to blocks.1.hook_k_input [COL, COL, 0] is 0.29154327511787415 (and current metric 0.265937864780426)
+Result is 0.02560541033744812...so removing connection
+No edge 287
+We moved to  blocks.1.attn.hook_q[COL, COL, 7]
+No edge 287
+No edge 286
+But it's bad
+We moved to  blocks.1.attn.hook_q[COL, COL, 6]
+No edge 286
+12 --------------------------------------------------
+No edge 286
+286
+No edge 286
+New metric: 0.29154327511787415
+
+Node: cur_parent=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 6]) (self.current_node=TLACDCInterpNode(blocks.1.attn.hook_q, [COL, COL, 6]))
+
+No edge 285
+Metric after removing connection to blocks.1.hook_q_input [COL, COL, 6] is 1.261826515197754 (and current metric 0.29154327511787415)
+Result is 0.9702832400798798...so keeping connection
+No edge 286
+No edge 286
+We moved to  blocks.1.attn.hook_q[COL, COL, 5]
+No edge 286
+13 --------------------------------------------------
+No edge 286
+286
+No edge 286
+New metric: 0.29154330492019653
+
+Node: cur_parent=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 5]) (self.current_node=TLACDCInterpNode(blocks.1.attn.hook_q, [COL, COL, 5]))
+
+No edge 285
+Metric after removing connection to blocks.1.hook_q_input [COL, COL, 5] is 1.256067156791687 (and current metric 0.29154330492019653)
+Result is 0.9645238518714905...so keeping connection
+No edge 286
+No edge 286
+We moved to  blocks.1.attn.hook_q[COL, COL, 4]
+No edge 286
+No edge 285
+But it's bad
+We moved to  blocks.1.attn.hook_q[COL, COL, 3]
+No edge 285
+14 --------------------------------------------------
+No edge 285
+285
+No edge 285
+New metric: 0.2915433645248413
+
+Node: cur_parent=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 3]) (self.current_node=TLACDCInterpNode(blocks.1.attn.hook_q, [COL, COL, 3]))
+
+No edge 284
+Metric after removing connection to blocks.1.hook_q_input [COL, COL, 3] is 0.35539916157722473 (and current metric 0.2915433645248413)
+Result is 0.06385579705238342...so keeping connection
+No edge 285
+No edge 285
+We moved to  blocks.1.attn.hook_q[COL, COL, 2]
+No edge 285
+No edge 284
+But it's bad
+We moved to  blocks.1.attn.hook_q[COL, COL, 1]
+No edge 284
+No edge 283
+But it's bad
+We moved to  blocks.1.attn.hook_q[COL, COL, 0]
+No edge 283
+15 --------------------------------------------------
+No edge 283
+283
+No edge 283
+New metric: 0.2915433645248413
+
+Node: cur_parent=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 0]) (self.current_node=TLACDCInterpNode(blocks.1.attn.hook_q, [COL, COL, 0]))
+
+No edge 282
+Metric after removing connection to blocks.1.hook_q_input [COL, COL, 0] is 0.2928593158721924 (and current metric 0.2915433645248413)
+Result is 0.0013159513473510742...so removing connection
+No edge 282
+We moved to  blocks.1.hook_v_input[COL, COL, 7]
+No edge 282
+No edge 281
+No edge 280
+No edge 279
+No edge 278
+No edge 277
+No edge 276
+No edge 275
+No edge 274
+No edge 273
+But it's bad
+We moved to  blocks.1.hook_v_input[COL, COL, 6]
+No edge 273
+16 --------------------------------------------------
+No edge 273
+273
+No edge 273
+New metric: 0.2928593158721924
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 7]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 6]))
+
+No edge 272
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 7] is 0.2941420078277588 (and current metric 0.2928593158721924)
+Result is 0.0012826919555664062...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 6]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 6]))
+
+No edge 271
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 6] is 0.28892621397972107 (and current metric 0.2928593158721924)
+Result is -0.00521579384803772...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 5]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 6]))
+
+No edge 270
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 5] is 0.3031578063964844 (and current metric 0.2928593158721924)
+Result is 0.014231592416763306...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 4]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 6]))
+
+No edge 269
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 4] is 0.3136098384857178 (and current metric 0.2928593158721924)
+Result is 0.010452032089233398...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 3]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 6]))
+
+No edge 268
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 3] is 0.39133673906326294 (and current metric 0.2928593158721924)
+Result is 0.07772690057754517...so keeping connection
+No edge 269
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 2]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 6]))
+
+No edge 268
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 2] is 0.3833475410938263 (and current metric 0.2928593158721924)
+Result is -0.007989197969436646...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 1]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 6]))
+
+No edge 267
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 1] is 0.5072435140609741 (and current metric 0.2928593158721924)
+Result is 0.12389597296714783...so keeping connection
+No edge 268
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 0]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 6]))
+
+No edge 267
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 0] is 0.3673422336578369 (and current metric 0.2928593158721924)
+Result is -0.1399012804031372...so removing connection
+No edge 267
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 6]))
+
+No edge 266
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 1.5541614294052124 (and current metric 0.2928593158721924)
+Result is 1.1868191957473755...so keeping connection
+No edge 267
+No edge 267
+We moved to  blocks.1.hook_v_input[COL, COL, 5]
+No edge 267
+17 --------------------------------------------------
+No edge 267
+267
+No edge 267
+New metric: 0.3673422336578369
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 7]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 5]))
+
+No edge 266
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 7] is 0.3682296574115753 (and current metric 0.3673422336578369)
+Result is 0.0008874237537384033...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 6]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 5]))
+
+No edge 265
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 6] is 0.368287056684494 (and current metric 0.3673422336578369)
+Result is 5.739927291870117e-05...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 5]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 5]))
+
+No edge 264
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 5] is 0.42754241824150085 (and current metric 0.3673422336578369)
+Result is 0.059255361557006836...so keeping connection
+No edge 265
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 4]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 5]))
+
+No edge 264
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 4] is 0.36935561895370483 (and current metric 0.3673422336578369)
+Result is -0.05818679928779602...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 3]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 5]))
+
+No edge 263
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 3] is 0.4369537830352783 (and current metric 0.3673422336578369)
+Result is 0.06759816408157349...so keeping connection
+No edge 264
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 2]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 5]))
+
+No edge 263
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 2] is 0.43322667479515076 (and current metric 0.3673422336578369)
+Result is -0.0037271082401275635...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 1]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 5]))
+
+No edge 262
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 1] is 0.5376579761505127 (and current metric 0.3673422336578369)
+Result is 0.10443130135536194...so keeping connection
+No edge 263
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 0]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 5]))
+
+No edge 262
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 0] is 0.42536652088165283 (and current metric 0.3673422336578369)
+Result is -0.11229145526885986...so removing connection
+No edge 262
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 5]))
+
+No edge 261
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 1.7087597846984863 (and current metric 0.3673422336578369)
+Result is 1.2833932638168335...so keeping connection
+No edge 262
+No edge 262
+We moved to  blocks.1.hook_v_input[COL, COL, 4]
+No edge 262
+No edge 261
+No edge 260
+No edge 259
+No edge 258
+No edge 257
+No edge 256
+No edge 255
+No edge 254
+No edge 253
+But it's bad
+We moved to  blocks.1.hook_v_input[COL, COL, 3]
+No edge 253
+18 --------------------------------------------------
+No edge 253
+253
+No edge 253
+New metric: 0.42536652088165283
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 7]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 3]))
+
+No edge 252
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 7] is 0.42887067794799805 (and current metric 0.42536652088165283)
+Result is 0.003504157066345215...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 6]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 3]))
+
+No edge 251
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 6] is 0.4232921302318573 (and current metric 0.42536652088165283)
+Result is -0.005578547716140747...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 5]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 3]))
+
+No edge 250
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 5] is 0.4317038059234619 (and current metric 0.42536652088165283)
+Result is 0.008411675691604614...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 4]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 3]))
+
+No edge 249
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 4] is 0.4449729025363922 (and current metric 0.42536652088165283)
+Result is 0.013269096612930298...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 3]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 3]))
+
+No edge 248
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 3] is 0.4439069330692291 (and current metric 0.42536652088165283)
+Result is -0.001065969467163086...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 2]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 3]))
+
+No edge 247
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 2] is 0.45085594058036804 (and current metric 0.42536652088165283)
+Result is 0.006949007511138916...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 1]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 3]))
+
+No edge 246
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 1] is 0.4668862223625183 (and current metric 0.42536652088165283)
+Result is 0.01603028178215027...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 0]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 3]))
+
+No edge 245
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 0] is 0.470130056142807 (and current metric 0.42536652088165283)
+Result is 0.0032438337802886963...so removing connection
+No edge 245
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 3]))
+
+No edge 244
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 0.5046969056129456 (and current metric 0.42536652088165283)
+Result is 0.03456684947013855...so keeping connection
+No edge 245
+No edge 245
+We moved to  blocks.1.hook_v_input[COL, COL, 2]
+No edge 245
+No edge 244
+No edge 243
+No edge 242
+No edge 241
+No edge 240
+No edge 239
+No edge 238
+No edge 237
+No edge 236
+But it's bad
+We moved to  blocks.1.hook_v_input[COL, COL, 1]
+No edge 236
+No edge 235
+No edge 234
+No edge 233
+No edge 232
+No edge 231
+No edge 230
+No edge 229
+No edge 228
+No edge 227
+But it's bad
+We moved to  blocks.1.hook_v_input[COL, COL, 0]
+No edge 227
+19 --------------------------------------------------
+No edge 227
+227
+No edge 227
+New metric: 0.470130056142807
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 7]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 0]))
+
+No edge 226
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 7] is 0.4856880307197571 (and current metric 0.470130056142807)
+Result is 0.015557974576950073...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 6]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 0]))
+
+No edge 225
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 6] is 0.4858624339103699 (and current metric 0.470130056142807)
+Result is 0.00017440319061279297...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 5]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 0]))
+
+No edge 224
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 5] is 0.48832497000694275 (and current metric 0.470130056142807)
+Result is 0.002462536096572876...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 4]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 0]))
+
+No edge 223
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 4] is 0.5057026147842407 (and current metric 0.470130056142807)
+Result is 0.017377644777297974...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 3]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 0]))
+
+No edge 222
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 3] is 0.5071421265602112 (and current metric 0.470130056142807)
+Result is 0.001439511775970459...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 2]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 0]))
+
+No edge 221
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 2] is 0.5172079205513 (and current metric 0.470130056142807)
+Result is 0.010065793991088867...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 1]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 0]))
+
+No edge 220
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 1] is 0.515099823474884 (and current metric 0.470130056142807)
+Result is -0.0021080970764160156...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 0]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 0]))
+
+No edge 219
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 0] is 0.5199148058891296 (and current metric 0.470130056142807)
+Result is 0.0048149824142456055...so removing connection
+No edge 219
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.1.hook_v_input, [COL, COL, 0]))
+
+No edge 218
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 0.5812515020370483 (and current metric 0.470130056142807)
+Result is 0.0613366961479187...so keeping connection
+No edge 219
+No edge 219
+We moved to  blocks.1.hook_k_input[COL, COL, 7]
+No edge 219
+No edge 218
+No edge 217
+No edge 216
+No edge 215
+No edge 214
+No edge 213
+No edge 212
+No edge 211
+No edge 210
+But it's bad
+We moved to  blocks.1.hook_k_input[COL, COL, 6]
+No edge 210
+20 --------------------------------------------------
+No edge 210
+210
+No edge 210
+New metric: 0.5199148058891296
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 7]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 6]))
+
+No edge 209
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 7] is 0.5069161057472229 (and current metric 0.5199148058891296)
+Result is -0.012998700141906738...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 6]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 6]))
+
+No edge 208
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 6] is 0.8404916524887085 (and current metric 0.5199148058891296)
+Result is 0.3335755467414856...so keeping connection
+No edge 209
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 5]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 6]))
+
+No edge 208
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 5] is 0.4893447756767273 (and current metric 0.5199148058891296)
+Result is -0.3511468768119812...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 4]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 6]))
+
+No edge 207
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 4] is 0.48330551385879517 (and current metric 0.5199148058891296)
+Result is -0.006039261817932129...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 3]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 6]))
+
+No edge 206
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 3] is 0.4754827916622162 (and current metric 0.5199148058891296)
+Result is -0.00782272219657898...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 2]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 6]))
+
+No edge 205
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 2] is 0.4738900661468506 (and current metric 0.5199148058891296)
+Result is -0.0015927255153656006...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 1]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 6]))
+
+No edge 204
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 1] is 0.47669845819473267 (and current metric 0.5199148058891296)
+Result is 0.00280839204788208...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 0]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 6]))
+
+No edge 203
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 0] is 1.621313214302063 (and current metric 0.5199148058891296)
+Result is 1.1446147561073303...so keeping connection
+No edge 204
+No edge 204
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 6]))
+
+No edge 203
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 0.49008527398109436 (and current metric 0.5199148058891296)
+Result is 0.013386815786361694...so removing connection
+No edge 203
+We moved to  blocks.1.hook_k_input[COL, COL, 5]
+No edge 203
+21 --------------------------------------------------
+No edge 203
+203
+No edge 203
+New metric: 0.49008527398109436
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 7]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 5]))
+
+No edge 202
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 7] is 0.48053237795829773 (and current metric 0.49008527398109436)
+Result is -0.00955289602279663...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 6]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 5]))
+
+No edge 201
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 6] is 0.8227183222770691 (and current metric 0.49008527398109436)
+Result is 0.34218594431877136...so keeping connection
+No edge 202
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 5]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 5]))
+
+No edge 201
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 5] is 0.48000356554985046 (and current metric 0.49008527398109436)
+Result is -0.34271475672721863...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 4]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 5]))
+
+No edge 200
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 4] is 0.4778982400894165 (and current metric 0.49008527398109436)
+Result is -0.00210532546043396...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 3]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 5]))
+
+No edge 199
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 3] is 0.4791835844516754 (and current metric 0.49008527398109436)
+Result is 0.0012853443622589111...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 2]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 5]))
+
+No edge 198
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 2] is 0.5242874026298523 (and current metric 0.49008527398109436)
+Result is 0.04510381817817688...so keeping connection
+No edge 199
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 1]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 5]))
+
+No edge 198
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 1] is 0.5117698907852173 (and current metric 0.49008527398109436)
+Result is -0.01251751184463501...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 0]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 5]))
+
+No edge 197
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 0] is 1.939611554145813 (and current metric 0.49008527398109436)
+Result is 1.4278416633605957...so keeping connection
+No edge 198
+No edge 198
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 5]))
+
+No edge 197
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 0.6084388494491577 (and current metric 0.49008527398109436)
+Result is 0.09666895866394043...so keeping connection
+No edge 198
+No edge 198
+We moved to  blocks.1.hook_k_input[COL, COL, 4]
+No edge 198
+No edge 197
+No edge 196
+No edge 195
+No edge 194
+No edge 193
+No edge 192
+No edge 191
+No edge 190
+No edge 189
+But it's bad
+We moved to  blocks.1.hook_k_input[COL, COL, 3]
+No edge 189
+22 --------------------------------------------------
+No edge 189
+189
+No edge 189
+New metric: 0.5117698907852173
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 7]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 3]))
+
+No edge 188
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 7] is 0.5143282413482666 (and current metric 0.5117698907852173)
+Result is 0.0025583505630493164...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 6]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 3]))
+
+No edge 187
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 6] is 0.5164424180984497 (and current metric 0.5117698907852173)
+Result is 0.0021141767501831055...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 5]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 3]))
+
+No edge 186
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 5] is 0.513495683670044 (and current metric 0.5117698907852173)
+Result is -0.0029467344284057617...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 4]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 3]))
+
+No edge 185
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 4] is 0.5116994380950928 (and current metric 0.5117698907852173)
+Result is -0.0017962455749511719...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 3]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 3]))
+
+No edge 184
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 3] is 0.5141403675079346 (and current metric 0.5117698907852173)
+Result is 0.002440929412841797...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 2]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 3]))
+
+No edge 183
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 2] is 0.5087977051734924 (and current metric 0.5117698907852173)
+Result is -0.005342662334442139...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 1]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 3]))
+
+No edge 182
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 1] is 0.5104959011077881 (and current metric 0.5117698907852173)
+Result is 0.0016981959342956543...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 0]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 3]))
+
+No edge 181
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 0] is 0.5067391991615295 (and current metric 0.5117698907852173)
+Result is -0.003756701946258545...so removing connection
+No edge 181
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.1.hook_k_input, [COL, COL, 3]))
+
+No edge 180
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 0.545669436454773 (and current metric 0.5117698907852173)
+Result is 0.03893023729324341...so keeping connection
+No edge 181
+No edge 181
+We moved to  blocks.1.hook_k_input[COL, COL, 2]
+No edge 181
+No edge 180
+No edge 179
+No edge 178
+No edge 177
+No edge 176
+No edge 175
+No edge 174
+No edge 173
+No edge 172
+But it's bad
+We moved to  blocks.1.hook_k_input[COL, COL, 1]
+No edge 172
+No edge 171
+No edge 170
+No edge 169
+No edge 168
+No edge 167
+No edge 166
+No edge 165
+No edge 164
+No edge 163
+But it's bad
+We moved to  blocks.1.hook_k_input[COL, COL, 0]
+No edge 163
+No edge 162
+No edge 161
+No edge 160
+No edge 159
+No edge 158
+No edge 157
+No edge 156
+No edge 155
+No edge 154
+But it's bad
+We moved to  blocks.1.hook_q_input[COL, COL, 7]
+No edge 154
+No edge 153
+No edge 152
+No edge 151
+No edge 150
+No edge 149
+No edge 148
+No edge 147
+No edge 146
+No edge 145
+But it's bad
+We moved to  blocks.1.hook_q_input[COL, COL, 6]
+No edge 145
+23 --------------------------------------------------
+No edge 145
+145
+No edge 145
+New metric: 0.5067391991615295
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 7]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 6]))
+
+No edge 144
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 7] is 0.5029609203338623 (and current metric 0.5067391991615295)
+Result is -0.0037782788276672363...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 6]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 6]))
+
+No edge 143
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 6] is 0.6892014741897583 (and current metric 0.5067391991615295)
+Result is 0.186240553855896...so keeping connection
+No edge 144
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 5]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 6]))
+
+No edge 143
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 5] is 0.6025773882865906 (and current metric 0.5067391991615295)
+Result is -0.08662408590316772...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 4]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 6]))
+
+No edge 142
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 4] is 0.6234555244445801 (and current metric 0.5067391991615295)
+Result is 0.020878136157989502...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 3]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 6]))
+
+No edge 141
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 3] is 0.7323834300041199 (and current metric 0.5067391991615295)
+Result is 0.1089279055595398...so keeping connection
+No edge 142
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 2]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 6]))
+
+No edge 141
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 2] is 0.8247866630554199 (and current metric 0.5067391991615295)
+Result is 0.09240323305130005...so keeping connection
+No edge 142
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 1]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 6]))
+
+No edge 141
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 1] is 0.748228132724762 (and current metric 0.5067391991615295)
+Result is -0.07655853033065796...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 0]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 6]))
+
+No edge 140
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 0] is 0.8608441352844238 (and current metric 0.5067391991615295)
+Result is 0.11261600255966187...so keeping connection
+No edge 141
+No edge 141
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 6]))
+
+No edge 140
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 1.6153769493103027 (and current metric 0.5067391991615295)
+Result is 0.8671488165855408...so keeping connection
+No edge 141
+No edge 141
+We moved to  blocks.1.hook_q_input[COL, COL, 5]
+No edge 141
+24 --------------------------------------------------
+No edge 141
+141
+No edge 141
+New metric: 0.748228132724762
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 7]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 5]))
+
+No edge 140
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 7] is 0.7352543473243713 (and current metric 0.748228132724762)
+Result is -0.012973785400390625...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 6]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 5]))
+
+No edge 139
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 6] is 0.8614030480384827 (and current metric 0.748228132724762)
+Result is 0.12614870071411133...so keeping connection
+No edge 140
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 5]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 5]))
+
+No edge 139
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 5] is 0.8854023814201355 (and current metric 0.748228132724762)
+Result is 0.023999333381652832...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 4]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 5]))
+
+No edge 138
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 4] is 0.9444214105606079 (and current metric 0.748228132724762)
+Result is 0.05901902914047241...so keeping connection
+No edge 139
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 3]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 5]))
+
+No edge 138
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 3] is 1.0323967933654785 (and current metric 0.748228132724762)
+Result is 0.0879753828048706...so keeping connection
+No edge 139
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 2]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 5]))
+
+No edge 138
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 2] is 1.2269021272659302 (and current metric 0.748228132724762)
+Result is 0.19450533390045166...so keeping connection
+No edge 139
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 1]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 5]))
+
+No edge 138
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 1] is 1.1428436040878296 (and current metric 0.748228132724762)
+Result is -0.08405852317810059...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 0]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 5]))
+
+No edge 137
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 0] is 1.2539316415786743 (and current metric 0.748228132724762)
+Result is 0.11108803749084473...so keeping connection
+No edge 138
+No edge 138
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 5]))
+
+No edge 137
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 2.639355421066284 (and current metric 0.748228132724762)
+Result is 1.4965118169784546...so keeping connection
+No edge 138
+No edge 138
+We moved to  blocks.1.hook_q_input[COL, COL, 4]
+No edge 138
+No edge 137
+No edge 136
+No edge 135
+No edge 134
+No edge 133
+No edge 132
+No edge 131
+No edge 130
+No edge 129
+But it's bad
+We moved to  blocks.1.hook_q_input[COL, COL, 3]
+No edge 129
+25 --------------------------------------------------
+No edge 129
+129
+No edge 129
+New metric: 1.1428436040878296
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 7]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 3]))
+
+No edge 128
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 7] is 1.1468901634216309 (and current metric 1.1428436040878296)
+Result is 0.0040465593338012695...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 6]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 3]))
+
+No edge 127
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 6] is 1.1657503843307495 (and current metric 1.1428436040878296)
+Result is 0.018860220909118652...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 5]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 3]))
+
+No edge 126
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 5] is 1.1674153804779053 (and current metric 1.1428436040878296)
+Result is 0.0016649961471557617...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 4]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 3]))
+
+No edge 125
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 4] is 1.1622122526168823 (and current metric 1.1428436040878296)
+Result is -0.005203127861022949...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 3]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 3]))
+
+No edge 124
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 3] is 1.172849178314209 (and current metric 1.1428436040878296)
+Result is 0.01063692569732666...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 2]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 3]))
+
+No edge 123
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 2] is 1.1791296005249023 (and current metric 1.1428436040878296)
+Result is 0.006280422210693359...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 1]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 3]))
+
+No edge 122
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 1] is 1.187723994255066 (and current metric 1.1428436040878296)
+Result is 0.008594393730163574...so removing connection
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.attn.hook_result, [COL, COL, 0]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 3]))
+
+No edge 121
+Metric after removing connection to blocks.0.attn.hook_result [COL, COL, 0] is 1.1929028034210205 (and current metric 1.1428436040878296)
+Result is 0.00517880916595459...so removing connection
+No edge 121
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.1.hook_q_input, [COL, COL, 3]))
+
+No edge 120
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 1.2226966619491577 (and current metric 1.1428436040878296)
+Result is 0.029793858528137207...so removing connection
+No edge 120
+We moved to  blocks.1.hook_q_input[COL, COL, 2]
+No edge 120
+No edge 119
+No edge 118
+No edge 117
+No edge 116
+No edge 115
+No edge 114
+No edge 113
+No edge 112
+No edge 111
+But it's bad
+We moved to  blocks.1.hook_q_input[COL, COL, 1]
+No edge 111
+No edge 110
+No edge 109
+No edge 108
+No edge 107
+No edge 106
+No edge 105
+No edge 104
+No edge 103
+No edge 102
+But it's bad
+We moved to  blocks.1.hook_q_input[COL, COL, 0]
+No edge 102
+No edge 101
+No edge 100
+No edge 99
+No edge 98
+No edge 97
+No edge 96
+No edge 95
+No edge 94
+No edge 93
+But it's bad
+We moved to  blocks.0.attn.hook_result[COL, COL, 7]
+No edge 93
+No edge 93
+No edge 93
+No edge 93
+But it's bad
+We moved to  blocks.0.attn.hook_result[COL, COL, 6]
+No edge 93
+26 --------------------------------------------------
+No edge 93
+93
+No edge 93
+New metric: 1.2226966619491577
+No edge 93
+No edge 93
+No edge 93
+We moved to  blocks.0.attn.hook_result[COL, COL, 5]
+No edge 93
+27 --------------------------------------------------
+No edge 93
+93
+No edge 93
+New metric: 1.2226966619491577
+No edge 93
+No edge 93
+No edge 93
+We moved to  blocks.0.attn.hook_result[COL, COL, 4]
+No edge 93
+28 --------------------------------------------------
+No edge 93
+93
+No edge 93
+New metric: 1.2226966619491577
+No edge 93
+No edge 93
+No edge 93
+We moved to  blocks.0.attn.hook_result[COL, COL, 3]
+No edge 93
+29 --------------------------------------------------
+No edge 93
+93
+No edge 93
+New metric: 1.2226966619491577
+No edge 93
+No edge 93
+No edge 93
+We moved to  blocks.0.attn.hook_result[COL, COL, 2]
+No edge 93
+30 --------------------------------------------------
+No edge 93
+93
+No edge 93
+New metric: 1.2226966619491577
+No edge 93
+No edge 93
+No edge 93
+We moved to  blocks.0.attn.hook_result[COL, COL, 1]
+No edge 93
+31 --------------------------------------------------
+No edge 93
+93
+No edge 93
+New metric: 1.2226966619491577
+No edge 93
+No edge 93
+No edge 93
+We moved to  blocks.0.attn.hook_result[COL, COL, 0]
+No edge 93
+32 --------------------------------------------------
+No edge 93
+93
+No edge 93
+New metric: 1.2226966619491577
+No edge 93
+No edge 93
+No edge 93
+We moved to  blocks.0.attn.hook_v[COL, COL, 7]
+No edge 93
+No edge 92
+But it's bad
+We moved to  blocks.0.attn.hook_v[COL, COL, 6]
+No edge 92
+33 --------------------------------------------------
+No edge 92
+92
+No edge 92
+New metric: 1.2226966619491577
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_v_input, [COL, COL, 6]) (self.current_node=TLACDCInterpNode(blocks.0.attn.hook_v, [COL, COL, 6]))
+
+No edge 91
+Metric after removing connection to blocks.0.hook_v_input [COL, COL, 6] is 2.7663605213165283 (and current metric 1.2226966619491577)
+Result is 1.5436638593673706...so keeping connection
+No edge 92
+No edge 92
+We moved to  blocks.0.attn.hook_v[COL, COL, 5]
+No edge 92
+34 --------------------------------------------------
+No edge 92
+92
+No edge 92
+New metric: 1.2226965427398682
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_v_input, [COL, COL, 5]) (self.current_node=TLACDCInterpNode(blocks.0.attn.hook_v, [COL, COL, 5]))
+
+No edge 91
+Metric after removing connection to blocks.0.hook_v_input [COL, COL, 5] is 1.7327560186386108 (and current metric 1.2226965427398682)
+Result is 0.5100594758987427...so keeping connection
+No edge 92
+No edge 92
+We moved to  blocks.0.attn.hook_v[COL, COL, 4]
+No edge 92
+35 --------------------------------------------------
+No edge 92
+92
+No edge 92
+New metric: 1.2226965427398682
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_v_input, [COL, COL, 4]) (self.current_node=TLACDCInterpNode(blocks.0.attn.hook_v, [COL, COL, 4]))
+
+No edge 91
+Metric after removing connection to blocks.0.hook_v_input [COL, COL, 4] is 1.312914252281189 (and current metric 1.2226965427398682)
+Result is 0.0902177095413208...so keeping connection
+No edge 92
+No edge 92
+We moved to  blocks.0.attn.hook_v[COL, COL, 3]
+No edge 92
+36 --------------------------------------------------
+No edge 92
+92
+No edge 92
+New metric: 1.2226965427398682
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_v_input, [COL, COL, 3]) (self.current_node=TLACDCInterpNode(blocks.0.attn.hook_v, [COL, COL, 3]))
+
+No edge 91
+Metric after removing connection to blocks.0.hook_v_input [COL, COL, 3] is 2.233121871948242 (and current metric 1.2226965427398682)
+Result is 1.010425329208374...so keeping connection
+No edge 92
+No edge 92
+We moved to  blocks.0.attn.hook_v[COL, COL, 2]
+No edge 92
+37 --------------------------------------------------
+No edge 92
+92
+No edge 92
+New metric: 1.2226965427398682
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_v_input, [COL, COL, 2]) (self.current_node=TLACDCInterpNode(blocks.0.attn.hook_v, [COL, COL, 2]))
+
+No edge 91
+Metric after removing connection to blocks.0.hook_v_input [COL, COL, 2] is 2.2501611709594727 (and current metric 1.2226965427398682)
+Result is 1.0274646282196045...so keeping connection
+No edge 92
+No edge 92
+We moved to  blocks.0.attn.hook_v[COL, COL, 1]
+No edge 92
+38 --------------------------------------------------
+No edge 92
+92
+No edge 92
+New metric: 1.2226965427398682
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_v_input, [COL, COL, 1]) (self.current_node=TLACDCInterpNode(blocks.0.attn.hook_v, [COL, COL, 1]))
+
+No edge 91
+Metric after removing connection to blocks.0.hook_v_input [COL, COL, 1] is 1.9645013809204102 (and current metric 1.2226965427398682)
+Result is 0.741804838180542...so keeping connection
+No edge 92
+No edge 92
+We moved to  blocks.0.attn.hook_v[COL, COL, 0]
+No edge 92
+39 --------------------------------------------------
+No edge 92
+92
+No edge 92
+New metric: 1.2226965427398682
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_v_input, [COL, COL, 0]) (self.current_node=TLACDCInterpNode(blocks.0.attn.hook_v, [COL, COL, 0]))
+
+No edge 91
+Metric after removing connection to blocks.0.hook_v_input [COL, COL, 0] is 5.463140964508057 (and current metric 1.2226965427398682)
+Result is 4.2404444217681885...so keeping connection
+No edge 92
+No edge 92
+We moved to  blocks.0.attn.hook_k[COL, COL, 7]
+No edge 92
+No edge 91
+But it's bad
+We moved to  blocks.0.attn.hook_k[COL, COL, 6]
+No edge 91
+40 --------------------------------------------------
+No edge 91
+91
+No edge 91
+New metric: 1.2226965427398682
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_k_input, [COL, COL, 6]) (self.current_node=TLACDCInterpNode(blocks.0.attn.hook_k, [COL, COL, 6]))
+
+No edge 90
+Metric after removing connection to blocks.0.hook_k_input [COL, COL, 6] is 1.2642048597335815 (and current metric 1.2226965427398682)
+Result is 0.04150831699371338...so keeping connection
+No edge 91
+No edge 91
+We moved to  blocks.0.attn.hook_k[COL, COL, 5]
+No edge 91
+41 --------------------------------------------------
+No edge 91
+91
+No edge 91
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_k_input, [COL, COL, 5]) (self.current_node=TLACDCInterpNode(blocks.0.attn.hook_k, [COL, COL, 5]))
+
+No edge 90
+Metric after removing connection to blocks.0.hook_k_input [COL, COL, 5] is 1.6197856664657593 (and current metric 1.222697138786316)
+Result is 0.39708852767944336...so keeping connection
+No edge 91
+No edge 91
+We moved to  blocks.0.attn.hook_k[COL, COL, 4]
+No edge 91
+42 --------------------------------------------------
+No edge 91
+91
+No edge 91
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_k_input, [COL, COL, 4]) (self.current_node=TLACDCInterpNode(blocks.0.attn.hook_k, [COL, COL, 4]))
+
+No edge 90
+Metric after removing connection to blocks.0.hook_k_input [COL, COL, 4] is 1.2986236810684204 (and current metric 1.222697138786316)
+Result is 0.07592654228210449...so keeping connection
+No edge 91
+No edge 91
+We moved to  blocks.0.attn.hook_k[COL, COL, 3]
+No edge 91
+43 --------------------------------------------------
+No edge 91
+91
+No edge 91
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_k_input, [COL, COL, 3]) (self.current_node=TLACDCInterpNode(blocks.0.attn.hook_k, [COL, COL, 3]))
+
+No edge 90
+Metric after removing connection to blocks.0.hook_k_input [COL, COL, 3] is 1.9525994062423706 (and current metric 1.222697138786316)
+Result is 0.7299022674560547...so keeping connection
+No edge 91
+No edge 91
+We moved to  blocks.0.attn.hook_k[COL, COL, 2]
+No edge 91
+44 --------------------------------------------------
+No edge 91
+91
+No edge 91
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_k_input, [COL, COL, 2]) (self.current_node=TLACDCInterpNode(blocks.0.attn.hook_k, [COL, COL, 2]))
+
+No edge 90
+Metric after removing connection to blocks.0.hook_k_input [COL, COL, 2] is 1.8409401178359985 (and current metric 1.222697138786316)
+Result is 0.6182429790496826...so keeping connection
+No edge 91
+No edge 91
+We moved to  blocks.0.attn.hook_k[COL, COL, 1]
+No edge 91
+45 --------------------------------------------------
+No edge 91
+91
+No edge 91
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_k_input, [COL, COL, 1]) (self.current_node=TLACDCInterpNode(blocks.0.attn.hook_k, [COL, COL, 1]))
+
+No edge 90
+Metric after removing connection to blocks.0.hook_k_input [COL, COL, 1] is 1.8526118993759155 (and current metric 1.222697138786316)
+Result is 0.6299147605895996...so keeping connection
+No edge 91
+No edge 91
+We moved to  blocks.0.attn.hook_k[COL, COL, 0]
+No edge 91
+46 --------------------------------------------------
+No edge 91
+91
+No edge 91
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_k_input, [COL, COL, 0]) (self.current_node=TLACDCInterpNode(blocks.0.attn.hook_k, [COL, COL, 0]))
+
+No edge 90
+Metric after removing connection to blocks.0.hook_k_input [COL, COL, 0] is 1.2682914733886719 (and current metric 1.222697138786316)
+Result is 0.04559433460235596...so keeping connection
+No edge 91
+No edge 91
+We moved to  blocks.0.attn.hook_q[COL, COL, 7]
+No edge 91
+No edge 90
+But it's bad
+We moved to  blocks.0.attn.hook_q[COL, COL, 6]
+No edge 90
+47 --------------------------------------------------
+No edge 90
+90
+No edge 90
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_q_input, [COL, COL, 6]) (self.current_node=TLACDCInterpNode(blocks.0.attn.hook_q, [COL, COL, 6]))
+
+No edge 89
+Metric after removing connection to blocks.0.hook_q_input [COL, COL, 6] is 1.3080164194107056 (and current metric 1.222697138786316)
+Result is 0.08531928062438965...so keeping connection
+No edge 90
+No edge 90
+We moved to  blocks.0.attn.hook_q[COL, COL, 5]
+No edge 90
+48 --------------------------------------------------
+No edge 90
+90
+No edge 90
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_q_input, [COL, COL, 5]) (self.current_node=TLACDCInterpNode(blocks.0.attn.hook_q, [COL, COL, 5]))
+
+No edge 89
+Metric after removing connection to blocks.0.hook_q_input [COL, COL, 5] is 1.6602312326431274 (and current metric 1.222697138786316)
+Result is 0.4375340938568115...so keeping connection
+No edge 90
+No edge 90
+We moved to  blocks.0.attn.hook_q[COL, COL, 4]
+No edge 90
+49 --------------------------------------------------
+No edge 90
+90
+No edge 90
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_q_input, [COL, COL, 4]) (self.current_node=TLACDCInterpNode(blocks.0.attn.hook_q, [COL, COL, 4]))
+
+No edge 89
+Metric after removing connection to blocks.0.hook_q_input [COL, COL, 4] is 1.3287572860717773 (and current metric 1.222697138786316)
+Result is 0.10606014728546143...so keeping connection
+No edge 90
+No edge 90
+We moved to  blocks.0.attn.hook_q[COL, COL, 3]
+No edge 90
+50 --------------------------------------------------
+No edge 90
+90
+No edge 90
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_q_input, [COL, COL, 3]) (self.current_node=TLACDCInterpNode(blocks.0.attn.hook_q, [COL, COL, 3]))
+
+No edge 89
+Metric after removing connection to blocks.0.hook_q_input [COL, COL, 3] is 1.9768389463424683 (and current metric 1.222697138786316)
+Result is 0.7541418075561523...so keeping connection
+No edge 90
+No edge 90
+We moved to  blocks.0.attn.hook_q[COL, COL, 2]
+No edge 90
+51 --------------------------------------------------
+No edge 90
+90
+No edge 90
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_q_input, [COL, COL, 2]) (self.current_node=TLACDCInterpNode(blocks.0.attn.hook_q, [COL, COL, 2]))
+
+No edge 89
+Metric after removing connection to blocks.0.hook_q_input [COL, COL, 2] is 2.029043674468994 (and current metric 1.222697138786316)
+Result is 0.8063465356826782...so keeping connection
+No edge 90
+No edge 90
+We moved to  blocks.0.attn.hook_q[COL, COL, 1]
+No edge 90
+52 --------------------------------------------------
+No edge 90
+90
+No edge 90
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_q_input, [COL, COL, 1]) (self.current_node=TLACDCInterpNode(blocks.0.attn.hook_q, [COL, COL, 1]))
+
+No edge 89
+Metric after removing connection to blocks.0.hook_q_input [COL, COL, 1] is 1.7996419668197632 (and current metric 1.222697138786316)
+Result is 0.5769448280334473...so keeping connection
+No edge 90
+No edge 90
+We moved to  blocks.0.attn.hook_q[COL, COL, 0]
+No edge 90
+53 --------------------------------------------------
+No edge 90
+90
+No edge 90
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_q_input, [COL, COL, 0]) (self.current_node=TLACDCInterpNode(blocks.0.attn.hook_q, [COL, COL, 0]))
+
+No edge 89
+Metric after removing connection to blocks.0.hook_q_input [COL, COL, 0] is 1.2696928977966309 (and current metric 1.222697138786316)
+Result is 0.04699575901031494...so keeping connection
+No edge 90
+No edge 90
+We moved to  blocks.0.hook_v_input[COL, COL, 7]
+No edge 90
+No edge 89
+But it's bad
+We moved to  blocks.0.hook_v_input[COL, COL, 6]
+No edge 89
+54 --------------------------------------------------
+No edge 89
+89
+No edge 89
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.0.hook_v_input, [COL, COL, 6]))
+
+No edge 88
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 2.766360282897949 (and current metric 1.222697138786316)
+Result is 1.5436631441116333...so keeping connection
+No edge 89
+No edge 89
+We moved to  blocks.0.hook_v_input[COL, COL, 5]
+No edge 89
+55 --------------------------------------------------
+No edge 89
+89
+No edge 89
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.0.hook_v_input, [COL, COL, 5]))
+
+No edge 88
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 1.73275625705719 (and current metric 1.222697138786316)
+Result is 0.510059118270874...so keeping connection
+No edge 89
+No edge 89
+We moved to  blocks.0.hook_v_input[COL, COL, 4]
+No edge 89
+56 --------------------------------------------------
+No edge 89
+89
+No edge 89
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.0.hook_v_input, [COL, COL, 4]))
+
+No edge 88
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 1.3129140138626099 (and current metric 1.222697138786316)
+Result is 0.09021687507629395...so keeping connection
+No edge 89
+No edge 89
+We moved to  blocks.0.hook_v_input[COL, COL, 3]
+No edge 89
+57 --------------------------------------------------
+No edge 89
+89
+No edge 89
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.0.hook_v_input, [COL, COL, 3]))
+
+No edge 88
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 2.2331225872039795 (and current metric 1.222697138786316)
+Result is 1.0104254484176636...so keeping connection
+No edge 89
+No edge 89
+We moved to  blocks.0.hook_v_input[COL, COL, 2]
+No edge 89
+58 --------------------------------------------------
+No edge 89
+89
+No edge 89
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.0.hook_v_input, [COL, COL, 2]))
+
+No edge 88
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 2.2501611709594727 (and current metric 1.222697138786316)
+Result is 1.0274640321731567...so keeping connection
+No edge 89
+No edge 89
+We moved to  blocks.0.hook_v_input[COL, COL, 1]
+No edge 89
+59 --------------------------------------------------
+No edge 89
+89
+No edge 89
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.0.hook_v_input, [COL, COL, 1]))
+
+No edge 88
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 1.9645012617111206 (and current metric 1.222697138786316)
+Result is 0.7418041229248047...so keeping connection
+No edge 89
+No edge 89
+We moved to  blocks.0.hook_v_input[COL, COL, 0]
+No edge 89
+60 --------------------------------------------------
+No edge 89
+89
+No edge 89
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.0.hook_v_input, [COL, COL, 0]))
+
+No edge 88
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 5.463140487670898 (and current metric 1.222697138786316)
+Result is 4.2404433488845825...so keeping connection
+No edge 89
+No edge 89
+We moved to  blocks.0.hook_k_input[COL, COL, 7]
+No edge 89
+No edge 88
+But it's bad
+We moved to  blocks.0.hook_k_input[COL, COL, 6]
+No edge 88
+61 --------------------------------------------------
+No edge 88
+88
+No edge 88
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.0.hook_k_input, [COL, COL, 6]))
+
+No edge 87
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 1.2642048597335815 (and current metric 1.222697138786316)
+Result is 0.041507720947265625...so keeping connection
+No edge 88
+No edge 88
+We moved to  blocks.0.hook_k_input[COL, COL, 5]
+No edge 88
+62 --------------------------------------------------
+No edge 88
+88
+No edge 88
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.0.hook_k_input, [COL, COL, 5]))
+
+No edge 87
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 1.6197861433029175 (and current metric 1.222697138786316)
+Result is 0.39708900451660156...so keeping connection
+No edge 88
+No edge 88
+We moved to  blocks.0.hook_k_input[COL, COL, 4]
+No edge 88
+63 --------------------------------------------------
+No edge 88
+88
+No edge 88
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.0.hook_k_input, [COL, COL, 4]))
+
+No edge 87
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 1.2986235618591309 (and current metric 1.222697138786316)
+Result is 0.07592642307281494...so keeping connection
+No edge 88
+No edge 88
+We moved to  blocks.0.hook_k_input[COL, COL, 3]
+No edge 88
+64 --------------------------------------------------
+No edge 88
+88
+No edge 88
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.0.hook_k_input, [COL, COL, 3]))
+
+No edge 87
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 1.9525989294052124 (and current metric 1.222697138786316)
+Result is 0.7299017906188965...so keeping connection
+No edge 88
+No edge 88
+We moved to  blocks.0.hook_k_input[COL, COL, 2]
+No edge 88
+65 --------------------------------------------------
+No edge 88
+88
+No edge 88
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.0.hook_k_input, [COL, COL, 2]))
+
+No edge 87
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 1.8409404754638672 (and current metric 1.222697138786316)
+Result is 0.6182433366775513...so keeping connection
+No edge 88
+No edge 88
+We moved to  blocks.0.hook_k_input[COL, COL, 1]
+No edge 88
+66 --------------------------------------------------
+No edge 88
+88
+No edge 88
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.0.hook_k_input, [COL, COL, 1]))
+
+No edge 87
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 1.8526118993759155 (and current metric 1.222697138786316)
+Result is 0.6299147605895996...so keeping connection
+No edge 88
+No edge 88
+We moved to  blocks.0.hook_k_input[COL, COL, 0]
+No edge 88
+67 --------------------------------------------------
+No edge 88
+88
+No edge 88
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.0.hook_k_input, [COL, COL, 0]))
+
+No edge 87
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 1.2682913541793823 (and current metric 1.222697138786316)
+Result is 0.045594215393066406...so keeping connection
+No edge 88
+No edge 88
+We moved to  blocks.0.hook_q_input[COL, COL, 7]
+No edge 88
+No edge 87
+But it's bad
+We moved to  blocks.0.hook_q_input[COL, COL, 6]
+No edge 87
+68 --------------------------------------------------
+No edge 87
+87
+No edge 87
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.0.hook_q_input, [COL, COL, 6]))
+
+No edge 86
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 1.3080164194107056 (and current metric 1.222697138786316)
+Result is 0.08531928062438965...so keeping connection
+No edge 87
+No edge 87
+We moved to  blocks.0.hook_q_input[COL, COL, 5]
+No edge 87
+69 --------------------------------------------------
+No edge 87
+87
+No edge 87
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.0.hook_q_input, [COL, COL, 5]))
+
+No edge 86
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 1.6602312326431274 (and current metric 1.222697138786316)
+Result is 0.4375340938568115...so keeping connection
+No edge 87
+No edge 87
+We moved to  blocks.0.hook_q_input[COL, COL, 4]
+No edge 87
+70 --------------------------------------------------
+No edge 87
+87
+No edge 87
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.0.hook_q_input, [COL, COL, 4]))
+
+No edge 86
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 1.3287572860717773 (and current metric 1.222697138786316)
+Result is 0.10606014728546143...so keeping connection
+No edge 87
+No edge 87
+We moved to  blocks.0.hook_q_input[COL, COL, 3]
+No edge 87
+71 --------------------------------------------------
+No edge 87
+87
+No edge 87
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.0.hook_q_input, [COL, COL, 3]))
+
+No edge 86
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 1.9768389463424683 (and current metric 1.222697138786316)
+Result is 0.7541418075561523...so keeping connection
+No edge 87
+No edge 87
+We moved to  blocks.0.hook_q_input[COL, COL, 2]
+No edge 87
+72 --------------------------------------------------
+No edge 87
+87
+No edge 87
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.0.hook_q_input, [COL, COL, 2]))
+
+No edge 86
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 2.029043674468994 (and current metric 1.222697138786316)
+Result is 0.8063465356826782...so keeping connection
+No edge 87
+No edge 87
+We moved to  blocks.0.hook_q_input[COL, COL, 1]
+No edge 87
+73 --------------------------------------------------
+No edge 87
+87
+No edge 87
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.0.hook_q_input, [COL, COL, 1]))
+
+No edge 86
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 1.7996419668197632 (and current metric 1.222697138786316)
+Result is 0.5769448280334473...so keeping connection
+No edge 87
+No edge 87
+We moved to  blocks.0.hook_q_input[COL, COL, 0]
+No edge 87
+74 --------------------------------------------------
+No edge 87
+87
+No edge 87
+New metric: 1.222697138786316
+
+Node: cur_parent=TLACDCInterpNode(blocks.0.hook_resid_pre, [COL]) (self.current_node=TLACDCInterpNode(blocks.0.hook_q_input, [COL, COL, 0]))
+
+No edge 86
+Metric after removing connection to blocks.0.hook_resid_pre [COL] is 1.2696928977966309 (and current metric 1.222697138786316)
+Result is 0.04699575901031494...so keeping connection
+No edge 87
+No edge 87
+We moved to  blocks.0.hook_resid_pre[COL]
+No edge 87
+75 --------------------------------------------------
+No edge 87
+87
+No edge 87
+New metric: 1.222697138786316
+We moved to  None
+No edge 87
+76 --------------------------------------------------
+No edge 87
+87

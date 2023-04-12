@@ -55,7 +55,6 @@ class TLACDCExperiment:
         add_receiver_hooks: bool = False,
         indices_mode: Literal["normal", "reverse", "shuffle"] = "reverse", # we get best performance with reverse I think
         names_mode: Literal["normal", "reverse", "shuffle"] = "normal",
-        fast_mode=False,
     ):
         """Initialize the ACDC experiment"""
 
@@ -78,13 +77,7 @@ class TLACDCExperiment:
         self.reverse_topologically_sort_corr()
         self.current_node = self.corr.first_node()
         print(f"{self.current_node=}")
-
-        if self.fast_mode:
-            raise NotImplementedError("Need to turn other things into template_corr...")
-            self.corr = TLACDCCorrespondenceFast()
-            self.add_node(self.current_node) # start with just the output node
-        else:
-            self.corr = self.corr
+        self.corr = self.corr
 
         self.ds = ds
         self.ref_ds = ref_ds
@@ -137,23 +130,6 @@ class TLACDCExperiment:
         assert self.model.cfg.use_attn_result, "Need to be able to see split by head outputs"
         assert self.model.cfg.use_split_qkv_input, "Need to be able to see split by head QKV inputs"
         assert self.model.cfg.use_global_cache, "Need to be able to use global chache to do ACDC"
-
-
-    def add_node(self, node: TLACDCInterpNode): # TODO rename "receiver" node ???
-        """Add a node to our current ACDC Hypothesis"""
-
-        self.corr.add_node(node, safe=True)
-
-        self.model.add_hook(
-            name=node.name,
-            hook=partial(self.receiver_hook, verbose=self.hook_verbose),
-        )
-
-        # add all the god-damn edges too?
-        for sender_name in self.corr[node.name][node.index]:
-            for sender_idx in self.corr[node.name][node.index][sender_name]:
-                self.corr.edges[node.name][node.index][sender_name][sender_idx] = self.corr.edges[node.name][node.index][sender_name][sender_idx]
-                assert False
 
     def update_cur_metric(self, recalc=True, initial=False):
         if recalc:
@@ -258,11 +234,16 @@ class TLACDCExperiment:
                         direct_computation_nodes.append(self.corr.graph[sender_node_name][sender_node_index])
                         assert len(direct_computation_nodes) == 1, f"Found multiple direct computation nodes {direct_computation_nodes}"
 
-                        z[receiver_node_index.as_index] = hook.global_cache.second_cache[receiver_node_name][receiver_node_index.as_index].to(z.device)
-
                     else: 
                         print(edge)
                         raise ValueError(f"Unknown edge type {edge.edge_type}")
+
+                        assert len(direct_computation_nodes) == 1, f"Found multiple direct computation nodes {direct_computation_nodes}"
+
+        if edge.edge_type == EdgeType.DIRECT_COMPUTATION:
+            assert len(direct_computation_nodes) == 1, f"Found multiple direct computation nodes {direct_computation_nodes}"
+            if edge.present:
+                z[:] = hook.global_cache.cache[receiver_node_name][TorchIndex([None])].to(z.device)
 
         return z
 
@@ -418,6 +399,10 @@ class TLACDCExperiment:
         else:
             added_receiver_hook = False
 
+        if self.current_node.incoming_edge_type.value == EdgeType.DIRECT_COMPUTATION.value:
+            # Add this node as a sender hook, now
+            added_sender_hook = self.add_sender_hook(self.current_node)
+
         is_this_node_used = False
         sender_names_list = list(self.corr.edges[self.current_node.name][self.current_node.index])
 
@@ -572,9 +557,6 @@ class TLACDCExperiment:
         if self.current_node is not None and not self.current_node_connected():
             print("But it's bad")
             self.increment_current_node()
-
-        if self.fast_mode:
-            self.add_node(self.current_node, safe=True)
 
     def count_no_edges(self):
         cnt = 0
