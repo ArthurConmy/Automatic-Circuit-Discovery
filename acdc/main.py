@@ -203,12 +203,6 @@ exp = TLACDCExperiment(
     add_receiver_hooks=False,
 )
 
-if USING_WANDB and TASK == "ioi":
-    wandb.alert(
-        title="Long thing done",
-        text="You head it",
-    )
-
 #%%
 
 for i in range(4): 

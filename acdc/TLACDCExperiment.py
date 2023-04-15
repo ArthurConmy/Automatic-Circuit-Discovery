@@ -196,31 +196,31 @@ class TLACDCExperiment:
         return z
 
     def receiver_hook(self, z, hook, verbose=False):
-        receiver_node_name = hook.name
+        
+        incoming_edge_types = [self.corr.graph[hook.name][receiver_index].incoming_edge_type for receiver_index in list(self.corr.edges[hook.name].keys())]
 
-        relevant_nodes = list(self.corr.graph[hook.name].values())
-        if any([node.incoming_edge_type.value == EdgeType.DIRECT_COMPUTATION.value for node in relevant_nodes]):
-            assert len(relevant_nodes) == 1, (relevant_nodes, hook.name, "this isn't *one* direct computation???")
+        if EdgeType.DIRECT_COMPUTATION in incoming_edge_types:
+            assert incoming_edge_types == [EdgeType.DIRECT_COMPUTATION for _ in incoming_edge_types], f"All incoming edges should be the same type not {incoming_edge_types}"
 
-            assert len(self.corr.edges[hook.name]) == 1, "This is a direct computation, so there should only be one receiver node"
+            for receiver_index in self.corr.edges[hook.name]:
+                list_of_senders = list(self.corr.edges[hook.name][receiver_index].keys())
+                assert len(list_of_senders) <= 1, "This is a direct computation, so there should only be one sender node" # TODO maybe implement expect-to-be-1 ???
+                if len(list_of_senders) == 0:
+                    continue
+                sender_node = list_of_senders[0]
 
-            list_of_senders = list(self.corr.edges[hook.name][list(self.corr.edges[hook.name].keys())[0]].keys())
-            assert len(list_of_senders) == 1, "This is a direct computation, so there should only be one sender node"
-            sender_node = list_of_senders[0]
+                sender_indices = list(self.corr.edges[hook.name][receiver_index][sender_node].keys())
+                assert len(sender_indices) <= 1, "This is a direct computation, so there should only be one sender index"
+                if len(sender_indices) == 0:
+                    continue
+                sender_index = sender_indices[0]
 
-            sender_indices = list(self.corr.edges[hook.name][list(self.corr.edges[hook.name].keys())[0]][sender_node].keys())
+                edge = self.corr.edges[hook.name][receiver_index][sender_node][sender_index]
 
-            assert len(sender_indices) == 1, "This is a direct computation, so there should only be one sender index"
-
-            sender_index = sender_indices[0]
-
-            edge = self.corr.edges[hook.name][list(self.corr.edges[hook.name].keys())[0]][sender_node][sender_index]
-
-            if not edge.present: 
-                z[:] = self.model.global_cache.cache[hook.name].to(z.device) # TODO - is this slow ??? THIS LINE COPIED FROM BELOW
-
-            else:
-                return z
+                if not edge.present:
+                    z[receiver_index.as_index] = self.model.global_cache.second_cache[hook.name][receiver_index.as_index].to(z.device)
+    
+            return z
 
         z[:] = self.model.global_cache.second_cache[hook.name].to(z.device) # TODO - is this slow ???
 
