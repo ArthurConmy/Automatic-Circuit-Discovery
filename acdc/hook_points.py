@@ -46,7 +46,7 @@ class HookPoint(nn.Module):
     def add_perma_hook(self, hook, dir="fwd") -> None:
         self.add_hook(hook, dir=dir, is_permanent=True)
 
-    def add_hook(self, hook, dir="fwd", is_permanent=False) -> LensHandle: # TODO make sure all updates to this are legit...
+    def add_hook(self, hook, dir="fwd", is_permanent=False, prepend=False) -> LensHandle: # TODO make sure all updates to this are legit...
         
         # Hook format is fn(activation, hook_name)
         # Change it into PyTorch hook format (this includes input and output,
@@ -56,13 +56,17 @@ class HookPoint(nn.Module):
             warnings.warn("Arthur used some self.fwd_hook_functions stuff that won't play nicely with permanent hooks, take real care here")
 
         if dir == "fwd":
-
             def full_hook(module, module_input, module_output):
                 return hook(module_output, hook=self)
 
             handle = self.register_forward_hook(full_hook)
             handle = LensHandle(handle, is_permanent)
-            self.fwd_hooks.append(handle)
+
+            if prepend:
+                self.fwd_hooks.insert(0, handle)
+            else:
+                self.fwd_hooks.append(handle)
+
         elif dir == "bwd":
             # For a backwards hook, module_output is a tuple of (grad,) - I don't know why.
             def full_hook(module, module_input, module_output):
@@ -70,7 +74,11 @@ class HookPoint(nn.Module):
 
             handle = self.register_full_backward_hook(full_hook)
             handle = LensHandle(handle, is_permanent)
-            self.bwd_hooks.append(handle)
+            if prepend:
+                self.bwd_hooks.insert(0, handle)
+            else:
+                self.bwd_hooks.append(handle)
+
         else:
             raise ValueError(f"Invalid direction {dir}")
 
@@ -258,20 +266,20 @@ class HookedRootModule(nn.Module):
         self.remove_all_hook_fns(direction, including_permanent)
         self.is_caching = False
 
-    def check_and_add_hook(self, hook_point, hook_point_name, hook, dir="fwd", is_permanent=False) -> None:
+    def check_and_add_hook(self, hook_point, hook_point_name, hook, dir="fwd", is_permanent=False, prepend=False) -> None:
         """Override this function to add checks on which hooks should be added"""
-        return hook_point.add_hook(hook, dir=dir, is_permanent=is_permanent)
+        return hook_point.add_hook(hook, dir=dir, is_permanent=is_permanent, prepend=prepend)
 
-    def add_hook(self, name, hook, dir="fwd", is_permanent=False) -> None:
+    def add_hook(self, name, hook, dir="fwd", is_permanent=False, prepend=False) -> None:
         if type(name) == str:
-            return self.check_and_add_hook(self.mod_dict[name], name, hook, dir=dir, is_permanent=is_permanent)
+            return self.check_and_add_hook(self.mod_dict[name], name, hook, dir=dir, is_permanent=is_permanent, prepend=prepend)
         else:
             handles = []
 
             # Otherwise, name is a Boolean function on names
             for hook_point_name, hp in self.hook_dict.items():
                 if name(hook_point_name):
-                    handles.append(self.check_and_add_hook(hp, hook_point_name, hook, dir=dir, is_permanent=is_permanent))
+                    handles.append(self.check_and_add_hook(hp, hook_point_name, hook, dir=dir, is_permanent=is_permanent, prepend=prepend))
             
             return handles
 

@@ -181,6 +181,7 @@ if WANDB_RUN_NAME is None or IPython.get_ipython() is not None:
 else:
     assert False # I want named runs, always
 
+tl_model.reset_hooks()
 exp = TLACDCExperiment(
     model=tl_model,
     threshold=THRESHOLD,

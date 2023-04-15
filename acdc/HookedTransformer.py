@@ -196,12 +196,12 @@ class HookedTransformer(HookedRootModule):
         self.setup()
         self.is_caching = False
 
-    def check_and_add_hook(self, hook_point, hook_point_name, hook, dir="fwd", is_permanent=False) -> None:
+    def check_and_add_hook(self, hook_point, hook_point_name, hook, dir="fwd", is_permanent=False, prepend=False) -> None:
         if hook_point_name.endswith("attn.hook_result"):
             assert self.cfg.use_attn_result, f"Cannot add hook {hook_point_name} if use_attn_result_hook is False"
         if hook_point_name.endswith(("hook_q_input", "hook_k_input", "hook_v_input")):
             assert self.cfg.use_split_qkv_input, f"Cannot add hook {hook_point_name} if use_split_qkv_input is False"
-        return hook_point.add_hook(hook, dir=dir, is_permanent=is_permanent)
+        return hook_point.add_hook(hook, dir=dir, is_permanent=is_permanent, prepend=prepend)
 
     @overload
     def forward(
