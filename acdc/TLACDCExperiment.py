@@ -132,8 +132,8 @@ class TLACDCExperiment:
         assert self.model.cfg.use_split_qkv_input, "Need to be able to see split by head QKV inputs"
         assert self.model.cfg.use_global_cache, "Need to be able to use global chache to do ACDC"
 
-    def update_cur_metric(self, recalc=True, initial=False):
-        if recalc:
+    def update_cur_metric(self, recalc_metric=True, initial=False):
+        if recalc_metric:
             logits = self.model(self.ds)
             self.cur_metric = self.metric(logits)
             if self.second_metric is not None:
@@ -201,7 +201,14 @@ class TLACDCExperiment:
         
         incoming_edge_types = [self.corr.graph[hook.name][receiver_index].incoming_edge_type for receiver_index in list(self.corr.edges[hook.name].keys())]
 
+        if hook.name.endswith("mlp_out"):
+            a=1
+
         if EdgeType.DIRECT_COMPUTATION in incoming_edge_types:
+
+            old_z = z.clone()
+            z[:] = self.model.global_cache.second_cache[hook.name].to(z.device)
+
             assert incoming_edge_types == [EdgeType.DIRECT_COMPUTATION for _ in incoming_edge_types], f"All incoming edges should be the same type not {incoming_edge_types}"
 
             for receiver_index in self.corr.edges[hook.name]:
@@ -219,15 +226,14 @@ class TLACDCExperiment:
 
                 edge = self.corr.edges[hook.name][receiver_index][sender_node][sender_index]
 
-                if not edge.present:
-                    z[receiver_index.as_index] = self.model.global_cache.second_cache[hook.name][receiver_index.as_index].to(z.device)
+                if edge.present:
+                    z[receiver_index.as_index] = old_z[receiver_index.as_index].to(z.device)
     
             return z
 
         z[:] = self.model.global_cache.second_cache[hook.name].to(z.device) # TODO - is this slow ???
 
         for receiver_node_index in self.corr.edges[hook.name]:
-            direct_computation_edges = []
             for sender_node_name in self.corr.edges[hook.name][receiver_node_index]:
                 for sender_node_index in self.corr.edges[hook.name][receiver_node_index][sender_node_name]:
 
@@ -287,6 +293,7 @@ class TLACDCExperiment:
             elif edge.edge_type != EdgeType.PLACEHOLDER:
                 print(edge.edge_type.value, EdgeType.ADDITION.value, edge.edge_type.value == EdgeType.ADDITION.value, type(edge.edge_type.value), type(EdgeType.ADDITION.value))
                 raise ValueError(f"{str(big_tuple)} {str(edge)} failed")
+
             print(big_tuple, "worked!")
 
             for node in nodes:
@@ -305,7 +312,7 @@ class TLACDCExperiment:
         if self.verbose:
             print("Adding sender hooks...")
         
-        # self.add_all_sender_hooks(cache="second", add_all_hooks=True)
+        self.model.reset_hooks()
         self.model.cache_all(self.model.global_cache.second_cache)
 
         if self.verbose:
@@ -361,8 +368,8 @@ class TLACDCExperiment:
         with open(fname, "wb") as f:
             pickle.dump(edges_list, f)
 
-    def add_sender_hook(self, node):
-        if len(self.model.hook_dict[node.name].fwd_hooks) > 0:
+    def add_sender_hook(self, node, override=False):
+        if not override and len(self.model.hook_dict[node.name].fwd_hooks) > 0:
             for hook_func_maybe_partial in self.model.hook_dict[node.name].fwd_hook_functions:
                 hook_func_name = hook_func_maybe_partial.func.__name__ if isinstance(hook_func_maybe_partial, partial) else hook_func_maybe_partial.__name__
                 assert "sender_hook" in hook_func_name, f"You should only add sender hooks to {node.name}, and this: {hook_func_name} doesn't look like a sender hook"
@@ -375,7 +382,7 @@ class TLACDCExperiment:
 
         return True
 
-    def add_receiver_hook(self, node, override=False):
+    def add_receiver_hook(self, node, override=False, prepend=False):
         if not override and len(self.model.hook_dict[node.name].fwd_hooks) > 0: # repeating code from add_sender_hooks
             for hook_func_maybe_partial in self.model.hook_dict[node.name].fwd_hook_functions:
                 hook_func_name = hook_func_maybe_partial.func.__name__ if isinstance(hook_func_maybe_partial, partial) else hook_func_maybe_partial.__name__
@@ -385,6 +392,7 @@ class TLACDCExperiment:
         handle = self.model.add_hook(
             name=node.name,
             hook=partial(self.receiver_hook, verbose=self.hook_verbose),
+            prepend=prepend,
         )
 
         return True
@@ -397,6 +405,9 @@ class TLACDCExperiment:
         start_step_time = time.time()
         self.step_idx += 1
 
+        if self.current_node.name.endswith("mlp_out"): # TODO delete
+            a=1
+
         self.update_cur_metric()
         initial_metric = self.cur_metric
         assert isinstance(initial_metric, float), f"Initial metric is a {type(initial_metric)} not a float"
@@ -405,17 +416,15 @@ class TLACDCExperiment:
         if self.verbose:
             print("New metric:", cur_metric)
 
-        if self.current_node.incoming_edge_type.value == EdgeType.DIRECT_COMPUTATION.value and len(self.model.hook_dict[self.current_node.name].fwd_hooks) == 0:
-            # Add this node as a sender hook, now
-            # TODO, why?
-            added_sender_hook = self.add_sender_hook(self.current_node)
+        # if self.current_node.incoming_edge_type.value == EdgeType.DIRECT_COMPUTATION.value:
+        #     self.corr.graph[self.current_node.name]
 
         if self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value:
-            added_receiver_hook = self.add_receiver_hook(self.current_node, override=True)
-            if added_receiver_hook:
-                added_receiver_hook = self.model.hook_dict[self.current_node.name].fwd_hooks[-1]
-        else:
-            added_receiver_hook = False
+            added_receiver_hook = self.add_receiver_hook(self.current_node, override=True, prepend=True)
+
+        if self.current_node.incoming_edge_type.value == EdgeType.DIRECT_COMPUTATION.value:
+            # basically, because these nodes are the only ones that act as both receivers and senders
+            added_sender_hook = self.add_sender_hook(self.current_node, override=True)
 
         is_this_node_used = False
         sender_names_list = list(self.corr.edges[self.current_node.name][self.current_node.index])
@@ -467,7 +476,7 @@ class TLACDCExperiment:
                         sender_index,
                         "is",
                         evaluated_metric,
-                        "(and current metric " + str(cur_metric) + ")",
+                        "(and current metric " + str(old_metric) + ")",
                     )
 
                 result = evaluated_metric - old_metric
@@ -490,10 +499,7 @@ class TLACDCExperiment:
                         print("...so keeping connection")
                     edge.present = True
 
-                    if added_sender_hook:
-                        self.model.hook_dict[sender_name].remove_hooks()
-
-                    self.update_cur_metric(recalc = False) # so we log current state to wandb
+                    self.update_cur_metric(recalc_metric = False) # so we log current state to wandb
 
                 if self.using_wandb:
                     log_metrics_to_wandb(
@@ -527,7 +533,7 @@ class TLACDCExperiment:
 
         # increment the current node
         self.increment_current_node()
-        self.update_cur_metric(recalc=False)
+        self.update_cur_metric(recalc_metric=False)
 
     def current_node_connected(self):
         for child_name, rest1 in self.corr.edges.items(): # rest1 just meaning "rest of dictionary.. I'm tired"
