@@ -198,29 +198,29 @@ class TLACDCExperiment:
     def receiver_hook(self, z, hook, verbose=False):
         receiver_node_name = hook.name
 
-        # relevant_nodes = list(self.corr.graph[hook.name].values())
-        # if any([node.incoming_edge_type.value == EdgeType.DIRECT_COMPUTATION.value for node in relevant_nodes]):
-        #     assert len(relevant_nodes) == 1, (relevant_nodes, hook.name, "this isn't *one* direct computation???")
+        relevant_nodes = list(self.corr.graph[hook.name].values())
+        if any([node.incoming_edge_type.value == EdgeType.DIRECT_COMPUTATION.value for node in relevant_nodes]):
+            assert len(relevant_nodes) == 1, (relevant_nodes, hook.name, "this isn't *one* direct computation???")
 
-        #     assert len(self.corr.edges[hook.name]) == 1, "This is a direct computation, so there should only be one receiver node"
+            assert len(self.corr.edges[hook.name]) == 1, "This is a direct computation, so there should only be one receiver node"
 
-        #     list_of_senders = list(self.corr.edges[hook.name][list(self.corr.edges[hook.name].keys())[0]].keys())
-        #     assert len(list_of_senders) == 1, "This is a direct computation, so there should only be one sender node"
-        #     sender_node = list_of_senders[0]
+            list_of_senders = list(self.corr.edges[hook.name][list(self.corr.edges[hook.name].keys())[0]].keys())
+            assert len(list_of_senders) == 1, "This is a direct computation, so there should only be one sender node"
+            sender_node = list_of_senders[0]
 
-        #     sender_indices = list(self.corr.edges[hook.name][list(self.corr.edges[hook.name].keys())[0]][sender_node].keys())
+            sender_indices = list(self.corr.edges[hook.name][list(self.corr.edges[hook.name].keys())[0]][sender_node].keys())
 
-        #     assert len(sender_indices) == 1, "This is a direct computation, so there should only be one sender index"
+            assert len(sender_indices) == 1, "This is a direct computation, so there should only be one sender index"
 
-        #     sender_index = sender_indices[0]
+            sender_index = sender_indices[0]
 
-        #     edge = self.corr.edges[hook.name][list(self.corr.edges[hook.name].keys())[0]][sender_node][sender_index]
+            edge = self.corr.edges[hook.name][list(self.corr.edges[hook.name].keys())[0]][sender_node][sender_index]
 
-        #     if not edge.present: 
-        #         z[:] = self.model.global_cache.cache[sender_node].to(z.device) # TODO - is this slow ??? THIS LINE COPIED FROM BELOW
+            if not edge.present: 
+                z[:] = self.model.global_cache.cache[hook.name].to(z.device) # TODO - is this slow ??? THIS LINE COPIED FROM BELOW
 
-        #     else:
-        #         return z
+            else:
+                return z
 
         z[:] = self.model.global_cache.second_cache[hook.name].to(z.device) # TODO - is this slow ???
 
@@ -253,17 +253,8 @@ class TLACDCExperiment:
                             sender_node_name
                         ][sender_node_index.as_index].to(z.device)
 
-                    elif edge.edge_type == EdgeType.DIRECT_COMPUTATION:
-                        direct_computation_edges.append(edge)
-                        assert len(direct_computation_edges) == 1, f"Found multiple direct computation nodes {direct_computation_edges}"
-
                     else: 
                         raise ValueError(f"Unknown edge type {edge.edge_type} ... {edge}")
-
-            if self.corr.graph[receiver_node_name][receiver_node_index].incoming_edge_type == EdgeType.DIRECT_COMPUTATION:
-                assert len(direct_computation_edges) <= 1, f"Found multiple direct computation nodes {direct_computation_edges}"
-                if len(direct_computation_edges) == 1 and direct_computation_edges[0].present:
-                    z[receiver_node_index.as_index] = hook.global_cache.cache[receiver_node_name][receiver_node_index.as_index].to(z.device)
 
         return z
 
@@ -279,9 +270,9 @@ class TLACDCExperiment:
             "second": "cpu" if self.second_cache_cpu else None,
         }[cache]
 
-        nodes = []
-
         for big_tuple, edge in self.corr.all_edges().items():
+            nodes = []
+
             if edge.edge_type == EdgeType.DIRECT_COMPUTATION:
                 if not skip_direct_computation:
                     nodes.append(self.corr.graph[big_tuple[0]][big_tuple[1]])
@@ -417,7 +408,7 @@ class TLACDCExperiment:
             # TODO, why?
             added_sender_hook = self.add_sender_hook(self.current_node)
 
-        if self.current_node.incoming_edge_type != EdgeType.PLACEHOLDER.value:
+        if self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value:
             added_receiver_hook = self.add_receiver_hook(self.current_node, override=True)
             if added_receiver_hook:
                 added_receiver_hook = self.model.hook_dict[self.current_node.name].fwd_hooks[-1]
