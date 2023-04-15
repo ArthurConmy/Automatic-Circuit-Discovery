@@ -130,12 +130,15 @@ class TLACDCExperiment:
         assert self.model.cfg.use_split_qkv_input, "Need to be able to see split by head QKV inputs"
         assert self.model.cfg.use_global_cache, "Need to be able to use global chache to do ACDC"
 
-    def update_cur_metric(self, recalc_metric=True, initial=False):
+    def update_cur_metric(self, recalc_metric=True, recalc_edges=True, initial=False):
         if recalc_metric:
             logits = self.model(self.ds)
             self.cur_metric = self.metric(logits)
             if self.second_metric is not None:
                 self.cur_second_metric = self.second_metric(logits)
+
+        if recalc_edges:
+            self.cur_edges = self.count_no_edges()
 
         if initial:
             assert abs(self.cur_metric) < 1e-5, f"Metric {self.cur_metric=} is not zero"
@@ -143,7 +146,7 @@ class TLACDCExperiment:
         if self.using_wandb:
             wandb_return_dict = {
                 "cur_metric": self.cur_metric,
-                "num_edges": self.count_no_edges(),
+                "num_edges": self.cur_edges,
             }
             if self.second_metric is not None:
                 wandb_return_dict["second_cur_metric"] = self.cur_second_metric
@@ -461,7 +464,7 @@ class TLACDCExperiment:
                     added_sender_hook = False
                 
                 old_metric = self.cur_metric
-                self.update_cur_metric()
+                self.update_cur_metric(recalc_edges=False) # warning: gives fast evaluation, though edge count is wrong
                 evaluated_metric = self.cur_metric # self.metric(self.model(self.ds)) # OK, don't calculate second metric?
 
                 if early_stop: # for debugging the effects of one and only one forward pass WITH a corrupted edge
@@ -497,7 +500,7 @@ class TLACDCExperiment:
                         print("...so keeping connection")
                     edge.present = True
 
-                    self.update_cur_metric(recalc_metric = False) # so we log current state to wandb
+                    self.update_cur_metric(recalc_edges=False, recalc_metric = False) # so we log current state to wandb
 
                 if self.using_wandb:
                     log_metrics_to_wandb(
@@ -531,7 +534,7 @@ class TLACDCExperiment:
 
         # increment the current node
         self.increment_current_node()
-        self.update_cur_metric(recalc_metric=False)
+        self.update_cur_metric(recalc_metric=True, recalc_edges=True) # so we log the correct state...
 
     def current_node_connected(self):
         for child_name, rest1 in self.corr.edges.items(): # rest1 just meaning "rest of dictionary.. I'm tired"
@@ -548,10 +551,10 @@ class TLACDCExperiment:
         for parent_name, rest1 in self.corr.edges[self.current_node.name][self.current_node.index].items():
             for parent_index, rest2 in rest1.items():
                 edge = self.corr.edges[self.current_node.name][self.current_node.index][parent_name][parent_index]
-                edge.present=False
+                edge.present = False
 
-                self.update_cur_metric()
-                assert abs(self.cur_metric - old_metric) < 3e-3, ("Removing all incoming edges should not change the metric", self.cur_metric, old_metric, self.current_node, parent_name, parent_index) # TODO this seems to fail quite regularly
+        self.update_cur_metric(recalc_edges=True)
+        assert abs(self.cur_metric - old_metric) < 3e-3, ("Removing all incoming edges should not change the metric ... you may want to see *which* remooval in the above loop mattered, too", self.cur_metric, old_metric, self.current_node) # TODO this seems to fail quite regularly
 
         return False
 

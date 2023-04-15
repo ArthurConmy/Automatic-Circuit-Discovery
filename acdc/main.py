@@ -206,7 +206,7 @@ exp = TLACDCExperiment(
 
 #%%
 
-for i in range(4): 
+for i in range(100_000): 
     exp.step()
 
     show(
