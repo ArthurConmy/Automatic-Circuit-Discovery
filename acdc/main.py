@@ -126,7 +126,7 @@ parser.add_argument('--seed', type=int, default=1234)
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
     # args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
     # args = parser.parse_args("--threshold 0.001 --using-wandb".split())
-    args = parser.parse_args("--task induction --using-wandb --threshold 0.3".split()) # TODO figure out why this is such high edge count...
+    args = parser.parse_args("--task ioi --using-wandb --threshold 0.03 --indices-mode reverse".split()) # TODO figure out why this is such high edge count...
 else:
     args = parser.parse_args()
 
@@ -240,7 +240,7 @@ exp = TLACDCExperiment(
 
 #%%
 
-for i in range(4): 
+for i in range(100_000): 
     exp.step()
 
     show(
