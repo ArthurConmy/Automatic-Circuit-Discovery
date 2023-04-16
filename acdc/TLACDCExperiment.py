@@ -145,7 +145,7 @@ class TLACDCExperiment:
             }
             if self.second_metric is not None:
                 wandb_return_dict["second_cur_metric"] = self.cur_second_metric
-                wandb.log(wandb_return_dict)
+            wandb.log(wandb_return_dict)
 
     def reverse_topologically_sort_corr(self):
         """Topologically sort the template corr"""

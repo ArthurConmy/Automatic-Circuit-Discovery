@@ -13,6 +13,7 @@ from functools import partial
 from acdc.acdc_utils import kl_divergence
 from tracr.rasp import rasp
 from tracr.compiler import compiling
+import torch.nn.functional as F
 
 bos = "BOS"
 
@@ -250,8 +251,8 @@ def get_tracr_data(tl_model, task: Literal["reverse", "proportion"]):
         patch_data_indices = get_perm(n)
         warnings.warn("Test that this only considers the relevant part of the sequence...")
         patch_data_tens = data_tens[patch_data_indices]
-        base_model_probs = tl_model(data_tens)
-        metric = partial(kl_divergence, base_model_probs=base_model_probs, mask_repeat_candidates=None)
+        base_model_logprobs = F.log_softmax(tl_model(data_tens), dim=-1)
+        metric = partial(kl_divergence, base_model_logprobs=base_model_logprobs, mask_repeat_candidates=None)
         
     if task == "proportion":
         batch_size = 50
