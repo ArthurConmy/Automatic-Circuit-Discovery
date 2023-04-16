@@ -27,7 +27,7 @@ class TLACDCCorrespondence:
             for child_index, rest2 in rest1.items():
                 for parent_name, rest3 in rest2.items():
                     for parent_index, edge in rest3.items():
-                        assert edge is not None, (child_name, child_index, parent_name, parent_index, "sldkfdj")
+                        assert edge is not None, (child_name, child_index, parent_name, parent_index, "Edges have been setup WRONG somehow...")
 
                         big_dict[(child_name, child_index, parent_name, parent_index)] = edge
         

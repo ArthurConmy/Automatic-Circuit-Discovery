@@ -261,8 +261,7 @@ def log_metrics_to_wandb(
         experiment.metrics_to_plot["num_edges"].append(experiment.get_no_edges())
     if times is not None:
         experiment.metrics_to_plot["times"].append(times)
-        experiment.metrics_to_plot["times"][-1] -= experiment.metrics_to_plot["times"][0]
-        experiment.metrics_to_plot["times_diff"].append(
+        experiment.metrics_to_plot["times_diff"].append( # hopefully fixes
             0 if len(experiment.metrics_to_plot["times"]) == 1 else (experiment.metrics_to_plot["times"][-1] - experiment.metrics_to_plot["times"][-2])
         )
 

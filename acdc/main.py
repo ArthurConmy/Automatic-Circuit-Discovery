@@ -23,6 +23,7 @@ from typing import (
     Iterable,
     Set,
 )
+import pickle
 import wandb
 import IPython
 import torch
@@ -123,10 +124,10 @@ parser.add_argument('--seed', type=int, default=1234)
 
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
-if True or IPython.get_ipython() is not None: # heheh get around this failing in notebooks
+if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
     # args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
     # args = parser.parse_args("--threshold 0.001 --using-wandb".split())
-    args = parser.parse_args("--task ioi --using-wandb --threshold 0.03 --indices-mode reverse".split()) # TODO figure out why this is such high edge count...
+    args = parser.parse_args("--task docstring --using-wandb --threshold 0.095 --wandb-project-name arthur_more_docstring --indices-mode reverse --first-cache-cpu False --second-cache-cpu False".split()) # TODO figure out why this is such high edge count...
 else:
     args = parser.parse_args()
 
@@ -186,7 +187,7 @@ elif TASK == "induction":
 elif TASK == "docstring":
     num_examples = 50
     seq_len = 41
-    tl_model, toks_int_values, toks_int_values_other, metric, second_metric = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric_name="docstring_metric", correct_incorrect_wandb=True)
+    tl_model, toks_int_values, toks_int_values_other, metric, second_metric = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric_name="kl_divergence", correct_incorrect_wandb=True)
 
 else:
     raise ValueError(f"Unknown task {TASK}")
@@ -237,11 +238,12 @@ exp = TLACDCExperiment(
     first_cache_cpu=FIRST_CACHE_CPU,
     add_sender_hooks=True, # attempting to be efficient...
     add_receiver_hooks=False,
+    remove_redundant=True,
 )
 
 #%%
 
-for i in range(100_000): 
+for i in range(30): 
     exp.step()
 
     show(
@@ -268,3 +270,10 @@ for i in range(100_000):
 exp.save_edges("another_final_edges.pkl")
 
 # %%
+
+# TODO delete
+
+edge_file_name = "../another_final_edges.pkl"
+
+with open(edge_file_name, "rb") as f:
+    edges = pickle.load(f)
