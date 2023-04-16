@@ -38,7 +38,7 @@ class TLACDCExperiment:
         verbose: bool = False,
         hook_verbose: bool = False,
         parallel_hypotheses: int = 1, # lol
-        remove_redundant: bool = False, # TODO implement
+        remove_redundant: bool = True, # TODO implement
         monotone_metric: Literal[
             "off", "maximize", "minimize"
         ] = "minimize",  # if this is set to "maximize" or "minimize", then the metric will be maximized or minimized, respectively instead of us trying to keep the metric roughly the same. We do KL divergence by default
@@ -58,6 +58,7 @@ class TLACDCExperiment:
     ):
         """Initialize the ACDC experiment"""
 
+        self.remove_redundant = remove_redundant
         self.indices_mode = indices_mode
         self.names_mode = names_mode
 
@@ -202,9 +203,6 @@ class TLACDCExperiment:
         
         incoming_edge_types = [self.corr.graph[hook.name][receiver_index].incoming_edge_type for receiver_index in list(self.corr.edges[hook.name].keys())]
 
-        if hook.name.endswith("mlp_out"):
-            a=1
-
         if EdgeType.DIRECT_COMPUTATION in incoming_edge_types:
 
             old_z = z.clone()
@@ -232,7 +230,9 @@ class TLACDCExperiment:
     
             return z
 
-        z[:] = self.model.global_cache.second_cache[hook.name].to(z.device) # TODO - is this slow ???
+        z[:] = self.model.global_cache.second_cache[hook.name].to(z.device) 
+        # TODO - is this slow ???
+        # answer: yes --- try and have hoooks for each individual (name, index)
 
         for receiver_node_index in self.corr.edges[hook.name]:
             for sender_node_name in self.corr.edges[hook.name][receiver_node_index]:
@@ -520,6 +520,11 @@ class TLACDCExperiment:
         #     added_receiver_hook = self.model.hook_dict[self.current_node.name].fwd_hooks.pop()
         #     added_receiver_hook.hook.remove()
 
+        if not is_this_node_used and self.remove_redundant:
+            if self.verbose:
+                print("Removing redundant node", self.current_node)
+            self.remove_redundant_node(self.current_node)
+
         if is_this_node_used and self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value:
             fname = f"ims/img_new_{self.step_idx}.png"
             show(
@@ -536,6 +541,40 @@ class TLACDCExperiment:
         self.increment_current_node()
         self.update_cur_metric(recalc_metric=True, recalc_edges=True) # so we log the correct state...
 
+    def remove_redundant_node(self, node, safe=True):
+
+        if safe:
+            for parent_name in self.corr.edges[node.name][node.index]:
+                for parent_index in self.corr.edges[node.name][node.index][parent_name]:
+                    if self.corr.edges[node.name][node.index][parent_name][parent_index].present:
+                        raise Exception(f"You should not be removing a node that is still used by another node {node} {(parent_name, parent_index)}")
+
+        bfs = [node]
+        bfs_idx = 0
+        
+        while bfs_idx < len(bfs):
+            cur_node = bfs[bfs_idx]
+            bfs_idx += 1
+
+            children = self.corr.graph[cur_node.name][cur_node.index].children
+
+            for child_node in children:
+                self.corr.remove_edge(
+                    child_node.name, child_node.index, cur_node.name, cur_node.index
+                )
+
+                remove_this = True
+                for parent_of_child_name in self.corr.edges[child_node.name][child_node.index]:
+                    for parent_of_child_index in self.corr.edges[child_node.name][child_node.index][parent_of_child_name]:
+                        if self.corr.edges[child_node.name][child_node.index][parent_of_child_name][parent_of_child_index].present:
+                            remove_this = False
+                            break
+                    if not remove_this:
+                        break
+                
+                if remove_this and child_node not in bfs:
+                    bfs.append(child_node)
+
     def current_node_connected(self):
         for child_name, rest1 in self.corr.edges.items(): # rest1 just meaning "rest of dictionary.. I'm tired"
             for child_index, rest2 in rest1.items():
@@ -548,10 +587,31 @@ class TLACDCExperiment:
         self.update_cur_metric()
         old_metric = self.cur_metric
 
-        for parent_name, rest1 in self.corr.edges[self.current_node.name][self.current_node.index].items():
-            for parent_index, rest2 in rest1.items():
-                edge = self.corr.edges[self.current_node.name][self.current_node.index][parent_name][parent_index]
+        parent_names = list(self.corr.edges[self.current_node.name][self.current_node.index].keys())
+
+        for parent_name in parent_names:
+
+            try:
+                rest1 = self.corr.edges[self.current_node.name][self.current_node.index][parent_name]
+            except KeyError:
+                continue
+
+            parent_indices = list(rest1.keys())
+
+            for parent_index in parent_indices:
+                try:
+                    edge = self.corr.edges[self.current_node.name][self.current_node.index][parent_name][parent_index]
+                except KeyError:
+                    continue
+                
                 edge.present = False
+
+                self.corr.remove_edge(
+                    self.current_node.name, 
+                    self.current_node.index, 
+                    parent_name, 
+                    parent_index,
+                )
 
         self.update_cur_metric(recalc_edges=True)
         assert abs(self.cur_metric - old_metric) < 3e-3, ("Removing all incoming edges should not change the metric ... you may want to see *which* remooval in the above loop mattered, too", self.cur_metric, old_metric, self.current_node) # TODO this seems to fail quite regularly
@@ -575,7 +635,7 @@ class TLACDCExperiment:
         self.current_node = self.find_next_node()
         print("We moved to ", self.current_node)
 
-        if self.current_node is not None and not self.current_node_connected():
+        if (self.current_node is not None and not self.current_node_connected()) or self.current_node.name == "blocks.0.hook_resid_pre":
             print("But it's bad")
             self.increment_current_node()
 
