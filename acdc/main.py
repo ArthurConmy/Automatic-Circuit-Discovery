@@ -113,6 +113,7 @@ parser.add_argument('--wandb-project-name', type=str, required=False, default="a
 parser.add_argument('--wandb-run-name', type=str, required=False, default=None, help='Value for WANDB_RUN_NAME')
 parser.add_argument('--indices-mode', type=str, default="normal")
 parser.add_argument('--names-mode', type=str, default="normal")
+parser.add_argument('--device', type=str, default="cuda")
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if True or IPython.get_ipython() is not None: # heheh get around this failing in notebooks
@@ -133,7 +134,7 @@ WANDB_PROJECT_NAME = args.wandb_project_name
 WANDB_RUN_NAME = args.wandb_run_name
 INDICES_MODE = args.indices_mode
 NAMES_MODE = args.names_mode
-DEVICE = "cuda"
+DEVICE = args.device
 
 #%% [markdown]
 # Setup
@@ -155,10 +156,10 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     toks_int_values, toks_int_values_other, metric = get_tracr_data(tl_model, task=TASK)
 
 elif TASK == "induction":
-    num_examples = 400
-    seq_len = 30
+    num_examples = 50
+    seq_len = 300
     # TODO initialize the `tl_model` with the right model
-    tl_model, toks_int_values, toks_int_values_other, metric = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, randomize_data=False)
+    tl_model, toks_int_values, toks_int_values_other, metric = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE)
 
 elif TASK == "docstring":
     num_examples = 50
