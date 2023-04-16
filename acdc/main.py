@@ -116,10 +116,10 @@ parser.add_argument('--indices-mode', type=str, default="normal")
 parser.add_argument('--names-mode', type=str, default="normal")
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
-if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
+if True or IPython.get_ipython() is not None: # heheh get around this failing in notebooks
     # args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
     # args = parser.parse_args("--threshold 0.001 --using-wandb".split())
-    args = parser.parse_args("--task docstring --using-wandb --threshold 0.095 --wandb-project-name arthur_more_docstring --indices-mode reverse --first-cache-cpu False --second-cache-cpu False".split()) # TODO figure out why this is such high edge count...
+    args = parser.parse_args("--task ioi --using-wandb --threshold 0.03 --wandb-project-name acdc --indices-mode reverse --first-cache-cpu False --second-cache-cpu False".split()) # TODO figure out why this is such high edge count...
 else:
     args = parser.parse_args()
 
@@ -208,7 +208,7 @@ exp = TLACDCExperiment(
 
 #%%
 
-for i in range(30): 
+for i in range(100_000): 
     exp.step()
 
     show(

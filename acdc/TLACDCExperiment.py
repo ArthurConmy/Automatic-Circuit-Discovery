@@ -541,7 +541,7 @@ class TLACDCExperiment:
         self.increment_current_node()
         self.update_cur_metric(recalc_metric=True, recalc_edges=True) # so we log the correct state...
 
-    def remove_redundant_node(self, node, safe=True):
+    def remove_redundant_node(self, node, safe=True, allow_fails=True):
 
         if safe:
             for parent_name in self.corr.edges[node.name][node.index]:
@@ -559,9 +559,16 @@ class TLACDCExperiment:
             children = self.corr.graph[cur_node.name][cur_node.index].children
 
             for child_node in children:
-                self.corr.remove_edge(
-                    child_node.name, child_node.index, cur_node.name, cur_node.index
-                )
+                try:
+                    self.corr.remove_edge(
+                        child_node.name, child_node.index, cur_node.name, cur_node.index
+                    )
+                except Exception as e:
+                    print("Got an error", e)
+                    if allow_fails:
+                        continue
+                    else:
+                        raise e
 
                 remove_this = True
                 for parent_of_child_name in self.corr.edges[child_node.name][child_node.index]:
