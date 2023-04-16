@@ -42,34 +42,34 @@ def get_model():
     tl_model.set_use_split_qkv_input(True) 
     return tl_model
 
-def get_validation_data(num_examples=None, seq_len=None):
+def get_validation_data(num_examples=None, seq_len=None, device=None):
     validation_fname = huggingface_hub.hf_hub_download(
         repo_id="ArthurConmy/redwood_attn_2l", filename="validation_data.pt"
     )
-    validation_data = torch.load(validation_fname)
+    validation_data = torch.load(validation_fname, map_location=device)
 
     if num_examples is None:
         return validation_data
     else:
         return validation_data[:num_examples][:seq_len]
 
-def get_good_induction_candidates(num_examples=None, seq_len=None):
+def get_good_induction_candidates(num_examples=None, seq_len=None, device=None):
     """Not needed?"""
     good_induction_candidates_fname = huggingface_hub.hf_hub_download(
         repo_id="ArthurConmy/redwood_attn_2l", filename="good_induction_candidates.pt"
     )
-    good_induction_candidates = torch.load(good_induction_candidates_fname)
+    good_induction_candidates = torch.load(good_induction_candidates_fname, map_location=device)
 
     if num_examples is None:
         return good_induction_candidates
     else:
         return good_induction_candidates[:num_examples][:seq_len]
 
-def get_mask_repeat_candidates(num_examples=None, seq_len=None):
+def get_mask_repeat_candidates(num_examples=None, seq_len=None, device=None):
     mask_repeat_candidates_fname = huggingface_hub.hf_hub_download(
         repo_id="ArthurConmy/redwood_attn_2l", filename="mask_repeat_candidates.pkl"
     )
-    mask_repeat_candidates = torch.load(mask_repeat_candidates_fname)
+    mask_repeat_candidates = torch.load(mask_repeat_candidates_fname, map_location=device)
     mask_repeat_candidates.requires_grad = False
 
     if num_examples is None:
@@ -77,28 +77,20 @@ def get_mask_repeat_candidates(num_examples=None, seq_len=None):
     else:
         return mask_repeat_candidates[:num_examples, :seq_len]
 
-def get_all_induction_things(num_examples, seq_len, device, randomize_data=True, data_seed=42):
+def get_all_induction_things(num_examples, seq_len, device, data_seed=42):
     tl_model = get_model()
     tl_model.to(device)
 
-    validation_data = get_validation_data()
-    mask_repeat_candidates = get_mask_repeat_candidates(num_examples=None) # None so we get all
+    validation_data = get_validation_data(device=device)
+    mask_repeat_candidates = get_mask_repeat_candidates(num_examples=None, device=device) # None so we get all
 
     assert len(mask_repeat_candidates) == len(validation_data), (len(mask_repeat_candidates), len(validation_data))
 
-    if not randomize_data:
-        rand_perm = torch.arange(len(validation_data))
-    else:
-        if isinstance(randomize_data, int):
-            torch.random.manual_seed(randomize_data)
-        rand_perm = torch.randperm(len(validation_data))
+    mask_repeat_candidates = mask_repeat_candidates[:num_examples, :seq_len]
 
-    rand_perm = rand_perm[:num_examples]
-    mask_repeat_candidates = mask_repeat_candidates[rand_perm][:num_examples, :seq_len]
-
-    toks_int_values = validation_data[rand_perm][:num_examples, :seq_len].to(device).long()
+    toks_int_values = validation_data[:num_examples, :seq_len].to(device).long()
     toks_int_values_other = shuffle_tensor(
-        validation_data[rand_perm][:num_examples, :seq_len].to(device).long(), seed=data_seed,
+        validation_data[:num_examples, :seq_len].to(device).long(), seed=data_seed,
     )
 
     base_model_logits = tl_model(toks_int_values)
