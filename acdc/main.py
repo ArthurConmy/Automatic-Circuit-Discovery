@@ -26,6 +26,7 @@ from typing import (
 import wandb
 import IPython
 import torch
+from pathlib import Path
 
 # from easy_transformer.ioi_dataset import IOIDataset  # type: ignore
 from tqdm import tqdm
@@ -115,6 +116,7 @@ parser.add_argument('--wandb-run-name', type=str, required=False, default=None, 
 parser.add_argument('--indices-mode', type=str, default="normal")
 parser.add_argument('--names-mode', type=str, default="normal")
 parser.add_argument('--device', type=str, default="cuda")
+parser.add_argument('--reset-network', type=int, default=0, help="Whether to reset the network we're operating on before running interp on it")
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if False or IPython.get_ipython() is not None: # heheh get around this failing in notebooks
@@ -137,6 +139,7 @@ WANDB_GROUP_NAME = args.wandb_group_name
 INDICES_MODE = args.indices_mode
 NAMES_MODE = args.names_mode
 DEVICE = args.device
+RESET_NETWORK = args.reset_network
 
 #%% [markdown]
 # Setup
@@ -167,6 +170,10 @@ elif TASK == "induction":
     validation_metric = induction_things.validation_metric
     metric = lambda x: validation_metric(x).item()
 
+    test_metric_fn = induction_things.test_metric
+    test_metric_data = induction_things.test_data
+    test_metric = lambda model: test_metric_fn(model(test_metric_data)).item()
+
 elif TASK == "docstring":
     num_examples = 50
     seq_len = 41
@@ -174,6 +181,17 @@ elif TASK == "docstring":
 
 else:
     raise ValueError(f"Unknown task {TASK}")
+
+if RESET_NETWORK:
+    base_dir = Path(__file__).parent.parent / "subnetwork-probing/" / "data" / "induction"
+    reset_state_dict = torch.load(base_dir / "random_model.pt")
+    for layer_i in range(2):
+        for qkv in ["q", "k", "v"]:
+            # Delete subnetwork probing masks
+            del reset_state_dict[f"blocks.{layer_i}.attn.hook_{qkv}.mask_scores"]
+
+    tl_model.load_state_dict(reset_state_dict, strict=True)
+    del reset_state_dict
 
 #%%
 
@@ -245,6 +263,13 @@ for i in range(100_000):
 
     if i==0:
         exp.save_edges("edges.pkl")
+
+    if TASK == "induction":
+        with torch.no_grad():
+            test_metric_value = test_metric(exp.model)
+            print("test metric:", test_metric_value)
+        if USING_WANDB:
+            wandb.log(dict(test_specific_metric=test_metric_value))
 
     if exp.current_node is None:
         break
