@@ -36,7 +36,7 @@ def main(testing=False, use_kubernetes=False):
                     command_str = shlex.join(command)
                     print("Launching", command_str)
                     if testing or not use_kubernetes:
-                        out = subprocess.Popen(command[1:], executable=command[0], stdout=open(f"stdout_{i:03d}.txt", "w"), stderr=open(f"stderr_{i:03d}.txt", "w"))
+                        out = subprocess.Popen(command, stdout=open(f"stdout_{i:03d}.txt", "w"), stderr=open(f"stderr_{i:03d}.txt", "w"))
                         to_wait.append(out)
 
                     if not testing and use_kubernetes:
