@@ -117,6 +117,8 @@ parser.add_argument('--indices-mode', type=str, default="normal")
 parser.add_argument('--names-mode', type=str, default="normal")
 parser.add_argument('--device', type=str, default="cuda")
 parser.add_argument('--reset-network', type=int, default=0, help="Whether to reset the network we're operating on before running interp on it")
+parser.add_argument('--metric', type=str, default="kl_div", help="Which metric to use for the experiment")
+parser.add_argument('--torch-num-threads', type=int, default=0, help="How many threads to use for torch (0=all)")
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if False or IPython.get_ipython() is not None: # heheh get around this failing in notebooks
@@ -125,6 +127,10 @@ if False or IPython.get_ipython() is not None: # heheh get around this failing i
     args = parser.parse_args("--task docstring --using-wandb --threshold 0.075".split()) # TODO figure out why this is such high edge count...
 else:
     args = parser.parse_args()
+
+
+if args.torch_num_threads > 0:
+    torch.set_num_threads(args.torch_num_threads)
 
 TASK = args.task
 FIRST_CACHE_CPU = args.first_cache_cpu
@@ -164,7 +170,7 @@ elif TASK == "induction":
     num_examples = 50
     seq_len = 300
     # TODO initialize the `tl_model` with the right model
-    induction_things = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE)
+    induction_things = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric=args.metric)
     tl_model, toks_int_values, toks_int_values_other = induction_things.tl_model, induction_things.validation_data, induction_things.validation_patch_data
 
     validation_metric = induction_things.validation_metric
