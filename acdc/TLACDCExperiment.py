@@ -430,6 +430,9 @@ class TLACDCExperiment:
             added_sender_hook = self.add_sender_hook(self.current_node, override=True)
 
         is_this_node_used = False
+        if self.current_node.name == "blocks.0.hook_resid_pre":
+            is_this_node_used = True
+
         sender_names_list = list(self.corr.edges[self.current_node.name][self.current_node.index])
 
         if self.names_mode == "random":
@@ -644,7 +647,7 @@ class TLACDCExperiment:
         self.current_node = self.find_next_node()
         print("We moved to ", self.current_node)
 
-        if (self.current_node is not None and not self.current_node_connected()) or self.current_node.name == "blocks.0.hook_resid_pre":
+        if self.current_node is not None and not (self.current_node_connected() or self.current_node.name == "blocks.0.hook_resid_pre"):
             print("But it's bad")
             self.increment_current_node()
 
