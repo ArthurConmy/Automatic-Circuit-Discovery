@@ -410,9 +410,6 @@ class TLACDCExperiment:
         start_step_time = time.time()
         self.step_idx += 1
 
-        if self.current_node.name.endswith("mlp_out"): # TODO delete
-            a=1
-
         self.update_cur_metric()
         initial_metric = self.cur_metric
         assert isinstance(initial_metric, float), f"Initial metric is a {type(initial_metric)} not a float"
@@ -420,9 +417,6 @@ class TLACDCExperiment:
         cur_metric = initial_metric
         if self.verbose:
             print("New metric:", cur_metric)
-
-        # if self.current_node.incoming_edge_type.value == EdgeType.DIRECT_COMPUTATION.value:
-        #     self.corr.graph[self.current_node.name]
 
         if self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value:
             added_receiver_hook = self.add_receiver_hook(self.current_node, override=True, prepend=True)
@@ -471,6 +465,9 @@ class TLACDCExperiment:
                     added_sender_hook = False
                 
                 old_metric = self.cur_metric
+                if self.second_metric is not None:
+                    old_second_metric = self.cur_second_metric
+
                 self.update_cur_metric(recalc_edges=False) # warning: gives fast evaluation, though edge count is wrong
                 evaluated_metric = self.cur_metric # self.metric(self.model(self.ds)) # OK, don't calculate second metric?
 
@@ -494,25 +491,27 @@ class TLACDCExperiment:
                     print("Result is", result, end="")
 
                 if result < self.threshold:
-                    print("...so removing connection")
-                    self.cur_metric = evaluated_metric
+                    if self.verbose:
+                        print("...so removing connection")
                     self.corr.remove_edge(
                         self.current_node.name, self.current_node.index, sender_name, sender_index
                     )
                     
                 else: # include this edge in the graph
+                    self.cur_metric = old_metric
+                    if self.second_metric is not None:
+                        self.cur_second_metric = old_second_metric
                     is_this_node_used = True
-
                     if self.verbose:
                         print("...so keeping connection")
                     edge.present = True
 
-                    self.update_cur_metric(recalc_edges=False, recalc_metric = False) # so we log current state to wandb
+                self.update_cur_metric(recalc_edges=False, recalc_metric=False) # so we log current state to wandb
 
                 if self.using_wandb:
                     log_metrics_to_wandb(
                         self,
-                        current_metric = cur_metric,
+                        current_metric = self.cur_metric,
                         parent_name = str(self.corr.graph[sender_name][sender_index]),
                         child_name = str(self.current_node),
                         result = result,
