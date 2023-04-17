@@ -109,6 +109,7 @@ parser.add_argument('--second-cache-cpu', type=bool, required=False, default=Tru
 parser.add_argument('--zero-ablation', action='store_true', help='A flag without a value')
 parser.add_argument('--using-wandb', action='store_true', help='A flag without a value')
 parser.add_argument('--wandb-entity-name', type=str, required=False, default="remix_school-of-rock", help='Value for WANDB_ENTITY_NAME')
+parser.add_argument('--wandb-group-name', type=str, required=False, default="default", help='Value for WANDB_GROUP_NAME')
 parser.add_argument('--wandb-project-name', type=str, required=False, default="acdc", help='Value for WANDB_PROJECT_NAME')
 parser.add_argument('--wandb-run-name', type=str, required=False, default=None, help='Value for WANDB_RUN_NAME')
 parser.add_argument('--indices-mode', type=str, default="normal")
@@ -116,7 +117,7 @@ parser.add_argument('--names-mode', type=str, default="normal")
 parser.add_argument('--device', type=str, default="cuda")
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
-if True or IPython.get_ipython() is not None: # heheh get around this failing in notebooks
+if False or IPython.get_ipython() is not None: # heheh get around this failing in notebooks
     # args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
     # args = parser.parse_args("--threshold 0.001 --using-wandb".split())
     args = parser.parse_args("--task docstring --using-wandb --threshold 0.075".split()) # TODO figure out why this is such high edge count...
@@ -132,6 +133,7 @@ USING_WANDB = True if args.using_wandb else False
 WANDB_ENTITY_NAME = args.wandb_entity_name
 WANDB_PROJECT_NAME = args.wandb_project_name
 WANDB_RUN_NAME = args.wandb_run_name
+WANDB_GROUP_NAME = args.wandb_group_name
 INDICES_MODE = args.indices_mode
 NAMES_MODE = args.names_mode
 DEVICE = args.device
@@ -159,7 +161,11 @@ elif TASK == "induction":
     num_examples = 50
     seq_len = 300
     # TODO initialize the `tl_model` with the right model
-    tl_model, toks_int_values, toks_int_values_other, metric = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE)
+    induction_things = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE)
+    tl_model, toks_int_values, toks_int_values_other = induction_things.tl_model, induction_things.validation_data, induction_things.validation_patch_data
+
+    validation_metric = induction_things.validation_metric
+    metric = lambda x: validation_metric(x).item()
 
 elif TASK == "docstring":
     num_examples = 50
@@ -189,6 +195,7 @@ exp = TLACDCExperiment(
     wandb_entity_name=WANDB_ENTITY_NAME,
     wandb_project_name=WANDB_PROJECT_NAME,
     wandb_run_name=WANDB_RUN_NAME,
+    wandb_group_name=WANDB_GROUP_NAME,
     wandb_notes=notes,
     zero_ablation=ZERO_ABLATION,
     ds=toks_int_values,

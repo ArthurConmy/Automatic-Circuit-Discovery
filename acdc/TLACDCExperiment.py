@@ -49,6 +49,7 @@ class TLACDCExperiment:
         wandb_entity_name: str = "",
         wandb_project_name: str = "",
         wandb_run_name: str = "",
+        wandb_group_name: str = "",
         wandb_notes: str = "",
         skip_edges = "yes",
         add_sender_hooks: bool = True,
@@ -93,6 +94,7 @@ class TLACDCExperiment:
         if using_wandb:
             wandb.init(
                 entity=wandb_entity_name,
+                group=wandb_group_name,
                 project=wandb_project_name,
                 name=wandb_run_name,
                 notes=wandb_notes,
