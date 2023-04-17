@@ -28,7 +28,7 @@ def main(testing=False, use_kubernetes=False):
                         f"--reset-network={reset_network}",
                         f"--seed={seed}",
                         f"--metric={loss_type}",
-                        "--torch-num-threads=2",
+                        "--torch-num-threads=1",
                     ]
                     if zero_ablation:
                         command.append("--zero-ablation")
