@@ -226,14 +226,3 @@ for i in range(100_000):
         break
 
 exp.save_edges("another_final_edges.pkl")
-
-# %%
-
-# TODO delete
-
-edge_file_name = "../another_final_edges.pkl"
-
-with open(edge_file_name, "rb") as f:
-    edges = pickle.load(f)
-
-# %%
