@@ -216,3 +216,10 @@ for t in exp.corr.all_edges():
 exp.count_no_edges()
 print("ACDC circuit Logit Diff:", exp.metric(exp.model(exp.ds)))
 print(f"Fraction of LogitDiff>0: {second_metric(exp.model(exp.ds)):.0%}")
+
+#%%
+for t in exp.corr.all_edges():
+    if t not in edges_to_keep:
+        pass#print("Removing", t)
+    else:
+        print("Keeping", t)
