@@ -38,12 +38,6 @@ def main(testing=False, use_kubernetes=False):
                     if testing or not use_kubernetes:
                         out = subprocess.Popen(command[1:], executable=command[0], stdout=open(f"stdout_{i:03d}.txt", "w"), stderr=open(f"stderr_{i:03d}.txt", "w"))
                         to_wait.append(out)
-                        if testing:
-                            out.wait()
-                            print("Output:", out.stdout.decode("utf-8"))
-
-                    if i != 0:
-                        continue
 
                     if not testing and use_kubernetes:
                         subprocess.run(
@@ -65,8 +59,11 @@ def main(testing=False, use_kubernetes=False):
                             check=True,
                         )
                     i += 1
-    for process_to_wait in to_wait:
-        process_to_wait.wait()
+
+    print("to wait", to_wait)
+    if not testing and not use_kubernetes:
+        for process_to_wait in to_wait:
+            process_to_wait.wait()
 
 
 if __name__ == "__main__":
