@@ -258,7 +258,7 @@ def log_metrics_to_wandb(
     if result is not None:
         experiment.metrics_to_plot["results"].append(result)
     if experiment.skip_edges != "yes":
-        experiment.metrics_to_plot["num_edges"].append(experiment.get_no_edges())
+        experiment.metrics_to_plot["num_edges"].append(experiment.count_no_edges())
     if times is not None:
         experiment.metrics_to_plot["times"].append(times)
         experiment.metrics_to_plot["times_diff"].append( # hopefully fixes

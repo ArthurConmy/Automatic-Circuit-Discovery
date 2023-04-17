@@ -119,7 +119,7 @@ parser.add_argument('--names-mode', type=str, default="normal")
 if True or IPython.get_ipython() is not None: # heheh get around this failing in notebooks
     # args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
     # args = parser.parse_args("--threshold 0.001 --using-wandb".split())
-    args = parser.parse_args("--task ioi --using-wandb --threshold 0.03 --wandb-project-name acdc --indices-mode reverse --first-cache-cpu False --second-cache-cpu False".split()) # TODO figure out why this is such high edge count...
+    args = parser.parse_args("--task docstring --using-wandb --threshold 0.095 --wandb-project-name acdc --indices-mode reverse --first-cache-cpu False --second-cache-cpu False".split()) # TODO figure out why this is such high edge count...
 else:
     args = parser.parse_args()
 

@@ -50,7 +50,7 @@ class TLACDCExperiment:
         wandb_project_name: str = "",
         wandb_run_name: str = "",
         wandb_notes: str = "",
-        skip_edges = "yes",
+        skip_edges = "no",
         add_sender_hooks: bool = True,
         add_receiver_hooks: bool = False,
         indices_mode: Literal["normal", "reverse", "shuffle"] = "reverse", # we get best performance with reverse I think
@@ -69,8 +69,10 @@ class TLACDCExperiment:
         self.step_idx = 0
         self.hook_verbose = hook_verbose
         self.skip_edges = skip_edges
-        if skip_edges != "yes":
-            raise NotImplementedError() # TODO if edge counts are slow...
+
+        if skip_edges != "no":
+            warnings.warn("Never skipping edges, for now")
+            skip_edges = "no"
 
         self.corr = TLACDCCorrespondence.setup_from_model(self.model)
             
@@ -563,7 +565,7 @@ class TLACDCExperiment:
                     self.corr.remove_edge(
                         child_node.name, child_node.index, cur_node.name, cur_node.index
                     )
-                except Exception as e:
+                except KeyError as e:
                     print("Got an error", e)
                     if allow_fails:
                         continue
