@@ -119,6 +119,8 @@ parser.add_argument('--device', type=str, default="cuda")
 parser.add_argument('--reset-network', type=int, default=0, help="Whether to reset the network we're operating on before running interp on it")
 parser.add_argument('--metric', type=str, default="kl_div", help="Which metric to use for the experiment")
 parser.add_argument('--torch-num-threads', type=int, default=0, help="How many threads to use for torch (0=all)")
+parser.add_argument('--seed', type=int, default=1234)
+
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if False or IPython.get_ipython() is not None: # heheh get around this failing in notebooks
@@ -131,6 +133,7 @@ else:
 
 if args.torch_num_threads > 0:
     torch.set_num_threads(args.torch_num_threads)
+torch.manual_seed(args.seed)
 
 TASK = args.task
 FIRST_CACHE_CPU = args.first_cache_cpu
