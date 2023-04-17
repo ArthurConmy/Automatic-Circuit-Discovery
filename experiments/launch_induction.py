@@ -8,6 +8,7 @@ def main(testing=False, use_kubernetes=False):
     thresholds = 10 ** np.linspace(-2, 0.5, 21)
     seed = random.randint(0, 2**31 - 1)
 
+    to_wait = []
     i = 0
     for reset_network in [0, 1]:
         for zero_ablation in [0, 1]:
@@ -16,8 +17,9 @@ def main(testing=False, use_kubernetes=False):
                     command = [
                         "python",
                         "acdc/main.py"
-                        if testing
+                        if testing or not use_kubernetes
                         else "/Automatic-Circuit-Discovery/acdc/main.py",
+                        "--task=induction",
                         f"--threshold={threshold:.5f}",
                         "--using-wandb",
                         "--wandb-group-name=adria-induction-2",
@@ -34,8 +36,13 @@ def main(testing=False, use_kubernetes=False):
                     command_str = shlex.join(command)
                     print("Launching", command_str)
                     if testing or not use_kubernetes:
-                        out = subprocess.run(command, check=True, capture_output=True)
-                        print("Output:", out.stdout.decode("utf-8"))
+                        out = subprocess.Popen(command[1:], executable=command[0], stdout=open(f"stdout_{i:03d}.txt", "w"), stderr=open(f"stderr_{i:03d}.txt", "w"))
+                        to_wait.append(out)
+                        if testing:
+                            out.wait()
+                            print("Output:", out.stdout.decode("utf-8"))
+
+                    if i != 0:
                         continue
 
                     if not testing and use_kubernetes:
@@ -58,6 +65,8 @@ def main(testing=False, use_kubernetes=False):
                             check=True,
                         )
                     i += 1
+    for process_to_wait in to_wait:
+        process_to_wait.wait()
 
 
 if __name__ == "__main__":
