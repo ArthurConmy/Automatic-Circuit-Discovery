@@ -169,6 +169,8 @@ elif TASK == "docstring":
 else:
     raise ValueError(f"Unknown task {TASK}")
 
+second_metric = None
+
 #%%
 
 with open(__file__, "r") as f:
