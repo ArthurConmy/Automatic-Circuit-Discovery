@@ -1,3 +1,4 @@
+*.txt
 *.pkl
 acdc.egg-info/
 histories/

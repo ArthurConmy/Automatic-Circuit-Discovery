@@ -8,7 +8,7 @@ from acdc.graphics import show
 from torch import nn
 from torch.nn import functional as F
 from acdc.TLACDCInterpNode import TLACDCInterpNode
-from acdc.TLACDCCorrespondence import TLACDCCorrespondence, TLACDCCorrespondenceFast
+from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from acdc.HookedTransformer import HookedTransformer
 from acdc.graphics import log_metrics_to_wandb
 import warnings

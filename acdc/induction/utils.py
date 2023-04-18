@@ -34,12 +34,14 @@ from acdc.acdc_utils import kl_divergence, negative_log_probs
 
 def get_model():
     tl_model = HookedTransformer.from_pretrained(
-        "redwood_attn_2l",
-        use_global_cache=True,
-        fold_ln=False,
-        center_writing_weights=False,
+        "redwood_attn_2l",  # load Redwood's model
+        use_global_cache=True,  # use the global cache: this is needed for ACDC to work
+        center_writing_weights=False,  # these are needed as this model is a Shortformer; this is a technical detail
         center_unembed=False,
+        fold_ln=False,
     )
+
+    # standard ACDC options
     tl_model.set_use_attn_result(True)
     tl_model.set_use_split_qkv_input(True) 
     return tl_model
