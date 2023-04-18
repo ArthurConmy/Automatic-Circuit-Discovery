@@ -192,16 +192,7 @@ elif TASK == "docstring":
 else:
     raise ValueError(f"Unknown task {TASK}")
 
-if RESET_NETWORK:
-    base_dir = Path(__file__).parent.parent / "subnetwork-probing/" / "data" / "induction"
-    reset_state_dict = torch.load(base_dir / "random_model.pt")
-    for layer_i in range(2):
-        for qkv in ["q", "k", "v"]:
-            # Delete subnetwork probing masks
-            del reset_state_dict[f"blocks.{layer_i}.attn.hook_{qkv}.mask_scores"]
-
-    tl_model.load_state_dict(reset_state_dict, strict=True)
-    del reset_state_dict
+second_metric = None
 
 #%%
 
