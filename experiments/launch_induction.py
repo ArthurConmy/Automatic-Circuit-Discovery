@@ -3,6 +3,7 @@ import numpy as np
 import shlex
 import random
 
+RUNNING_ON_HOFVARPNIR = False
 
 def main(testing=False, use_kubernetes=False):
     thresholds = 10 ** np.linspace(-2, 0.5, 21)
@@ -40,22 +41,26 @@ def main(testing=False, use_kubernetes=False):
                         to_wait.append(out)
 
                     if not testing and use_kubernetes:
+
+                        subprocess_run_list = [
+                            "job",
+                            "run",
+                            f"--name=agarriga-acdc-{i:03d}",
+                            "--shared-host-dir-slow-tolerant",
+                            "--container=ghcr.io/rhaps0dy/automatic-circuit-discovery:1.1",
+                            "--cpu=4",
+                            "--gpu=1",
+                            "--login",
+                            "--wandb",
+                            "--never-restart",
+                            f"--command={command_str}",
+                            "--working-dir=/Automatic-Circuit-Discovery",
+                        ]
+                        if RUNNING_ON_HOFVARPNIR:
+                            subprocess_run_list = ["ctl"] + subprocess_run_list
+
                         subprocess.run(
-                            [
-                                "ctl",
-                                "job",
-                                "run",
-                                f"--name=agarriga-acdc-{i:03d}",
-                                "--shared-host-dir-slow-tolerant",
-                                "--container=ghcr.io/rhaps0dy/automatic-circuit-discovery:1.1",
-                                "--cpu=4",
-                                "--gpu=1",
-                                "--login",
-                                "--wandb",
-                                "--never-restart",
-                                f"--command={command_str}",
-                                "--working-dir=/Automatic-Circuit-Discovery",
-                            ],
+                            subprocess_run_list,
                             check=True,
                         )
                     i += 1

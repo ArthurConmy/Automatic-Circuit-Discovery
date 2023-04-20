@@ -1,4 +1,5 @@
 *.pkl
+acdc.egg-info/
 histories/
 transformer_lens/media/
 profile*.json
