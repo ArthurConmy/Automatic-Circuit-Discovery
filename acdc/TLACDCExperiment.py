@@ -58,6 +58,9 @@ class TLACDCExperiment:
     ):
         """Initialize the ACDC experiment"""
 
+        assert not zero_ablation and remove_redundant:
+            raise ValueError("It's not possible to do zero ablation with remove redundant, talk to Arthur about a bizarre special case!")
+
         self.remove_redundant = remove_redundant
         self.indices_mode = indices_mode
         self.names_mode = names_mode
@@ -205,10 +208,16 @@ class TLACDCExperiment:
         
         incoming_edge_types = [self.corr.graph[hook.name][receiver_index].incoming_edge_type for receiver_index in list(self.corr.edges[hook.name].keys())]
 
+        if verbose:
+            print("In receiver hook", hook.name)
+
         if EdgeType.DIRECT_COMPUTATION in incoming_edge_types:
 
             old_z = z.clone()
             z[:] = self.model.global_cache.second_cache[hook.name].to(z.device)
+
+            if verbose:
+                print("Overwrote to sec cache")
 
             assert incoming_edge_types == [EdgeType.DIRECT_COMPUTATION for _ in incoming_edge_types], f"All incoming edges should be the same type not {incoming_edge_types}"
 
@@ -228,6 +237,9 @@ class TLACDCExperiment:
                 edge = self.corr.edges[hook.name][receiver_index][sender_node][sender_index]
 
                 if edge.present:
+                    if verbose:
+                        print(f"Overwrote {receiver_index} with norm {old_z[receiver_index.as_index].norm().item()}")
+
                     z[receiver_index.as_index] = old_z[receiver_index.as_index].to(z.device)
     
             return z

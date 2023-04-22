@@ -200,10 +200,11 @@ exp = TLACDCExperiment(
     indices_mode=INDICES_MODE,
     names_mode=NAMES_MODE,
     second_cache_cpu=SECOND_CACHE_CPU,
+    hook_verbose=False,
     first_cache_cpu=FIRST_CACHE_CPU,
     add_sender_hooks=True,
     add_receiver_hooks=False,
-    remove_redundant=True,
+    remove_redundant=False,
 )
 
 #%%
