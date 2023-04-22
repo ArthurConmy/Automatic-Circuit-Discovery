@@ -29,7 +29,8 @@ project_names = [
     # "induction_arthur",
     # "shuffle_the_dataset",
     # "arthurinduction_randomabl_reverse",
-    "arthurinduction_zeroabl_reverse",
+    # "arthurinduction_zeroabl_reverse",
+    "new_zero_ablation=1_adria",
 ]
 
 api = wandb.Api()
@@ -72,8 +73,8 @@ for pi, project_name in (enumerate(project_names)):
 
             # rename the column "experiment.cur_metric" to "metric"
             history = history.rename(columns={"experiment.cur_metric": "metric", 'num_edges_total': 'num_edges', "self.cur_metric": "metric"})
-            min_edges = history["num_edges"].min()
-            max_edges = history["num_edges"].max()
+            min_edges = history["num_edges"].min().min()
+            max_edges = history["num_edges"].max().max()
             
             if min_edges <= 0:
                 print("ewwwwww this was no edges")
@@ -88,6 +89,10 @@ for pi, project_name in (enumerate(project_names)):
 
             all_metrics = history["metric"].values
             all_edges = history["num_edges"].values
+            if len(all_metrics.shape) == 2:
+                all_metrics = all_metrics[:, 0]
+            if len(all_edges.shape) == 2:
+                all_edges = all_edges[:, 0]
             all_metrics = process_nan(all_metrics, reverse=True)
             all_edges = process_nan(all_edges)
 
@@ -127,6 +132,8 @@ thresholds = []
 for name in names:
     if name.endswith("zero") or (name.endswith("reversed") and not name.endswith("zero_reversed")):
         thresholds.append(get_threshold_zero(name, -2))
+    elif "zero_ablation=" in name:
+        thresholds.append(float(name.split("=")[1].split("_")[0]))
     else:
         thresholds.append(get_threshold_zero(name, -1)) # or -3...
 
@@ -164,7 +171,7 @@ fig.update_layout(
 
 # add title
 fig.update_layout(
-    title="ACDC compared to SP (random ablation)",
+    title="ACDC compared to SP (zero ablation)",
 )
 
 #%%
@@ -259,19 +266,21 @@ fig.add_trace(
 
 import plotly
 # fname = "media_zero_json.json"
-fname = "augustine_random.json"
+fname = "better_zero.json"
 fig2 = plotly.io.read_json(fname)
+fig2.show()
 
-# get points
-x = fig2.data[0]["x"]
-y = fig2.data[0]["y"]
-labels = fig2.data[0]["customdata"]
-labels = [x for x, _ in labels]
+if False:
+    # get points
+    x = fig2.data[0]["x"]
+    y = fig2.data[0]["y"]
+    labels = fig2.data[0]["customdata"]
+    labels = [x for x, _ in labels]
 
 #%%
 
 import plotly
-fname = "profile_rand_plot.json"
+fname = "better_random.json"
 fig3 = plotly.io.read_json(fname)
 
 # get points

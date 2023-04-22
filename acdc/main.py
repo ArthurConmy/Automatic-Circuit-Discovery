@@ -116,10 +116,10 @@ parser.add_argument('--indices-mode', type=str, default="normal")
 parser.add_argument('--names-mode', type=str, default="normal")
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
-if True or IPython.get_ipython() is not None: # heheh get around this failing in notebooks
+if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
     # args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
     # args = parser.parse_args("--threshold 0.001 --using-wandb".split())
-    args = parser.parse_args("--task docstring --using-wandb --threshold 0.095 --wandb-project-name acdc --indices-mode reverse --first-cache-cpu False --second-cache-cpu False".split()) # TODO figure out why this is such high edge count...
+    args = parser.parse_args("--task induction --using-wandb --threshold 0.042 --wandb-project-name acdc --indices-mode reverse --first-cache-cpu False --second-cache-cpu False".split()) # TODO figure out why this is such high edge count...
 else:
     args = parser.parse_args()
 
@@ -156,10 +156,10 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     toks_int_values, toks_int_values_other, metric = get_tracr_data(tl_model, task=TASK)
 
 elif TASK == "induction":
-    num_examples = 400
-    seq_len = 30
+    num_examples = 40
+    seq_len = 300
     # TODO initialize the `tl_model` with the right model
-    tl_model, toks_int_values, toks_int_values_other, metric = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, randomize_data=False)
+    tl_model, toks_int_values, toks_int_values_other, metric = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, randomize_data=False, data_seed=int(1_000_000 * THRESHOLD))
 
 elif TASK == "docstring":
     num_examples = 50
@@ -181,8 +181,6 @@ tl_model.reset_hooks()
 
 if WANDB_RUN_NAME is None or IPython.get_ipython() is not None:
     WANDB_RUN_NAME = f"{ct()}{'_randomindices' if INDICES_MODE=='random' else ''}_{THRESHOLD}{'_zero' if ZERO_ABLATION else ''}"
-else:
-    assert False # I want named runs, always
 
 tl_model.reset_hooks()
 exp = TLACDCExperiment(
@@ -228,3 +226,5 @@ for i in range(100_000):
         break
 
 exp.save_edges("another_final_edges.pkl")
+
+# %%
