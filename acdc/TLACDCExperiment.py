@@ -232,7 +232,8 @@ class TLACDCExperiment:
     
             return z
 
-        z[:] = self.model.global_cache.second_cache[hook.name].to(z.device) 
+        z[:] = self.model.global_cache.second_cache[hook.name].to(z.device)
+
         # TODO - is this slow ???
         # answer: yes --- try and have hoooks for each individual (name, index)
 
@@ -546,7 +547,6 @@ class TLACDCExperiment:
         self.update_cur_metric(recalc_metric=True, recalc_edges=True) # so we log the correct state...
 
     def remove_redundant_node(self, node, safe=True, allow_fails=True):
-
         if safe:
             for parent_name in self.corr.edges[node.name][node.index]:
                 for parent_index in self.corr.edges[node.name][node.index][parent_name]:
@@ -563,6 +563,10 @@ class TLACDCExperiment:
             children = self.corr.graph[cur_node.name][cur_node.index].children
 
             for child_node in children:
+                if self.corr.edges[child_node.name][child_node.index][cur_node.name][cur_node.index].edge_type == EdgeType.PLACEHOLDER.value:
+                    # TODO be a bit more permissive, this can include all things when we have dropped an attention head...
+                    continue
+
                 try:
                     self.corr.remove_edge(
                         child_node.name, child_node.index, cur_node.name, cur_node.index
@@ -660,3 +664,6 @@ class TLACDCExperiment:
         if self.verbose:
             print("No edge", cnt)
         return cnt
+
+    def reload_hooks(self):
+        pass
