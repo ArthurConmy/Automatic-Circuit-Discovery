@@ -563,7 +563,7 @@ class TLACDCExperiment:
             children = self.corr.graph[cur_node.name][cur_node.index].children
 
             for child_node in children:
-                if self.corr.edges[child_node.name][child_node.index][cur_node.name][cur_node.index].edge_type == EdgeType.PLACEHOLDER.value:
+                if self.corr.edges[child_node.name][child_node.index][cur_node.name][cur_node.index].edge_type.value == EdgeType.PLACEHOLDER.value:
                     # TODO be a bit more permissive, this can include all things when we have dropped an attention head...
                     continue
 
@@ -666,4 +666,5 @@ class TLACDCExperiment:
         return cnt
 
     def reload_hooks(self):
-        pass
+        old_corr = self.corr
+        self.corr = TLACDCCorrespondence.setup_from_model(self.model)
