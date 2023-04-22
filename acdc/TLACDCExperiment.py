@@ -654,8 +654,6 @@ class TLACDCExperiment:
 
     def count_no_edges(self) -> int:
         cnt = self.corr.count_no_edges()
-        self.add_node(self.current_node, safe=True)
-        warnings.warn("Why are we adding the node???")
 
         if self.verbose:
             print("No edge", cnt)
