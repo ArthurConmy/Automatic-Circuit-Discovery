@@ -287,9 +287,9 @@ class TLACDCExperiment:
 
             if edge.edge_type == EdgeType.DIRECT_COMPUTATION:
                 if not skip_direct_computation:
-                    nodes.append(self.corr.graph[big_tuple[0]][big_tuple[1]])
+                    nodes.append(self.corr.graph[big_tuple[2]][big_tuple[3]])
                     if add_all_hooks:
-                        nodes.append(self.corr.graph[big_tuple[2]][big_tuple[3]])
+                        nodes.append(self.corr.graph[big_tuple[0]][big_tuple[1]])
             elif edge.edge_type == EdgeType.ADDITION:
                 nodes.append(self.corr.graph[big_tuple[2]][big_tuple[3]])
                 if add_all_hooks:
@@ -348,7 +348,7 @@ class TLACDCExperiment:
         add_receiver_hooks=False,
     ):
         if add_sender_hooks:
-            self.add_all_sender_hooks(cache="first", skip_direct_computation=True) # remove because efficiency 
+            self.add_all_sender_hooks(cache="first", skip_direct_computation=False, add_all_hooks=True) # when this is True, this is wrong I think
 
         if add_receiver_hooks:
             warnings.warn("Deprecating adding receiver hooks before launching into ACDC runs, this may be totally broke")

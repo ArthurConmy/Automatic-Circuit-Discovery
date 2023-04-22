@@ -11,7 +11,6 @@ from functools import *
 
 from dataclasses import dataclass
 
-
 @dataclass
 class LensHandle:
     hook: hooks.RemovableHandle
@@ -52,10 +51,19 @@ class HookPoint(nn.Module):
         # Change it into PyTorch hook format (this includes input and output,
         # which are the same for a HookPoint)
 
-        if is_permanent:
-            warnings.warn("Arthur used some self.fwd_hook_functions stuff that won't play nicely with permanent hooks, take real care here")
+        if is_permanent or dir != "fwd":
+            raise NotImplementedError("Only fwd hooks are supported for core ACDC usages. You could disable this but no guarantees of correctness.")
 
         if dir == "fwd":
+            if prepend:
+                print("PREEEEPEDING") # TODO delete
+                old_fwd_hook_functions = [hook for hook in self.fwd_hook_functions] # so this doesn't get deleted
+                self.remove_hooks()
+                handle = self.add_hook(hook)
+                for old_hook in old_fwd_hook_functions:
+                    self.add_hook(old_hook)
+                return handle
+
             def full_hook(module, module_input, module_output):
                 return hook(module_output, hook=self)
 

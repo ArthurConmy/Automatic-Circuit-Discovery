@@ -201,7 +201,7 @@ exp = TLACDCExperiment(
     names_mode=NAMES_MODE,
     second_cache_cpu=SECOND_CACHE_CPU,
     first_cache_cpu=FIRST_CACHE_CPU,
-    add_sender_hooks=True, # attempting to be efficient...
+    add_sender_hooks=True,
     add_receiver_hooks=False,
     remove_redundant=True,
 )
