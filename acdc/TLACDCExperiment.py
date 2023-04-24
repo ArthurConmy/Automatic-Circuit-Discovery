@@ -58,7 +58,7 @@ class TLACDCExperiment:
     ):
         """Initialize the ACDC experiment"""
 
-        assert not zero_ablation and remove_redundant:
+        if zero_ablation and remove_redundant:
             raise ValueError("It's not possible to do zero ablation with remove redundant, talk to Arthur about a bizarre special case!")
 
         self.remove_redundant = remove_redundant
