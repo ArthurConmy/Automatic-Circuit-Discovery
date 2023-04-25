@@ -123,3 +123,14 @@ yarl==1.8.2
 zope.interface==6.0
 
 pygraphviz==1.10
+
+jupyter==1.0.0
+jupyter-console==6.4.4
+jupyter-core==4.11.1
+jupyter-server==1.18.1
+jupyter-server-mathjax==0.2.6
+jupyter_client==7.3.5
+jupyterlab==3.0.16
+jupyterlab-pygments==0.2.2
+jupyterlab-widgets==3.0.3
+jupyterlab_server==2.15.1
