@@ -36,7 +36,9 @@ def main(testing=False, use_kubernetes=False):
                     command_str = shlex.join(command)
                     print("Launching", command_str)
                     if testing or not use_kubernetes:
-                        out = subprocess.Popen(command, stdout=open(f"stdout_{i:03d}.txt", "w"), stderr=open(f"stderr_{i:03d}.txt", "w"))
+                        out = subprocess.Popen(
+                            command, stdout=open(f"stdout_{i:03d}.txt", "w"), stderr=open(f"stderr_{i:03d}.txt", "w")
+                        )
                         to_wait.append(out)
 
                     if not testing and use_kubernetes:
@@ -47,7 +49,7 @@ def main(testing=False, use_kubernetes=False):
                                 "run",
                                 f"--name=agarriga-acdc-{i:03d}",
                                 "--shared-host-dir-slow-tolerant",
-                                "--container=ghcr.io/rhaps0dy/automatic-circuit-discovery:1.2.2",
+                                "--container=ghcr.io/rhaps0dy/automatic-circuit-discovery:1.2.4",
                                 "--cpu=4",
                                 "--gpu=1",
                                 "--login",
@@ -55,6 +57,8 @@ def main(testing=False, use_kubernetes=False):
                                 "--never-restart",
                                 f"--command={command_str}",
                                 "--working-dir=/Automatic-Circuit-Discovery",
+                                "--shared-host-dir=/home/agarriga/.cache/huggingface",
+                                "--shared-host-dir-mount=/root/.cache/huggingface",
                             ],
                             check=True,
                         )
