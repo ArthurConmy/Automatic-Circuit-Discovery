@@ -104,14 +104,14 @@ def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric
 
     assert seq_len <= validation_data_orig.shape[1]-1
 
-    validation_slice = slice(num_examples, num_examples*2)
+    validation_slice = slice(0, num_examples)
     validation_data = validation_data_orig[validation_slice, :seq_len].contiguous()
     validation_labels = validation_data_orig[validation_slice, 1:seq_len+1].contiguous()
     validation_mask = mask_orig[validation_slice, :seq_len].contiguous()
 
     validation_patch_data = shuffle_tensor(validation_data, seed=data_seed).contiguous()
 
-    test_slice = slice(0, num_examples)
+    test_slice = slice(num_examples, num_examples*2)
     test_data = validation_data_orig[test_slice, :seq_len].contiguous()
     test_labels = validation_data_orig[test_slice, 1:seq_len+1].contiguous()
     test_mask = mask_orig[test_slice, :seq_len].contiguous()
