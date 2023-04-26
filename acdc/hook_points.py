@@ -52,7 +52,7 @@ class HookPoint(nn.Module):
         # which are the same for a HookPoint)
 
         if is_permanent or dir != "fwd":
-            raise NotImplementedError("Only fwd hooks are supported for core ACDC usages. You could disable this but no guarantees of correctness.")
+            warnings.warn("Only fwd hooks are supported for core ACDC usages. You could disable this but no guarantees of correctness.")
 
         if dir == "fwd":
             if prepend:
