@@ -24,11 +24,13 @@ def main(testing=False, use_kubernetes=False):
                         "--using-wandb",
                         f"--wandb-run-name=agarriga-acdc-{i:03d}",
                         "--wandb-group-name=adria-induction-2",
-                        f"--device={'cpu' if testing else 'cuda'}",
+                        f"--device=cpu",
                         f"--reset-network={reset_network}",
                         f"--seed={seed}",
                         f"--metric={loss_type}",
                         "--torch-num-threads=1",
+                        "--wandb-dir=/training/acdc",
+                        "--wandb-mode=offline",
                     ]
                     if zero_ablation:
                         command.append("--zero-ablation")
@@ -49,9 +51,9 @@ def main(testing=False, use_kubernetes=False):
                                 "run",
                                 f"--name=agarriga-acdc-{i:03d}",
                                 "--shared-host-dir-slow-tolerant",
-                                "--container=ghcr.io/rhaps0dy/automatic-circuit-discovery:1.2.6",
-                                "--cpu=4",
-                                "--gpu=1",
+                                "--container=ghcr.io/rhaps0dy/automatic-circuit-discovery:1.2.7",
+                                "--cpu=8",
+                                "--gpu=0",
                                 "--login",
                                 "--wandb",
                                 "--never-restart",
@@ -59,6 +61,8 @@ def main(testing=False, use_kubernetes=False):
                                 "--working-dir=/Automatic-Circuit-Discovery",
                                 "--shared-host-dir=/home/agarriga/.cache/huggingface",
                                 "--shared-host-dir-mount=/root/.cache/huggingface",
+                                "--volume-name=agarriga-models-training",
+                                "--volume-mount=/training"
                             ],
                             check=True,
                         )

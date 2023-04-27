@@ -113,6 +113,8 @@ parser.add_argument('--wandb-entity-name', type=str, required=False, default="re
 parser.add_argument('--wandb-group-name', type=str, required=False, default="default", help='Value for WANDB_GROUP_NAME')
 parser.add_argument('--wandb-project-name', type=str, required=False, default="acdc", help='Value for WANDB_PROJECT_NAME')
 parser.add_argument('--wandb-run-name', type=str, required=False, default=None, help='Value for WANDB_RUN_NAME')
+parser.add_argument("--wandb-dir", type=str, default="/tmp/wandb")
+parser.add_argument("--wandb-mode", type=str, default="online")
 parser.add_argument('--indices-mode', type=str, default="normal")
 parser.add_argument('--names-mode', type=str, default="normal")
 parser.add_argument('--device', type=str, default="cuda")
@@ -224,6 +226,8 @@ exp = TLACDCExperiment(
     wandb_run_name=WANDB_RUN_NAME,
     wandb_group_name=WANDB_GROUP_NAME,
     wandb_notes=notes,
+    wandb_dir=args.wandb_dir,
+    wandb_mode=args.wandb_mode,
     zero_ablation=ZERO_ABLATION,
     ds=toks_int_values,
     ref_ds=toks_int_values_other,

@@ -51,6 +51,8 @@ class TLACDCExperiment:
         wandb_run_name: str = "",
         wandb_group_name: str = "",
         wandb_notes: str = "",
+        wandb_dir: Optional[str]=None,
+        wandb_mode: str="online",
         skip_edges = "yes",
         add_sender_hooks: bool = True,
         add_receiver_hooks: bool = False,
@@ -98,6 +100,8 @@ class TLACDCExperiment:
                 project=wandb_project_name,
                 name=wandb_run_name,
                 notes=wandb_notes,
+                dir=wandb_dir,
+                mode=wandb_mode,
             )
 
         self.metric = metric
