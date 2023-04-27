@@ -49,7 +49,7 @@ def main(testing=False, use_kubernetes=False):
                                 "run",
                                 f"--name=agarriga-acdc-{i:03d}",
                                 "--shared-host-dir-slow-tolerant",
-                                "--container=ghcr.io/rhaps0dy/automatic-circuit-discovery:1.2.5",
+                                "--container=ghcr.io/rhaps0dy/automatic-circuit-discovery:1.2.6",
                                 "--cpu=4",
                                 "--gpu=1",
                                 "--login",
