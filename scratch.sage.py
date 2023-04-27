@@ -40,7 +40,7 @@ with torch.no_grad():
     _, corrupted_cache = tl_model.run_with_cache(
         toks_int_values_other,
     )
-tl_model.zero_grad() # extra hopeful....
+tl_model.zero_grad()
 tl_model.global_cache.second_cache = corrupted_cache
 
 #%%
@@ -89,17 +89,13 @@ for i in tqdm(range(num_examples)):
             bwd_hook_name = f"blocks.{layer_idx}.attn.hook_result_grad"
 
             cur_results = torch.abs(torch.einsum(
-                "bshd,bshd->bsh",
+                "bshd,bshd->bh",
                 clean_cache[bwd_hook_name], # gradient
-                clean_cache[fwd_hook_name] - corrupted_cache[fwd_hook_name],
+                clean_cache[fwd_hook_name] - corrupted_cache[fwd_hook_name], # REMOVE LAST BIT FOR ZERO ABLATION
             ))
 
             for head_idx in range(8):
-                results[(layer_idx, head_idx)][(i, j)] = cur_results[i, j, head_idx].item()
-
-#%%
-
-torch.save(results, "bad_myf1.pt")
+                results[(layer_idx, head_idx)][(i, j)] = cur_results[i, head_idx].item()
 
 # %%
 
@@ -119,7 +115,7 @@ for i in tqdm(range(num_examples)):
         clean_cache = tl_model.add_caching_hooks(incl_bwd=True)
         clean_logits = tl_model(toks_int_values)
         kl_result = metric(clean_logits)[i, j]
-        print(f"{kl_result=}")
+        # print(f"{kl_result=}")
         kl_result.backward(retain_graph=True)
 
         for layer_idx in range(2):
@@ -131,26 +127,9 @@ for i in tqdm(range(num_examples)):
 
 #%%
 
-torch.save(kls, "myf.pt")
-
-#%% 
-
-results2 = torch.load("myf.pt")
-results2 = {
-    key: value.sum() / mask_rep.int().sum().item() for key, value in results2.items()
-}
-
-# compare results and results2
-
-#%%
-
-results2 = {
-    (layer_idx, head_idx): kls[(layer_idx, head_idx)].sum() / mask_rep.int().sum().item() for layer_idx, head_idx in results.keys()
-}
-
-#%%
-
 for k in results:
-    print(k, results[k].norm().item(), kls[k].norm().item())
+    print(k, results[k].norm().item(), kls[k].norm().item()) # should all be close!!!
+
+# note the shape of these is 40*300, to get expectation take the sum and divide by mask_reps.sum().int()
 
 # %%
