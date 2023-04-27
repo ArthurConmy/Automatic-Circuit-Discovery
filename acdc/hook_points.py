@@ -32,6 +32,7 @@ class HookPoint(nn.Module):
         self.fwd_hooks: List[LensHandle] = []
         self.bwd_hooks: List[LensHandle] = []
 
+        self.xi = torch.nn.Parameter(torch.tensor([[[[1.0] for _ in range(8)]]]))
         self.fwd_hook_functions = [] # Added for ACDC...
 
         self.ctx = {}
@@ -41,6 +42,7 @@ class HookPoint(nn.Module):
         # A variable giving the hook's name (from the perspective of the root
         # module) - this is set by the root module at setup.
         self.name = None
+
 
     def add_perma_hook(self, hook, dir="fwd") -> None:
         self.add_hook(hook, dir=dir, is_permanent=True)
@@ -117,7 +119,15 @@ class HookPoint(nn.Module):
         self.ctx = {}
 
     def forward(self, x):
-        return x
+        if "global_cache" in dir(self) and len(self.global_cache.second_cache)>0:
+            if len(x.shape) == 4 and x.shape[2] == 8:
+                # super hacky way of identifying hooks that have a head dimension!!!!
+                return self.xi * x + (-self.xi + 1) * self.global_cache.second_cache[self.name]
+            else:
+                return self.xi[0, 0, 0, 0] * x + (-self.xi[0, 0, 0, 0] + 1) * self.global_cache.second_cache[self.name]
+
+        else:
+            return x
 
     def layer(self):
         # Returns the layer index if the name has the form 'blocks.{layer}.{...}'

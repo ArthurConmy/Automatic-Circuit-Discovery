@@ -1,3 +1,4 @@
+*.pt
 *.pkl
 better*.json
 histories/
