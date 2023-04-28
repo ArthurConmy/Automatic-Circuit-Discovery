@@ -74,6 +74,8 @@ assert shap[2] == 8, shap  # not num_heads ???
 
 # %%
 
+assert RECOMPUTE
+
 keys = []
 for layer_idx in range(2):
     for head_idx in range(8):
@@ -105,9 +107,9 @@ for i in tqdm(range(num_examples)):
                     "bshd,bshd->bh",
                     clean_cache[bwd_hook_name],  # gradient
                     clean_cache[fwd_hook_name]
-                    - corrupted_cache[
-                        fwd_hook_name
-                    ],  # REMOVE LAST BIT FOR ZERO ABLATION
+                    # - corrupted_cache[
+                    #     fwd_hook_name
+                    # ],  # REMOVE LAST BIT FOR ZERO ABLATION
                 )
             )
 
@@ -118,6 +120,8 @@ for k in results:
     results[k].to("cpu")
 
 # %%
+
+assert RECOMPUTE
 
 kls = {
     (layer_idx, head_idx): torch.zeros(size=(num_examples, seq_len))
@@ -156,6 +160,8 @@ for k in kls:
 
 # %%
 
+assert RECOMPUTE
+
 for k in results:
     print(k, results[k].norm().item(), kls[k].norm().item())  # should all be close!!!
     assert torch.allclose(results[k], kls[k])
@@ -173,6 +179,8 @@ torch.cuda.empty_cache()
 # goal 3: compute num edges
 
 # %%
+
+assert RECOMPUTE
 
 # def compute_scores(kl_dict):
 kl_dict = deepcopy(results)
@@ -267,24 +275,44 @@ corr = TLACDCCorrespondence.setup_from_model(tl_model)
 
 # %%
 
-sorted_indices = [ # precomputed
-    (1, 2),
-    (1, 4),
-    (1, 7),
-    (1, 1),
-    (0, 5),
-    (1, 3),
-    (1, 0),
-    (0, 6),
-    (1, 6),
-    (0, 0),
-    (0, 3),
-    (1, 5),
-    (0, 1),
-    (0, 7),
-    (0, 4),
-    (0, 2),
-]
+if not RECOMPUTE:
+    sorted_indices = [ # precomputed
+        (1, 2),
+        (1, 4),
+        (1, 7),
+        (1, 1),
+        (0, 5),
+        (1, 3),
+        (1, 0),
+        (0, 6),
+        (1, 6),
+        (0, 0),
+        (0, 3),
+        (1, 5),
+        (0, 1),
+        (0, 7),
+        (0, 4),
+        (0, 2),
+    ]
+
+    sorted_indices = [ # FOR ZERO
+        (1, 1),
+        (1, 2),
+        (1, 3),
+        (1, 4),
+        (0, 3),
+        (1, 7),
+        (0, 1),
+        (0, 2),
+        (0, 5),
+        (0, 7),
+        (0, 4),
+        (1, 0),
+        (0, 6),
+        (1, 6),
+        (0, 0),
+        (1, 5),
+    ]
 
 # mask_list, scores_list = compute_scores(kls)
 kl_div_list = []

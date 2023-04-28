@@ -122,9 +122,9 @@ class HookPoint(nn.Module):
         if "global_cache" in dir(self) and len(self.global_cache.second_cache)>0:
             if len(x.shape) == 4 and x.shape[2] == 8:
                 # super hacky way of identifying hooks that have a head dimension!!!!
-                return self.xi * x + (-self.xi + 1) * self.global_cache.second_cache[self.name] # COMMENT OUT LAST BIT FOR ZERO ABLATION
+                return self.xi * x # + (-self.xi + 1) * self.global_cache.second_cache[self.name] # COMMENT OUT LAST BIT FOR ZERO ABLATION
             else:
-                return self.xi[0, 0, 0, 0] * x + (-self.xi[0, 0, 0, 0] + 1) * self.global_cache.second_cache[self.name] # COMMENT OUT LAST BIT FOR ZERO ABLATION
+                return self.xi[0, 0, 0, 0] * x # + (-self.xi[0, 0, 0, 0] + 1) * self.global_cache.second_cache[self.name] # COMMENT OUT LAST BIT FOR ZERO ABLATION
 
         else:
             return x
