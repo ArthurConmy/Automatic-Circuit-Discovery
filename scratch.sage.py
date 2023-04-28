@@ -1,6 +1,7 @@
-#%%
+# %%
 
 from IPython import get_ipython
+
 if get_ipython() is not None:
     get_ipython().run_line_magic("load_ext", "autoreload")  # type: ignore
     get_ipython().run_line_magic("autoreload", "2")  # type: ignore
@@ -16,7 +17,7 @@ import torch
 
 num_examples = 40
 seq_len = 300
-    
+
 (
     tl_model,
     toks_int_values,
@@ -24,17 +25,17 @@ seq_len = 300
     metric,
     mask_rep,
 ) = get_all_induction_things(
-    kl_return_tensor=True, 
-    num_examples=num_examples, 
-    seq_len=seq_len, 
-    device="cuda", 
+    kl_return_tensor=True,
+    num_examples=num_examples,
+    device="cuda",
+    seq_len=seq_len,
     return_mask_rep=True,
-    return_one_element=False
+    return_one_element=False,
 )
 
 assert tl_model.cfg.use_attn_result, "Set this to True"
 
-#%%
+# %%
 
 with torch.no_grad():
     _, corrupted_cache = tl_model.run_with_cache(
@@ -43,37 +44,39 @@ with torch.no_grad():
 tl_model.zero_grad()
 tl_model.global_cache.second_cache = corrupted_cache
 
-#%%
+# %%
 
 clean_cache = tl_model.add_caching_hooks(
     # toks_int_values,
     incl_bwd=True,
 )
 
-clean_logits = tl_model(toks_int_values) 
+clean_logits = tl_model(toks_int_values)
 kl_result = metric(clean_logits)
 assert list(kl_result.shape) == [num_examples, seq_len], kl_result.shape
 kl_result = (kl_result * mask_rep).sum() / mask_rep.int().sum().item()
 kl_result.backward(retain_graph=True)
 
-#%%
+# %%
 
 shap = list(clean_cache["blocks.0.attn.hook_result"].shape)
 assert len(shap) == 4, shap
-assert shap[2] == 8, shap # not num_heads ???
+assert shap[2] == 8, shap  # not num_heads ???
 
-#%%
+# %%
 
 keys = []
 for layer_idx in range(2):
     for head_idx in range(8):
         keys.append((layer_idx, head_idx))
 
-results = {(layer_idx, head_idx): torch.zeros(size=(num_examples, seq_len)) for layer_idx, head_idx in keys}
+results = {
+    (layer_idx, head_idx): torch.zeros(size=(num_examples, seq_len))
+    for layer_idx, head_idx in keys
+}
 
 for i in tqdm(range(num_examples)):
     for j in tqdm(range(seq_len)):
-
         if mask_rep[i, j] == 0:
             continue
 
@@ -88,26 +91,33 @@ for i in tqdm(range(num_examples)):
             fwd_hook_name = f"blocks.{layer_idx}.attn.hook_result"
             bwd_hook_name = f"blocks.{layer_idx}.attn.hook_result_grad"
 
-            cur_results = torch.abs(torch.einsum(
-                "bshd,bshd->bh",
-                clean_cache[bwd_hook_name], # gradient
-                clean_cache[fwd_hook_name] - corrupted_cache[fwd_hook_name], # REMOVE LAST BIT FOR ZERO ABLATION
-            ))
+            cur_results = torch.abs(
+                torch.einsum(
+                    "bshd,bshd->bh",
+                    clean_cache[bwd_hook_name],  # gradient
+                    clean_cache[fwd_hook_name]
+                    - corrupted_cache[
+                        fwd_hook_name
+                    ],  # REMOVE LAST BIT FOR ZERO ABLATION
+                )
+            )
 
             for head_idx in range(8):
                 results[(layer_idx, head_idx)][(i, j)] = cur_results[i, head_idx].item()
 
 # %%
 
-kls = {(layer_idx, head_idx): torch.zeros(size=(num_examples, seq_len)) for layer_idx, head_idx in results.keys()}
+kls = {
+    (layer_idx, head_idx): torch.zeros(size=(num_examples, seq_len))
+    for layer_idx, head_idx in results.keys()
+}
 
 from tqdm import tqdm
 
 for i in tqdm(range(num_examples)):
     for j in tqdm(range(seq_len)):
-
         if mask_rep[i, j] == 0:
-            continue # lolololol
+            continue  # lolololol
 
         tl_model.zero_grad()
         warnings.warn("Untested reset...")
@@ -122,14 +132,89 @@ for i in tqdm(range(num_examples)):
             fwd_hook_name = f"blocks.{layer_idx}.attn.hook_result"
 
             for head_idx in range(8):
-                g = tl_model.hook_dict[fwd_hook_name].xi.grad[0, 0, head_idx, 0].norm().item()
+                g = (
+                    tl_model.hook_dict[fwd_hook_name]
+                    .xi.grad[0, 0, head_idx, 0]
+                    .norm()
+                    .item()
+                )
                 kls[(layer_idx, head_idx)][i, j] = g
+
+# %%
+
+for k in results:
+    print(k, results[k].norm().item(), kls[k].norm().item())  # should all be close!!!
+
+# note the shape of these is 40*300, to get expectation take the sum and divide by mask_reps.sum().int()
 
 #%%
 
-for k in results:
-    print(k, results[k].norm().item(), kls[k].norm().item()) # should all be close!!!
+# some intersection with Aug's works!
+# goal 1: get order of heads
+# goal 2:
 
-# note the shape of these is 40*300, to get expectation take the sum and divide by mask_reps.sum().int()
+# %%
+def compute_scores(kl_dict):
+    scores_list = []
+    mask_list = []
+    for key in kl_dict.keys():
+        score = kl_dict[key].sum() / mask_rep.sum().int().item()
+        scores_list.append(score)
+        mask_list.append(key)
+    # sort both lists by scores
+    scores_list, mask_list = zip(*sorted(zip(scores_list, mask_list)))
+    mask_list = list(mask_list)
+    mask_list.reverse()
+    scores_list = list(scores_list)
+    scores_list.reverse()
+    return mask_list, scores_list
+
+
+# %%
+def mask_head(model, head_to_mask_tuple):
+    layer = head_to_mask_tuple[0]
+    head = head_to_mask_tuple[1]
+    for layer_index, layer_object in enumerate(model.blocks):
+        for head_index in range(8):
+            if layer_index == layer and head_index == head:
+                layer_object.attn.hook_result.xi.data[:, :, head, :] *= 0.0
+    return model
+
+
+def remove_node(corr, node):
+    for child in node.children():
+        corr.remove_edge(child.name, child.index, node.name, node.index)
+    for parent in node.parents():
+        corr.remove_edge(node.name, node.index, parent.name, parent.index)
+    return corr
+
+
+def mask_head_in_correspondence(corr, head_to_mask_tuple):
+    layer_to_mask = head_to_mask_tuple[0]
+    head_to_mask = head_to_mask_tuple[1]
+    for node in corr.nodes():
+        head = node.index.hashable_tuple[-1]
+        layer = node.name.split(".")[1]
+        if layer == layer_to_mask and head == head_to_mask:
+            corr = remove_node(corr, node)
+    return corr
+
+
+from acdc.TLACDCCorrespondence import TLACDCCorrespondence
+
+corr = TLACDCCorrespondence.setup_from_model(tl_model)
+
+# %%
+mask_list, scores_list = compute_scores(kls)
+kl_div_list = []
+edge_list = []
+for index, score in enumerate(scores_list):
+    head_to_mask = mask_list[index]
+    model = mask_head(tl_model, head_to_mask)
+    corr = mask_head_in_correspondence(corr, head_to_mask)
+    # edges = corr.count_edges() # how to count edges?
+    kl_div = metric(model(toks_int_values))
+    kl_div_list.append(torch.mean(kl_div))
+    edge_list.append(edges)
 
 # %%
