@@ -70,6 +70,7 @@ experiment = TLACDCExperiment(
     ref_ds=None, # This is the corrupted dataset from the ACDC paper. We're going to do zero ablation here so we omit this
     metric=metric,
     zero_ablation=True,
+    hook_verbose=True,
 )
 
 # %%
@@ -91,15 +92,12 @@ for edge_indices, edge in experiment.corr.all_edges().items():
     # here's what's inside the edge
     receiver_name, receiver_index, sender_name, sender_index = edge_indices
 
-    print(sender_name, sender_index, receiver_name, receiver_index, edge)
-
     # for now, all edges should be present
     assert edge.present, edge_indices
 
 #%%
 
 # Let's make a function that's able to turn off all the connections from the nodes to the output, excecpt the induction head (1.5 and 1.6)
-
 # (we'll later turn on all connections EXCEPT the induction heads)
 
 def change_direct_output_connections(exp, invert=False):
@@ -114,16 +112,26 @@ def change_direct_output_connections(exp, invert=False):
     for sender_name in inputs_to_residual_stream_end:
         for sender_index in inputs_to_residual_stream_end[sender_name]:
 
+            edge = inputs_to_residual_stream_end[sender_name][sender_index]
             is_induction_head = (sender_name, sender_index) in induction_heads
+
             if is_induction_head:
-                edge.present = invert 
+                edge.present = not invert 
 
             else:
-                edge.present = not invert
+                edge.present = invert
 
-            print(f"{['Adding', 'Rsemoving'][int(invert == is_induction_head)]} edge from {sender_name} {sender_index} to {residual_stream_end_name} {residual_stream_end_index}")
+            print(f"{'Adding' if (invert == is_induction_head) else 'Removing'} edge from {sender_name} {sender_index} to {residual_stream_end_name} {residual_stream_end_index}")
 
 change_direct_output_connections(experiment)
-print("Loss with only the induction head direct connections:", )
+print("Loss with only the induction head direct connections:", get_loss(experiment.model, toks_int_values, mask_rep).item())
+
 # %%
 
+change_direct_output_connections(experiment, invert=True)
+print("Loss with only the induction head direct connections:", get_loss(experiment.model, toks_int_values, mask_rep).item())
+
+# That's much larger!
+# Forthcoming tutorials: 
+# 1. on the abstractions used to be able to edit connections (The `TorchIndex`s)
+# 2. see acdc/main.py for how to run ACDC experiments; try python acdc/main.py --help

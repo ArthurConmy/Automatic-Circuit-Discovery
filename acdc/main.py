@@ -102,13 +102,13 @@ torch.autograd.set_grad_enabled(False)
 
 #%%
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--task', type=str, required=True)
+parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
+parser.add_argument('--task', type=str, required=True, choices=['IOI', 'Docstring', 'Induction'], help='Choose a task from the available options: IOI, Docstring, or Induction')
 parser.add_argument('--threshold', type=float, required=True, help='Value for THRESHOLD')
 parser.add_argument('--first-cache-cpu', type=bool, required=False, default=True, help='Value for FIRST_CACHE_CPU')
 parser.add_argument('--second-cache-cpu', type=bool, required=False, default=True, help='Value for SECOND_CACHE_CPU')
-parser.add_argument('--zero-ablation', action='store_true', help='A flag without a value')
-parser.add_argument('--using-wandb', action='store_true', help='A flag without a value')
+parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
+parser.add_argument('--using-wandb', action='store_true', help='Use wandb')
 parser.add_argument('--wandb-entity-name', type=str, required=False, default="remix_school-of-rock", help='Value for WANDB_ENTITY_NAME')
 parser.add_argument('--wandb-project-name', type=str, required=False, default="acdc", help='Value for WANDB_PROJECT_NAME')
 parser.add_argument('--wandb-run-name', type=str, required=False, default=None, help='Value for WANDB_RUN_NAME')

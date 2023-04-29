@@ -319,8 +319,6 @@ class TLACDCExperiment:
                 print(edge.edge_type.value, EdgeType.ADDITION.value, edge.edge_type.value == EdgeType.ADDITION.value, type(edge.edge_type.value), type(EdgeType.ADDITION.value))
                 raise ValueError(f"{str(big_tuple)} {str(edge)} failed")
 
-            print(big_tuple, "worked!")
-
             for node in nodes:
                 if len(self.model.hook_dict[node.name].fwd_hooks) > 0:
                     for hook_func_maybe_partial in self.model.hook_dict[node.name].fwd_hook_functions:
@@ -376,7 +374,7 @@ class TLACDCExperiment:
             if doing_acdc_runs:
                 warnings.warn("Deprecating adding receiver hooks before launching into ACDC runs, this may be totally broke. Ignore this warning if you are not doing ACDC runs")
 
-            receiver_node_names = list(set([node.name for node in self.corr.nodes()]))
+            receiver_node_names = list(set([node.name for node in self.corr.nodes() if node.incoming_edge_type != EdgeType.PLACEHOLDER]))
             for receiver_name in receiver_node_names: # TODO could remove the nodes that don't have any parents...
                 self.model.add_hook(
                     name=receiver_name,
