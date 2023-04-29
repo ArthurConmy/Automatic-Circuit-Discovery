@@ -266,7 +266,8 @@ fig.add_trace(
 
 import plotly
 # fname = "media_zero_json.json"
-fname = "better_zero.json"
+# fname = "better_zero.json"
+fname="media/corrupted.json"
 fig2 = plotly.io.read_json(fname)
 fig2.show()
 
