@@ -1,6 +1,9 @@
 from typing import Callable, Union, List, Tuple, Dict, Optional, NamedTuple, overload
 from typing_extensions import Literal
 from torchtyping import TensorType as TT
+
+import acdc.utils as utils
+
 import torch
 import torch.nn as nn
 import warnings
@@ -532,7 +535,7 @@ class HookedTransformer(HookedRootModule):
             tokens = self.to_tokens(input, prepend_bos=prepend_bos)[0]
         elif isinstance(input, torch.Tensor):
             tokens = input
-            tokens = tokens.squeeze()  # Get rid of a trivial batch dimension
+            tokens = tokens.squeeze(0)  # Get rid of a trivial batch dimension # ugh had to manually add this... later TransformerLens PRs do fix this!
             assert (
                 tokens.dim() == 1
             ), f"Invalid tokens input to to_str_tokens, has shape: {tokens.shape}"

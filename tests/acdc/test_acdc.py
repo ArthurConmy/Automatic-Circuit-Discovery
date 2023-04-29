@@ -98,6 +98,7 @@ def test_induction_several_steps():
         first_cache_cpu=True,
         add_sender_hooks=True, # attempting to be efficient...
         add_receiver_hooks=False,
+        remove_redundant=True,
     )
 
     for STEP_IDX in range(10):

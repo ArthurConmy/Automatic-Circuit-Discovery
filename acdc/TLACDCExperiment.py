@@ -38,7 +38,7 @@ class TLACDCExperiment:
         verbose: bool = False,
         hook_verbose: bool = False,
         parallel_hypotheses: int = 1, # lol
-        remove_redundant: bool = True, # TODO implement
+        remove_redundant: bool = False, 
         monotone_metric: Literal[
             "off", "maximize", "minimize"
         ] = "minimize",  # if this is set to "maximize" or "minimize", then the metric will be maximized or minimized, respectively instead of us trying to keep the metric roughly the same. We do KL divergence by default
@@ -60,6 +60,8 @@ class TLACDCExperiment:
 
         if zero_ablation and remove_redundant:
             raise ValueError("It's not possible to do zero ablation with remove redundant, talk to Arthur about a bizarre special case!")
+
+        model.reset_hooks()
 
         self.remove_redundant = remove_redundant
         self.indices_mode = indices_mode
@@ -88,9 +90,16 @@ class TLACDCExperiment:
         self.ref_ds = ref_ds
         self.first_cache_cpu = first_cache_cpu
         self.second_cache_cpu = second_cache_cpu
+
+        if zero_ablation:
+            if self.ref_ds is None:
+                self.ref_ds = self.ds.clone()
+            else:
+                warnings.warn("We shall overwrite the ref_ds with zeros.")
         self.setup_second_cache()
         if self.second_cache_cpu:
             self.model.global_cache.to("cpu", which_caches="second")
+
         self.setup_model_hooks(
             add_sender_hooks=add_sender_hooks,
             add_receiver_hooks=add_receiver_hooks,
@@ -358,12 +367,14 @@ class TLACDCExperiment:
         self, 
         add_sender_hooks=False,
         add_receiver_hooks=False,
+        doing_acdc_runs=True,
     ):
         if add_sender_hooks:
             self.add_all_sender_hooks(cache="first", skip_direct_computation=False, add_all_hooks=True) # when this is True, this is wrong I think
 
         if add_receiver_hooks:
-            warnings.warn("Deprecating adding receiver hooks before launching into ACDC runs, this may be totally broke")
+            if doing_acdc_runs:
+                warnings.warn("Deprecating adding receiver hooks before launching into ACDC runs, this may be totally broke. Ignore this warning if you are not doing ACDC runs")
 
             receiver_node_names = list(set([node.name for node in self.corr.nodes()]))
             for receiver_name in receiver_node_names: # TODO could remove the nodes that don't have any parents...

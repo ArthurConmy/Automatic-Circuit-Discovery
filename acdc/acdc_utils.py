@@ -118,19 +118,22 @@ class TorchIndex:
     def __eq__(self, other):
         return self.hashable_tuple == other.hashable_tuple
 
-    def __repr__(self) -> str:
+    def __repr__(self, graphviz_index=False) -> str:
         ret = "["
         for idx, x in enumerate(self.hashable_tuple):
             if idx > 0:
                 ret += ", "
             if x is None:
-                ret += "COL"
+                ret += ":" if not graphviz_index else "COLON"
             elif type(x) == int:
                 ret += str(x)
             else:
                 raise NotImplementedError(x)
         ret += "]"
         return ret
+
+    def graphviz_index(self) -> str:
+        return self.__repr__(graphviz_index=True)
 
 def make_nd_dict(end_type, n = 3) -> Any:
     """Make biiig default dicts : ) : )"""

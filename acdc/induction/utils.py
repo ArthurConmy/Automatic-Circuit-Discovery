@@ -106,8 +106,6 @@ def get_all_induction_things(num_examples, seq_len, device, randomize_data=True,
     base_model_logits = tl_model(toks_int_values)
     base_model_probs = F.softmax(base_model_logits, dim=-1)
 
-    print("Mask repeat candidates:", mask_repeat_candidates[:num_examples, :seq_len]) # .int().sum())
-
     metric = partial(kl_divergence, base_model_probs=base_model_probs, mask_repeat_candidates=mask_repeat_candidates, last_seq_element_only=False, return_tensor=kl_return_tensor)
 
     return_list = [

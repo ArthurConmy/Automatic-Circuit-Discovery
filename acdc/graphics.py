@@ -52,8 +52,6 @@ def generate_random_color(colorscheme: str) -> str:
 # -------------------------------------------
 
 def get_node_name(node: TLACDCInterpNode, show_full_index=True):
-    # TODO handle MLPs
-
     name = ""
     qkv_substrings = [f"hook_{letter}" for letter in ["q", "k", "v"]]
     qkv_input_substrings = [f"hook_{letter}_input" for letter in ["q", "k", "v"]]
@@ -91,7 +89,7 @@ def get_node_name(node: TLACDCInterpNode, show_full_index=True):
         raise ValueError(f"Unrecognized node name {node.name}")
 
     if show_full_index:
-        name += f"_{str(node.index)}"
+        name += f"_{node.index.graphviz_str()}"
 
     return "<" + name + ">"
 
