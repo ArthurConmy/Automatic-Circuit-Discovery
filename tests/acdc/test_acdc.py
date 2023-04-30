@@ -1,3 +1,4 @@
+#%%
 from copy import deepcopy
 from typing import (
     List,
@@ -127,3 +128,15 @@ def test_induction_several_steps():
 
     for edge_tuple, edge in edges_to_consider.items():
         assert abs(edge.effect_size - EDGE_EFFECTS[edge_tuple]) < 1e-5, (edge_tuple, edge.effect_size, EDGE_EFFECTS[edge_tuple])
+
+#%%
+if True:
+# def test_main_script():
+    import subprocess
+    for task in ["induction", "ioi", "tracr", "docstring"]:
+        subprocess.run(["python", "../../acdc/main.py", "--task", task, "--threshold", "123456789", "--single-step"])
+
+def test_evaluating_subgraphs_notebook():
+    import notebooks.evaluating_subgraphs
+
+# %%

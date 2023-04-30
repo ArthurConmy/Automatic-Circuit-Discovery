@@ -103,7 +103,7 @@ torch.autograd.set_grad_enabled(False)
 #%%
 
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
-parser.add_argument('--task', type=str, required=True, choices=['IOI', 'Docstring', 'Induction'], help='Choose a task from the available options: IOI, Docstring, or Induction')
+parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr'], help='Choose a task from the available options: ioi, docstring, induction, tracr (WIPs)')
 parser.add_argument('--threshold', type=float, required=True, help='Value for THRESHOLD')
 parser.add_argument('--first-cache-cpu', type=bool, required=False, default=True, help='Value for FIRST_CACHE_CPU')
 parser.add_argument('--second-cache-cpu', type=bool, required=False, default=True, help='Value for SECOND_CACHE_CPU')
@@ -114,6 +114,7 @@ parser.add_argument('--wandb-project-name', type=str, required=False, default="a
 parser.add_argument('--wandb-run-name', type=str, required=False, default=None, help='Value for WANDB_RUN_NAME')
 parser.add_argument('--indices-mode', type=str, default="normal")
 parser.add_argument('--names-mode', type=str, default="normal")
+parser.add_argument('--single-step', action='store_true', help='Use single step, mostly for testing')
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
@@ -135,6 +136,7 @@ WANDB_RUN_NAME = args.wandb_run_name
 INDICES_MODE = args.indices_mode
 NAMES_MODE = args.names_mode
 DEVICE = "cuda"
+SINGLE_STEP = True if args.single_step else False
 
 #%% [markdown]
 # Setup
@@ -145,31 +147,23 @@ if TASK == "ioi":
     num_examples = 100
     tl_model = get_ioi_gpt2_small()
     toks_int_values, toks_int_values_other, metric = get_ioi_data(tl_model, num_examples)
-
 elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     tracr_task = TASK.split("-")[-1] # "reverse"
-   
     # this implementation doesn't ablate the position embeddings (which the plots in the paper do do), so results are different. See the rust_circuit implemntation if this need be checked
     # also there's no splitting by neuron yet TODO
-   
     _, tl_model = get_tracr_model_input_and_tl_model(task=TASK)
     toks_int_values, toks_int_values_other, metric = get_tracr_data(tl_model, task=TASK)
-
 elif TASK == "induction":
     num_examples = 40
     seq_len = 300
     # TODO initialize the `tl_model` with the right model
     tl_model, toks_int_values, toks_int_values_other, metric = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, randomize_data=False, data_seed=int(1_000_000 * THRESHOLD))
-
 elif TASK == "docstring":
     num_examples = 50
     seq_len = 41
     tl_model, toks_int_values, toks_int_values_other, metric, second_metric = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric_name="kl_divergence", correct_incorrect_wandb=True)
-
 else:
     raise ValueError(f"Unknown task {TASK}")
-
-second_metric = None
 
 #%%
 
@@ -223,9 +217,9 @@ for i in range(100_000):
     if i==0:
         exp.save_edges("edges.pkl")
 
-    if exp.current_node is None:
+    if exp.current_node is None or SINGLE_STEP:
         break
 
 exp.save_edges("another_final_edges.pkl")
 
-# %%
+#%%
