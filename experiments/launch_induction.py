@@ -24,12 +24,12 @@ def main(testing=False, use_kubernetes=False):
                         "--using-wandb",
                         f"--wandb-run-name=agarriga-acdc-{i:03d}",
                         "--wandb-group-name=adria-induction-2",
-                        f"--device=cpu",
+                        f"--device=cuda",
                         f"--reset-network={reset_network}",
                         f"--seed={seed}",
                         f"--metric={loss_type}",
                         "--torch-num-threads=0",
-                        "--wandb-dir=/acdc",
+                        "--wandb-dir=/training/acdc",  # If it doesn't exist wandb will use /tmp
                         "--wandb-mode=online",
                     ]
                     if zero_ablation:
@@ -52,8 +52,8 @@ def main(testing=False, use_kubernetes=False):
                                 f"--name=agarriga-acdc-{i:03d}",
                                 "--shared-host-dir-slow-tolerant",
                                 "--container=ghcr.io/rhaps0dy/automatic-circuit-discovery:1.2.7",
-                                "--cpu=8",
-                                "--gpu=0",
+                                "--cpu=2",
+                                "--gpu=1",
                                 "--login",
                                 "--wandb",
                                 "--never-restart",

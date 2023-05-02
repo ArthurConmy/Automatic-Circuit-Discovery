@@ -215,7 +215,7 @@ tl_model.reset_hooks()
 if WANDB_RUN_NAME is None or IPython.get_ipython() is not None:
     WANDB_RUN_NAME = f"{ct()}{'_randomindices' if INDICES_MODE=='random' else ''}_{THRESHOLD}{'_zero' if ZERO_ABLATION else ''}"
 else:
-    assert False # I want named runs, always
+    assert WANDB_RUN_NAME is not None, "I want named runs, always"
 
 exp = TLACDCExperiment(
     model=tl_model,
