@@ -12,7 +12,7 @@ def main(testing=False, use_kubernetes=False):
     i = 0
     for reset_network in [0, 1]:
         for zero_ablation in [0, 1]:
-            for loss_type in ["kl_div"]:
+            for loss_type in ["kl_div", "nll", "match_nll"]:
                 for threshold in [1.0] if testing else thresholds:
                     command = [
                         "python",
@@ -28,9 +28,9 @@ def main(testing=False, use_kubernetes=False):
                         f"--reset-network={reset_network}",
                         f"--seed={seed}",
                         f"--metric={loss_type}",
-                        "--torch-num-threads=1",
-                        "--wandb-dir=/training/acdc",
-                        "--wandb-mode=offline",
+                        "--torch-num-threads=0",
+                        "--wandb-dir=/acdc",
+                        "--wandb-mode=online",
                     ]
                     if zero_ablation:
                         command.append("--zero-ablation")
@@ -61,8 +61,6 @@ def main(testing=False, use_kubernetes=False):
                                 "--working-dir=/Automatic-Circuit-Discovery",
                                 "--shared-host-dir=/home/agarriga/.cache/huggingface",
                                 "--shared-host-dir-mount=/root/.cache/huggingface",
-                                "--volume-name=agarriga-models-training",
-                                "--volume-mount=/training"
                             ],
                             check=True,
                         )
