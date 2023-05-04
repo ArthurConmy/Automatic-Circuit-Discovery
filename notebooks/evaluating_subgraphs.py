@@ -129,7 +129,7 @@ print("Loss with only the induction head direct connections:", get_loss(experime
 # %%
 
 change_direct_output_connections(experiment, invert=True)
-print("Loss with only the induction head direct connections:", get_loss(experiment.model, toks_int_values, mask_rep).item())
+print("Loss without the induction head direct connections:", get_loss(experiment.model, toks_int_values, mask_rep).item())
 
 # That's much larger!
 # Forthcoming tutorials: 
