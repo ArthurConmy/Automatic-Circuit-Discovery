@@ -10,6 +10,8 @@ Testing_Notebook.ipynb
 transformer_lens/scratch.py
 .vscode/
 wandb*
+easy_transformer.egg-info/
+*sage.py
 transformer_lens\.egg*
 MANIFEST.in
 settings.ini
@@ -20,6 +22,7 @@ _modidx.py
 .ipynb_checkpoints
 env
 dist/
+
 docs/build
 .coverage
 
