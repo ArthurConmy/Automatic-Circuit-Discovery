@@ -343,6 +343,7 @@ class HookedRootModule(nn.Module):
     def add_caching_hooks(
         self,
         names_filter: NamesFilter = None,
+        incl_fwd: bool = True,
         incl_bwd: bool = False,
         device=None,
         remove_batch_dim: bool = False,
@@ -389,7 +390,8 @@ class HookedRootModule(nn.Module):
 
         for name, hp in self.hook_dict.items():
             if names_filter(name):
-                hp.add_hook(save_hook, "fwd")
+                if incl_fwd:
+                    hp.add_hook(save_hook, "fwd")
                 if incl_bwd:
                     hp.add_hook(save_hook_back, "bwd")
         return cache

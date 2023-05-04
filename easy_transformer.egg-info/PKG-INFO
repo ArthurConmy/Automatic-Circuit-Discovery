@@ -1,0 +1,13 @@
+Metadata-Version: 2.1
+Name: easy-transformer
+Version: 0.1.0
+Summary: An implementation of transformers tailored for mechanistic interpretability.
+Home-page: UNKNOWN
+License: LICENSE
+Platform: UNKNOWN
+License-File: LICENSE
+
+Please see the `acdc_tl` branch for use of this repo!
+
+https://github.com/ArthurConmy/Automatic-Circuit-Discovery/tree/acdc_tl
+

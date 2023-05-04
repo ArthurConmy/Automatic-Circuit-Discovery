@@ -8,14 +8,15 @@
 
 from IPython import get_ipython
 
-from acdc.acdc_utils import TorchIndex
 if get_ipython() is not None:
     get_ipython().run_line_magic("load_ext", "autoreload")
     get_ipython().run_line_magic("autoreload", "2")
 
+from acdc.acdc_utils import TorchIndex
 from acdc.HookedTransformer import HookedTransformer
 from acdc.TLACDCExperiment import TLACDCExperiment
 from acdc.induction.utils import get_all_induction_things
+import torch
 
 # %%
 
@@ -56,7 +57,12 @@ def get_loss(model, data, mask):
         return_type="loss",
         loss_per_token=True, 
     )
-    return (loss * mask[:,:-1].int()).sum() / mask[:,:-1].int().sum()
+    if mask is None:
+        return loss.mean()
+        
+    else:
+        assert loss.shape == mask[:, :-1].shape, (loss.shape, mask.shape)
+        return (loss * mask[:,:-1].int()).sum() / mask[:,:-1].int().sum()
 
 print(f"Loss: {get_loss(tl_model, toks_int_values, mask_rep)}")
 
@@ -83,6 +89,10 @@ experiment.setup_model_hooks(
     add_receiver_hooks=True,
     doing_acdc_runs=False,
 )
+back_cache = tl_model.add_caching_hooks(
+    incl_fwd=False,
+    incl_bwd=True,
+)
 
 # %%
 
@@ -94,6 +104,14 @@ for edge_indices, edge in experiment.corr.all_edges().items():
 
     # for now, all edges should be present
     assert edge.present, edge_indices
+
+#%%
+
+tl_model.zero_grad()
+loss = get_loss(tl_model, toks_int_values, mask=None)
+loss.backward()
+
+grad3 = tl_model.blocks[0].attn.W_Q.grad.clone()
 
 #%%
 
@@ -123,13 +141,17 @@ def change_direct_output_connections(exp, invert=False):
 
             print(f"{'Adding' if (invert == is_induction_head) else 'Removing'} edge from {sender_name} {sender_index} to {residual_stream_end_name} {residual_stream_end_index}")
 
+#%%
+
+tl_model.zero_grad()
 change_direct_output_connections(experiment)
-print("Loss with only the induction head direct connections:", get_loss(experiment.model, toks_int_values, mask_rep).item())
+loss = get_loss(tl_model, toks_int_values, mask=None)
+print("Loss with just the induction head direct connections:", loss.item())
 
 # %%
 
 change_direct_output_connections(experiment, invert=True)
-print("Loss with only the induction head direct connections:", get_loss(experiment.model, toks_int_values, mask_rep).item())
+print("Loss without the induction head direct connections:", get_loss(experiment.model, toks_int_values, mask_rep).item())
 
 # That's much larger!
 # Forthcoming tutorials: 

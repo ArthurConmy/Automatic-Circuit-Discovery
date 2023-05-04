@@ -70,3 +70,16 @@ for layer_idx in range(2):
     # seems reasonable
 
 # %%
+
+a = torch.nn.Parameter(torch.randn((2, 3, 4)))
+b = a.clone()
+
+loss = b.norm()
+grad_b = torch.autograd.grad(loss, (b, a), retain_graph=True)
+
+if False:
+    loss.backward(retain_graph=True)
+    assert a.grad is None
+    assert b.grad is not None
+
+# %%

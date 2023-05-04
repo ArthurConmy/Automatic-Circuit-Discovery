@@ -1,0 +1,12 @@
+IPython
+datasets
+datasets
+einops
+fancy_einsum
+matplotlib
+numpy
+pandas
+torch
+tqdm
+transformers
+wandb

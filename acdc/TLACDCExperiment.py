@@ -213,8 +213,9 @@ class TLACDCExperiment:
 
         return z
 
-    def receiver_hook(self, z, hook, verbose=False):
-        
+    def receiver_hook(self, z, hook, verbose=False, inplace=False):
+        """Set inplace True for experimental?"""
+
         incoming_edge_types = [self.corr.graph[hook.name][receiver_index].incoming_edge_type for receiver_index in list(self.corr.edges[hook.name].keys())]
 
         if verbose:
@@ -223,7 +224,7 @@ class TLACDCExperiment:
         if EdgeType.DIRECT_COMPUTATION in incoming_edge_types:
 
             old_z = z.clone()
-            z[:] = self.model.global_cache.second_cache[hook.name].to(z.device)
+            z = self.model.global_cache.second_cache[hook.name].to(z.device)
 
             if verbose:
                 print("Overwrote to sec cache")
@@ -253,10 +254,10 @@ class TLACDCExperiment:
     
             return z
 
-        z[:] = self.model.global_cache.second_cache[hook.name].to(z.device)
+        z = self.model.global_cache.second_cache[hook.name].to(z.device)
 
         # TODO - is this slow ???
-        # answer: yes --- try and have hoooks for each individual (name, index)
+        # answer: yes --- try and have hooks for each individual (name, index)?
 
         for receiver_node_index in self.corr.edges[hook.name]:
             for sender_node_name in self.corr.edges[hook.name][receiver_node_index]:
