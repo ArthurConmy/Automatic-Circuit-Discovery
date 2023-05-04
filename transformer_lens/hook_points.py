@@ -300,16 +300,14 @@ class HookedRootModule(nn.Module):
         self.is_caching = True
 
         def save_hook(tensor, hook):
-            if remove_batch_dim:
-                cache[hook.name] = tensor.detach().to(device)[0]
-            else:
-                cache[hook.name] = tensor.detach().to(device)
+            cache[hook.name] = tensor.detach().to(device)[
+                0 if remove_batch_dim else ... # else leave unchanged
+            ]
 
         def save_hook_back(tensor, hook):
-            if remove_batch_dim:
-                cache[hook.name + "_grad"] = tensor.detach().to(device)[0]
-            else:
-                cache[hook.name + "_grad"] = tensor.detach().to(device)
+            cache[hook.name + "_grad"] = tensor.detach().to(device)[
+                0 if remove_batch_dim else ... # else leave unchanged
+            ]
 
         for name, hp in self.hook_dict.items():
             if names_filter(name):
@@ -401,16 +399,14 @@ class HookedRootModule(nn.Module):
         self.is_caching = True
 
         def save_hook(tensor, hook):
-            if remove_batch_dim:
-                cache[hook.name] = tensor.detach().to(device)[0]
-            else:
-                cache[hook.name] = tensor.detach().to(device)
+            cache[hook.name] = tensor.detach().to(device)[
+                0 if remove_batch_dim else ... # else leave unchanged
+            ]
 
         def save_hook_back(tensor, hook):
-            if remove_batch_dim:
-                cache[hook.name + "_grad"] = tensor.detach().to(device)[0]
-            else:
-                cache[hook.name + "_grad"] = tensor.detach().to(device)
+            cache[hook.name + "_grad"] = tensor.detach().to(device)[
+                0 if remove_batch_dim else ... # else leave unchanged
+            ]
         
         fwd_hooks = []
         bwd_hooks = []
