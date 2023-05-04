@@ -23,12 +23,12 @@ def main(testing=False, use_kubernetes=False):
                         f"--threshold={threshold:.5f}",
                         "--using-wandb",
                         f"--wandb-run-name=agarriga-acdc-{i:03d}",
-                        "--wandb-group-name=adria-induction-2",
+                        "--wandb-group-name=adria-induction-3",
                         f"--device=cpu",
                         f"--reset-network={reset_network}",
                         f"--seed={seed}",
                         f"--metric={loss_type}",
-                        "--torch-num-threads=0",
+                        "--torch-num-threads=4",
                         "--wandb-dir=/training/acdc",  # If it doesn't exist wandb will use /tmp
                         "--wandb-mode=online",
                     ]
