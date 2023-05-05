@@ -79,7 +79,7 @@ def get_mask_repeat_candidates(num_examples=None, seq_len=None):
     else:
         return mask_repeat_candidates[:num_examples, :seq_len]
 
-def get_all_induction_things(num_examples, seq_len, device, randomize_data=True, data_seed=42):
+def get_all_induction_things(num_examples, seq_len, device, randomize_data=True, data_seed=42, kl_return_tensor=False):
     tl_model = get_model()
     tl_model.to(device)
 
@@ -108,7 +108,7 @@ def get_all_induction_things(num_examples, seq_len, device, randomize_data=True,
 
     print("Mask repeat candidates:", mask_repeat_candidates[:num_examples, :seq_len]) # .int().sum())
 
-    metric = partial(kl_divergence, base_model_probs=base_model_probs, mask_repeat_candidates=mask_repeat_candidates, last_seq_element_only=False)
+    metric = partial(kl_divergence, base_model_probs=base_model_probs, mask_repeat_candidates=mask_repeat_candidates, last_seq_element_only=False, return_tensor=kl_return_tensor)
 
     return (
         tl_model,

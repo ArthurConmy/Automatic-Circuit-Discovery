@@ -153,6 +153,7 @@ def kl_divergence(
     mask_repeat_candidates: Optional[torch.Tensor] = None,
     last_seq_element_only: bool = True,
     base_model_probs_last_seq_element_only: bool = False,
+    return_tensor: bool = False,
 ):
     """Compute KL divergence between base_model_probs and probs"""
 
@@ -174,9 +175,13 @@ def kl_divergence(
             mask_repeat_candidates.shape,
         )
         kl_div = kl_div * mask_repeat_candidates.long()
-        answer = (kl_div.sum() / mask_repeat_candidates.long().sum().item()).item()
+        answer = (kl_div.sum() / mask_repeat_candidates.long().sum().item())
+        if not return_tensor:
+            answer=answer.item()
 
     else:
-        answer = kl_div.mean().item()
+        answer = kl_div.mean()
+        if not return_tensor:
+            answer = answer.item()
 
     return answer
