@@ -365,7 +365,7 @@ class TLACDCExperiment:
         if add_receiver_hooks:
             warnings.warn("Deprecating adding receiver hooks before launching into ACDC runs, this may be totally broke")
 
-            receiver_node_names = list(set([node.name for node in self.corr.nodes()]))
+            receiver_node_names = list(set([node.name for node in self.corr.nodes() if node.incoming_edge_type != EdgeType.PLACEHOLDER]))
             for receiver_name in receiver_node_names: # TODO could remove the nodes that don't have any parents...
                 self.model.add_hook(
                     name=receiver_name,
@@ -657,6 +657,9 @@ class TLACDCExperiment:
             
         warnings.warn("Finished iterating")
         return None
+    
+    def backward_hook(self, z, hook):
+        self.global_cache.gradient_cache[hook.name] = z.clone()
 
     def increment_current_node(self) -> None:
         self.current_node = self.find_next_node()

@@ -53,12 +53,15 @@ class GlobalCache: # this dict stores the activations from the forward pass
 
         self.cache = OrderedDict() 
         self.second_cache = OrderedDict()
+        self.gradient_cache = OrderedDict()
         self.device: Tuple[str, str] = (device, device)
 
     def clear(self, just_first_cache=False):
         
         if not just_first_cache:
             self.cache = OrderedDict()
+            self.second_cache = OrderedDict()
+            self.gradient_cache = OrderedDict()
         else:
             raise NotImplementedError()
             self.__init__(self.device[0], self.device[1]) # lol
