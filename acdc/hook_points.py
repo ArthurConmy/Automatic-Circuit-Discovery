@@ -77,14 +77,21 @@ class HookPoint(nn.Module):
                 self.fwd_hooks.insert(0, handle)
             else:
                 self.fwd_hooks.append(handle)
+            self.fwd_hook_functions.append(hook)
 
         elif dir == "bwd":
+
+            print("Trying to add a back hook")
+
             # For a backwards hook, module_output is a tuple of (grad,) - I don't know why.
             def full_hook(module, module_input, module_output):
+                print("Inside back hook", str(module)[:30])
                 return hook(module_output[0], hook=self)
 
-            handle = self.register_full_backward_hook(full_hook)
+
+            handle = self.register_backward_hook(full_hook)
             handle = LensHandle(handle, is_permanent)
+
             if prepend:
                 self.bwd_hooks.insert(0, handle)
             else:
@@ -93,7 +100,6 @@ class HookPoint(nn.Module):
         else:
             raise ValueError(f"Invalid direction {dir}")
 
-        self.fwd_hook_functions.append(hook)
         return handle
 
     def remove_hooks(self, dir="fwd", including_permanent=False) -> None:
@@ -283,6 +289,8 @@ class HookedRootModule(nn.Module):
 
     def add_hook(self, name, hook, dir="fwd", is_permanent=False, prepend=False) -> None:
         """Warning: edited to return handles for more fine grained editing"""
+
+        assert "back" not in str(hook) or dir == "bwd", "Backward hooks only work in backward direction"
 
         if type(name) == str:
             return self.check_and_add_hook(self.mod_dict[name], name, hook, dir=dir, is_permanent=is_permanent, prepend=prepend)

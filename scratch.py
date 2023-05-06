@@ -6,6 +6,7 @@ if get_ipython() is not None:
     get_ipython().run_line_magic("autoreload", "2")
 
 import torch
+from collections import OrderedDict
 import warnings
 from acdc import HookedTransformer, HookedTransformerConfig # TODO why don't we have to do HookedTransformer.HookedTransformer???
 from acdc.TLACDCExperiment import TLACDCExperiment
@@ -79,22 +80,36 @@ exp.setup_model_hooks(
 
 # %%
 
-induction_heads = [
-    ("blocks.1.attn.hook_result", TorchIndex([None, None, 5])),
-    ("blocks.1.attn.hook_result", TorchIndex([None, None, 6])),
-]
+if False:
+    induction_heads = [
+        ("blocks.1.attn.hook_result", TorchIndex([None, None, 5])),
+        ("blocks.1.attn.hook_result", TorchIndex([None, None, 6])),
+    ]
 
-receivers = exp.corr.edges["blocks.1.hook_resid_post"][TorchIndex([None])]
-for receiver_name in receivers:
-    for receiver_index in receivers[receiver_name]:
-        print(receiver_name, receiver_index)
-        edge = receivers[receiver_name][receiver_index]
-        if (receiver_name, receiver_index) in induction_heads:
-            edge.present = True
-        else:
-            edge.present = False
+    receivers = exp.corr.edges["blocks.1.hook_resid_post"][TorchIndex([None])]
+    for receiver_name in receivers:
+        for receiver_index in receivers[receiver_name]:
+            print(receiver_name, receiver_index)
+            edge = receivers[receiver_name][receiver_index]
+            if (receiver_name, receiver_index) in induction_heads:
+                edge.present = True
+            else:
+                edge.present = False
 
 #%%
+
+def back(a,b,c):
+    try:
+        print(a.name, b[0].norm().item(), c[0].norm().item(), a[0].requires_grad, c[0].requires_grad)
+    except:
+        print(a.name)
+tot=0
+for module in model.modules():
+    module.register_backward_hook(back)
+
+#%%
+
+model.global_cache.gradient_cache = OrderedDict()
 
 if True: # trust in the TransformerLens process
     handles=[]
@@ -102,14 +117,18 @@ if True: # trust in the TransformerLens process
         handles.append(model.add_hook(
             f"blocks.{layer_idx}.attn.hook_result",
             exp.backward_hook,
+            dir="bwd",
         ))
     model.zero_grad()
-    loss = metric(model(toks_int_values_batch))
-    # loss.backward(retain_graph=True)
+    kls = metric(model(toks_int_values_batch.clone()))
+    loss = kls.mean()
+    print("Backwards passing...")
+    loss.backward(retain_graph=True)
+    print("Done.")
 
 #%%
 
-for layer_idx in range(2):
+for layer_idx in range(1, -1, -1):
     for head_idx in range(8):
         gradient = model.global_cache.gradient_cache[f"blocks.{layer_idx}.attn.hook_result"][:, :, head_idx]
         linear_walk = model.global_cache.second_cache[f"blocks.{layer_idx}.attn.hook_result"][:, :, head_idx] - model.global_cache.cache[f"blocks.{layer_idx}.attn.hook_result"][:, :, head_idx]
@@ -120,12 +139,14 @@ for layer_idx in range(2):
             gradient.cpu(),
             linear_walk.cpu(),
         )
-        if (layer_idx, head_idx) == (1, 6): assert False
+        if (layer_idx, head_idx) == (0, 5): 
+            break
+    # break
 
 # %%
 
 show_pp(
-    val.detach(),
+    gradient.norm(dim=-1).detach(),
 )
 # assert False # things are wrong as there should not be gradients from the future...
 

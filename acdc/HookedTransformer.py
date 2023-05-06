@@ -65,6 +65,7 @@ class GlobalCache: # this dict stores the activations from the forward pass
             self.cache = OrderedDict()
             self.second_cache = OrderedDict()
             self.gradient_cache = OrderedDict()
+        
         else:
             raise NotImplementedError()
             self.__init__(self.device[0], self.device[1]) # lol
