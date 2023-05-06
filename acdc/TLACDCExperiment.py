@@ -669,7 +669,7 @@ class TLACDCExperiment:
         return None
     
     def backward_hook(self, z, hook):
-        self.model.global_cache.gradient_cache[hook.name] = z.clone()
+        self.model.global_cache.gradient_cache[hook.name] = z.cpu().clone()
 
     def increment_current_node(self) -> None:
         self.current_node = self.find_next_node()

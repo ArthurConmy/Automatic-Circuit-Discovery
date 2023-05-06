@@ -87,6 +87,7 @@ for receiver_name in receivers:
             edge.present = True
         else:
             edge.present = False
+
 #%%
 
 if True: # trust in the TransformerLens process
@@ -113,10 +114,15 @@ else:
 
 for layer_idx in range(2):
     for head_idx in range(8):
-        gradient = model.global_cache.gradient_cache[f"blocks.{layer_idx}.attn.hook_result"][:, :, head_idx].sum(dim=0).sum(dim=0) # sum the effect across all batches and all seq elements
-        # aargh this isn't quite the same as what I'd like
+        gradient = model.global_cache.gradient_cache[f"blocks.{layer_idx}.attn.hook_result"][:, :, head_idx]
+        linear_walk = model.global_cache.second_cache[f"blocks.{layer_idx}.attn.hook_result"][:, :, head_idx] - model.global_cache.cache[f"blocks.{layer_idx}.attn.hook_result"][:, :, head_idx]
+        # ... I guess that we dot over the sequence dimension, too
+
         val = torch.einsum(
-            "",
-            a,
-            b,
+            "bsd,bsd->bs",
+            gradient.cpu(),
+            linear_walk.cpu(),
         )
+        if (layer_idx, head_idx) == (1, 6): assert False
+
+# %%
