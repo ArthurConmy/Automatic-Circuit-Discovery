@@ -383,6 +383,9 @@ class HookedRootModule(nn.Module):
                 cache[hook.name] = tensor.detach().to(device)
 
         def save_hook_back(tensor, hook):
+
+            print(hook.name, "BACKWARDS")
+
             if remove_batch_dim:
                 cache[hook.name + "_grad"] = tensor.detach().to(device)[0]
             else:
@@ -393,6 +396,8 @@ class HookedRootModule(nn.Module):
                 if incl_fwd:
                     hp.add_hook(save_hook, "fwd")
                 if incl_bwd:
+                    print("Adding back to", name)
+
                     hp.add_hook(save_hook_back, "bwd")
         return cache
 

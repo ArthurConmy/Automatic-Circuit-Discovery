@@ -1,7 +1,5 @@
 # %% [markdown]
-# <h1>General tutorial</h1>
-# <p>This notebook gives a high-level overview of the main abstractions used in the ACDC codebase.</p>
-# <p>If you are interested in models that are >10x the size of GPT-2 small, this library currently may be too slow and we would recommend you look at the path patching implementations in `TransformerLens` (forthcoming)</p>
+# Arthur's adaptation of the general tutorial in order to do gradient-based stuff
 
 # %% [markdown]
 # <h2> Imports etc</h2>
@@ -17,6 +15,7 @@ from acdc.HookedTransformer import HookedTransformer
 from acdc.TLACDCExperiment import TLACDCExperiment
 from acdc.induction.utils import get_all_induction_things
 import torch
+from copy import deepcopy
 
 # %%
 
@@ -73,11 +72,26 @@ experiment = TLACDCExperiment(
     model=tl_model,
     threshold=0.0,
     ds=toks_int_values,
-    ref_ds=None, # This is the corrupted dataset from the ACDC paper. We're going to do zero ablation here so we omit this
+    ref_ds=toks_int_values_other, # This is the corrupted dataset from the ACDC paper. We're going to do zero ablation here so we omit this
     metric=metric,
-    zero_ablation=True,
+    zero_ablation=False,
     hook_verbose=True,
 )
+
+#%% [markdown]
+# Save both the clean cache and the corrupted cache
+
+def safe_deepcopy_tensor(tens):
+    return tens.detach().clone()
+
+saved_second_cache = {key: safe_deepcopy_tensor(tens) for key, tens in tl_model.global_cache.second_cache.items()}
+clean_logits = tl_model(toks_int_values)
+saved_first_cache = {key: safe_deepcopy_tensor(tens) for key, tens in tl_model.global_cache.cache.items()}
+
+for idx, cache in enumerate([saved_first_cache, saved_second_cache]):
+    assert len(cache) > 0, idx
+    devices = set([tens.device for _, tens in cache.items()])
+    assert all(["cpu" in str(device) for device in devices]), (devices, idx)
 
 # %%
 
@@ -109,9 +123,21 @@ for edge_indices, edge in experiment.corr.all_edges().items():
 
 tl_model.zero_grad()
 loss = get_loss(tl_model, toks_int_values, mask=None)
-loss.backward()
-
+loss.backward(retain_graph=True)
 grad3 = tl_model.blocks[0].attn.W_Q.grad.clone()
+print("Saved grad3!")
+
+#%%
+
+for layer_idx in range(2):
+    for head_idx in range(8):
+        hook_name = f"blocks.{layer_idx}.attn.hook_result"
+        hook_index = TorchIndex([None, None, head_idx])
+
+        estimate = back_cache[hook_name][hook_index.as_index]
+        act_diff = saved_second_cache[hook_name][hook_index.as_index] - saved_first_cache[hook_name][hook_index.as_index]
+        print(estimate.shape, act_diff.shape)
+        assert False
 
 #%%
 
@@ -157,3 +183,5 @@ print("Loss without the induction head direct connections:", get_loss(experiment
 # Forthcoming tutorials: 
 # 1. on the abstractions used to be able to edit connections (The `TorchIndex`s)
 # 2. see acdc/main.py for how to run ACDC experiments; try python acdc/main.py --help
+
+#%%

@@ -439,37 +439,24 @@ class Attention(nn.Module):
                 pattern,
             )
         )  # [batch, pos, head_index, d_head]
-        if not self.cfg.use_attn_result:
-            out = (
-                (
-                    einsum(
-                        "batch pos head_index d_head, \
-                        head_index d_head d_model -> \
-                        batch pos d_model",
-                        z,
-                        self.W_O,
-                    )
-                )
-                + self.b_O
-            )  # [batch, pos, d_model]
-        else:
-            # Explicitly calculate the attention result so it can be accessed by a hook
-            # This is off by default because it can easily eat through your GPU memory.
-            result = self.hook_result(
-                einsum(
-                    "batch pos head_index d_head, \
-                        head_index d_head d_model -> \
-                        batch pos head_index d_model",
-                    z,
-                    self.W_O,
-                )
-            )  # [batch, pos, head_index, d_model]
-            out = (
-                einops.reduce(
-                    result, "batch position index model->batch position model", "sum"
-                )
-                + self.b_O
-            )  # [batch, pos, d_model]
+
+        # Explicitly calculate the attention result so it can be accessed by a hook
+        # This is off by default because it can easily eat through your GPU memory.
+        result = self.hook_result(
+            einsum(
+                "batch pos head_index d_head, \
+                    head_index d_head d_model -> \
+                    batch pos head_index d_model",
+                z,
+                self.W_O,
+            )
+        )  # [batch, pos, head_index, d_model]
+        out = (
+            einops.reduce(
+                result, "batch position index model->batch position model", "sum"
+            )
+            + self.b_O
+        )  # [batch, pos, d_model]
         return out
 
     def apply_causal_mask(

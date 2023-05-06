@@ -4,13 +4,13 @@ from typing import Callable, Optional, Literal, List, Dict, Any, Tuple, Union, S
 import random
 from dataclasses import dataclass
 import torch
-from acdc.graphics import show
+# from acdc.graphics import show
 from torch import nn
 from torch.nn import functional as F
 from acdc.TLACDCInterpNode import TLACDCInterpNode
 from acdc.TLACDCCorrespondence import TLACDCCorrespondence, TLACDCCorrespondenceFast
 from acdc.HookedTransformer import HookedTransformer
-from acdc.graphics import log_metrics_to_wandb
+# from acdc.graphics import log_metrics_to_wandb
 import warnings
 import wandb
 from acdc.acdc_utils import TorchIndex, Edge, EdgeType
@@ -667,6 +667,9 @@ class TLACDCExperiment:
             
         warnings.warn("Finished iterating")
         return None
+    
+    def backward_hook(self, z, hook):
+        self.global_cache.gradient_cache[hook.name] = z.clone()
 
     def increment_current_node(self) -> None:
         self.current_node = self.find_next_node()
