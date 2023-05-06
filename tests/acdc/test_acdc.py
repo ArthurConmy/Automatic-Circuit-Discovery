@@ -1,4 +1,3 @@
-#%%
 from copy import deepcopy
 from typing import (
     List,
@@ -65,6 +64,7 @@ from collections import defaultdict, deque, OrderedDict
 from acdc.induction.utils import (
     get_all_induction_things,
     get_model,
+    one_item_per_batch,
     get_validation_data,
     get_good_induction_candidates,
     get_mask_repeat_candidates,
@@ -129,9 +129,9 @@ def test_induction_several_steps():
     for edge_tuple, edge in edges_to_consider.items():
         assert abs(edge.effect_size - EDGE_EFFECTS[edge_tuple]) < 1e-5, (edge_tuple, edge.effect_size, EDGE_EFFECTS[edge_tuple])
 
-#%%
-if True:
-# def test_main_script():
+def test_main_script():
+    """TODO: fix this, I think it always passes..."""
+
     import subprocess
     for task in ["induction", "ioi", "tracr", "docstring"]:
         subprocess.run(["python", "../../acdc/main.py", "--task", task, "--threshold", "123456789", "--single-step"])
@@ -139,4 +139,32 @@ if True:
 def test_evaluating_subgraphs_notebook():
     import notebooks.evaluating_subgraphs
 
-# %%
+def test_induction_batching():
+    """Test that the current fix to allow one induction example per batch element works"""
+
+    NUM_EXAMPLES = 20
+    SEQ_LEN = 300
+
+    induction_tuple = get_all_induction_things(NUM_EXAMPLES, SEQ_LEN, "cuda", return_mask_rep=True, kl_return_tensor=True, return_base_model_probs=True, kl_take_mean=False)
+    model, toks_int_values, toks_int_values_other, metric, mask_rep, base_model_probs = induction_tuple
+
+    # do some corruption so the KLs are non-0
+    model.blocks[1].attn.W_Q = torch.nn.Parameter(torch.zeros_like(model.blocks[1].attn.W_Q))
+
+    # use batch
+    toks_int_values_batch, toks_int_values_other_batch, end_positions, new_metric = one_item_per_batch(toks_int_values, toks_int_values_other, mask_rep, base_model_probs, kl_take_mean=False)
+
+    batch_metric = new_metric(model(toks_int_values_batch))
+
+    # do not use batch
+    toks_int_values_batch, toks_int_values_other_batch = toks_int_values, toks_int_values_other
+    logits = model(toks_int_values_batch)
+    non_batch_metric = metric(logits)
+    non_batch_all = []
+    for i in range(NUM_EXAMPLES):
+        for j in range(SEQ_LEN):
+            if mask_rep[i, j]:
+                non_batch_all.append(non_batch_metric[i, j])
+
+    assert torch.allclose(batch_metric.cpu(), torch.tensor(non_batch_all).cpu()), (batch_metric, non_batch_metric.cpu())
+    assert batch_metric.norm().item() > 1e-5 # ensure that we didn't accidentally make KL divergnece 0``

@@ -79,7 +79,7 @@ def get_mask_repeat_candidates(num_examples=None, seq_len=None):
     else:
         return mask_repeat_candidates[:num_examples, :seq_len]
 
-def get_all_induction_things(num_examples, seq_len, device, randomize_data=True, data_seed=42, kl_return_tensor=False, return_mask_rep=False, return_base_model_probs=False):
+def get_all_induction_things(num_examples, seq_len, device, randomize_data=True, data_seed=42, kl_return_tensor=False, return_mask_rep=False, return_base_model_probs=False, kl_take_mean=True):
     tl_model = get_model()
     tl_model.to(device)
 
@@ -106,7 +106,7 @@ def get_all_induction_things(num_examples, seq_len, device, randomize_data=True,
     base_model_logits = tl_model(toks_int_values)
     base_model_probs = F.softmax(base_model_logits, dim=-1)
 
-    metric = partial(kl_divergence, base_model_probs=base_model_probs, mask_repeat_candidates=mask_repeat_candidates, last_seq_element_only=False, return_tensor=kl_return_tensor)
+    metric = partial(kl_divergence, base_model_probs=base_model_probs, mask_repeat_candidates=mask_repeat_candidates, last_seq_element_only=False, return_tensor=kl_return_tensor, take_mean=kl_take_mean)
 
     return_list = [
         tl_model,
@@ -123,7 +123,7 @@ def get_all_induction_things(num_examples, seq_len, device, randomize_data=True,
 
     return tuple(return_list)
 
-def one_item_per_batch(toks_int_values, toks_int_values_other, mask_rep, base_model_probs):
+def one_item_per_batch(toks_int_values, toks_int_values_other, mask_rep, base_model_probs, kl_take_mean=True):
     """Returns each instance of induction as its own batch idx"""
 
     end_positions = []
@@ -146,6 +146,6 @@ def one_item_per_batch(toks_int_values, toks_int_values_other, mask_rep, base_mo
     end_positions_tensor = torch.tensor(end_positions).long()
 
     new_base_model_probs = torch.stack(new_base_model_probs_list)[torch.arange(len(end_positions_tensor)), end_positions_tensor].to(toks_int_values.device)
-    metric = partial(kl_divergence, base_model_probs=new_base_model_probs, end_positions=end_positions_tensor, mask_repeat_candidates=None, last_seq_element_only=False, return_tensor=True)
+    metric = partial(kl_divergence, base_model_probs=new_base_model_probs, end_positions=end_positions_tensor, mask_repeat_candidates=None, last_seq_element_only=False, return_tensor=True, take_mean=kl_take_mean)
     
     return return_tensor, toks_int_values_other_batch, end_positions_tensor, metric

@@ -10,17 +10,23 @@ import warnings
 from acdc import HookedTransformer, HookedTransformerConfig # TODO why don't we have to do HookedTransformer.HookedTransformer???
 from acdc.TLACDCExperiment import TLACDCExperiment
 from acdc.acdc_utils import TorchIndex
+from acdc.graphics import show_pp
 from acdc.induction.utils import get_all_induction_things, one_item_per_batch
 
 NUM_EXAMPLES = 20
 SEQ_LEN = 300
+USE_BATCH = False
 
 #%%
 
 try:
-    induction_tuple = get_all_induction_things(NUM_EXAMPLES, SEQ_LEN, "cuda", return_mask_rep=True, kl_return_tensor=True, return_base_model_probs=True)
+    induction_tuple = get_all_induction_things(NUM_EXAMPLES, SEQ_LEN, "cuda", return_mask_rep=True, kl_return_tensor=True, return_base_model_probs=True, kl_take_mean=False)
     model, toks_int_values, toks_int_values_other, metric, mask_rep, base_model_probs = induction_tuple
-    toks_int_values_batch, toks_int_values_other_batch, end_positions, metric = one_item_per_batch(toks_int_values, toks_int_values_other, mask_rep, base_model_probs)
+
+    if USE_BATCH:
+        toks_int_values_batch, toks_int_values_other_batch, end_positions, metric = one_item_per_batch(toks_int_values, toks_int_values_other, mask_rep, base_model_probs, kl_take_mean=False)
+    else:
+        toks_int_values_batch, toks_int_values_other_batch = toks_int_values, toks_int_values_other
 
 except Exception as e:
     warnings.warn(f"Failed to load induction; error: {e}")
@@ -98,7 +104,7 @@ if True: # trust in the TransformerLens process
             exp.backward_hook,
         ))
     loss = metric(model(toks_int_values_batch))
-    loss.backward(retain_graph=True)
+    # loss.backward(retain_graph=True)
 
 else:
     def back(a,b,c):
@@ -124,5 +130,19 @@ for layer_idx in range(2):
             linear_walk.cpu(),
         )
         if (layer_idx, head_idx) == (1, 6): assert False
+
+# %%
+
+show_pp(
+    val.detach(),
+)
+assert False, # things are wrong as there should not be gradients from the future...
+
+# %%
+
+zers = torch.zeros_like(val).detach()
+for i in range(len(end_positions)):
+    zers[i, end_positions[i]] = 1.0
+show_pp(zers)
 
 # %%
