@@ -1,3 +1,4 @@
+#%%
 # Import stuff
 import warnings
 import logging
@@ -45,7 +46,9 @@ class HookPoint(nn.Module):
     def add_perma_hook(self, hook, dir="fwd") -> None:
         self.add_hook(hook, dir=dir, is_permanent=True)
 
-    def add_hook(self, hook, dir="fwd", is_permanent=False, prepend=False) -> LensHandle: # TODO make sure all updates to this are legit...
+    def add_hook(self, hook, dir="fwd", is_permanent=False, prepend=False) -> LensHandle: 
+
+        # TODO make sure all updates to this are legit...
         
         # Hook format is fn(activation, hook_name)
         # Change it into PyTorch hook format (this includes input and output,
@@ -279,6 +282,8 @@ class HookedRootModule(nn.Module):
         return hook_point.add_hook(hook, dir=dir, is_permanent=is_permanent, prepend=prepend)
 
     def add_hook(self, name, hook, dir="fwd", is_permanent=False, prepend=False) -> None:
+        """Warning: edited to return handles for more fine grained editing"""
+
         if type(name) == str:
             return self.check_and_add_hook(self.mod_dict[name], name, hook, dir=dir, is_permanent=is_permanent, prepend=prepend)
         else:

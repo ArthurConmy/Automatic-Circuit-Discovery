@@ -155,15 +155,23 @@ def kl_divergence(
     base_model_probs: torch.Tensor,
     mask_repeat_candidates: Optional[torch.Tensor] = None,
     last_seq_element_only: bool = True,
+    end_positions: Optional[torch.Tensor] = None,
     base_model_probs_last_seq_element_only: bool = False,
     return_tensor: bool = False,
 ):
     """Compute KL divergence between base_model_probs and probs"""
 
+    if last_seq_element_only and end_positions is not None:
+        raise ValueError("Can't have both last_seq_element_only and one_seq_element_only")
+
     if last_seq_element_only:
         logits = logits[:, -1, :]
     if base_model_probs_last_seq_element_only:
         base_model_probs = base_model_probs[:, -1, :]
+
+    if end_positions is not None:
+        assert logits.shape[0] == end_positions.shape[0], (logits.shape, end_positions.shape)
+        logits = logits[torch.arange(len(end_positions)), end_positions]
 
     probs = F.softmax(logits, dim=-1)
 
