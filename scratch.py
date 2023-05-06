@@ -75,10 +75,26 @@ exp = TLACDCExperiment(
 model.reset_hooks()
 exp.setup_model_hooks(
     add_sender_hooks=True,
-    add_receiver_hooks=True, # more. More. MORE
+    add_receiver_hooks=False, # more. More. MORE
 )
 
-# %%
+attn_out_name = "blocks.{layer}.attn.hook_result"
+exp.model.hook_dict["blocks.0.attn.hook_result"].remove_hooks()
+exp.model.hook_dict["blocks.1.attn.hook_result"].remove_hooks()
+exp.model.hook_dict["blocks.1.hook_resid_post"].remove_hooks()
+
+for layer_idx in range(2):
+    for head_idx in range(8):
+        exp.add_sender_hook(
+            node=exp.corr.graph[attn_out_name.format(layer=layer_idx)][TorchIndex([None, None, head_idx])],
+            parameter=True,
+        )
+
+exp.add_receiver_hook(
+    node=exp.corr.graph["blocks.1.hook_resid_post"][TorchIndex([None])],
+)
+
+#%%
 
 if False:
     induction_heads = [
@@ -100,9 +116,9 @@ if False:
 
 def back(a,b,c):
     try:
-        print(a.name, b[0].norm().item(), c[0].norm().item(), a[0].requires_grad, c[0].requires_grad)
-    except:
-        print(a.name)
+        print(a.name, b[0].norm().item(), c[0].norm().item(), b[0].requires_grad, c[0].requires_grad)
+    except Exception as e:
+        print(a.name, "error", str(e)[:50])
 tot=0
 for module in model.modules():
     module.register_backward_hook(back)
@@ -135,26 +151,25 @@ for layer_idx in range(1, -1, -1):
         # ... I guess that we dot over the sequence dimension, too
 
         val = torch.einsum(
-            "bsd,bsd->bs",
+            "bsd,bsd->b",
             gradient.cpu(),
             linear_walk.cpu(),
         )
-        if (layer_idx, head_idx) == (0, 5): 
-            break
-    # break
 
-# %%
+        print(layer_idx, head_idx, val.mean().item())
+
+#%%
 
 show_pp(
     gradient.norm(dim=-1).detach(),
 )
 # assert False # things are wrong as there should not be gradients from the future...
 
-# %%
+#%%
 
 zers = torch.zeros_like(val).detach()
 for i in range(len(end_positions)):
     zers[i, end_positions[i]] = 1.0
 show_pp(zers)
 
-# %%
+#%%

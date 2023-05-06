@@ -191,15 +191,19 @@ class TLACDCExperiment:
 
         self.corr.graph = new_graph
 
-    def sender_hook(self, z, hook, verbose=False, cache="first", device=None):
+    def sender_hook(self, z, hook, verbose=False, cache="first", device=None, parameter=False):
         """General, to cover online and corrupt caching"""
 
         if device == "cpu":
             tens = z.cpu()
+            if parameter:
+                tens = torch.nn.Parameter(tens)
         else:
             tens = z.clone()
             if device is not None:
                 tens = tens.to(device)
+            if parameter:
+                tens = torch.nn.Parameter(tens)
 
         if cache == "second":
             hook.global_cache.second_cache[hook.name] = tens
@@ -207,6 +211,11 @@ class TLACDCExperiment:
             hook.global_cache.cache[hook.name] = tens
         else:
             raise ValueError(f"Unknown cache type {cache}")
+
+        if parameter:
+            def fbh(grad, name):
+                print(name, grad.norm().item())
+            tens.register_hook(partial(fbh, name=hook.name))
 
         if verbose:
             print(f"Saved {hook.name} with norm {z.norm().item()}")
@@ -394,7 +403,7 @@ class TLACDCExperiment:
         with open(fname, "wb") as f:
             pickle.dump(edges_list, f)
 
-    def add_sender_hook(self, node, override=False):
+    def add_sender_hook(self, node, override=False, parameter=False):
         if not override and len(self.model.hook_dict[node.name].fwd_hooks) > 0:
             for hook_func_maybe_partial in self.model.hook_dict[node.name].fwd_hook_functions:
                 hook_func_name = hook_func_maybe_partial.func.__name__ if isinstance(hook_func_maybe_partial, partial) else hook_func_maybe_partial.__name__
@@ -403,7 +412,7 @@ class TLACDCExperiment:
 
         handle = self.model.add_hook(
             name=node.name, 
-            hook=partial(self.sender_hook, verbose=self.hook_verbose, cache="first", device="cpu" if self.first_cache_cpu else None),
+            hook=partial(self.sender_hook, verbose=self.hook_verbose, cache="first", device="cpu" if self.first_cache_cpu else None, parameter=parameter),
         )
 
         return True
