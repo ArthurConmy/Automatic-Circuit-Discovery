@@ -15,7 +15,7 @@ from acdc.induction.utils import get_all_induction_things, one_item_per_batch
 
 NUM_EXAMPLES = 20
 SEQ_LEN = 300
-USE_BATCH = False
+USE_BATCH = True
 
 #%%
 
@@ -103,18 +103,9 @@ if True: # trust in the TransformerLens process
             f"blocks.{layer_idx}.attn.hook_result",
             exp.backward_hook,
         ))
+    model.zero_grad()
     loss = metric(model(toks_int_values_batch))
     # loss.backward(retain_graph=True)
-
-else:
-    def back(a,b,c):
-        try:
-            print(a.name, b[0].norm().item(), c[0].norm().item())
-        except:
-            print(a.name)
-    tot=0
-    for module in model.modules():
-        module.register_backward_hook(back) # lol somehow this gets doubles...
 
 #%%
 
@@ -136,7 +127,7 @@ for layer_idx in range(2):
 show_pp(
     val.detach(),
 )
-assert False, # things are wrong as there should not be gradients from the future...
+# assert False # things are wrong as there should not be gradients from the future...
 
 # %%
 
