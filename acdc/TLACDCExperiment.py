@@ -46,18 +46,20 @@ class TLACDCExperiment:
         second_cache_cpu: bool = True,
         zero_ablation: bool = False, # use zero rather than 
         using_wandb: bool = False,
-        wandb_entity_name: str = "",
-        wandb_project_name: str = "",
-        wandb_run_name: str = "",
+        wandb_entity_name: str = "remix_school-of-rock",
+        wandb_project_name: str = "acdc",
+        wandb_run_name: str = "placeholder_name",
         wandb_notes: str = "",
         skip_edges = "no",
         add_sender_hooks: bool = True,
         add_receiver_hooks: bool = False,
         indices_mode: Literal["normal", "reverse", "shuffle"] = "reverse", # we get best performance with reverse I think
         names_mode: Literal["normal", "reverse", "shuffle"] = "normal",
+        algorithm: Literal["arxiv", "gradient"] = "arxiv",
     ):
         """Initialize the ACDC experiment"""
 
+        self.algorithm = algorithm
         if zero_ablation and remove_redundant:
             raise ValueError("It's not possible to do zero ablation with remove redundant, talk to Arthur about a bizarre special case!")
 
@@ -445,9 +447,13 @@ class TLACDCExperiment:
         if self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value:
             added_receiver_hook = self.add_receiver_hook(self.current_node, override=True, prepend=True)
 
-        if self.current_node.incoming_edge_type.value == EdgeType.DIRECT_COMPUTATION.value:
+        if (
+            (self.current_node.incoming_edge_type.value == EdgeType.DIRECT_COMPUTATION.value)
+            or 
+            (self.algorithm == "gradient") # also add things if we're gradient,,,
+        ):
             # basically, because these nodes are the only ones that act as both receivers and senders
-            added_sender_hook = self.add_sender_hook(self.current_node, override=True)
+            added_sender_hook = self.add_sender_hook(self.current_node, override=True, add_backwards_hook=(self.algorithm=="gradient"))
 
         is_this_node_used = False
         if self.current_node.name == "blocks.0.hook_resid_pre":
@@ -467,6 +473,9 @@ class TLACDCExperiment:
                 random.shuffle(sender_indices_list)
             elif self.indices_mode == "reverse":
                 sender_indices_list = list(reversed(sender_indices_list))
+
+            if self.algorithm == "arxiv":
+                pass
 
             for sender_index in sender_indices_list:
                 edge = self.corr.edges[self.current_node.name][self.current_node.index][sender_name][sender_index]
@@ -674,6 +683,7 @@ class TLACDCExperiment:
     def backward_hook(self, z, name):
         """We'll put this on a tensor not HookPoint hence different signature..."""
 
+        # TODO check we're not calling this TOO much
         self.model.global_cache.gradient_cache[name] = z.cpu().clone()
 
     def increment_current_node(self) -> None:

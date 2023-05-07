@@ -14,7 +14,7 @@ from acdc.acdc_utils import TorchIndex
 from acdc.graphics import show_pp
 from acdc.induction.utils import get_all_induction_things, one_item_per_batch
 
-NUM_EXAMPLES = 20
+NUM_EXAMPLES = 5
 SEQ_LEN = 300
 USE_BATCH = True
 ZERO_WQ = True
@@ -57,8 +57,8 @@ model.global_cache.clear()
 
 exp = TLACDCExperiment(
     model=model,
-    threshold=100_000.0,
-    using_wandb=False,
+    threshold=0.075,
+    using_wandb=True,
     zero_ablation=False,
     ds=toks_int_values_batch,
     ref_ds=toks_int_values_other_batch,
@@ -73,11 +73,17 @@ exp = TLACDCExperiment(
     remove_redundant=False,
 )
 
+while True: exp.step()
+
+#%%
+
 model.reset_hooks()
 exp.setup_model_hooks(
     add_sender_hooks=True,
     add_receiver_hooks=False, # more. More. MORE
 )
+
+#%%
 
 attn_out_name = "blocks.{layer}.attn.hook_result"
 exp.model.hook_dict["blocks.0.attn.hook_result"].remove_hooks()
