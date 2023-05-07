@@ -70,7 +70,7 @@ class TLACDCExperiment:
         self.remove_redundant = remove_redundant
         self.indices_mode = indices_mode
         self.names_mode = names_mode
-
+        self.backed = []
         self.model = model
         self.verify_model_setup()
         self.zero_ablation = zero_ablation
@@ -107,7 +107,7 @@ class TLACDCExperiment:
         self.setup_model_hooks(
             add_sender_hooks=add_sender_hooks,
             add_receiver_hooks=add_receiver_hooks,
-            add_backward_too=(self.algorithm == "gradient"),
+            add_backward_too=False, # (self.algorithm == "gradient"),
         )
 
         self.using_wandb = using_wandb
@@ -150,8 +150,15 @@ class TLACDCExperiment:
         assert self.model.cfg.use_split_qkv_input, "Need to be able to see split by head QKV inputs"
         assert self.model.cfg.use_global_cache, "Need to be able to use global chache to do ACDC"
 
-    def update_cur_metric(self, recalc_metric=True, recalc_edges=True, initial=False):
+    def update_cur_metric(self, recalc_metric=True, recalc_edges=True, initial=False, cast_float=True):
         if recalc_metric:
+
+            # this clears out some saved tensors...
+            while len(self.backed)>0:
+                back=self.backed[-1]
+                self.backed = self.backed[:-1]
+                del back
+            
             self.model.global_cache.clear(just_first_cache=True)
             gc.collect()
             torch.cuda.empty_cache()
@@ -166,6 +173,9 @@ class TLACDCExperiment:
 
         if initial:
             assert abs(self.cur_metric) < 1e-5, f"Metric {self.cur_metric=} is not zero"
+
+        if cast_float:
+            self.cur_metric = float(self.cur_metric)
 
         if self.using_wandb:
             wandb_return_dict = {
@@ -222,8 +232,9 @@ class TLACDCExperiment:
             if hook.name == f"blocks.{self.model.cfg.n_layers-1}.hook_resid_post":
                 print("The tensor in the forward pass")
                 z.register_hook(partial(self.backward_hook, name=hook.name))
+                self.backed.append(z)
             else:
-                print("The Cahced tensor")
+                print("The cached tensor")
                 tens.register_hook(partial(self.backward_hook, name=hook.name))
 
         if verbose:
@@ -390,7 +401,7 @@ class TLACDCExperiment:
         add_backward_too=False,
     ):
         if add_sender_hooks:
-            self.add_all_sender_hooks(cache="first", skip_direct_computation=False, add_all_hooks=True, add_backward_too=add_backward_too) # when this is True, this is wrong I think
+            self.add_all_sender_hooks(cache="first", skip_direct_computation=False, add_all_hooks=False, add_backward_too=add_backward_too)
 
         if add_receiver_hooks:
             if doing_acdc_runs:
@@ -474,14 +485,14 @@ class TLACDCExperiment:
 
         new_funky_run = self.algorithm == "gradient" and self.current_node.incoming_edge_type == EdgeType.ADDITION
 
-        self.update_cur_metric()
-        initial_metric = self.cur_metric
+        self.update_cur_metric(cast_float=False) # to do backprop
+        initial_metric = float(self.cur_metric)
 
         if new_funky_run:
             assert self.current_node.incoming_edge_type != EdgeType.PLACEHOLDER # need to implement
             self.model.global_cache.gradient_cache = OrderedDict()
             self.model.zero_grad()
-            self.cur_metric.backward(retain_graph=False) # maybe memory?
+            self.cur_metric.backward(retain_graph=True) # maybe memory?
 
         if not ignore_non_float:
             assert isinstance(initial_metric, float), f"Initial metric is a {type(initial_metric)} not a float"
