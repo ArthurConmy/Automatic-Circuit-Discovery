@@ -44,6 +44,7 @@ class TLACDCExperiment:
         ] = "minimize",  # if this is set to "maximize" or "minimize", then the metric will be maximized or minimized, respectively instead of us trying to keep the metric roughly the same. We do KL divergence by default
         first_cache_cpu: bool = True,
         second_cache_cpu: bool = True,
+        grad_threshold: float = 0.0,
         zero_ablation: bool = False, # use zero rather than 
         using_wandb: bool = False,
         wandb_entity_name: str = "remix_school-of-rock",
@@ -60,6 +61,7 @@ class TLACDCExperiment:
         """Initialize the ACDC experiment"""
 
         self.algorithm = algorithm
+        self.grad_threshold = grad_threshold
         if zero_ablation and remove_redundant:
             raise ValueError("It's not possible to do zero ablation with remove redundant, talk to Arthur about a bizarre special case!")
 
@@ -429,20 +431,12 @@ class TLACDCExperiment:
         return True
 
 
-    def step(self, early_stop=False):
+    def step(self, early_stop=False, ignore_non_float=False):
         if self.current_node is None:
             return
 
         start_step_time = time.time()
         self.step_idx += 1
-
-        self.update_cur_metric()
-        initial_metric = self.cur_metric
-        assert isinstance(initial_metric, float), f"Initial metric is a {type(initial_metric)} not a float"
-
-        cur_metric = initial_metric
-        if self.verbose:
-            print("New metric:", cur_metric)
 
         if self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value:
             added_receiver_hook = self.add_receiver_hook(self.current_node, override=True, prepend=True)
@@ -455,11 +449,30 @@ class TLACDCExperiment:
             # basically, because these nodes are the only ones that act as both receivers and senders
             added_sender_hook = self.add_sender_hook(self.current_node, override=True, add_backwards_hook=(self.algorithm=="gradient"))
 
+        if (
+            (self.algorithm == "gradient")
+        ):
+            assert self.current_node.incoming_edge_type != EdgeType.PLACEHOLDER # need to implement
+            self.model.global_cache.gradient_cache = OrderedDict()
+            self.model.zero_grad()
+            self.update_cur_metric()
+
         is_this_node_used = False
         if self.current_node.name == "blocks.0.hook_resid_pre":
             is_this_node_used = True
 
         sender_names_list = list(self.corr.edges[self.current_node.name][self.current_node.index])
+
+        new_funky_run = self.algorithm == "gradient" and self.current_node.incoming_edge_type == EdgeType.ADDITION
+
+        self.update_cur_metric()
+        initial_metric = self.cur_metric
+        if not ignore_non_float:
+            assert isinstance(initial_metric, float), f"Initial metric is a {type(initial_metric)} not a float"
+
+        cur_metric = initial_metric
+        if self.verbose:
+            print("New metric:", cur_metric)
 
         if self.names_mode == "random":
             random.shuffle(sender_names_list)
@@ -474,9 +487,6 @@ class TLACDCExperiment:
             elif self.indices_mode == "reverse":
                 sender_indices_list = list(reversed(sender_indices_list))
 
-            if self.algorithm == "arxiv":
-                pass
-
             for sender_index in sender_indices_list:
                 edge = self.corr.edges[self.current_node.name][self.current_node.index][sender_name][sender_index]
                 cur_parent = self.corr.graph[sender_name][sender_index]
@@ -487,69 +497,88 @@ class TLACDCExperiment:
 
                 if self.verbose:
                     print(f"\nNode: {cur_parent=} ({self.current_node=})\n")
-
-                edge.present = False
-
-                if edge.edge_type == EdgeType.ADDITION:
-                    added_sender_hook = self.add_sender_hook(
-                        cur_parent,
-                    )
-                else:
-                    added_sender_hook = False
                 
-                old_metric = self.cur_metric
-                if self.second_metric is not None:
-                    old_second_metric = self.cur_second_metric
+                if new_funky_run: 
+                    # hmm, think about if this trick can be stretched further...
+                    gradient = self.model.global_cache.gradient_cache[self.current_node.name][self.current_node.index.as_index]
+                    linear_step = self.model.global_cache.second_cache[sender_name][sender_index.as_index]
+                    linear_step -= self.model.global_cache.cache[sender_name][sender_index.as_index]
 
-                self.update_cur_metric(recalc_edges=False) # warning: gives fast evaluation, though edge count is wrong
-                evaluated_metric = self.cur_metric # self.metric(self.model(self.ds)) # OK, don't calculate second metric?
-
-                if early_stop: # for debugging the effects of one and only one forward pass WITH a corrupted edge
-                    return
-
-                if self.verbose:
-                    print(
-                        "Metric after removing connection to",
-                        sender_name,
-                        sender_index,
-                        "is",
-                        evaluated_metric,
-                        "(and current metric " + str(old_metric) + ")",
+                    effect_size = torch.einsum(
+                        "bsd,bsd->b",
+                        gradient,
+                        linear_step,
                     )
 
-                result = evaluated_metric - old_metric
-                edge.effect_size = result
+                    result = - effect_size.abs().mean() # big = important edge!!!
 
-                if self.verbose:
-                    print("Result is", result, end="")
+                if True: # refactor later...
 
-                if result < self.threshold:
+                    edge.present = False
+
+                    if not new_funky_run:
+                        if edge.edge_type == EdgeType.ADDITION:
+                            added_sender_hook = self.add_sender_hook(
+                                cur_parent,
+                            )
+                        else:
+                            added_sender_hook = False
+                        
+                        old_metric = self.cur_metric
+                        if self.second_metric is not None:
+                            old_second_metric = self.cur_second_metric
+
+                        self.update_cur_metric(recalc_edges=False) # warning: gives fast evaluation, though edge count is wrong
+                        evaluated_metric = self.cur_metric # self.metric(self.model(self.ds)) # OK, don't calculate second metric?
+
+                        if early_stop: # for debugging the effects of one and only one forward pass WITH a corrupted edge
+                            return
+
+                        if self.verbose:
+                            print(
+                                "Metric after removing connection to",
+                                sender_name,
+                                sender_index,
+                                "is",
+                                evaluated_metric,
+                                "(and current metric " + str(old_metric) + ")",
+                            )
+
+                        result = evaluated_metric - old_metric
+
+                    edge.effect_size = result
+
                     if self.verbose:
-                        print("...so removing connection")
-                    self.corr.remove_edge(
-                        self.current_node.name, self.current_node.index, sender_name, sender_index
-                    )
-                    
-                else: # include this edge in the graph
-                    self.cur_metric = old_metric
-                    if self.second_metric is not None:
-                        self.cur_second_metric = old_second_metric
-                    is_this_node_used = True
-                    if self.verbose:
-                        print("...so keeping connection")
-                    edge.present = True
+                        print("Result is", result, end="")
 
-                self.update_cur_metric(recalc_edges=False, recalc_metric=False) # so we log current state to wandb
+                    if result < (self.threshold if not new_funky_run else self.grad_threshold):
+                        if self.verbose:
+                            print("...so removing connection")
+                        self.corr.remove_edge(
+                            self.current_node.name, self.current_node.index, sender_name, sender_index
+                        )
+                        
+                    else: # include this edge in the graph
+                        self.cur_metric = old_metric
+                        if self.second_metric is not None:
+                            self.cur_second_metric = old_second_metric
+                        is_this_node_used = True
+                        if self.verbose:
+                            print("...so keeping connection")
+                        edge.present = True
 
-                if self.using_wandb:
-                    log_metrics_to_wandb(
-                        self,
-                        current_metric = self.cur_metric,
-                        parent_name = str(self.corr.graph[sender_name][sender_index]),
-                        child_name = str(self.current_node),
-                        result = result,
-                        times = time.time(),
-                    )
+                    self.update_cur_metric(recalc_edges=(self.algorithm == "gradient"), recalc_metric=(self.algorithm == "gradient")) 
+                    # we should make this more efficient in gradient case, but for now a quick hack
+
+                    if self.using_wandb:
+                        log_metrics_to_wandb(
+                            self,
+                            current_metric = self.cur_metric,
+                            parent_name = str(self.corr.graph[sender_name][sender_index]),
+                            child_name = str(self.current_node),
+                            result = result,
+                            times = time.time(),
+                        )
 
             self.update_cur_metric()
 

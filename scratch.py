@@ -18,15 +18,16 @@ NUM_EXAMPLES = 5
 SEQ_LEN = 300
 USE_BATCH = True
 ZERO_WQ = True
+TAKE_MEAN = True
 
 #%%
 
 try:
-    induction_tuple = get_all_induction_things(NUM_EXAMPLES, SEQ_LEN, "cuda", return_mask_rep=True, kl_return_tensor=True, return_base_model_probs=True, kl_take_mean=False)
+    induction_tuple = get_all_induction_things(NUM_EXAMPLES, SEQ_LEN, "cuda", return_mask_rep=True, kl_return_tensor=True, return_base_model_probs=True, kl_take_mean=TAKE_MEAN)
     model, toks_int_values, toks_int_values_other, metric, mask_rep, base_model_probs = induction_tuple
 
     if USE_BATCH:
-        toks_int_values_batch, toks_int_values_other_batch, end_positions, metric = one_item_per_batch(toks_int_values, toks_int_values_other, mask_rep, base_model_probs, kl_take_mean=False)
+        toks_int_values_batch, toks_int_values_other_batch, end_positions, metric = one_item_per_batch(toks_int_values, toks_int_values_other, mask_rep, base_model_probs, kl_take_mean=TAKE_MEAN)
     else:
         toks_int_values_batch, toks_int_values_other_batch = toks_int_values, toks_int_values_other
 
@@ -58,11 +59,12 @@ model.global_cache.clear()
 exp = TLACDCExperiment(
     model=model,
     threshold=0.075,
+    grad_threshold = 3e-5,
     using_wandb=True,
     zero_ablation=False,
     ds=toks_int_values_batch,
     ref_ds=toks_int_values_other_batch,
-    metric=lambda x: 0.0,
+    metric=metric,
     second_metric=None,
     verbose=True,
     second_cache_cpu=False,
@@ -71,9 +73,31 @@ exp = TLACDCExperiment(
     add_sender_hooks=True,
     add_receiver_hooks=False,
     remove_redundant=False,
+    algorithm="gradient",
 )
 
-while True: exp.step()
+if True:
+    # remove one pointless connection: necessary since gradients are 0 for KL ...
+    removed_heads = [
+        ("blocks.0.attn.hook_result", TorchIndex([None, None, 5])),
+    ]
+
+    receivers = exp.corr.edges["blocks.1.hook_resid_post"][TorchIndex([None])]
+    for receiver_name in receivers:
+        for receiver_index in receivers[receiver_name]:
+            print(receiver_name, receiver_index)
+            edge = receivers[receiver_name][receiver_index]
+            if (receiver_name, receiver_index) in removed_heads:
+                edge.present = False
+            else:
+                edge.present = True
+
+exp.update_cur_metric()
+print(exp.cur_metric)
+
+#%%
+
+while exp.current_node is not None: exp.step(ignore_non_float=True)
 
 #%%
 
@@ -103,41 +127,6 @@ exp.add_receiver_hook(
 
 #%%
 
-# torch.random.manual_seed(41)
-# wu_device = model.unembed.W_U.device
-# model.unembed.W_U = torch.nn.Parameter(torch.randn(model.unembed.W_U.shape).to(wu_device))
-
-if True:
-    # remove one pointless connection: necessary since gradients are 0 for KL ...
-
-    removed_heads = [
-        ("blocks.0.attn.hook_result", TorchIndex([None, None, 5])),
-        # ("blocks.1.attn.hook_result", TorchIndex([None, None, 6])),
-    ]
-
-    receivers = exp.corr.edges["blocks.1.hook_resid_post"][TorchIndex([None])]
-    for receiver_name in receivers:
-        for receiver_index in receivers[receiver_name]:
-            print(receiver_name, receiver_index)
-            edge = receivers[receiver_name][receiver_index]
-            if (receiver_name, receiver_index) in removed_heads:
-                edge.present = False
-            else:
-                edge.present = True
-
-# #%%
-
-# def back(a,b,c):
-#     try:
-#         print(a.name, b[0].norm().item(), c[0].norm().item(), b[0].requires_grad, c[0].requires_grad)
-#     except Exception as e:
-#         print(a.name, "error", str(e)[:50])
-# tot=0
-# for module in model.modules():
-#     module.register_backward_hook(back)
-
-#%%
-
 model.global_cache.gradient_cache = OrderedDict()
 
 if True:
@@ -162,7 +151,7 @@ for layer_idx in range(1, -1, -1):
             linear_walk.cpu(),
         )
 
-        print(layer_idx, head_idx, val.abs().mean().item())
+        print(layer_idx, head_idx, val.mean().item())
 
 #%%
 

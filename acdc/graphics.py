@@ -255,6 +255,7 @@ def log_metrics_to_wandb(
     if current_metric is not None:
         experiment.metrics_to_plot["current_metrics"].append(current_metric)
     if result is not None:
+        if "tensor" in str(type(result)).lower(): result = result.detach().cpu().numpy()
         experiment.metrics_to_plot["results"].append(result)
     if experiment.skip_edges != "yes":
         experiment.metrics_to_plot["num_edges"].append(experiment.count_no_edges())
