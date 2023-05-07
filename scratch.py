@@ -14,7 +14,7 @@ from acdc.acdc_utils import TorchIndex
 from acdc.graphics import show_pp
 from acdc.induction.utils import get_all_induction_things, one_item_per_batch
 
-NUM_EXAMPLES = 5
+NUM_EXAMPLES = 40
 SEQ_LEN = 300
 USE_BATCH = True
 ZERO_WQ = True
@@ -59,17 +59,17 @@ model.global_cache.clear()
 
 exp = TLACDCExperiment(
     model=model,
-    threshold=0.075,
-    grad_threshold = 5e-4,
-    using_wandb=True,
-    zero_ablation=False,
-    ds=toks_int_values_batch,
-    ref_ds=toks_int_values_other_batch,
-    metric=metric,
-    second_metric=None,
-    verbose=True,
+    threshold = 0.075,
+    grad_threshold = 2e-4,
+    using_wandb = True,
+    zero_ablation = False,
+    ds = toks_int_values_batch,
+    ref_ds = toks_int_values_other_batch,
+    metric = metric,
+    second_metric = None,
+    verbose = True,
     second_cache_cpu=True,
-    hook_verbose=True,
+    hook_verbose=False,
     first_cache_cpu=True,
     add_sender_hooks=True,
     add_receiver_hooks=False,
@@ -98,7 +98,8 @@ print(exp.cur_metric)
 
 #%%
 
-while exp.current_node is not None: exp.step(ignore_non_float=True)
+# while exp.current_node is not None: 
+exp.step(ignore_non_float=True)
 assert False
 
 #%%

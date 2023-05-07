@@ -597,7 +597,9 @@ class TLACDCExperiment:
                         print("...so keeping connection")
                     edge.present = True
 
-                self.update_cur_metric(recalc_edges=(self.algorithm == "gradient"), recalc_metric=(self.algorithm == "gradient")) 
+                # self.update_cur_metric(recalc_edges=(self.algorithm == "gradient"), recalc_metric=(self.algorithm == "gradient")) 
+                warnings.warn("Maybe we should not have deleted that..")
+
                 # we should make this more efficient in gradient case, but for now a quick hack
 
                 if self.using_wandb:

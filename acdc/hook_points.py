@@ -391,18 +391,18 @@ class HookedRootModule(nn.Module):
         def save_hook(tensor, hook):
             # print(hook.name, id(cache)) # we don't even get here with the attention shit!
             if remove_batch_dim:
-                cache[hook.name] = tensor.detach().to(device)[0]
+                cache[hook.name] = tensor.to(device)[0]
             else:
-                cache[hook.name] = tensor.detach().to(device)
+                cache[hook.name] = tensor.to(device)
 
         def save_hook_back(tensor, hook):
 
             print(hook.name, "BACKWARDS")
 
             if remove_batch_dim:
-                cache[hook.name + "_grad"] = tensor.detach().to(device)[0]
+                cache[hook.name + "_grad"] = tensor.to(device)[0]
             else:
-                cache[hook.name + "_grad"] = tensor.detach().to(device)
+                cache[hook.name + "_grad"] = tensor.to(device)
 
         for name, hp in self.hook_dict.items():
             if names_filter(name):
