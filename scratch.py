@@ -7,9 +7,11 @@ if IPython.get_ipython() is not None:
 
 from copy import deepcopy
 import acdc
+from collections import defaultdict
 from typing import List
 import wandb
 import IPython
+from functools import partial
 import torch
 from tqdm import tqdm
 
@@ -100,20 +102,27 @@ for i, p in enumerate(prompts):
     if p not in pdict:
         pdict[p] = [i]
     pdict[p].append(i)
-ids = pdict["The official religion of {} is"]
-lens = {i : 0 for i in range(20)}
+
+# ids = pdict["The official religion of {} is"]
+ids = pdict["The mother tongue of {} is"]
+
+lens = {i : 0 for i in range(len(ids))}
 ids2 = []
+
 for i in ids:
     data = counterfact[i]
     rr = data["requested_rewrite"]
     cur = " "+rr["subject"]
+    print(cur)
     tokens = model.tokenizer.encode(cur)
     lens[len(tokens)] += 1
-    if len(tokens) == 2:
-    #   print(rr)
-      ids2.append(i)
+
+    if len(tokens) == 4:
+        ids2.append(i)
+
 data = []
 labels = []
+
 for datapoint in [counterfact[i] for i in ids2]:
     rr = datapoint["requested_rewrite"]
     input = rr["prompt"].format(rr["subject"])
@@ -141,10 +150,10 @@ data = torch.stack(tuple(row for row in data)).long().to("cuda")
 labels = torch.stack(tuple(row for row in labels)).long().to("cuda")
 labels = labels.squeeze(-1) # can't see why you left an extra dim...
 
-patch_data = model.to_tokens("The official religion of the world is", prepend_bos=True)
+patch_data = model.to_tokens("The official religion of the world's people is", prepend_bos=True)
 patch_data = patch_data[0].long().to("cuda")
 patch_data = patch_data.unsqueeze(0).repeat(data.shape[0], 1)
-assert patch_data.shape == data.shape
+assert patch_data.shape == data.shape, (patch_data.shape, data.shape)
 
 #%%
 
@@ -188,13 +197,17 @@ fig.add_trace(
 
 #%%
 
-relevant_positions = {3:"religion",5:"subject_1",6:"subject_2",7:"is"}
-relevant_positions = {v:k for k,v in relevant_positions.items()}
+# relevant_positions = {3:"religion",5:"subject_1",8:"subject_2",9:"is"}
 
-def mask_attention(z, hook):
+relevant_positions = {
+    " is": 9,
+    " subject_end": 8,
+}
+
+def mask_attention(z, hook, key_pos):
     # print(z.shape) # batch heads query (I think) key
-    assert relevant_positions["is"] == z.shape[2]-1, (relevant_positions, z.shape)
-    z[:, :, -1, relevant_positions["subject_2"]] = 0
+    assert relevant_positions[" is"] == z.shape[2]-1, (relevant_positions, z.shape)
+    z[:, :, -1, key_pos] = 0
 
 answers = []
 
@@ -206,7 +219,7 @@ for i in range(4, model.cfg.n_layers-4):
     for layer in range(i-4, i+5):
         model.add_hook(
             f"blocks.{layer}.attn.hook_pattern",
-            mask_attention,
+            partial(mask_attention, key_pos=relevant_positions[" subject_end"]),,
         )
 
     logits = model(data)
@@ -221,6 +234,13 @@ fig.add_trace(
         x=[i for i in range(4, model.cfg.n_layers-4)],
         y=[a.cpu() for a in answers],
     ))
+# add title
+fig.update_layout(
+    title_text=f"Key position {j}",
+    xaxis_title="Layer",
+    yaxis_title="Sum of correct probs",
+)
+fig.show()
 
 #%%
 
