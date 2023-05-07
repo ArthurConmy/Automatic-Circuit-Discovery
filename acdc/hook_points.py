@@ -290,8 +290,6 @@ class HookedRootModule(nn.Module):
     def add_hook(self, name, hook, dir="fwd", is_permanent=False, prepend=False) -> None:
         """Warning: edited to return handles for more fine grained editing"""
 
-        assert "back" not in str(hook) or dir == "bwd", "Backward hooks only work in backward direction"
-
         if type(name) == str:
             return self.check_and_add_hook(self.mod_dict[name], name, hook, dir=dir, is_permanent=is_permanent, prepend=prepend)
         else:
@@ -387,6 +385,8 @@ class HookedRootModule(nn.Module):
             names_filter = lambda name: name in names_filter
 
         self.is_caching = True
+
+        warnings.warn("If you are doing gradient ACDC with these things, worry because we're detaching here")
 
         def save_hook(tensor, hook):
             # print(hook.name, id(cache)) # we don't even get here with the attention shit!

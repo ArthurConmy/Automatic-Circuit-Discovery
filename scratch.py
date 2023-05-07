@@ -17,6 +17,7 @@ from acdc.induction.utils import get_all_induction_things, one_item_per_batch
 NUM_EXAMPLES = 20
 SEQ_LEN = 300
 USE_BATCH = True
+ZERO_WQ = True
 
 #%%
 
@@ -64,9 +65,9 @@ exp = TLACDCExperiment(
     metric=lambda x: 0.0,
     second_metric=None,
     verbose=True,
-    second_cache_cpu=True,
+    second_cache_cpu=False,
     hook_verbose=True,
-    first_cache_cpu=True,
+    first_cache_cpu=False,
     add_sender_hooks=True,
     add_receiver_hooks=False,
     remove_redundant=False,
@@ -87,7 +88,7 @@ for layer_idx in range(2):
     for head_idx in range(8):
         exp.add_sender_hook(
             node=exp.corr.graph[attn_out_name.format(layer=layer_idx)][TorchIndex([None, None, head_idx])],
-            parameter=True,
+            add_backwards_hook=True,
         )
 
 exp.add_receiver_hook(
@@ -96,10 +97,16 @@ exp.add_receiver_hook(
 
 #%%
 
-if False:
-    induction_heads = [
-        ("blocks.1.attn.hook_result", TorchIndex([None, None, 5])),
-        ("blocks.1.attn.hook_result", TorchIndex([None, None, 6])),
+# torch.random.manual_seed(41)
+# wu_device = model.unembed.W_U.device
+# model.unembed.W_U = torch.nn.Parameter(torch.randn(model.unembed.W_U.shape).to(wu_device))
+
+if True:
+    # remove one pointless connection: necessary since gradients are 0 for KL ...
+
+    removed_heads = [
+        ("blocks.0.attn.hook_result", TorchIndex([None, None, 5])),
+        # ("blocks.1.attn.hook_result", TorchIndex([None, None, 6])),
     ]
 
     receivers = exp.corr.edges["blocks.1.hook_resid_post"][TorchIndex([None])]
@@ -107,34 +114,27 @@ if False:
         for receiver_index in receivers[receiver_name]:
             print(receiver_name, receiver_index)
             edge = receivers[receiver_name][receiver_index]
-            if (receiver_name, receiver_index) in induction_heads:
-                edge.present = True
-            else:
+            if (receiver_name, receiver_index) in removed_heads:
                 edge.present = False
+            else:
+                edge.present = True
 
-#%%
+# #%%
 
-def back(a,b,c):
-    try:
-        print(a.name, b[0].norm().item(), c[0].norm().item(), b[0].requires_grad, c[0].requires_grad)
-    except Exception as e:
-        print(a.name, "error", str(e)[:50])
-tot=0
-for module in model.modules():
-    module.register_backward_hook(back)
+# def back(a,b,c):
+#     try:
+#         print(a.name, b[0].norm().item(), c[0].norm().item(), b[0].requires_grad, c[0].requires_grad)
+#     except Exception as e:
+#         print(a.name, "error", str(e)[:50])
+# tot=0
+# for module in model.modules():
+#     module.register_backward_hook(back)
 
 #%%
 
 model.global_cache.gradient_cache = OrderedDict()
 
-if True: # trust in the TransformerLens process
-    handles=[]
-    for layer_idx in range(2):
-        handles.append(model.add_hook(
-            f"blocks.{layer_idx}.attn.hook_result",
-            exp.backward_hook,
-            dir="bwd",
-        ))
+if True:
     model.zero_grad()
     kls = metric(model(toks_int_values_batch.clone()))
     loss = kls.mean()
@@ -156,7 +156,7 @@ for layer_idx in range(1, -1, -1):
             linear_walk.cpu(),
         )
 
-        print(layer_idx, head_idx, val.mean().item())
+        print(layer_idx, head_idx, val.abs().mean().item())
 
 #%%
 

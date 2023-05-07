@@ -191,19 +191,15 @@ class TLACDCExperiment:
 
         self.corr.graph = new_graph
 
-    def sender_hook(self, z, hook, verbose=False, cache="first", device=None, parameter=False):
+    def sender_hook(self, z, hook, verbose=False, cache="first", device=None, add_backwards_hook=False):
         """General, to cover online and corrupt caching"""
 
         if device == "cpu":
             tens = z.cpu()
-            if parameter:
-                tens = torch.nn.Parameter(tens)
         else:
             tens = z.clone()
             if device is not None:
                 tens = tens.to(device)
-            if parameter:
-                tens = torch.nn.Parameter(tens)
 
         if cache == "second":
             hook.global_cache.second_cache[hook.name] = tens
@@ -212,10 +208,8 @@ class TLACDCExperiment:
         else:
             raise ValueError(f"Unknown cache type {cache}")
 
-        if parameter:
-            def fbh(grad, name):
-                print(name, grad.norm().item())
-            tens.register_hook(partial(fbh, name=hook.name))
+        if add_backwards_hook:
+            tens.register_hook(partial(self.backward_hook, name=hook.name))
 
         if verbose:
             print(f"Saved {hook.name} with norm {z.norm().item()}")
@@ -403,7 +397,7 @@ class TLACDCExperiment:
         with open(fname, "wb") as f:
             pickle.dump(edges_list, f)
 
-    def add_sender_hook(self, node, override=False, parameter=False):
+    def add_sender_hook(self, node, override=False, add_backwards_hook=False):
         if not override and len(self.model.hook_dict[node.name].fwd_hooks) > 0:
             for hook_func_maybe_partial in self.model.hook_dict[node.name].fwd_hook_functions:
                 hook_func_name = hook_func_maybe_partial.func.__name__ if isinstance(hook_func_maybe_partial, partial) else hook_func_maybe_partial.__name__
@@ -412,7 +406,7 @@ class TLACDCExperiment:
 
         handle = self.model.add_hook(
             name=node.name, 
-            hook=partial(self.sender_hook, verbose=self.hook_verbose, cache="first", device="cpu" if self.first_cache_cpu else None, parameter=parameter),
+            hook=partial(self.sender_hook, verbose=self.hook_verbose, cache="first", device="cpu" if self.first_cache_cpu else None, add_backwards_hook=add_backwards_hook),
         )
 
         return True
@@ -677,9 +671,10 @@ class TLACDCExperiment:
         warnings.warn("Finished iterating")
         return None
     
-    def backward_hook(self, z, hook):
-        print("Attempting to save...")
-        self.model.global_cache.gradient_cache[hook.name] = z.cpu().clone()
+    def backward_hook(self, z, name):
+        """We'll put this on a tensor not HookPoint hence different signature..."""
+
+        self.model.global_cache.gradient_cache[name] = z.cpu().clone()
 
     def increment_current_node(self) -> None:
         self.current_node = self.find_next_node()
