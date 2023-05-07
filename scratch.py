@@ -10,6 +10,7 @@ import acdc
 from collections import defaultdict
 from typing import List
 import wandb
+from acdc.graphics import show_pp
 import IPython
 from functools import partial
 import torch
@@ -197,12 +198,13 @@ fig.add_trace(
 
 #%%
 
-# relevant_positions = {3:"religion",5:"subject_1",8:"subject_2",9:"is"}
-
 relevant_positions = {
     " is": 9,
     " subject_end": 8,
+    " subject_start": 8-4,
 }
+
+#%%
 
 def mask_attention(z, hook, key_pos):
     # print(z.shape) # batch heads query (I think) key
@@ -219,7 +221,7 @@ for i in range(4, model.cfg.n_layers-4):
     for layer in range(i-4, i+5):
         model.add_hook(
             f"blocks.{layer}.attn.hook_pattern",
-            partial(mask_attention, key_pos=relevant_positions[" subject_end"]),,
+            partial(mask_attention, key_pos=relevant_positions[" subject_end"]),
         )
 
     logits = model(data)
@@ -236,7 +238,7 @@ fig.add_trace(
     ))
 # add title
 fig.update_layout(
-    title_text=f"Key position {j}",
+    title_text=f"Key position end_subject",
     xaxis_title="Layer",
     yaxis_title="Sum of correct probs",
 )
@@ -244,99 +246,44 @@ fig.show()
 
 #%%
 
-# setup WANDB!
-USING_WANDB = True
-if USING_WANDB:
-    wandb.init(project="facts", name="facts_test")
+answers = []
 
-exp = ACDCExperiment(
-    circuit=model,
-    ds=ds,
-    ref_ds=patch_ds,
-    template_corr=template_corr,
-    metric=logit_diff_from_logits_dataset,  # self._dataset
-    random_seed=1234,
-    num_examples=(patch_ds.arrs["tokens"].shape[0]),
-    check="fast",
-    threshold=0.1,
-    verbose=True,
-    parallel_hypotheses=5,
-    expand_by_importance=True,  # new flag: set true to expand the nodes in the most important order
-    using_wandb=USING_WANDB,
+for layer in tqdm(range(model.cfg.n_layers-1)):
+    def zero_out(z, hook):
+        # for pos in range(relevant_positions[" subject_start"], relevant_positions[" subject_end"]+1): 
+        for pos in [-1]:
+            z[:, pos] = 0.0
+    
+    # ooh quite a lot like path patch
+
+    model.reset_hooks()
+    for layer_prime in range(layer+1, model.cfg.n_layers):
+        for hook_name in [
+            f"blocks.{layer_prime}.hook_attn_out",
+            f"blocks.{layer_prime}.hook_mlp_out",
+        ]:
+            model.add_hook(hook_name, zero_out)
+
+    logits = model(data)
+    probs = torch.nn.functional.softmax(logits, dim=-1)
+    correct_probs = probs[torch.arange(len(labels)).to(probs.device), -1, labels.to(probs.device)]
+    # correct_log_probs = torch.log(correct_probs)
+    answers.append(correct_probs.sum().cpu())
+
+fig = go.Figure()
+fig.add_trace(
+    go.Scatter(
+        x=[i for i in range(model.cfg.n_layers-1)],
+        y=[a.cpu() for a in answers],
+))
+
+# add title
+fig.update_layout(
+    title_text=f"Key position end_subject layer {layer}",
+    xaxis_title="Layer",
+    yaxis_title="Sum of correct probs",
 )
-print(exp.cur_metric)
-# es = [deepcopy(exp)]  # to checkpoint experiments. This can be ignored
-#%%
-
-# New check! This makes sure exp._nodes is reflecting the same things as exp._base_circuit (which is actually used for internal fast computations)
-# if you keyboard interrupt or do cursed things, this is good to check
-
-exp.check_circuit_conforms()
+fig.show()
 
 #%% [markdown]
 
-# This cell should produce an image of the first step of ACDC, after ~30 seconds
-exp.step()
-# es.append(deepcopy(exp))
-exp._nodes.show()
-
-#%% [markdown]
-# An example of using the ACDC hypothesis graph as a causal scrubbing hypothesis:
-# note that the values here are NOT the same as the values in the ACDCExperiment; this is normal causal scrubbing
-# and so involves randomisation rather than patching to the same dataset.
-
-
-def test(corr: Correspondence):
-    experiment = Experiment(
-        circuit=model, dataset=default_ds, corr=corr, num_examples=100,
-    )
-    scrubbed_experiment = experiment.scrub()
-    logits = scrubbed_experiment.evaluate()
-    # return scrubbed_experiment
-    return logit_diff_from_logits_dataset(scrubbed_experiment.ref_ds, logits)
-
-
-print(test(es[0]._nodes))
-print(test(es[1]._nodes))
-
-#%% [markdown]
-# This loop should complete ALL passes of ACDC (takes several minutes)
-
-idx = 0
-for idx in range(100000):
-    exp.step()
-    exp._nodes.show(fname="acdc_plot_" + str(idx) + ".png")
-    if exp.current_node is None:
-        print("Done")
-        break
-    if USING_WANDB:
-        wandb.log(
-            {"acdc_graph": wandb.Image("acdc_plot_" + str(idx) + ".png"),}
-        )
-exp.step()
-exp._nodes.show()
-
-#%%
-
-e = deepcopy(exp)
-parent_names = list(e._nodes.i_names.keys())
-for name in parent_names:
-    parent = e._nodes.i_names[name]
-    childs = list(e._nodes.i_names[name].children)
-    child_names = [child.name for child in childs]
-    for child_name in child_names:
-        child = e._nodes.i_names[child_name]
-        try:
-            edge = e._nodes.connection_strengths[f"{parent.name}->{child.name}"]
-            edge = abs(edge)
-        except:
-            e.remove_connection(parent, child)
-        else:
-            edge = e._nodes.connection_strengths[f"{parent.name}->{child.name}"]
-            edge = abs(edge)
-
-            if edge < 0.1 or "m7" in parent.name:
-                print(edge)
-                e.remove_connection(parent, child)
-e._nodes.show()
-#%%

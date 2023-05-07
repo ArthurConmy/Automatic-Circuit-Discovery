@@ -9,6 +9,7 @@ from typing import Dict
 import wandb
 import plotly.graph_objects as go
 import torch
+import plotly.express as px
 import random
 import torch.nn as nn
 import torch.nn.functional as F
@@ -254,6 +255,7 @@ def log_metrics_to_wandb(
     if current_metric is not None:
         experiment.metrics_to_plot["current_metrics"].append(current_metric)
     if result is not None:
+        if "tensor" in str(type(result)).lower(): result = result.detach().cpu().numpy()
         experiment.metrics_to_plot["results"].append(result)
     if experiment.skip_edges != "yes":
         experiment.metrics_to_plot["num_edges"].append(experiment.count_no_edges())
@@ -309,3 +311,79 @@ def log_metrics_to_wandb(
             wandb.log(
                 {"acdc_graph": wandb.Image(picture_fname),}
             )
+
+# -------------------------------------------
+# MY TOOLS
+# -------------------------------------------
+
+def show_pp(
+    m,
+    xlabel="",
+    ylabel="",
+    title="",
+    bartitle="",
+    animate_axis=None,
+    highlight_points=None,
+    highlight_name="",
+    return_fig=False,
+    show_fig=True,
+    **kwargs,
+):
+    """
+    Plot a heatmap of the values in the matrix `m`
+    """
+
+    if animate_axis is None:
+        fig = px.imshow(
+            m,
+            title=title if title else "",
+            color_continuous_scale="RdBu",
+            color_continuous_midpoint=0,
+            **kwargs,
+        )
+
+    else:
+        fig = px.imshow(
+            einops.rearrange(m, "a b c -> a c b"),
+            title=title if title else "",
+            animation_frame=animate_axis,
+            color_continuous_scale="RdBu",
+            color_continuous_midpoint=0,
+            **kwargs,
+        )
+
+    fig.update_layout(
+        coloraxis_colorbar=dict(
+            title=bartitle,
+            thicknessmode="pixels",
+            thickness=50,
+            lenmode="pixels",
+            len=300,
+            yanchor="top",
+            y=1,
+            ticks="outside",
+        ),
+    )
+
+    if highlight_points is not None:
+        fig.add_scatter(
+            x=highlight_points[1],
+            y=highlight_points[0],
+            mode="markers",
+            marker=dict(color="green", size=10, opacity=0.5),
+            name=highlight_name,
+        )
+
+    fig.update_layout(
+        yaxis_title=ylabel,
+        xaxis_title=xlabel,
+        xaxis_range=[-0.5, m.shape[1] - 0.5],
+        showlegend=True,
+        legend=dict(x=-0.1),
+    )
+    if highlight_points is not None:
+        fig.update_yaxes(range=[m.shape[0] - 0.5, -0.5], autorange=False)
+    if show_fig:
+        fig.show()
+    if return_fig:
+        return fig
