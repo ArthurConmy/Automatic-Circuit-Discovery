@@ -5,6 +5,7 @@ if IPython.get_ipython() is not None:
     IPython.get_ipython().run_line_magic("load_ext", "autoreload")  # type: ignore
     IPython.get_ipython().run_line_magic("autoreload", "2")  # type: ignore
 
+
 from copy import deepcopy
 import acdc
 from collections import defaultdict
@@ -36,13 +37,102 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
 PATH = "/mnt/ssd-0/arthurworkspace/TransformerLens/dist/counterfact.json"
+
+from copy import deepcopy
+from typing import (
+    List,
+    Tuple,
+    Dict,
+    Any,
+    Optional,
+    Union,
+    Callable,
+    TypeVar,
+    Iterable,
+    Set,
+)
+import pickle
+import wandb
+import IPython
+import torch
+
+# from easy_transformer.ioi_dataset import IOIDataset  # type: ignore
+from tqdm import tqdm
+import random
+from functools import *
+import json
+import pathlib
+import warnings
+import time
+import networkx as nx
+import os
+import torch
+import huggingface_hub
+import graphviz
+from enum import Enum
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+import numpy as np
+import einops
+from tqdm import tqdm
+import yaml
+from transformers import AutoModelForCausalLM, AutoConfig, AutoTokenizer
+
+import matplotlib.pyplot as plt
+import plotly.express as px
+import plotly.io as pio
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
+
+pio.renderers.default = "colab"
+from acdc.hook_points import HookedRootModule, HookPoint
+from acdc.HookedTransformer import (
+    HookedTransformer,
+)
+from acdc.tracr.utils import get_tracr_data, get_tracr_model_input_and_tl_model
+from acdc.docstring.utils import get_all_docstring_things
+from acdc.acdc_utils import (
+    make_nd_dict,
+    shuffle_tensor,
+    cleanup,
+    ct,
+    TorchIndex,
+    Edge,
+    EdgeType,
+)  # these introduce several important classes !!!
+
+from acdc.TLACDCCorrespondence import TLACDCCorrespondence
+from acdc.TLACDCInterpNode import TLACDCInterpNode
+from acdc.TLACDCExperiment import TLACDCExperiment
+
+from collections import defaultdict, deque, OrderedDict
+from acdc.acdc_utils import (
+    kl_divergence,
+)
+from acdc.ioi.utils import (
+    get_ioi_data,
+    get_ioi_gpt2_small,
+)
+from acdc.induction.utils import (
+    get_all_induction_things,
+    get_model,
+    get_validation_data,
+    get_good_induction_candidates,
+    get_mask_repeat_candidates,
+)
+from acdc.graphics import (
+    build_colorscheme,
+    show,
+)
+import argparse
 torch.autograd.set_grad_enabled(False)
 
 #%%
 
 # load model
 model_name = "gpt2-xl"  # @param ['gpt2', 'gpt2-medium', 'gpt2-large', 'gpt2-xl', 'facebook/opt-125m', 'facebook/opt-1.3b', 'facebook/opt-2.7b', 'facebook/opt-6.7b', 'facebook/opt-13b', 'facebook/opt-30b', 'facebook/opt-66b', 'EleutherAI/gpt-neo-125M', 'EleutherAI/gpt-neo-1.3B', 'EleutherAI/gpt-neo-2.7B', 'EleutherAI/gpt-j-6B', 'EleutherAI/gpt-neox-20b']
-model = acdc.HookedTransformer.from_pretrained(model_name)
+model = acdc.HookedTransformer.from_pretrained(model_name, use_global_cache=True)
 model.set_use_attn_result(True)
 model.set_use_split_qkv_input(True)
 
@@ -287,3 +377,73 @@ fig.show()
 
 #%% [markdown]
 
+def my_metric(logits):
+    probs = torch.nn.functional.softmax(logits, dim=-1)
+    correct_probs = probs[torch.arange(len(labels)).to(probs.device), -1, labels.to(probs.device)]
+    return correct_probs.sum().item()
+
+exp = TLACDCExperiment( # ugh so this takes... > 2min42... for sure
+    model=model,
+    threshold=100_000, # lol let's see all effect sizes
+    using_wandb=False,
+    zero_ablation=True, # 
+    ds=data,
+    ref_ds=None,
+    metric=my_metric,
+    # second_metric=second_metric,
+    verbose=True,
+    # indices_mode=INDICES_MODE,
+    # names_mode=NAMES_MODE,
+    # second_cache_cpu=SECOND_CACHE_CPU,
+    # hook_verbose=False,
+    # first_cache_cpu=FIRST_CACHE_CPU,
+    # add_sender_hooks=True,
+    # add_receiver_hooks=False,
+    # remove_redundant=False,
+)
+
+# probably this is too slow to be usable : (
+
+# %%
+
+the_token = model.tokenizer.encode(" the")[0]
+
+correct_direction = model.unembed.W_U[:, labels]
+incorrect_direction = model.unembed.W_U[:, the_token]
+
+cache = {}
+def cacher(z, hook):
+    cache[hook.name] = z.clone()
+    return z
+
+model.reset_hooks()
+for layer in range(model.cfg.n_layers):
+    for name in [
+        f"blocks.{layer}.attn.hook_result",
+        f"blocks.{layer}.hook_mlp_out",
+    ]:
+        model.add_hook(
+            name,
+            cacher,
+        )
+        
+logits = model(data)
+
+# %%
+
+answers = torch.zeros((model.cfg.n_layers, model.cfg.n_heads))
+
+for layer in range(model.cfg.n_layers):
+    results = torch.einsum(
+        "bhd,db->bh",
+        cache[f"blocks.{layer}.attn.hook_result"][:, -1],
+        correct_direction - incorrect_direction.unsqueeze(-1),
+    )
+    for head in range(model.cfg.n_heads):
+        answers[layer, head] = results[:, head].mean()
+
+fig = show_pp(
+    answers,
+    return_fig=True,
+)
+# %%
