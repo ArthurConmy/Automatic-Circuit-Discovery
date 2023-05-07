@@ -107,6 +107,7 @@ class TLACDCExperiment:
         self.setup_model_hooks(
             add_sender_hooks=add_sender_hooks,
             add_receiver_hooks=add_receiver_hooks,
+            add_backward_too=(self.algorithm == "gradient"),
         )
 
         self.using_wandb = using_wandb
@@ -151,6 +152,10 @@ class TLACDCExperiment:
 
     def update_cur_metric(self, recalc_metric=True, recalc_edges=True, initial=False):
         if recalc_metric:
+            self.model.global_cache.clear(just_first_cache=True)
+            gc.collect()
+            torch.cuda.empty_cache()
+
             logits = self.model(self.ds)
             self.cur_metric = self.metric(logits)
             if self.second_metric is not None:
@@ -213,7 +218,13 @@ class TLACDCExperiment:
             raise ValueError(f"Unknown cache type {cache}")
 
         if add_backwards_hook:
-            tens.register_hook(partial(self.backward_hook, name=hook.name))
+            print("Adding backwards hook to...", end="")
+            if hook.name == f"blocks.{self.model.cfg.n_layers-1}.hook_resid_post":
+                print("The tensor in the forward pass")
+                z.register_hook(partial(self.backward_hook, name=hook.name))
+            else:
+                print("The Cahced tensor")
+                tens.register_hook(partial(self.backward_hook, name=hook.name))
 
         if verbose:
             print(f"Saved {hook.name} with norm {z.norm().item()}")
@@ -299,7 +310,7 @@ class TLACDCExperiment:
 
         return z
 
-    def add_all_sender_hooks(self, reset=True, cache="first", skip_direct_computation=False, add_all_hooks=False):
+    def add_all_sender_hooks(self, reset=True, cache="first", skip_direct_computation=False, add_all_hooks=False, add_backward_too=False):
         """We use add_sender_hook for lazily adding *some* sender hooks"""
 
         if self.verbose:
@@ -311,9 +322,10 @@ class TLACDCExperiment:
             "second": "cpu" if self.second_cache_cpu else None,
         }[cache]
 
-        for big_tuple, edge in self.corr.all_edges().items():
-            nodes = []
+        nodes = [self.corr.graph[f"blocks.{self.model.cfg.n_layers-1}.hook_resid_post"][TorchIndex([None])]]
+        # TODO test that this new addition way works!
 
+        for big_tuple, edge in self.corr.all_edges().items():
             if edge.edge_type == EdgeType.DIRECT_COMPUTATION:
                 if not skip_direct_computation:
                     nodes.append(self.corr.graph[big_tuple[2]][big_tuple[3]])
@@ -327,17 +339,18 @@ class TLACDCExperiment:
                 print(edge.edge_type.value, EdgeType.ADDITION.value, edge.edge_type.value == EdgeType.ADDITION.value, type(edge.edge_type.value), type(EdgeType.ADDITION.value))
                 raise ValueError(f"{str(big_tuple)} {str(edge)} failed")
 
-            for node in nodes:
-                if len(self.model.hook_dict[node.name].fwd_hooks) > 0:
-                    for hook_func_maybe_partial in self.model.hook_dict[node.name].fwd_hook_functions:
-                        hook_func_name = hook_func_maybe_partial.func.__name__ if isinstance(hook_func_maybe_partial, partial) else hook_func_maybe_partial.__name__
-                        assert "sender_hook" in hook_func_name, f"You should only add sender hooks to {node.name}, and this: {hook_func_name} doesn't look like a sender hook"
-                    continue
+        nodes = set(nodes)
+        for node in nodes:
+            if len(self.model.hook_dict[node.name].fwd_hooks) > 0:
+                for hook_func_maybe_partial in self.model.hook_dict[node.name].fwd_hook_functions:
+                    hook_func_name = hook_func_maybe_partial.func.__name__ if isinstance(hook_func_maybe_partial, partial) else hook_func_maybe_partial.__name__
+                    assert "sender_hook" in hook_func_name, f"You should only add sender hooks to {node.name}, and this: {hook_func_name} doesn't look like a sender hook"
+                continue
 
-                self.model.add_hook( # TODO is this slow part??? Speed up???
-                    name=node.name, 
-                    hook=partial(self.sender_hook, verbose=self.hook_verbose, cache=cache, device=device),
-                )
+            self.model.add_hook( # TODO is this slow part??? Speed up???
+                name=node.name, 
+                hook=partial(self.sender_hook, verbose=self.hook_verbose, cache=cache, device=device, add_backwards_hook=add_backward_too), 
+            )
 
     def setup_second_cache(self):
         if self.verbose:
@@ -374,9 +387,10 @@ class TLACDCExperiment:
         add_sender_hooks=False,
         add_receiver_hooks=False,
         doing_acdc_runs=True,
+        add_backward_too=False,
     ):
         if add_sender_hooks:
-            self.add_all_sender_hooks(cache="first", skip_direct_computation=False, add_all_hooks=True) # when this is True, this is wrong I think
+            self.add_all_sender_hooks(cache="first", skip_direct_computation=False, add_all_hooks=True, add_backward_too=add_backward_too) # when this is True, this is wrong I think
 
         if add_receiver_hooks:
             if doing_acdc_runs:
@@ -432,6 +446,9 @@ class TLACDCExperiment:
 
 
     def step(self, early_stop=False, ignore_non_float=False):
+        gc.collect()
+        torch.cuda.empty_cache()
+
         if self.current_node is None:
             return
 
@@ -449,14 +466,6 @@ class TLACDCExperiment:
             # basically, because these nodes are the only ones that act as both receivers and senders
             added_sender_hook = self.add_sender_hook(self.current_node, override=True, add_backwards_hook=(self.algorithm=="gradient"))
 
-        if (
-            (self.algorithm == "gradient")
-        ):
-            assert self.current_node.incoming_edge_type != EdgeType.PLACEHOLDER # need to implement
-            self.model.global_cache.gradient_cache = OrderedDict()
-            self.model.zero_grad()
-            self.update_cur_metric()
-
         is_this_node_used = False
         if self.current_node.name == "blocks.0.hook_resid_pre":
             is_this_node_used = True
@@ -467,6 +476,13 @@ class TLACDCExperiment:
 
         self.update_cur_metric()
         initial_metric = self.cur_metric
+
+        if new_funky_run:
+            assert self.current_node.incoming_edge_type != EdgeType.PLACEHOLDER # need to implement
+            self.model.global_cache.gradient_cache = OrderedDict()
+            self.model.zero_grad()
+            self.cur_metric.backward(retain_graph=False) # maybe memory?
+
         if not ignore_non_float:
             assert isinstance(initial_metric, float), f"Initial metric is a {type(initial_metric)} not a float"
 
@@ -501,84 +517,85 @@ class TLACDCExperiment:
                 if new_funky_run: 
                     # hmm, think about if this trick can be stretched further...
                     gradient = self.model.global_cache.gradient_cache[self.current_node.name][self.current_node.index.as_index]
-                    linear_step = self.model.global_cache.second_cache[sender_name][sender_index.as_index]
-                    linear_step -= self.model.global_cache.cache[sender_name][sender_index.as_index]
+                    linear_step = self.model.global_cache.second_cache[sender_name][sender_index.as_index].cpu()
+                    linear_step -= self.model.global_cache.cache[sender_name][sender_index.as_index].cpu()
 
                     effect_size = torch.einsum(
                         "bsd,bsd->b",
-                        gradient,
-                        linear_step,
+                        gradient.cpu(),
+                        linear_step.cpu(),
                     )
 
-                    result = - effect_size.abs().mean() # big = important edge!!!
+                    result = effect_size.abs().mean() # big = important edge!!!
 
-                if True: # refactor later...
+                edge.present = False
 
-                    edge.present = False
+                if new_funky_run:
+                    old_metric = self.cur_metric # I hope accurate...
 
-                    if not new_funky_run:
-                        if edge.edge_type == EdgeType.ADDITION:
-                            added_sender_hook = self.add_sender_hook(
-                                cur_parent,
-                            )
-                        else:
-                            added_sender_hook = False
-                        
-                        old_metric = self.cur_metric
-                        if self.second_metric is not None:
-                            old_second_metric = self.cur_second_metric
+                else:
+                    if edge.edge_type == EdgeType.ADDITION:
+                        added_sender_hook = self.add_sender_hook(
+                            cur_parent,
+                        )
+                    else:
+                        added_sender_hook = False
+                    
+                    old_metric = self.cur_metric
+                    if self.second_metric is not None:
+                        old_second_metric = self.cur_second_metric
 
-                        self.update_cur_metric(recalc_edges=False) # warning: gives fast evaluation, though edge count is wrong
-                        evaluated_metric = self.cur_metric # self.metric(self.model(self.ds)) # OK, don't calculate second metric?
+                    self.update_cur_metric(recalc_edges=False) # warning: gives fast evaluation, though edge count is wrong
+                    evaluated_metric = self.cur_metric # self.metric(self.model(self.ds)) # OK, don't calculate second metric?
 
-                        if early_stop: # for debugging the effects of one and only one forward pass WITH a corrupted edge
-                            return
-
-                        if self.verbose:
-                            print(
-                                "Metric after removing connection to",
-                                sender_name,
-                                sender_index,
-                                "is",
-                                evaluated_metric,
-                                "(and current metric " + str(old_metric) + ")",
-                            )
-
-                        result = evaluated_metric - old_metric
-
-                    edge.effect_size = result
+                    if early_stop: # for debugging the effects of one and only one forward pass WITH a corrupted edge
+                        return
 
                     if self.verbose:
-                        print("Result is", result, end="")
-
-                    if result < (self.threshold if not new_funky_run else self.grad_threshold):
-                        if self.verbose:
-                            print("...so removing connection")
-                        self.corr.remove_edge(
-                            self.current_node.name, self.current_node.index, sender_name, sender_index
+                        print(
+                            "Metric after removing connection to",
+                            sender_name,
+                            sender_index,
+                            "is",
+                            evaluated_metric,
+                            "(and current metric " + str(old_metric) + ")",
                         )
-                        
-                    else: # include this edge in the graph
-                        self.cur_metric = old_metric
-                        if self.second_metric is not None:
-                            self.cur_second_metric = old_second_metric
-                        is_this_node_used = True
-                        if self.verbose:
-                            print("...so keeping connection")
-                        edge.present = True
 
-                    self.update_cur_metric(recalc_edges=(self.algorithm == "gradient"), recalc_metric=(self.algorithm == "gradient")) 
-                    # we should make this more efficient in gradient case, but for now a quick hack
+                    result = evaluated_metric - old_metric
 
-                    if self.using_wandb:
-                        log_metrics_to_wandb(
-                            self,
-                            current_metric = self.cur_metric,
-                            parent_name = str(self.corr.graph[sender_name][sender_index]),
-                            child_name = str(self.current_node),
-                            result = result,
-                            times = time.time(),
-                        )
+                edge.effect_size = result
+
+                if self.verbose:
+                    print("Result is", result, end="")
+
+                if result < (self.threshold if not new_funky_run else self.grad_threshold):
+                    if self.verbose:
+                        print("...so removing connection")
+                    self.corr.remove_edge(
+                        self.current_node.name, self.current_node.index, sender_name, sender_index
+                    )
+                    
+                else: # include this edge in the graph
+                    self.cur_metric = old_metric
+                    if self.second_metric is not None:
+                        self.cur_second_metric = old_second_metric
+                    is_this_node_used = True
+                    if self.verbose:
+                        print("...so keeping connection")
+                    edge.present = True
+
+                self.update_cur_metric(recalc_edges=(self.algorithm == "gradient"), recalc_metric=(self.algorithm == "gradient")) 
+                # we should make this more efficient in gradient case, but for now a quick hack
+
+                if self.using_wandb:
+                    log_metrics_to_wandb(
+                        self,
+                        current_metric = float(self.cur_metric),
+                        parent_name = str(self.corr.graph[sender_name][sender_index]),
+                        child_name = str(self.current_node),
+                        result = float(result),
+                        times = time.time(),
+                    )
 
             self.update_cur_metric()
 

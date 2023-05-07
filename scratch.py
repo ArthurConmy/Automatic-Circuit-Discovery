@@ -53,13 +53,14 @@ except Exception as e:
 
 #%%
 
+model.zero_grad()
 model.reset_hooks()
 model.global_cache.clear()
 
 exp = TLACDCExperiment(
     model=model,
     threshold=0.075,
-    grad_threshold = 3e-5,
+    grad_threshold = 5e-4,
     using_wandb=True,
     zero_ablation=False,
     ds=toks_int_values_batch,
@@ -67,7 +68,7 @@ exp = TLACDCExperiment(
     metric=metric,
     second_metric=None,
     verbose=True,
-    second_cache_cpu=False,
+    second_cache_cpu=True,
     hook_verbose=True,
     first_cache_cpu=False,
     add_sender_hooks=True,
@@ -104,7 +105,7 @@ while exp.current_node is not None: exp.step(ignore_non_float=True)
 model.reset_hooks()
 exp.setup_model_hooks(
     add_sender_hooks=True,
-    add_receiver_hooks=False, # more. More. MORE
+    add_receiver_hooks=False, # more. More. MORE``
 )
 
 #%%
