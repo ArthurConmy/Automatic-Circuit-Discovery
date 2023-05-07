@@ -5,7 +5,6 @@ if IPython.get_ipython() is not None:
     IPython.get_ipython().run_line_magic("load_ext", "autoreload")  # type: ignore
     IPython.get_ipython().run_line_magic("autoreload", "2")  # type: ignore
 
-
 from copy import deepcopy
 import acdc
 from collections import defaultdict
@@ -125,6 +124,7 @@ from acdc.graphics import (
     build_colorscheme,
     show,
 )
+from IPython import get_ipython
 import argparse
 torch.autograd.set_grad_enabled(False)
 
@@ -241,7 +241,17 @@ data = torch.stack(tuple(row for row in data)).long().to("cuda")
 labels = torch.stack(tuple(row for row in labels)).long().to("cuda")
 labels = labels.squeeze(-1) # can't see why you left an extra dim...
 
-patch_data = model.to_tokens("The official religion of the world's people is", prepend_bos=True)
+if get_ipython() is None:
+    length = data.shape[0] // 2 # trim size cos memory
+else:
+    length = data.shape[0]
+
+data = data[:length]
+labels = labels[:length]
+
+# Make a good baseline
+patch_data = model.to_tokens("The obvious feature about that person over there is", prepend_bos=True)
+
 patch_data = patch_data[0].long().to("cuda")
 patch_data = patch_data.unsqueeze(0).repeat(data.shape[0], 1)
 assert patch_data.shape == data.shape, (patch_data.shape, data.shape)
@@ -275,14 +285,15 @@ new_correct_probs = original_probs[torch.arange(len(labels)), -1, labels]
 
 #%%
 
-# bar chart with hoverable sentences 
-fig = go.Figure()
-fig.add_trace(
-    go.Bar(
-        x=[model.tokenizer.decode(old_data[i]) for i in range(len(old_data))],
-        y=new_correct_probs.tolist(),
-        hovertext=[model.tokenizer.decode(labels[i]) for i in range(len(data))],
-    ))
+if get_ipython() is not None:
+    # bar chart with hoverable sentences 
+    fig = go.Figure()
+    fig.add_trace(
+        go.Bar(
+            x=[model.tokenizer.decode(old_data[i]) for i in range(len(old_data))],
+            y=new_correct_probs.tolist(),
+            hovertext=[model.tokenizer.decode(labels[i]) for i in range(len(data))],
+        ))
 
 # sum is roughly 3.27
 
@@ -296,84 +307,98 @@ relevant_positions = {
 
 #%%
 
-def mask_attention(z, hook, key_pos):
-    # print(z.shape) # batch heads query (I think) key
-    assert relevant_positions[" is"] == z.shape[2]-1, (relevant_positions, z.shape)
-    z[:, :, -1, key_pos] = 0
+if get_ipython() is not None:
+    def mask_attention(z, hook, key_pos):
+        # print(z.shape) # batch heads query (I think) key
+        assert relevant_positions[" is"] == z.shape[2]-1, (relevant_positions, z.shape)
+        z[:, :, -1, key_pos] = 0
 
-answers = []
+    answers = []
 
-for i in range(4, model.cfg.n_layers-4):
-    # Reproduce Figure 2 from the paper?
+    for i in range(4, model.cfg.n_layers-4):
+        # Reproduce Figure 2 from the paper?
 
-    model.reset_hooks()
+        model.reset_hooks()
 
-    for layer in range(i-4, i+5):
-        model.add_hook(
-            f"blocks.{layer}.attn.hook_pattern",
-            partial(mask_attention, key_pos=relevant_positions[" subject_end"]),
-        )
+        for layer in range(i-4, i+5):
+            model.add_hook(
+                f"blocks.{layer}.attn.hook_pattern",
+                partial(mask_attention, key_pos=relevant_positions[" subject_end"]),
+            )
 
-    logits = model(data)
-    probs = torch.nn.functional.softmax(logits, dim=-1)
-    correct_probs = probs[torch.arange(len(labels)).to(probs.device), -1, labels.to(probs.device)]
-    assert len(list(correct_probs.shape))==1, probs.shape
-    answers.append(correct_probs.sum().cpu()) 
+        logits = model(data)
+        probs = torch.nn.functional.softmax(logits, dim=-1)
+        correct_probs = probs[torch.arange(len(labels)).to(probs.device), -1, labels.to(probs.device)]
+        assert len(list(correct_probs.shape))==1, probs.shape
+        answers.append(correct_probs.sum().cpu()) 
 
-fig = go.Figure()
-fig.add_trace(
-    go.Scatter(
-        x=[i for i in range(4, model.cfg.n_layers-4)],
-        y=[a.cpu() for a in answers],
-    ))
-# add title
-fig.update_layout(
-    title_text=f"Key position end_subject",
-    xaxis_title="Layer",
-    yaxis_title="Sum of correct probs",
-)
-fig.show()
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=[i for i in range(4, model.cfg.n_layers-4)],
+            y=[a.cpu() for a in answers],
+        ))
+    # add title
+    fig.update_layout(
+        title_text=f"Key position end_subject",
+        xaxis_title="Layer",
+        yaxis_title="Sum of correct probs",
+    )
+    fig.show()
 
 #%%
 
-answers = []
+cache = {}
+model.cache_all(cache)
+model(patch_data[:1]) # same throughout
 
-for layer in tqdm(range(model.cfg.n_layers-1)):
-    def zero_out(z, hook):
-        # for pos in range(relevant_positions[" subject_start"], relevant_positions[" subject_end"]+1): 
-        for pos in [-1]:
-            z[:, pos] = 0.0
-    
-    # ooh quite a lot like path patch
+#%%
+# let's move beyond zero ablation...
 
-    model.reset_hooks()
-    for layer_prime in range(layer+1, model.cfg.n_layers):
-        for hook_name in [
-            f"blocks.{layer_prime}.hook_attn_out",
-            f"blocks.{layer_prime}.hook_mlp_out",
-        ]:
-            model.add_hook(hook_name, zero_out)
+if get_ipython() is not None:
+    answers = []
 
-    logits = model(data)
-    probs = torch.nn.functional.softmax(logits, dim=-1)
-    correct_probs = probs[torch.arange(len(labels)).to(probs.device), -1, labels.to(probs.device)]
-    # correct_log_probs = torch.log(correct_probs)
-    answers.append(correct_probs.sum().cpu())
+    for layer in tqdm(range(model.cfg.n_layers-1)):
+        def zero_out(z, hook):
+            # for pos in range(relevant_positions[" subject_start"], relevant_positions[" subject_end"]+1): 
+            for pos in [-1]:
+                z[:, pos] = 0.0
 
-fig = go.Figure()
-fig.add_trace(
-    go.Scatter(
-        x=[i for i in range(model.cfg.n_layers-1)],
-        y=[a.cpu() for a in answers],
-))
+        def patch_out(z, hook):
+            # for pos in range(relevant_positions[" subject_start"], relevant_positions[" subject_end"]+1): 
+            for pos in [-1]:
+                z[:, pos] = cache[hook.name][:, pos]
 
-# add title
-fig.update_layout(
-    title_text=f"Key position end_subject layer {layer}",
-    xaxis_title="Layer",
-    yaxis_title="Sum of correct probs",
-)
-fig.show()
+        # ooh quite a lot like path patch
+
+        model.reset_hooks()
+        for layer_prime in range(layer+1, model.cfg.n_layers):
+            for hook_name in [
+                f"blocks.{layer_prime}.hook_attn_out",
+                f"blocks.{layer_prime}.hook_mlp_out",
+            ]:
+                model.add_hook(hook_name, patch_out)
+
+        logits = model(data)
+        probs = torch.nn.functional.softmax(logits, dim=-1)
+        correct_probs = probs[torch.arange(len(labels)).to(probs.device), -1, labels.to(probs.device)]
+        # correct_log_probs = torch.log(correct_probs)
+        answers.append(correct_probs.sum().cpu())
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=[i for i in range(model.cfg.n_layers-1)],
+            y=[a.cpu() for a in answers],
+    ))
+
+    # add title
+    fig.update_layout(
+        title_text=f"Key position end_subject layer {layer}",
+        xaxis_title="Layer",
+        yaxis_title="Sum of correct probs",
+    )
+    fig.show()
 
 #%% [markdown]
 
@@ -384,14 +409,16 @@ def my_metric(logits):
 
 exp = TLACDCExperiment( # ugh so this takes... > 2min42... for sure
     model=model,
-    threshold=100_000, # lol let's see all effect sizes
-    using_wandb=False,
-    zero_ablation=True, # 
+    threshold = - 100_000.0, # lol let's see all effect sizes
+    using_wandb=True,
+    zero_ablation=False, # 
     ds=data,
-    ref_ds=None,
+    ref_ds=patch_data,
     metric=my_metric,
-    # second_metric=second_metric,
     verbose=True,
+    wandb_entity_name="remix_school-of-rock",
+    wandb_project_name="acdc",
+    wandb_run_name="my_run_new",
     # indices_mode=INDICES_MODE,
     # names_mode=NAMES_MODE,
     # second_cache_cpu=SECOND_CACHE_CPU,
@@ -403,6 +430,11 @@ exp = TLACDCExperiment( # ugh so this takes... > 2min42... for sure
 )
 
 # probably this is too slow to be usable : (
+
+#%%
+
+while exp.current_node is not None:
+    exp.step()
 
 # %%
 
@@ -446,4 +478,5 @@ fig = show_pp(
     answers,
     return_fig=True,
 )
+
 # %%
