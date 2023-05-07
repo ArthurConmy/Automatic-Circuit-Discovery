@@ -1,3 +1,4 @@
+from argparse import Namespace
 import pickle
 import gc
 from typing import Callable, Optional, Literal, List, Dict, Any, Tuple, Union, Set, Iterable, TypeVar, Type
@@ -58,6 +59,7 @@ class TLACDCExperiment:
         add_receiver_hooks: bool = False,
         indices_mode: Literal["normal", "reverse", "shuffle"] = "reverse", # we get best performance with reverse I think
         names_mode: Literal["normal", "reverse", "shuffle"] = "normal",
+        wandb_config: Optional[Namespace] = None,
     ):
         """Initialize the ACDC experiment"""
 
@@ -102,6 +104,7 @@ class TLACDCExperiment:
                 notes=wandb_notes,
                 dir=wandb_dir,
                 mode=wandb_mode,
+                config=wandb_config,
             )
 
         self.metric = metric

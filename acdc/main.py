@@ -228,6 +228,7 @@ exp = TLACDCExperiment(
     wandb_notes=notes,
     wandb_dir=args.wandb_dir,
     wandb_mode=args.wandb_mode,
+    wandb_config=args,
     zero_ablation=ZERO_ABLATION,
     ds=toks_int_values,
     ref_ds=toks_int_values_other,

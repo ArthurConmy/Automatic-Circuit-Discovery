@@ -64,16 +64,18 @@ for reset_network in [0, 1]:
                 i += 1
 
 df.loc[:, "alg"] = "acdc"
+df.loc[:, "num_examples"] = 50
 
 # %% Now subnetwork-probing runs
 
 sp_runs = []
 
 all_runs = api.runs(path="remix_school-of-rock/induction-sp-replicate", filters={"group": "reset-with-nll-21"})
+# all_runs = api.runs(path="remix_school-of-rock/induction-sp-replicate", filters={"group": "paper-discrepancy"})
 for r in all_runs:
     try:
-        cfg = {k: r.config[k] for k in ["reset_subject", "zero_ablation", "loss_type", "lambda_reg"]}
-        d = {k: r.summary[k] for k in ["number_of_edges", "specific_metric", "test_specific_metric"]}
+        cfg = {k: r.config[k] for k in ["reset_subject", "zero_ablation", "loss_type", "lambda_reg", "num_examples"]}
+        d = {k: r.summary[k] for k in ["number_of_edges", "specific_metric", "test_specific_metric", "specific_metric_loss"]}
     except KeyError:
         continue
     cfg["reset_network"] = cfg["reset_subject"]
