@@ -98,6 +98,7 @@ print(exp.cur_metric)
 
 #%%
 
+exp.current_node = exp.corr.graph["blocks.0.hook_q_input"][TorchIndex([None, None, 7])]
 while exp.current_node is not None: exp.step(ignore_non_float=True)
 
 #%%

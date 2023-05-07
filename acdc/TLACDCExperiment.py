@@ -229,13 +229,11 @@ class TLACDCExperiment:
 
         if add_backwards_hook:
             print("Adding backwards hook to...", end="")
-            if hook.name == f"blocks.{self.model.cfg.n_layers-1}.hook_resid_post":
-                print("The tensor in the forward pass")
-                z.register_hook(partial(self.backward_hook, name=hook.name))
-                self.backed.append(z)
-            else:
-                print("The cached tensor")
-                tens.register_hook(partial(self.backward_hook, name=hook.name))
+
+            # I think this is all that we will want...
+            z.register_hook(partial(self.backward_hook, name=hook.name, verbose=self.hook_verbose))
+            self.backed.append(z)
+
 
         if verbose:
             print(f"Saved {hook.name} with norm {z.norm().item()}")
@@ -737,10 +735,13 @@ class TLACDCExperiment:
         warnings.warn("Finished iterating")
         return None
     
-    def backward_hook(self, z, name):
+    def backward_hook(self, z, name, verbose):
         """We'll put this on a tensor not HookPoint hence different signature..."""
 
         # TODO check we're not calling this TOO much
+        if verbose:
+            print("Calculating back hook on", name)
+
         self.model.global_cache.gradient_cache[name] = z.cpu().clone()
 
     def increment_current_node(self) -> None:
