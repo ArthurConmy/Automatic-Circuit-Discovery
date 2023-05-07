@@ -227,12 +227,16 @@ class TLACDCExperiment:
         else:
             raise ValueError(f"Unknown cache type {cache}")
 
+        if self.hook_verbose:
+            print(f"{hook.name} {z.requires_grad=}")
+
         if add_backwards_hook:
-            print("Adding backwards hook to...", end="")
+            if self.hook_verbose:
+                print("Adding backwards hook to", hook.name, end="")
 
             # I think this is all that we will want...
             z.register_hook(partial(self.backward_hook, name=hook.name, verbose=self.hook_verbose))
-            self.backed.append(z)
+            self.backed.append(z) # TODO monitor how many of these added etc ...
 
 
         if verbose:
@@ -464,6 +468,8 @@ class TLACDCExperiment:
         start_step_time = time.time()
         self.step_idx += 1
 
+        new_funky_run = self.algorithm == "gradient" and self.current_node.incoming_edge_type == EdgeType.ADDITION
+
         if self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value:
             added_receiver_hook = self.add_receiver_hook(self.current_node, override=True, prepend=True)
 
@@ -473,15 +479,13 @@ class TLACDCExperiment:
             (self.algorithm == "gradient") # also add things if we're gradient,,,
         ):
             # basically, because these nodes are the only ones that act as both receivers and senders
-            added_sender_hook = self.add_sender_hook(self.current_node, override=True, add_backwards_hook=(self.algorithm=="gradient"))
+            added_sender_hook = self.add_sender_hook(self.current_node, override=True, add_backwards_hook=new_funky_run)
 
         is_this_node_used = False
         if self.current_node.name == "blocks.0.hook_resid_pre":
             is_this_node_used = True
 
         sender_names_list = list(self.corr.edges[self.current_node.name][self.current_node.index])
-
-        new_funky_run = self.algorithm == "gradient" and self.current_node.incoming_edge_type == EdgeType.ADDITION
 
         self.update_cur_metric(cast_float=False) # to do backprop
         initial_metric = float(self.cur_metric)
