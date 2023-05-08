@@ -79,9 +79,9 @@ def get_all_docstring_things(
     toks_int_values = batched_prompts.clean_tokens
     toks_int_values_other = batched_prompts.corrupt_tokens[dataset_version]
     toks_int_labels = batched_prompts.correct_tokens.squeeze(-1)
-    toks_int_wrong_labels = batched_prompts.wrong_tokens.squeeze(-1)
+    toks_int_wrong_labels = batched_prompts.wrong_tokens
     assert toks_int_labels.ndim == 1
-    assert toks_int_wrong_labels.ndim == 1
+    assert toks_int_wrong_labels.ndim == 2
 
     validation_data = toks_int_values[:num_examples]
     validation_labels = toks_int_labels[:num_examples]
