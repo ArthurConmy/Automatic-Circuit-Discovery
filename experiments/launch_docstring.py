@@ -31,7 +31,7 @@ def main(testing=False, use_kubernetes=False):
                         "--torch-num-threads=4",
                         "--wandb-dir=/training/acdc",  # If it doesn't exist wandb will use /tmp
                         "--wandb-mode=offline",
-                        f"--max-num-epochc={1 if testing else 100_000}",
+                        f"--max-num-epochs={1 if testing else 100_000}",
                     ]
                     if zero_ablation:
                         command.append("--zero-ablation")
@@ -68,7 +68,7 @@ def main(testing=False, use_kubernetes=False):
                     i += 1
 
     print("to wait", to_wait)
-    if not testing and not use_kubernetes:
+    if testing or not use_kubernetes:
         for process_to_wait in to_wait:
             process_to_wait.wait()
 
