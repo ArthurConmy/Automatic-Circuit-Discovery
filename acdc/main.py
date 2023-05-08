@@ -122,6 +122,7 @@ parser.add_argument('--reset-network', type=int, default=0, help="Whether to res
 parser.add_argument('--metric', type=str, default="kl_div", help="Which metric to use for the experiment")
 parser.add_argument('--torch-num-threads', type=int, default=0, help="How many threads to use for torch (0=all)")
 parser.add_argument('--seed', type=int, default=1234)
+parser.add_argument("--max-num-epochs",type=int, default=100_000)
 
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
@@ -271,7 +272,7 @@ if False: # Stefan snippet
 
 #%%
 
-for i in range(100_000):
+for i in range(args.max_num_epochs):
     exp.step()
     show(
         exp.corr,
