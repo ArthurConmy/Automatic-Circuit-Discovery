@@ -10,7 +10,7 @@ def main(testing=False, use_kubernetes=False):
 
     to_wait = []
     i = 0
-    for reset_network in [0, 1]:
+    for reset_network in [0]:
         for zero_ablation in [0, 1]:
             for loss_type in ["kl_div", "docstring_metric", "docstring_stefan", "nll", "match_nll"]:
                 for threshold in [1.0] if testing else thresholds:
