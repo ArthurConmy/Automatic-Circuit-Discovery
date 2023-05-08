@@ -279,7 +279,6 @@ device = original_probs.device
 labels = labels.to(device).view(-1, 1, 1)
 
 # Replace 1 with 0 in the gather() call to simulate the incorrect version
-
 labels = labels.squeeze(-1).squeeze(-1)
 new_correct_probs = original_probs[torch.arange(len(labels)), -1, labels]
 
@@ -305,26 +304,36 @@ relevant_positions = {
     " subject_start": 8-4,
 }
 
+LATER=False
+
 #%%
 
 if get_ipython() is not None:
-    def mask_attention(z, hook, key_pos):
+    def mask_attention(z, hook, key_pos, head_no=None):
         # print(z.shape) # batch heads query (I think) key
         assert relevant_positions[" is"] == z.shape[2]-1, (relevant_positions, z.shape)
-        z[:, :, -1, key_pos] = 0
+
+        if head_no is None:
+            z[:, :, -1, key_pos] = 0
+        else:
+            z[:, head_no, -1, key_pos] = 0
 
     answers = []
+    if LATER:
+        heads = torch.max(matrix_answers, dim=-1).indices
 
-    for i in range(4, model.cfg.n_layers-4):
+    for i in tqdm(range(4, model.cfg.n_layers-4)):
         # Reproduce Figure 2 from the paper?
 
         model.reset_hooks()
 
         for layer in range(i-4, i+5):
-            model.add_hook(
-                f"blocks.{layer}.attn.hook_pattern",
-                partial(mask_attention, key_pos=relevant_positions[" subject_end"]),
-            )
+            # for pos in range(relevant_positions[" subject_start"], relevant_positions[" subject_end"]+1):
+            for pos in [relevant_positions[" subject_end"]]:
+                model.add_hook(
+                    f"blocks.{layer}.attn.hook_pattern",
+                    partial(mask_attention, key_pos=pos, head_no=(None if not LATER else heads[layer])),
+                )
 
         logits = model(data)
         probs = torch.nn.functional.softmax(logits, dim=-1)
@@ -345,39 +354,38 @@ if get_ipython() is not None:
         yaxis_title="Sum of correct probs",
     )
     fig.show()
+    # save fig
+    
 
 #%%
 
-cache = {}
-model.cache_all(cache)
+corrupted_cache = {}
+model.cache_all(corrupted_cache)
 model(patch_data[:1]) # same throughout
 
 #%%
 # let's move beyond zero ablation...
 
+def patch_out(z, hook, positions=[]):
+    for pos in positions:
+        z[:, pos] = corrupted_cache[hook.name][:, pos]
+
+def zero_out(z, hook, positions=[]):
+    for pos in positions:
+        z[:, pos] = 0.0
+
 if get_ipython() is not None:
     answers = []
 
     for layer in tqdm(range(model.cfg.n_layers-1)):
-        def zero_out(z, hook):
-            # for pos in range(relevant_positions[" subject_start"], relevant_positions[" subject_end"]+1): 
-            for pos in [-1]:
-                z[:, pos] = 0.0
-
-        def patch_out(z, hook):
-            # for pos in range(relevant_positions[" subject_start"], relevant_positions[" subject_end"]+1): 
-            for pos in [-1]:
-                z[:, pos] = cache[hook.name][:, pos]
-
         # ooh quite a lot like path patch
-
         model.reset_hooks()
         for layer_prime in range(layer+1, model.cfg.n_layers):
             for hook_name in [
                 f"blocks.{layer_prime}.hook_attn_out",
                 f"blocks.{layer_prime}.hook_mlp_out",
             ]:
-                model.add_hook(hook_name, patch_out)
+                model.add_hook(hook_name, partial(zero_out, positions=[-1])) # actually should this be subject_end etc.?
 
         logits = model(data)
         probs = torch.nn.functional.softmax(logits, dim=-1)
@@ -453,6 +461,7 @@ for layer in range(model.cfg.n_layers):
     for name in [
         f"blocks.{layer}.attn.hook_result",
         f"blocks.{layer}.hook_mlp_out",
+        f"blocks.{layer}.hook_resid_post",
     ]:
         model.add_hook(
             name,
@@ -466,17 +475,80 @@ logits = model(data)
 answers = torch.zeros((model.cfg.n_layers, model.cfg.n_heads))
 
 for layer in range(model.cfg.n_layers):
+
     results = torch.einsum(
-        "bhd,db->bh",
+        "bhd,dv->bhv",
         cache[f"blocks.{layer}.attn.hook_result"][:, -1],
-        correct_direction - incorrect_direction.unsqueeze(-1),
+        model.unembed.W_U,
+        # correct_direction, # - incorrect_direction.unsqueeze(-1),
     )
+
+    if True:
+        results = torch.nn.functional.softmax(results, dim=-1) # [torch.arange(len(labels)), :, labels]
+        correct_probs = results[torch.arange(len(labels)).to(results.device), :, labels.to(results.device)]
+
     for head in range(model.cfg.n_heads):
-        answers[layer, head] = results[:, head].mean()
+        answers[layer, head] = correct_probs[:, head].mean()
 
 fig = show_pp(
     answers,
     return_fig=True,
 )
+
+matrix_answers = answers
+
+# %%
+
+# 42.24 35.19
+# do the logit lens unembedding thing...
+
+for layer_idx, head_idx in [(42, 24), (35, 19)]:
+    logitted = torch.einsum(
+        "bd,dv->bv",
+        cache[f"blocks.{layer}.attn.hook_result"][:, -1, head_idx],
+        # cache[f"blocks.{layer_idx}.hook_resid_post"][:, -1], # [:, relevant_positions[" subject_end"]],
+        model.unembed.W_U,
+    )
+    # get top k for each batch
+    top_k = torch.topk(logitted, k=30, dim=-1).indices
+
+    print("Layer", layer_idx, "head", head_idx)
+    for batch_idx in range(len(data)):
+        print("Batch", batch_idx, "correct", model.tokenizer.decode(labels[batch_idx].item()))
+        print("".join(model.tokenizer.decode(top_k[batch_idx].tolist())))
+        print()
+
+# %%
+
+# Q: which are the important early MLPs?
+# ... surely the ones at the last position!!
+
+changes = []
+for position in tqdm(range(relevant_positions[" subject_start"], relevant_positions[" subject_end"]+1)):
+    cur_changes = []
+    for mid_layer in range(4, model.cfg.n_layers-4):
+        model.reset_hooks()
+        for layer in range(mid_layer-4, mid_layer+4):
+            model.add_hook(
+                f"blocks.{layer}.hook_mlp_out",
+                partial(patch_out, positions=[position]),
+            )
+        logits = model(data)
+        probs = torch.nn.functional.softmax(logits, dim=-1)
+        correct_probs = probs[torch.arange(len(labels)).to(probs.device), -1, labels.to(probs.device)]
+        cur_changes.append(correct_probs.sum().cpu())
+
+    changes.append(cur_changes)
+    
+# add a line graph for each position
+fig = go.Figure()
+for idx, position in enumerate(range(relevant_positions[" subject_start"], relevant_positions[" subject_end"]+1)):
+    fig.add_trace(
+        go.Scatter(
+            x=[i for i in range(model.cfg.n_layers)],
+            y=changes[idx],
+            name=str(idx) + "_" + model.tokenizer.decode(data[1, position].item()),
+        )
+    )    
 
 # %%
