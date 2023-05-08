@@ -7,9 +7,6 @@ if IPython.get_ipython() is not None:
 
 from copy import deepcopy
 import acdc
-from collections import defaultdict
-from typing import List
-import wandb
 from acdc.graphics import show_pp
 import IPython
 from functools import partial
@@ -17,80 +14,32 @@ import torch
 from tqdm import tqdm
 
 import json
-import pathlib
 import os
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-import numpy as np
-import einops
 from tqdm import tqdm
-from transformers import AutoModelForCausalLM, AutoConfig, AutoTokenizer
 
 
-import matplotlib.pyplot as plt
-import plotly.express as px
 import plotly.io as pio
-from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
 PATH = "/mnt/ssd-0/arthurworkspace/TransformerLens/dist/counterfact.json"
 
 from copy import deepcopy
-from typing import (
-    List,
-    Tuple,
-    Dict,
-    Any,
-    Optional,
-    Union,
-    Callable,
-    TypeVar,
-    Iterable,
-    Set,
-)
-import pickle
-import wandb
 import IPython
 import torch
 
 # from easy_transformer.ioi_dataset import IOIDataset  # type: ignore
 from tqdm import tqdm
-import random
-from functools import *
+from functools import partial
 import json
-import pathlib
-import warnings
-import time
-import networkx as nx
 import os
 import torch
-import huggingface_hub
-import graphviz
-from enum import Enum
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-import numpy as np
-import einops
 from tqdm import tqdm
-import yaml
-from transformers import AutoModelForCausalLM, AutoConfig, AutoTokenizer
 
-import matplotlib.pyplot as plt
-import plotly.express as px
 import plotly.io as pio
-from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
 pio.renderers.default = "colab"
-from acdc.hook_points import HookedRootModule, HookPoint
-from acdc.HookedTransformer import (
-    HookedTransformer,
-)
-from acdc.tracr.utils import get_tracr_data, get_tracr_model_input_and_tl_model
-from acdc.docstring.utils import get_all_docstring_things
 from acdc.acdc_utils import (
     make_nd_dict,
     shuffle_tensor,
@@ -101,31 +50,9 @@ from acdc.acdc_utils import (
     EdgeType,
 )  # these introduce several important classes !!!
 
-from acdc.TLACDCCorrespondence import TLACDCCorrespondence
-from acdc.TLACDCInterpNode import TLACDCInterpNode
 from acdc.TLACDCExperiment import TLACDCExperiment
 
-from collections import defaultdict, deque, OrderedDict
-from acdc.acdc_utils import (
-    kl_divergence,
-)
-from acdc.ioi.utils import (
-    get_ioi_data,
-    get_ioi_gpt2_small,
-)
-from acdc.induction.utils import (
-    get_all_induction_things,
-    get_model,
-    get_validation_data,
-    get_good_induction_candidates,
-    get_mask_repeat_candidates,
-)
-from acdc.graphics import (
-    build_colorscheme,
-    show,
-)
 from IPython import get_ipython
-import argparse
 torch.autograd.set_grad_enabled(False)
 
 #%%
@@ -462,6 +389,7 @@ for layer in range(model.cfg.n_layers):
         f"blocks.{layer}.attn.hook_result",
         f"blocks.{layer}.hook_mlp_out",
         f"blocks.{layer}.hook_resid_post",
+        f"blocks.{layer}.attn.hook_pattern",    
     ]:
         model.add_hook(
             name,
@@ -522,6 +450,7 @@ for layer_idx, head_idx in [(42, 24), (35, 19)]:
 
 # Q: which are the important early MLPs?
 # ... surely the ones at the last position!!
+# weidly no!
 
 changes = []
 for position in tqdm(range(relevant_positions[" subject_start"], relevant_positions[" subject_end"]+1)):
@@ -539,7 +468,7 @@ for position in tqdm(range(relevant_positions[" subject_start"], relevant_positi
         cur_changes.append(correct_probs.sum().cpu())
 
     changes.append(cur_changes)
-    
+
 # add a line graph for each position
 fig = go.Figure()
 for idx, position in enumerate(range(relevant_positions[" subject_start"], relevant_positions[" subject_end"]+1)):
@@ -550,5 +479,177 @@ for idx, position in enumerate(range(relevant_positions[" subject_start"], relev
             name=str(idx) + "_" + model.tokenizer.decode(data[1, position].item()),
         )
     )    
+
+# %%
+
+def mask_attention(z, hook, key_pos, head_no=None):
+    # print(z.shape) # batch heads query (I think) key
+    assert relevant_positions[" is"] == z.shape[2]-1, (relevant_positions, z.shape)
+
+    if head_no is None:
+        z[:, :, -1, key_pos] = 0
+    else:
+        z[:, head_no, -1, key_pos] = 0
+
+changes = []
+
+for position in tqdm(range(relevant_positions[" subject_start"], relevant_positions[" subject_end"]+1)):
+
+    cur_changes = []
+
+    for i in tqdm(range(4, model.cfg.n_layers-4)):
+
+        model.reset_hooks()
+
+        for layer in range(i-4, i+5):
+            # for pos in range(relevant_positions[" subject_start"], relevant_positions[" subject_end"]+1)
+            for pos in [position]:
+                model.add_hook(
+                    f"blocks.{layer}.attn.hook_pattern",
+                    partial(mask_attention, key_pos=pos, head_no=None),
+                )
+
+        logits = model(data)
+        probs = torch.nn.functional.softmax(logits, dim=-1)
+        correct_probs = probs[torch.arange(len(labels)).to(probs.device), -1, labels.to(probs.device)]
+        assert len(list(correct_probs.shape))==1, probs.shape
+        cur_changes.append(correct_probs.sum().cpu())
+
+    changes.append(cur_changes)
+
+# add a line graph for each position
+fig = go.Figure()
+
+for idx, position in enumerate(range(relevant_positions[" subject_start"], relevant_positions[" subject_end"]+1)):
+    fig.add_trace(
+        go.Scatter(
+            x=[i for i in range(model.cfg.n_layers)],
+            y=changes[idx],
+            name=str(idx) + "_" + model.tokenizer.decode(data[1, position].item()),
+        )
+    )
+
+
+# %%
+
+# Edgware 
+# mmmm
+# search for previous token heads
+
+finals=[]
+alls=[]
+
+for layer in range(48):
+    diff = -(cache[f"blocks.{layer}.attn.hook_pattern"][:, :, relevant_positions[" subject_start"]+3, relevant_positions[" subject_start"]+2]-1).mean(dim=0)
+    print(layer, diff)
+    # print(diff.min())
+    finals.append(diff.min().cpu())
+    alls.append(diff.cpu())
+
+alls = torch.stack(alls)
+
+fig = go.Figure()
+fig.add_trace(
+    go.Scatter(
+        x=[i for i in range(model.cfg.n_layers)],
+        y=finals,
+    )
+)
+
+# %%
+
+# let's get some causal relationship here...
+
+heads = [(0, 9),
+ (1, 15),
+ (2, 11),
+ (3, 5),
+ (4, 15),
+ (5, 9),
+ (6, 4),
+ (7, 12),
+ (8, 6),
+ (9, 7),
+ (10, 15),
+ (11, 2),
+ (12, 21),
+ (13, 20),
+ (14, 12),
+ (15, 19),
+ (16, 5),
+ (17, 12),
+ (18, 1),
+ (19, 20),
+ (20, 21),
+ (21, 18),
+ (22, 12),
+ (23, 10),
+ (24, 3),
+ (25, 14),
+ (26, 6),
+ (27, 18),
+ (28, 18),
+ (29, 22),
+ (30, 7),
+ (31, 0),
+ (32, 10),
+ (33, 7),
+ (34, 22),
+ (35, 19),
+ (36, 19),
+ (37, 8),
+ (38, 9),
+ (39, 13),
+ (40, 19),
+ (41, 20),
+ (42, 19),
+ (43, 22),
+ (44, 2),
+ (45, 21),
+ (46, 18),
+ (47, 8)]
+
+#%%
+
+def mask_attention_two(z, hook, key_pos, query_pos, head_no=None):
+    assert relevant_positions[" is"] == z.shape[2]-1, (relevant_positions, z.shape)
+
+    if head_no is None:
+        z[:, :, query_pos, key_pos] = 0
+    else:
+        z[:, head_no, query_pos, key_pos] = 0
+
+all_lines = []
+
+for pos in tqdm(range(relevant_positions[" subject_start"], relevant_positions[" subject_end"]+1)):
+    cur_line = []
+
+    for mid_layer in range(4, 48-5):
+        model.reset_hooks()
+
+        for layer in range(mid_layer-4, mid_layer+5): 
+            model.add_hook(
+                name=f"blocks.{layer}.attn.hook_pattern",
+                hook=partial(mask_attention_two, key_pos=pos, query_pos=pos+1, head_no=heads[layer].item()),
+            )
+        logits = model(data)
+        probs = torch.nn.functional.softmax(logits, dim=-1)
+        correct_probs = probs[torch.arange(len(labels)).to(probs.device), -1, labels.to(probs.device)]
+        cur_line.append(correct_probs.sum().cpu())
+
+    all_lines.append(cur_line)
+
+# %%
+
+fig = go.Figure()
+for idx, position in enumerate(range(relevant_positions[" subject_start"], relevant_positions[" subject_end"]+1)):
+    fig.add_trace(
+        go.Scatter(
+            x=[i for i in range(model.cfg.n_layers)],
+            y=all_lines[idx],
+            name=str(idx) + "_" + model.tokenizer.decode(data[1, position].item()),
+        )
+    )
+print(fig.to_json())
 
 # %%
