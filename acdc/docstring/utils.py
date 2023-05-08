@@ -120,7 +120,7 @@ def get_all_docstring_things(
             )
 
         # note neg sign!!!
-        return -(correct_logits.mean() - incorrect_logits.max(dim=-1).values.mean()).item()
+        return -(correct_logits.mean() - incorrect_logits.max(dim=-1).values.mean())
 
     def ldgz_docstring_metric(
         logits: torch.Tensor,
@@ -131,7 +131,7 @@ def get_all_docstring_things(
         pos_logits = logits[:, -1, :]
         max_correct, _ = torch.gather(pos_logits, index=correct_labels, dim=1).max(dim=1)
         max_wrong, _ = torch.gather(pos_logits, index=wrong_labels, dim=1).max(dim=1)
-        return -((max_correct - max_wrong > 0).sum() / len(max_correct)).item()
+        return -((max_correct - max_wrong > 0).sum() / len(max_correct))
 
     if metric_name == "kl_div":
         validation_metric = partial(
