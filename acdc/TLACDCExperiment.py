@@ -668,12 +668,14 @@ class TLACDCExperiment:
         return None
 
     def increment_current_node(self) -> None:
-        self.current_node = self.find_next_node()
-        print("We moved to ", self.current_node)
+        while True:
+            self.current_node = self.find_next_node()
+            print("We moved to ", self.current_node)
 
-        if self.current_node is not None and not (self.current_node_connected() or self.current_node.name == "blocks.0.hook_resid_pre"):
+            if self.current_node is None or self.current_node_connected() or self.current_node.name == "blocks.0.hook_resid_pre":
+                break
+
             print("But it's bad")
-            self.increment_current_node()
 
     def count_no_edges(self):
         cnt = 0
