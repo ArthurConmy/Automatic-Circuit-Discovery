@@ -52,7 +52,7 @@ def main(testing=False, use_kubernetes=False):
                                 "run",
                                 f"--name=agarriga-docstring-{i:03d}",
                                 "--shared-host-dir-slow-tolerant",
-                                "--container=ghcr.io/rhaps0dy/automatic-circuit-discovery:1.2.9",
+                                "--container=ghcr.io/rhaps0dy/automatic-circuit-discovery:1.2.10",
                                 "--cpu=4",
                                 "--gpu=0",
                                 "--login",
