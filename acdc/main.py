@@ -181,15 +181,21 @@ elif TASK == "induction":
     validation_metric = induction_things.validation_metric
     metric = lambda x: validation_metric(x).item()
 
-    test_metric_fn = induction_things.test_metric
+    test_metric_fns = {args.metric: induction_things.test_metric}
     test_metric_data = induction_things.test_data
-    test_metric = lambda model: test_metric_fn(model(test_metric_data)).item()
 
 elif TASK == "docstring":
     num_examples = 50
     seq_len = 41
-    tl_model, toks_int_values, toks_int_values_other, metric, second_metric = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric_name="docstring_metric", correct_incorrect_wandb=True)
+    docstring_things = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric_name="docstring_metric", correct_incorrect_wandb=True)
 
+    tl_model, toks_int_values, toks_int_values_other = docstring_things.tl_model, docstring_things.validation_data, docstring_things.validation_patch_data
+
+    validation_metric = docstring_things.validation_metric
+    metric = lambda x: validation_metric(x).item()
+
+    test_metric_fns = docstring_things.test_metrics
+    test_metric_data = docstring_things.test_data
 else:
     raise ValueError(f"Unknown task {TASK}")
 
@@ -278,12 +284,13 @@ for i in range(100_000):
     if i==0:
         exp.save_edges("edges.pkl")
 
-    if TASK == "induction":
+    if TASK in ["docstring", "induction"]:
         with torch.no_grad():
-            test_metric_value = test_metric(exp.model)
-            print("test metric:", test_metric_value)
+            test_metric_values = {}
+            for k, fn in test_metric_fns.items():
+                test_metric_values["test_"+k] = fn(exp.model(test_metric_data)).item()
         if USING_WANDB:
-            wandb.log(dict(test_specific_metric=test_metric_value))
+            wandb.log(test_metric_values)
 
     if exp.current_node is None:
         break

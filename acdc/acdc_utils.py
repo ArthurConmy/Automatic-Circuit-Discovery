@@ -182,8 +182,13 @@ def negative_log_probs(
     labels: torch.Tensor,
     mask_repeat_candidates: Optional[torch.Tensor] = None,
     baseline: Union[float, torch.Tensor] = 0.0,
+    last_seq_element_only: bool = True,
 ) -> torch.Tensor:
     logprobs = F.log_softmax(logits, dim=-1)
+
+    if last_seq_element_only:
+        logprobs = logprobs[:, -1, :]
+        labels = labels[:, -1]
 
     # Subtract a baseline for each element -- which could be 0 or the NLL of the base_model_logprobs
     nll_all = (
@@ -210,11 +215,18 @@ class MatchNLLMetric:
         labels: torch.Tensor,
         base_model_logprobs: torch.Tensor,
         mask_repeat_candidates: Optional[torch.Tensor] = None,
+        last_seq_element_only: bool = True,
     ):
         self.labels = labels
         self.mask_repeat_candidates = mask_repeat_candidates
+        self.last_seq_element_only = last_seq_element_only
 
         logprobs = base_model_logprobs
+        if last_seq_element_only:
+            assert logprobs.ndim == 2
+        else:
+            assert logprobs.ndim == 3
+
         self.base_nll_unreduced = F.nll_loss(
             logprobs.view(-1, logprobs.size(-1)), labels.view(-1), reduction="none"
         ).view(logprobs.size()[:-1])
@@ -227,4 +239,5 @@ class MatchNLLMetric:
             self.labels,
             mask_repeat_candidates=self.mask_repeat_candidates,
             baseline=self.base_nll_unreduced,
+            last_seq_element_only=self.last_seq_element_only,
         )
