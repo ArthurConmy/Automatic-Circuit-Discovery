@@ -188,7 +188,8 @@ elif TASK == "induction":
 elif TASK == "docstring":
     num_examples = 50
     seq_len = 41
-    docstring_things = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric_name="docstring_metric", correct_incorrect_wandb=True)
+    docstring_things = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE,
+                                                metric_name=args.metric, correct_incorrect_wandb=True)
 
     tl_model, toks_int_values, toks_int_values_other = docstring_things.tl_model, docstring_things.validation_data, docstring_things.validation_patch_data
 

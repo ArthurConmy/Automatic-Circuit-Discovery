@@ -129,7 +129,7 @@ def get_all_docstring_things(
     ):
         """Logit diff greater zero fraction (with neg sign)"""
         pos_logits = logits[:, -1, :]
-        max_correct, _ = torch.gather(pos_logits, index=correct_labels, dim=1).max(dim=1)
+        max_correct, _ = torch.gather(pos_logits, index=correct_labels[..., None], dim=1).max(dim=1)
         max_wrong, _ = torch.gather(pos_logits, index=wrong_labels, dim=1).max(dim=1)
         return -((max_correct - max_wrong > 0).sum() / len(max_correct))
 
