@@ -1,4 +1,6 @@
-# %%
+# %% [markdown] 
+# This demo gets the data for the 16 Heads data in paper
+# TODO integrate the Subnetwork Probing xi stuff to make this work
 
 from IPython import get_ipython
 
@@ -11,7 +13,7 @@ import warnings
 import acdc
 from copy import deepcopy
 from acdc import HookedTransformer
-from acdc.induction.utils import §induction_things
+from acdc.induction.utils import get_all_induction_things
 import torch
 from acdc.acdc_utils import TorchIndex, Edge, EdgeType, OrderedDefaultdict, make_nd_dict
 
@@ -32,11 +34,12 @@ seq_len = 300
     metric,
     mask_rep,
 ) = get_all_induction_things(
+    kl_return_tensor=True,
     num_examples=num_examples,
     device="cuda",
     seq_len=seq_len,
     return_mask_rep=True,
-    kl_return_tensor=True,
+    return_one_element=False,
 )
 
 assert tl_model.cfg.use_attn_result, "Set this to True"
