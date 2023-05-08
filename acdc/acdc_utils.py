@@ -188,7 +188,6 @@ def negative_log_probs(
 
     if last_seq_element_only:
         logprobs = logprobs[:, -1, :]
-        labels = labels[:, -1]
 
     # Subtract a baseline for each element -- which could be 0 or the NLL of the base_model_logprobs
     nll_all = (
