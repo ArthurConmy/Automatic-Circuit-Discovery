@@ -135,6 +135,12 @@ class TorchIndex:
     def graphviz_index(self) -> str:
         return self.__repr__(graphviz_index=True)
 
+    # @classmethod
+    # def from_index(cls, hashable_tuples: tuple) -> "TorchIndex":
+    #     assert isinstance(index, tuple), type(index)
+    #     assert all([i==slice(None) or isinstance(i, int) for i in index]), f"{index=} does not have support: in future ACDC may have spicier indexing"
+    #     return cls([None if i==slice(None) else i for i in index])
+
 def make_nd_dict(end_type, n = 3) -> Any:
     """Make biiig default dicts : ) : )"""
 
@@ -157,6 +163,7 @@ def kl_divergence(
     last_seq_element_only: bool = True,
     base_model_probs_last_seq_element_only: bool = False,
     return_tensor: bool = False,
+    return_one_element: bool = True,
 ):
     """Compute KL divergence between base_model_probs and probs"""
 
@@ -178,13 +185,61 @@ def kl_divergence(
             mask_repeat_candidates.shape,
         )
         kl_div = kl_div * mask_repeat_candidates.long()
-        answer = (kl_div.sum() / mask_repeat_candidates.long().sum().item())
+        if return_one_element:
+            answer = (kl_div.sum() / mask_repeat_candidates.long().sum().item())
+        else:
+            answer = kl_div # no mask_repeats!!!
+
         if not return_tensor:
             answer=answer.item()
 
     else:
-        answer = kl_div.mean()
+        if return_one_element:
+            answer = kl_div.mean()  
+        else:
+            answer = kl_div
+
         if not return_tensor:
             answer = answer.item()
 
     return answer
+
+# ----------------------------------
+# Random helpers for scraping
+# ----------------------------------
+
+import re
+import ast
+
+def extract_info(string):
+    """Thanks GPT-4 for writing all this..."""
+
+    # Regex patterns
+    parent_pattern = r"cur_parent=TLACDCInterpNode\((.*?), \[(.*?)\]\)"
+    current_pattern = r"self.current_node=TLACDCInterpNode\((.*?), \[(.*?)\]\)"
+
+    # Extract parent info
+    parent_match = re.search(parent_pattern, string)
+    parent_name = parent_match.group(1) if parent_match else None
+    parent_list_str = parent_match.group(2) if parent_match else None
+    parent_list = None
+    if parent_list_str:
+        parent_list_items = parent_list_str.split(", ")
+        parent_list = [ast.literal_eval(item if item != "COL" else "None") for item in parent_list_items]
+
+    # Extract current node info
+    current_match = re.search(current_pattern, string)
+    current_name = current_match.group(1) if current_match else None
+    current_list_str = current_match.group(2) if current_match else None
+    current_list = None
+    if current_list_str:
+        current_list_items = current_list_str.split(", ")
+        current_list = [ast.literal_eval(item if item != "COL" else "None") for item in current_list_items]
+
+    return parent_name, parent_list, current_name, current_list
+
+if __name__ == "__main__":
+    string = "Node: cur_parent=TLACDCInterpNode(blocks.3.attn.hook_result, ['COL', 'COL', 1]) (self.current_node=TLACDCInterpNode(blocks.3.hook_resid_post, ['COL']))"
+    parent_name, parent_list, current_name, current_list = extract_info(string)
+
+    print(f"Parent Name: {parent_name}\nParent List: {parent_list}\nCurrent Name: {current_name}\nCurrent List: {current_list}")

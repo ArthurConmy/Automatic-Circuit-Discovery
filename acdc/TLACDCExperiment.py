@@ -1,5 +1,7 @@
+import os
 import pickle
 import gc
+import tempfile
 from typing import Callable, Optional, Literal, List, Dict, Any, Tuple, Union, Set, Iterable, TypeVar, Type
 import random
 from dataclasses import dataclass
@@ -13,10 +15,12 @@ from acdc.HookedTransformer import HookedTransformer
 from acdc.graphics import log_metrics_to_wandb
 import warnings
 import wandb
-from acdc.acdc_utils import TorchIndex, Edge, EdgeType
+from acdc.acdc_utils import TorchIndex, Edge, EdgeType, extract_info
 from collections import OrderedDict
 from functools import partial
 import time
+
+Subgraph = List[Tuple[str, TorchIndex]] # an alias for loading and saving from WANDB (primarily)
 
 def next_key(ordered_dict: OrderedDict, current_key):
     key_iterator = iter(ordered_dict)
@@ -691,3 +695,78 @@ class TLACDCExperiment:
     def reload_hooks(self):
         old_corr = self.corr
         self.corr = TLACDCCorrespondence.setup_from_model(self.model)
+
+    def save_subgraph(self, fpath: str) -> None:
+        """Saves the subgraph as a Dictionary of all the edges, so it can be reloaded"""
+
+        assert fpath.endswith(".pth")
+        ret = OrderedDict()
+        for tupl, edge in self.corr.all_edges().items():
+            receiver_name, receiver_torch_index, sender_name, sender_torch_index = tupl
+            receiver_index, sender_index = receiver_torch_index.hashable_tuple, sender_torch_index.hashable_tuple
+            ret[
+                (receiver_name, receiver_index, sender_name, sender_index)
+            ] = edge.present
+        torch.save(ret, fpath)
+
+    def load_subgraph(self, subgraph: Subgraph):
+
+        # assert formatting is correct
+        set_of_edges = set()
+        for tupl, edge in self.corr.all_edges().items():
+            receiver_name, receiver_torch_index, sender_name, sender_torch_index = tupl
+            receiver_index, sender_index = receiver_torch_index.hashable_tuple, sender_torch_index.hashable_tuple
+            set_of_edges.add((receiver_name, receiver_index, sender_name, sender_index))
+        assert set(subgraph.keys()) == set_of_edges, f"Ensure that the dictionary includes exactly the correct keys... e.g missing {list( set(set_of_edges) - set(subgraph.keys()) )[:1]} and has excess stuff { list(set(subgraph.keys()) - set_of_edges)[:1] }"
+
+        print("Editing all edges...")
+        for (receiver_name, receiver_index, sender_name, sender_index), is_present in subgraph.items():
+            receiver_torch_index, sender_torch_index = TorchIndex(receiver_index), TorchIndex(sender_index)
+            edge = self.corr.edges[receiver_name][receiver_torch_index][sender_name][sender_torch_index]
+            edge.present = is_present
+        print("Done!")
+
+    def load_from_wandb_run(
+        self,
+        wandb_entity_name,
+        wandb_project_name,
+        wandb_run_name,
+    ) -> None:
+        """Set the current subgraph equal to one from a wandb run"""
+
+        # initialize by marking no edges as present
+        for _, edge in self.corr.all_edges().items():
+            edge.present = False
+
+        # get the wandb logs
+        api = wandb.Api()
+        run = api.run(f"{wandb_entity_name}/{wandb_project_name}/{wandb_run_name}")
+        file = run.file("output.log")
+        
+        found_at_least_one_readable_line = False
+
+        # file.download() in a temp dir
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            file.download(tmpdirname)
+            fpath = os.path.join(tmpdirname, "output.log")
+
+            # load the subgraph
+            with open(fpath, "r") as f:
+                log_text = f.read()
+
+            lines = log_text.split("\n")
+
+            for i, line in enumerate(lines):
+                removing_connection = "...so removing connection" in line
+                keeping_connection = "...so keeping connection" in line
+
+                if removing_connection or keeping_connection:
+                    # check that the readable line is well readable
+
+                    found_at_least_one_readable_line = True
+                    previous_line = lines[i-3] # magic number because of the formatting of the log lines
+                    parent_name, parent_list, current_name, current_list = extract_info(previous_line)
+                    parent_torch_index, current_torch_index = TorchIndex(parent_list), TorchIndex(current_list)
+                    self.corr.edges[current_name][current_torch_index][parent_name][parent_torch_index].present = keeping_connection
+        
+            assert found_at_least_one_readable_line, f"No readable lines found in the log file. Is this formatted correctly ??? {lines=}"
