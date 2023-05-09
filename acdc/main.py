@@ -201,6 +201,10 @@ exp = TLACDCExperiment(
     remove_redundant=False,
 )
 
+# exp.load_from_wandb_run("remix_school-of-rock", "acdc", "c4bixuq5")
+# # ^that line of code can scrape from a WANDB run
+# print(exp.count_no_edges()) # should be 6 for that run
+
 #%%
 
 for i in range(100_000): 

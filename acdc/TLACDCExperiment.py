@@ -764,7 +764,7 @@ class TLACDCExperiment:
                     # check that the readable line is well readable
 
                     found_at_least_one_readable_line = True
-                    previous_line = lines[i-3]
+                    previous_line = lines[i-3] # magic number because of the formatting of the log lines
                     parent_name, parent_list, current_name, current_list = extract_info(previous_line)
                     parent_torch_index, current_torch_index = TorchIndex(parent_list), TorchIndex(current_list)
                     self.corr.edges[current_name][current_torch_index][parent_name][parent_torch_index].present = keeping_connection
