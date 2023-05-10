@@ -206,6 +206,18 @@ class TLACDCCorrespondence:
             )
     
         return correspondence
+    
+    def count_no_edges(self, verbose=False):
+        cnt = 0
+
+        for edge in self.all_edges().values():
+            if edge.present and edge.edge_type != EdgeType.PLACEHOLDER:
+                cnt += 1
+
+        if verbose:
+            print("No edge", cnt)
+        return cnt
+        
 
 class TLACDCCorrespondenceFast:
     """This only stores the edges in the ACDC graph picture, for speed"""
