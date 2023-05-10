@@ -20,7 +20,7 @@ from collections import OrderedDict
 from functools import partial
 import time
 
-Subgraph = List[Tuple[str, TorchIndex]] # an alias for loading and saving from WANDB (primarily)
+Subgraph = Dict[Tuple[str, TorchIndex, str, TorchIndex], bool] # an alias for loading and saving from WANDB (primarily)
 
 def next_key(ordered_dict: OrderedDict, current_key):
     key_iterator = iter(ordered_dict)

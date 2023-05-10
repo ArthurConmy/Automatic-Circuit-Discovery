@@ -243,3 +243,14 @@ if __name__ == "__main__":
     parent_name, parent_list, current_name, current_list = extract_info(string)
 
     print(f"Parent Name: {parent_name}\nParent List: {parent_list}\nCurrent Name: {current_name}\nCurrent List: {current_list}")
+
+# ----------------------------------
+# Precision and recall etc metrics
+# ----------------------------------
+
+def false_positive_rate(ground_truth, recovered):
+    assert set(ground_truth.all_edges.keys()) == set(recovered.all_edges.keys()), "There is a mismatch between the keys we're comparing here"
+
+    for tupl, edge in ground_truth.all_edges.items():
+        if edge.present != recovered.all_edges[tupl].present:
+            print(f"Edge {tupl} is different: {edge.present} vs {recovered.all_edges[tupl].present}")
