@@ -19,8 +19,9 @@ from acdc.acdc_utils import TorchIndex, Edge, EdgeType, extract_info
 from collections import OrderedDict
 from functools import partial
 import time
+from acdc.acdc_utils import TorchIndexHashableTuple
 
-Subgraph = Dict[Tuple[str, TorchIndex, str, TorchIndex], bool] # an alias for loading and saving from WANDB (primarily)
+Subgraph = Dict[Tuple[str, TorchIndexHashableTuple, str, TorchIndexHashableTuple], bool] # an alias for loading and saving from WANDB (primarily)
 
 def next_key(ordered_dict: OrderedDict, current_key):
     key_iterator = iter(ordered_dict)

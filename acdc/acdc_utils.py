@@ -13,6 +13,8 @@ import torch.nn.functional as F
 from acdc.HookedTransformer import HookedTransformer
 from collections import OrderedDict
 
+TorchIndexHashableTuple = Tuple[Union[None, slice], ...]
+
 def cleanup():
     import gc
     gc.collect()
