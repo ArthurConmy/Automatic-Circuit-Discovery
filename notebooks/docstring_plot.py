@@ -105,7 +105,7 @@ torch.autograd.set_grad_enabled(False)
 
 num_examples = 50
 seq_len = 41
-tl_model, toks_int_values, toks_int_values_other, metric, second_metric = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device="cuda", metric_name="kl_divergence", correct_incorrect_wandb=True)
+tl_model, toks_int_values, toks_int_values_other, metric, second_metric = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device="cuda", metric_name="kl_divergence", correct_incorrect_wandb=False)
 
 #%%
 

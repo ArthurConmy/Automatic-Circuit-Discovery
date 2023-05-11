@@ -12,7 +12,7 @@ from tqdm import tqdm
 import wandb
 from acdc.HookedTransformer import HookedTransformer
 
-def get_ioi_gpt2_small():
+def get_gpt2_small():
     tl_model = HookedTransformer.from_pretrained("gpt2", use_global_cache=True)
     tl_model.set_use_attn_result(True)
     tl_model.set_use_split_qkv_input(True)

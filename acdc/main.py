@@ -84,7 +84,7 @@ from acdc.acdc_utils import (
 )
 from acdc.ioi.utils import (
     get_ioi_data,
-    get_ioi_gpt2_small,
+    get_gpt2_small,
 )
 from acdc.induction.utils import (
     get_all_induction_things,
@@ -93,6 +93,7 @@ from acdc.induction.utils import (
     get_good_induction_candidates,
     get_mask_repeat_candidates,
 )
+from acdc.greaterthan.utils import get_all_greaterthan_things
 from acdc.graphics import (
     build_colorscheme,
     show,
@@ -103,7 +104,7 @@ torch.autograd.set_grad_enabled(False)
 #%%
 
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
-parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr'], help='Choose a task from the available options: ioi, docstring, induction, tracr (WIPs)')
+parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr (WIPs)')
 parser.add_argument('--threshold', type=float, required=True, help='Value for THRESHOLD')
 parser.add_argument('--first-cache-cpu', type=bool, required=False, default=True, help='Value for FIRST_CACHE_CPU')
 parser.add_argument('--second-cache-cpu', type=bool, required=False, default=True, help='Value for SECOND_CACHE_CPU')
@@ -145,7 +146,7 @@ second_metric = None # some tasks only have one metric
 
 if TASK == "ioi":
     num_examples = 100
-    tl_model = get_ioi_gpt2_small()
+    tl_model = get_gpt2_small()
     toks_int_values, toks_int_values_other, metric = get_ioi_data(tl_model, num_examples)
 elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     tracr_task = TASK.split("-")[-1] # "reverse"
@@ -162,6 +163,10 @@ elif TASK == "docstring":
     num_examples = 50
     seq_len = 41
     tl_model, toks_int_values, toks_int_values_other, metric, second_metric = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric_name="kl_divergence", correct_incorrect_wandb=True)
+elif TASK == "greaterthan":
+    num_examples = 50
+    seq_len = None # TODO!!!
+    get_all_greaterthan_things() # not implemented yet
 else:
     raise ValueError(f"Unknown task {TASK}")
 
@@ -225,3 +230,5 @@ for i in range(100_000):
         break
 
 exp.save_edges("another_final_edges.pkl")
+
+#%%
