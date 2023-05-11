@@ -121,7 +121,7 @@ parser.add_argument('--single-step', action='store_true', help='Use single step,
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
     # args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
     # args = parser.parse_args("--threshold 0.001 --using-wandb".split())
-    args = parser.parse_args("--task docstring --using-wandb --threshold 0.04 --zero-ablation --wandb-project-name acdc --indices-mode reverse --first-cache-cpu False --second-cache-cpu False".split()) # TODO figure out why this is such high edge count...
+    args = parser.parse_args("--task docstring --using-wandb --threshold 0.005 --wandb-project-name acdc --indices-mode reverse --first-cache-cpu False --second-cache-cpu False".split()) # TODO figure out why this is such high edge count...
 else:
     args = parser.parse_args()
 
@@ -143,6 +143,7 @@ SINGLE_STEP = True if args.single_step else False
 # Setup
 
 second_metric = None # some tasks only have one metric
+use_pos_embed = False
 
 if TASK == "ioi":
     num_examples = 100
@@ -162,7 +163,9 @@ elif TASK == "induction":
 elif TASK == "docstring":
     num_examples = 50
     seq_len = 41
-    tl_model, toks_int_values, toks_int_values_other, metric, second_metric = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric_name="kl_divergence", correct_incorrect_wandb=True)
+    tl_model, toks_int_values, toks_int_values_other, metric, second_metric = get_all_docstring_things(num_examples=num_examples, 
+    seq_len=seq_len, device=DEVICE, metric_name="kl_divergence", correct_incorrect_wandb=True)
+    use_pos_embed = True # experiment
 elif TASK == "greaterthan":
     num_examples = 50
     seq_len = None # TODO!!!
@@ -202,8 +205,10 @@ exp = TLACDCExperiment(
     hook_verbose=False,
     first_cache_cpu=FIRST_CACHE_CPU,
     add_sender_hooks=True,
+    use_pos_embed=use_pos_embed,
     add_receiver_hooks=False,
     remove_redundant=False,
+    show_full_index=use_pos_embed,
 )
 
 # exp.load_from_wandb_run("remix_school-of-rock", "acdc", "c4bixuq5")
@@ -218,7 +223,7 @@ for i in range(100_000):
     show(
         exp.corr,
         f"ims/img_new_{i+1}.png",
-        show_full_index=False, # hopefully works
+        show_full_index=use_pos_embed,
     )
     print(i, "-" * 50)
     print(exp.count_no_edges())

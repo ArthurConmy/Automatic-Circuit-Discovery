@@ -15,7 +15,7 @@ from acdc.HookedTransformer import HookedTransformer
 from acdc.graphics import log_metrics_to_wandb
 import warnings
 import wandb
-from acdc.acdc_utils import TorchIndex, Edge, EdgeType, extract_info
+from acdc.acdc_utils import TorchIndex, Edge, EdgeType, extract_info, shuffle_tensor
 from collections import OrderedDict
 from functools import partial
 import time
@@ -50,11 +50,13 @@ class TLACDCExperiment:
         first_cache_cpu: bool = True,
         second_cache_cpu: bool = True,
         zero_ablation: bool = False, # use zero rather than 
+        show_full_index = False,
         using_wandb: bool = False,
         wandb_entity_name: str = "",
         wandb_project_name: str = "",
         wandb_run_name: str = "",
         wandb_notes: str = "",
+        use_pos_embed: bool = True,
         skip_edges = "no",
         add_sender_hooks: bool = True,
         add_receiver_hooks: bool = False,
@@ -71,6 +73,8 @@ class TLACDCExperiment:
         self.remove_redundant = remove_redundant
         self.indices_mode = indices_mode
         self.names_mode = names_mode
+        self.use_pos_embed = use_pos_embed
+        self.show_full_index = show_full_index
 
         self.model = model
         self.verify_model_setup()
@@ -84,7 +88,7 @@ class TLACDCExperiment:
             warnings.warn("Never skipping edges, for now")
             skip_edges = "no"
 
-        self.corr = TLACDCCorrespondence.setup_from_model(self.model)
+        self.corr = TLACDCCorrespondence.setup_from_model(self.model, use_pos_embed=use_pos_embed)
             
         self.reverse_topologically_sort_corr()
         self.current_node = self.corr.first_node()
@@ -364,6 +368,9 @@ class TLACDCExperiment:
         if self.second_cache_cpu:
             self.model.global_cache.to("cpu", which_caches="second")
 
+        if self.use_pos_embed:
+            self.model.global_cache.second_cache["hook_pos_embed"][:] = shuffle_tensor(self.model.global_cache.second_cache["hook_pos_embed"][0], seed=49) # make all positions the same shuffled set of positions
+
         self.model.reset_hooks()
 
     def setup_model_hooks(
@@ -451,7 +458,7 @@ class TLACDCExperiment:
             added_sender_hook = self.add_sender_hook(self.current_node, override=True)
 
         is_this_node_used = False
-        if self.current_node.name == "blocks.0.hook_resid_pre":
+        if self.current_node.name in ["blocks.0.hook_resid_pre", "hook_pos_embed", "hook_embed"]:
             is_this_node_used = True
 
         sender_names_list = list(self.corr.edges[self.current_node.name][self.current_node.index])
@@ -561,7 +568,7 @@ class TLACDCExperiment:
             show(
                 self.corr,
                 fname=fname,
-                show_full_index=False, # hopefully works
+                show_full_index=self.show_full_index,
             )
             if self.using_wandb:
                 wandb.log(
@@ -677,7 +684,7 @@ class TLACDCExperiment:
             self.current_node = self.find_next_node()
             print("We moved to ", self.current_node)
 
-            if self.current_node is None or self.current_node_connected() or self.current_node.name == "blocks.0.hook_resid_pre":
+            if self.current_node is None or self.current_node_connected() or self.current_node.name in ["blocks.0.hook_resid_pre", "hook_pos_embed", "hook_embed"]:
                 break
 
             print("But it's bad")
