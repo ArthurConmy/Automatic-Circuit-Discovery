@@ -143,18 +143,22 @@ def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric
             negative_log_probs,
             labels=validation_labels,
             mask_repeat_candidates=validation_mask,
+            last_seq_element_only=False,
         )
         test_metric = partial(
             negative_log_probs,
             labels=test_labels,
             mask_repeat_candidates=test_mask,
+            last_seq_element_only=False,
         )
     elif metric == "match_nll":
         validation_metric = MatchNLLMetric(
-            labels=validation_labels, base_model_logprobs=base_val_logprobs, mask_repeat_candidates=validation_mask
+            labels=validation_labels, base_model_logprobs=base_val_logprobs, mask_repeat_candidates=validation_mask,
+            last_seq_element_only=False,
         )
         test_metric = MatchNLLMetric(
-            labels=test_labels, base_model_logprobs=base_test_logprobs, mask_repeat_candidates=test_mask
+            labels=test_labels, base_model_logprobs=base_test_logprobs, mask_repeat_candidates=test_mask,
+            last_seq_element_only=False,
         )
     else:
         raise ValueError(f"Unknown metric {metric}")

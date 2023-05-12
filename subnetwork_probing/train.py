@@ -175,7 +175,7 @@ def train_induction(
     )
 
     if isinstance(all_task_things, AllInductionThings):
-        test_metric_fns = {args.metric: all_task_things.test_metric}
+        test_metric_fns = {args.loss_type: all_task_things.test_metric}
     else:
         test_metric_fns = all_task_things.test_metrics
 

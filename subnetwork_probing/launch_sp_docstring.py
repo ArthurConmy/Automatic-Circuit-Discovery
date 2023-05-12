@@ -30,7 +30,7 @@ def main(testing: bool):
                         "--wandb-project=induction-sp-replicate",
                         "--wandb-entity=remix_school-of-rock",
                         "--wandb-group=reset-with-nll-21",
-                        f"--device=cuda",
+                        f"--device={'cpu' if testing else 'cuda'}",
                         f"--epochs={1 if testing else 10000}",
                         f"--zero-ablation={zero_ablation}",
                         f"--reset-subject={reset_network}",
@@ -40,7 +40,7 @@ def main(testing: bool):
                         f"--seq-len=41",
                         f"--n-loss-average-runs={1 if testing else 20}",
                         "--wandb-dir=/training/sp",  # If it doesn't exist wandb will use /tmp
-                        "--wandb-mode=online",
+                        f"--wandb-mode={'offline' if testing else 'online'}",
                     ]
                     commands.append(command)
 

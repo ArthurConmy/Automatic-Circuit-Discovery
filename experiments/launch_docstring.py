@@ -27,7 +27,7 @@ def main(testing: bool):
                         f"--metric={loss_type}",
                         f"--torch-num-threads={CPU}",
                         "--wandb-dir=/training/acdc",  # If it doesn't exist wandb will use /tmp
-                        "--wandb-mode=offline",
+                        f"--wandb-mode={'offline' if testing else 'online'}",
                         f"--max-num-epochs={1 if testing else 100_000}",
                     ]
                     if zero_ablation:
