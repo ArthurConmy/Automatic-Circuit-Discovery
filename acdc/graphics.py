@@ -64,6 +64,9 @@ def get_node_name(node: TLACDCInterpNode, show_full_index=True):
             name += f"_[{node.index.hashable_tuple[2]}]"
         return name
 
+    elif "embed" in node.name:
+        name = "pos_embeds" if "pos" in node.name else "token_embeds"
+
     # Handle q_input and hook_q etc
     elif any([node.name.endswith(qkv_input_substring) for qkv_input_substring in qkv_input_substrings]):
         relevant_letter = None
@@ -89,7 +92,7 @@ def get_node_name(node: TLACDCInterpNode, show_full_index=True):
         raise ValueError(f"Unrecognized node name {node.name}")
 
     if show_full_index:
-        name += f"_{node.index.graphviz_str()}"
+        name += f"_{str(node.index.graphviz_index())}"
 
     return "<" + name + ">"
 

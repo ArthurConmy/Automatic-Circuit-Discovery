@@ -59,6 +59,7 @@ import plotly.graph_objects as go
 
 pio.renderers.default = "colab"
 from acdc.hook_points import HookedRootModule, HookPoint
+from acdc.graphics import show
 from acdc.HookedTransformer import (
     HookedTransformer,
 )
@@ -84,7 +85,7 @@ from acdc.acdc_utils import (
 )
 from acdc.ioi.utils import (
     get_ioi_data,
-    get_ioi_gpt2_small,
+    get_gpt2_small,
 )
 from acdc.induction.utils import (
     get_all_induction_things,
@@ -93,6 +94,7 @@ from acdc.induction.utils import (
     get_good_induction_candidates,
     get_mask_repeat_candidates,
 )
+from acdc.greaterthan.utils import get_all_greaterthan_things
 from acdc.graphics import (
     build_colorscheme,
     show,
@@ -103,7 +105,7 @@ torch.autograd.set_grad_enabled(False)
 #%%
 
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
-parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr'], help='Choose a task from the available options: ioi, docstring, induction, tracr (WIPs)')
+parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr (WIPs)')
 parser.add_argument('--threshold', type=float, required=True, help='Value for THRESHOLD')
 parser.add_argument('--first-cache-cpu', type=bool, required=False, default=True, help='Value for FIRST_CACHE_CPU')
 parser.add_argument('--second-cache-cpu', type=bool, required=False, default=True, help='Value for SECOND_CACHE_CPU')
@@ -120,7 +122,7 @@ parser.add_argument('--single-step', action='store_true', help='Use single step,
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
     # args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
     # args = parser.parse_args("--threshold 0.001 --using-wandb".split())
-    args = parser.parse_args("--task docstring --using-wandb --threshold 0.04 --zero-ablation --wandb-project-name acdc --indices-mode reverse --first-cache-cpu False --second-cache-cpu False".split()) # TODO figure out why this is such high edge count...
+    args = parser.parse_args("--task docstring --using-wandb --threshold 0.005 --wandb-project-name acdc --indices-mode reverse --first-cache-cpu False --second-cache-cpu False".split()) # TODO figure out why this is such high edge count...
 else:
     args = parser.parse_args()
 
@@ -142,10 +144,11 @@ SINGLE_STEP = True if args.single_step else False
 # Setup
 
 second_metric = None # some tasks only have one metric
+use_pos_embed = False
 
 if TASK == "ioi":
     num_examples = 100
-    tl_model = get_ioi_gpt2_small()
+    tl_model = get_gpt2_small()
     toks_int_values, toks_int_values_other, metric = get_ioi_data(tl_model, num_examples)
 elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     tracr_task = TASK.split("-")[-1] # "reverse"
@@ -161,7 +164,14 @@ elif TASK == "induction":
 elif TASK == "docstring":
     num_examples = 50
     seq_len = 41
-    tl_model, toks_int_values, toks_int_values_other, metric, second_metric = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric_name="kl_divergence", correct_incorrect_wandb=True)
+    tl_model, toks_int_values, toks_int_values_other, metric, second_metric = get_all_docstring_things(num_examples=num_examples, 
+    seq_len=seq_len, device=DEVICE, metric_name="kl_divergence", correct_incorrect_wandb=True)
+elif TASK == "greaterthan":
+    num_examples = 100
+    tl_model, toks_int_values, prompts, metric = get_all_greaterthan_things(num_examples=num_examples, device=DEVICE)
+    toks_int_values_other = toks_int_values.clone()
+    toks_int_values_other[:, 7] = 486 # replace with 01
+
 else:
     raise ValueError(f"Unknown task {TASK}")
 
@@ -197,8 +207,10 @@ exp = TLACDCExperiment(
     hook_verbose=False,
     first_cache_cpu=FIRST_CACHE_CPU,
     add_sender_hooks=True,
+    use_pos_embed=use_pos_embed,
     add_receiver_hooks=False,
     remove_redundant=False,
+    show_full_index=use_pos_embed,
 )
 
 # exp.load_from_wandb_run("remix_school-of-rock", "acdc", "c4bixuq5")
@@ -213,7 +225,7 @@ for i in range(100_000):
     show(
         exp.corr,
         f"ims/img_new_{i+1}.png",
-        show_full_index=False, # hopefully works
+        show_full_index=use_pos_embed,
     )
     print(i, "-" * 50)
     print(exp.count_no_edges())
@@ -224,6 +236,6 @@ for i in range(100_000):
     if exp.current_node is None or SINGLE_STEP:
         break
 
-exp.save_edges("another_final_edges.pkl")
+exp.save_edges("another_final_edges.pkl") 
 
 #%%

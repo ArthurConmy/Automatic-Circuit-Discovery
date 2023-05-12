@@ -13,6 +13,8 @@ import torch.nn.functional as F
 from acdc.HookedTransformer import HookedTransformer
 from collections import OrderedDict
 
+TorchIndexHashableTuple = Tuple[Union[None, slice], ...]
+
 def cleanup():
     import gc
     gc.collect()
@@ -243,3 +245,41 @@ if __name__ == "__main__":
     parent_name, parent_list, current_name, current_list = extract_info(string)
 
     print(f"Parent Name: {parent_name}\nParent List: {parent_list}\nCurrent Name: {current_name}\nCurrent List: {current_list}")
+
+# ----------------------------------
+# Precision and recall etc metrics
+# ----------------------------------
+
+def get_rate(ground_truth, recovered, mode, verbose=False):
+    assert mode in ["true positive", "false positive", "false negative"]
+    assert set(ground_truth.all_edges().keys()) == set(recovered.all_edges().keys()), "There is a mismatch between the keys we're comparing here"
+
+    warnings.warn("All edges a bunch will slow things down, find alternative. Also these are not rates atm, rename")
+
+    cnt = 0
+    for tupl, edge in ground_truth.all_edges().items():
+        if edge.edge_type == EdgeType.PLACEHOLDER:
+            continue
+        if mode == "false positive": 
+            if recovered.all_edges()[tupl].present and not edge.present:
+                cnt += 1
+                if verbose:
+                    print(tupl)
+        elif mode == "negative":
+            if not recovered.all_edges()[tupl].present and edge.present:
+                cnt += 1
+        elif mode == "true positive":
+            if recovered.all_edges()[tupl].present and edge.present:
+                cnt += 1
+
+    # cnt /= ground_truth.count_no_edges()
+    return cnt
+
+def false_positive_rate(ground_truth, recovered, verbose=False):
+    return get_rate(ground_truth, recovered, mode="false positive", verbose=verbose)
+
+def false_negative_rate(ground_truth, recovered, verbose=False):
+    return get_rate(ground_truth, recovered, mode="false negative", verbose=verbose)
+
+def true_positive_rate(ground_truth, recovered, verbose=False):
+    return get_rate(ground_truth, recovered, mode="true positive", verbose=verbose)
