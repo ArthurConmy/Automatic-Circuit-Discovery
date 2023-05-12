@@ -134,3 +134,6 @@ jupyterlab==3.0.16
 jupyterlab-pygments==0.2.2
 jupyterlab-widgets==3.0.3
 jupyterlab_server==2.15.1
+
+
+tracr @ git+https://github.com/deepmind/tracr.git@e75ecdaec12bf2d831a60e54d4270e8fa31fb537

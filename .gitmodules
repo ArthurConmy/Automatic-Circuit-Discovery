@@ -1,3 +1,0 @@
-[submodule "tracr"]
-	path = tracr
-	url = git@github.com:deepmind/tracr.git
