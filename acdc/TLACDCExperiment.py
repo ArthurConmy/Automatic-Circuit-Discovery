@@ -56,7 +56,7 @@ class TLACDCExperiment:
         wandb_project_name: str = "",
         wandb_run_name: str = "",
         wandb_notes: str = "",
-        use_pos_embed: bool = True,
+        use_pos_embed: bool = False,
         skip_edges = "no",
         add_sender_hooks: bool = True,
         add_receiver_hooks: bool = False,

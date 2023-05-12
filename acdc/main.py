@@ -166,7 +166,6 @@ elif TASK == "docstring":
     seq_len = 41
     tl_model, toks_int_values, toks_int_values_other, metric, second_metric = get_all_docstring_things(num_examples=num_examples, 
     seq_len=seq_len, device=DEVICE, metric_name="kl_divergence", correct_incorrect_wandb=True)
-    use_pos_embed = True # experiment
 elif TASK == "greaterthan":
     num_examples = 100
     tl_model, toks_int_values, prompts, metric = get_all_greaterthan_things(num_examples=num_examples, device=DEVICE)
