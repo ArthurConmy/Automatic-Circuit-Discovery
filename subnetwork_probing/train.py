@@ -9,6 +9,7 @@ from functools import partial
 from pathlib import Path
 from typing import Dict, List, Tuple
 import collections
+import huggingface_hub
 
 import networkx as nx
 import numpy as np
@@ -183,8 +184,10 @@ def train_induction(
     print("Reset subject:", args.reset_subject)
     if args.reset_subject:
         assert isinstance(all_task_things, AllInductionThings)
-        base_dir = Path(__file__).parent.parent / "data" / "induction"
-        reset_state_dict = torch.load(base_dir / "random_model.pt")
+        random_model_file = huggingface_hub.hf_hub_download(
+            repo_id="agaralon/acdc_reset_models", filename="induction_random_model.pt"
+        )
+        reset_state_dict = torch.load(random_model_file, map_location=args.device)
         induction_model.load_state_dict(reset_state_dict)
         del reset_state_dict
         induction_model.freeze_weights()
