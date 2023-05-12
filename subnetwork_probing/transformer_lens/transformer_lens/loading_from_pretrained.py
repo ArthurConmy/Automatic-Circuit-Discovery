@@ -1,9 +1,9 @@
 # %%
-from transformer_lens.HookedTransformerConfig import HookedTransformerConfig
+from .HookedTransformerConfig import HookedTransformerConfig
 import einops
 import torch
 from transformers import AutoConfig, AutoModelForCausalLM
-import transformer_lens.utils as utils
+from . import utils as utils
 from typing import Optional, Dict
 import logging
 from huggingface_hub import HfApi

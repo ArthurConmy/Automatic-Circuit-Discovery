@@ -6,7 +6,7 @@ install_import_hook("transformer_lens")
 
 from transformer_lens import HookedTransformer, HookedTransformerConfig
 from torchtyping import TensorType as TT, patch_typeguard
-from transformer_lens.hook_points import HookPoint
+from .hook_points import HookPoint
 
 import functools
 import torch as t

@@ -136,4 +136,6 @@ jupyterlab-widgets==3.0.3
 jupyterlab_server==2.15.1
 
 
-tracr @ git+https://github.com/deepmind/tracr.git@e75ecdaec12bf2d831a60e54d4270e8fa31fb537
+git+https://github.com/deepmind/tracr.git@e75ecdaec12bf2d831a60e54d4270e8fa31fb537#egg=tracr
+ipython==8.13.2
+pytest==7.3.1

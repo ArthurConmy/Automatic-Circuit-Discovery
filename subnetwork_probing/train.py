@@ -16,15 +16,15 @@ from acdc.docstring.utils import AllDocstringThings, get_all_docstring_things
 import pandas as pd
 import torch
 import torch.nn.functional as F
-import transformer_lens.utils as utils
+import subnetwork_probing.transformer_lens.transformer_lens.utils as utils
 from acdc.acdc_utils import EdgeType, TorchIndex
 from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from acdc.TLACDCInterpNode import TLACDCInterpNode
 from acdc.induction.utils import AllInductionThings, get_all_induction_things, get_mask_repeat_candidates
 from tqdm import tqdm
-from transformer_lens.HookedTransformer import HookedTransformer
-from transformer_lens.HookedTransformerConfig import HookedTransformerConfig
-from transformer_lens.ioi_dataset import IOIDataset
+from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformer import HookedTransformer
+from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformerConfig import HookedTransformerConfig
+from subnetwork_probing.transformer_lens.transformer_lens.ioi_dataset import IOIDataset
 
 import wandb
 

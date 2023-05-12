@@ -3,8 +3,8 @@ import torch
 from typing import Optional, Union, Tuple, List, Dict
 from torchtyping import TensorType as TT
 from functools import lru_cache
-import transformer_lens.utils as utils
-from transformer_lens.torchtyping_helper import (
+from . import utils as utils
+from .torchtyping_helper import (
     T as TH,
 )  # Need the import as since FactoredMatrix declares T (for transpose)
 

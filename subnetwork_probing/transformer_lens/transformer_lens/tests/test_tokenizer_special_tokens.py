@@ -5,7 +5,7 @@ install_import_hook("transformer_lens")
 from transformer_lens import HookedTransformer, HookedTransformerConfig
 from torchtyping import TensorType as TT, patch_typeguard
 from transformers import AutoTokenizer
-import transformer_lens.loading_from_pretrained as loading
+from . import loading_from_pretrained as loading
 
 patch_typeguard()
 

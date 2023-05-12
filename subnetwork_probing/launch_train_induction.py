@@ -25,9 +25,9 @@ def main(testing: bool):
                 for lambda_reg in [0.01] if testing else regularization_params:
                     command = [
                         "python",
-                        "code/train_induction.py"
+                        "subnetwork_probing/train.py"
                         if testing
-                        else "/Automatic-Circuit-Discovery/subnetwork-probing/code/train_induction.py",
+                        else "/Automatic-Circuit-Discovery/subnetwork_probing/train.py",
                         "--task=induction",
                         f"--lambda-reg={lambda_reg:.3f}",
                         f"--wandb-name=agarriga-sp-{len(commands):03d}",

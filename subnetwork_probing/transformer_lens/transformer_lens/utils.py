@@ -16,8 +16,8 @@ from rich import print as rprint
 # from datasets.arrow_dataset import Dataset
 # from datasets.load import load_dataset
 
-from transformer_lens import FactoredMatrix
-from transformer_lens.torchtyping_helper import T
+from . import FactoredMatrix
+from .torchtyping_helper import T
 
 CACHE_DIR = transformers.TRANSFORMERS_CACHE
 import json

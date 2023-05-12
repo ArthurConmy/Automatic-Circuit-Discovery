@@ -19,18 +19,18 @@ from transformers import (
 )
 from datasets.load import load_dataset
 
-from transformer_lens.hook_points import HookedRootModule, HookPoint
-from transformer_lens import HookedTransformerConfig
-from transformer_lens.ActivationCache import ActivationCache
-from transformer_lens.FactoredMatrix import FactoredMatrix
+from .hook_points import HookedRootModule, HookPoint
+from . import HookedTransformerConfig
+from .ActivationCache import ActivationCache
+from .FactoredMatrix import FactoredMatrix
 
 # Note - activation cache is used with run_with_cache, past_key_value_caching is used for generation.
-from transformer_lens.past_key_value_caching import HookedTransformerKeyValueCache
+from .past_key_value_caching import HookedTransformerKeyValueCache
 
-from transformer_lens.components import *
-import transformer_lens.loading_from_pretrained as loading
-from transformer_lens.torchtyping_helper import T
-import transformer_lens.utils as utils
+from .components import *
+from . import loading_from_pretrained as loading
+from .torchtyping_helper import T
+from . import utils as utils
 
 SingleLoss = TT[()]  # Type alias for a single element tensor
 LossPerToken = TT["batch", "position - 1"]

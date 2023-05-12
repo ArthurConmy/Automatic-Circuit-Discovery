@@ -8,15 +8,15 @@ import logging
 
 from functools import *
 
-from transformer_lens.hook_points import HookPoint, MaskedHookPoint
-from transformer_lens.utils import gelu_new, solu, gelu_fast
-from transformer_lens.HookedTransformerConfig import HookedTransformerConfig
-from transformer_lens.FactoredMatrix import FactoredMatrix
-from transformer_lens.torchtyping_helper import T
+from .hook_points import HookPoint, MaskedHookPoint
+from .utils import gelu_new, solu, gelu_fast
+from .HookedTransformerConfig import HookedTransformerConfig
+from .FactoredMatrix import FactoredMatrix
+from .torchtyping_helper import T
 
 from fancy_einsum import einsum
 
-from transformer_lens.past_key_value_caching import HookedTransformerKeyValueCacheEntry
+from .past_key_value_caching import HookedTransformerKeyValueCacheEntry
 
 # See tests/should_fail.py for an example of how to enforce type annotations at runtime
 from torchtyping import TensorType as TT
