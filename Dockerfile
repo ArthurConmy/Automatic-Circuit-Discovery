@@ -18,7 +18,5 @@ RUN pip install -r requirements.txt && rm -rf "${HOME}/.cache"
 COPY --chown=root:root . .
 # Abort if repo is dirty
 RUN if ! { [ -z "$(git status --porcelain --ignored=traditional)" ] \
-    && [ -z "$(cd tracr && git status --porcelain --ignored=traditional)" ] \
-    && [ -z "$(cd subnetwork-probing && git status --porcelain --ignored=traditional)" ] \
     ; }; then exit 1; fi
-RUN pip install -e tracr -e . -e subnetwork-probing/transformer_lens && rm -rf "${HOME}/.cache"
+RUN pip install -e . && rm -rf "${HOME}/.cache"
