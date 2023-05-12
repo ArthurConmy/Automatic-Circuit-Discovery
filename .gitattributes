@@ -1,1 +1,2 @@
 *.ipynb merge=nbdev-merge
+*.pt filter=lfs diff=lfs merge=lfs -text
