@@ -1,10 +1,9 @@
-import subprocess
+from experiments.launcher import KubernetesJob, launch
 import numpy as np
-import shlex
-import random
 
+CPU = 2
 
-def main(testing=False):
+def main(testing: bool):
     # Base NLL:  0.9099822044372559
     # Reset NLL:  11.174062728881836
     # Reset KL:  10.114195823669434
@@ -17,9 +16,9 @@ def main(testing=False):
             np.linspace(10, 250, 13)[1:],
         ]
     )
-    seed = random.randint(0, 2**31 - 1)
+    seed = 1769702305
 
-    i = 0
+    commands: list[list[str]] = []
     for reset_subject in [0, 1]:
         for zero_ablation in [0, 1]:
             for loss_type in ["nll", "kl_div", "match_nll"]:
@@ -31,7 +30,7 @@ def main(testing=False):
                         else "/Automatic-Circuit-Discovery/subnetwork-probing/code/train_induction.py",
                         "--task=induction",
                         f"--lambda-reg={lambda_reg:.3f}",
-                        f"--wandb-name=agarriga-sp-{i:03d}",
+                        f"--wandb-name=agarriga-sp-{len(commands):03d}",
                         "--wandb-project=induction-sp-replicate",
                         "--wandb-entity=remix_school-of-rock",
                         "--wandb-group=reset-with-nll-21",
@@ -47,36 +46,16 @@ def main(testing=False):
                         "--wandb-dir=/training/sp-induction",  # If it doesn't exist wandb will use /tmp
                         "--wandb-mode=online",
                     ]
-                    command_str = shlex.join(command)
-                    if testing:
-                        print("Running", command_str)
-                        # out = subprocess.run(command, check=True, capture_output=True)
-                        print("Output:", out.stdout.decode("utf-8"))
-                        continue
+                    commands.append(command)
 
-                    print("Launching", command_str)
-                    subprocess.run(
-                        [
-                            "ctl",
-                            "job",
-                            "run",
-                            f"--name=agarriga-sp-{i:03d}",
-                            "--shared-host-dir-slow-tolerant",
-                            "--container=ghcr.io/rhaps0dy/automatic-circuit-discovery:1.2.8",
-                            "--cpu=4",
-                            "--gpu=1",
-                            "--login",
-                            "--wandb",
-                            "--never-restart",
-                            f"--command={command_str}",
-                            "--working-dir=/Automatic-Circuit-Discovery",
-                            "--shared-host-dir=/home/agarriga/.cache/huggingface",
-                            "--shared-host-dir-mount=/root/.cache/huggingface",
-                        ],
-                        check=True,
-                    )
-                    i += 1
+    launch(
+        commands,
+        name="sp-induction",
+        job=None
+        if testing
+        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.2.8", cpu=CPU, gpu=1),
+    )
 
 
 if __name__ == "__main__":
-    main()
+    main(testing=False)
