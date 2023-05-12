@@ -158,10 +158,6 @@ for run in tqdm(filtered_runs):
         cnt+=1
         continue
 
-#%%
-
-# torch.save([c.all_edges() for c in corrs], "corrs.pt")
-
 # %%
 
 edges_to_keep = []

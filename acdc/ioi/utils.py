@@ -19,6 +19,10 @@ def get_gpt2_small(device="cuda"):
     tl_model.set_use_split_qkv_input(True)
     return tl_model
 
+def get_ioi_gpt2_small(device="cuda"):
+    """For backwards compat"""
+    return get_gpt2_small(device=device)
+
 def get_ioi_data(tl_model, N):
     ioi_dataset = IOIDataset(
         prompt_type="ABBA",
