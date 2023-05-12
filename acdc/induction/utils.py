@@ -79,7 +79,9 @@ def get_mask_repeat_candidates(num_examples=None, seq_len=None):
     else:
         return mask_repeat_candidates[:num_examples, :seq_len]
 
-def get_all_induction_things(num_examples, seq_len, device, randomize_data=True, data_seed=42, kl_return_tensor=False, return_mask_rep=False, return_one_element=True):
+def get_all_induction_things(
+    num_examples, seq_len, device, randomize_data=True, data_seed=42, kl_return_tensor=False, return_mask_rep=False, return_one_element=True,
+):
     tl_model = get_model()
     tl_model.to(device)
 
