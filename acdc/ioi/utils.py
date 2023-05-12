@@ -12,8 +12,9 @@ from tqdm import tqdm
 import wandb
 from acdc.HookedTransformer import HookedTransformer
 
-def get_gpt2_small():
+def get_gpt2_small(device="cuda"):
     tl_model = HookedTransformer.from_pretrained("gpt2", use_global_cache=True)
+    tl_model = tl_model.to(device)
     tl_model.set_use_attn_result(True)
     tl_model.set_use_split_qkv_input(True)
     return tl_model

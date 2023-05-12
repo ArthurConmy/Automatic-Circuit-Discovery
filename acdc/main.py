@@ -59,6 +59,7 @@ import plotly.graph_objects as go
 
 pio.renderers.default = "colab"
 from acdc.hook_points import HookedRootModule, HookPoint
+from acdc.graphics import show
 from acdc.HookedTransformer import (
     HookedTransformer,
 )
@@ -121,7 +122,7 @@ parser.add_argument('--single-step', action='store_true', help='Use single step,
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
     # args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
     # args = parser.parse_args("--threshold 0.001 --using-wandb".split())
-    args = parser.parse_args("--task docstring --using-wandb --threshold 0.005 --wandb-project-name acdc --indices-mode reverse --first-cache-cpu False --second-cache-cpu False".split()) # TODO figure out why this is such high edge count...
+    args = parser.parse_args("--task greaterthan --using-wandb --threshold 0.005 --wandb-project-name acdc --indices-mode reverse --first-cache-cpu False --second-cache-cpu False".split()) # TODO figure out why this is such high edge count...
 else:
     args = parser.parse_args()
 
@@ -167,9 +168,11 @@ elif TASK == "docstring":
     seq_len=seq_len, device=DEVICE, metric_name="kl_divergence", correct_incorrect_wandb=True)
     use_pos_embed = True # experiment
 elif TASK == "greaterthan":
-    num_examples = 50
-    seq_len = None # TODO!!!
-    get_all_greaterthan_things() # not implemented yet
+    num_examples = 100
+    tl_model, toks_int_values, prompts, metric = get_all_greaterthan_things(num_examples=num_examples, device=DEVICE)
+    toks_int_values_other = toks_int_values.clone()
+    toks_int_values_other[:, 7] = 486 # replace with 01
+
 else:
     raise ValueError(f"Unknown task {TASK}")
 
@@ -234,6 +237,44 @@ for i in range(100_000):
     if exp.current_node is None or SINGLE_STEP:
         break
 
-exp.save_edges("another_final_edges.pkl")
+exp.save_edges("1_edges.pkl") 
 
 #%%
+
+# that does
+        # with open(fname, "wb") as f:
+        #     pickle.dump(edges_list, f)
+
+# fname = "../another_final_edges.pkl"
+fname = "1_edges.pkl"
+
+with open(fname, "rb") as f:
+    edges_list = pickle.load(f)
+
+# %%
+
+for e in exp.corr.all_edges():
+    edge = exp.corr.edges[e[0]][e[1]][e[2]][e[3]]
+    edge.present = False
+    # placeholders???
+
+for e, _ in edges_list:
+    exp.corr.edges[e[0]][e[1]][e[2]][e[3]].present = True
+
+# %%
+
+show(
+    exp.corr,
+    fname="hello.png",
+    show_full_index=True,
+)
+    
+# %%
+
+all_senders = list(set([(e[0][2], e[0][3]) for e in edges_list]))
+
+# %%
+
+processed_all_senders = [e for e in all_senders if "_input" not in e[0] and "resid_mid" not in e[0]]
+
+# %%
