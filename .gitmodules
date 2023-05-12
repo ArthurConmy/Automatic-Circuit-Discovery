@@ -1,6 +1,3 @@
-[submodule "subnetwork-probing"]
-	path = subnetwork-probing
-	url = git@github.com:rhaps0dy/subnetwork-probing.git
 [submodule "tracr"]
 	path = tracr
 	url = git@github.com:deepmind/tracr.git
