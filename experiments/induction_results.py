@@ -36,10 +36,15 @@ def set_plotly_renderer(renderer="emacs"):
 
 set_plotly_renderer("emacs")
 
+ACDC_GROUP = "adria-induction-3"
+# ACDC_GROUP = "adria-docstring3"
+SP_GROUP = "reset-with-nll-21"
+# SP_GROUP = "docstring3"
+
 # %%
 
 api = wandb.Api()
-all_runs = api.runs(path="remix_school-of-rock/acdc", filters={"group": "adria-induction-3"})
+all_runs = api.runs(path="remix_school-of-rock/acdc", filters={"group": ACDC_GROUP})
 
 df = pd.DataFrame()
 for r in all_runs:
@@ -70,8 +75,7 @@ df.loc[:, "num_examples"] = 50
 
 sp_runs = []
 
-all_runs = api.runs(path="remix_school-of-rock/induction-sp-replicate", filters={"group": "reset-with-nll-21"})
-# all_runs = api.runs(path="remix_school-of-rock/induction-sp-replicate", filters={"group": "paper-discrepancy"})
+all_runs = api.runs(path="remix_school-of-rock/induction-sp-replicate", filters={"group": SP_GROUP})
 for r in all_runs:
     try:
         cfg = {k: r.config[k] for k in ["reset_subject", "zero_ablation", "loss_type", "lambda_reg", "num_examples"]}
