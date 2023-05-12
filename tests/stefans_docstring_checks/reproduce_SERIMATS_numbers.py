@@ -190,6 +190,7 @@ exp = TLACDCExperiment(
     first_cache_cpu=FIRST_CACHE_CPU,
     add_sender_hooks=False, # attempting to be efficient...
     add_receiver_hooks=False,
+    remove_redundant=True,
 )
 exp.model.reset_hooks() # essential, I would guess
 exp.setup_second_cache()
@@ -209,7 +210,10 @@ for t in exp.corr.all_edges():
         edges_to_keep.append(t)
 
 for t in exp.corr.all_edges():
-    if t not in edges_to_keep:
+    if t not in edges_to_keep or (t[2] == "blocks.0.hook_resid_pre" and t[0] == "blocks.3.hook_resid_post") or "attn.hook_result" in t[0]:
+        # I think `"attn.hook_result" in t[0]` is placeholder edges and has no effect
+        # I *had* to remove `(t[2] == "blocks.0.hook_resid_pre" and t[0] == "blocks.3.hook_resid_post")` otherwise I would get
+        # KeyError: 'blocks.0.hook_resid_pre'
         remove_edge(t[0], t[1], t[2], t[3])
     else:
         edge = exp.corr.edges[t[0]][t[1]][t[2]][t[3]]
@@ -225,4 +229,11 @@ for t in exp.corr.all_edges():
     print(f"To {t[0]} {t[1]} from {t[2]} {t[3]}")
     #if t not in edges_to_keep:
     #    print(f"To {t[0]} {t[1]} from {t[2]} {t[3]}")
+# %%
+
+for t in exp.corr.all_edges():
+    if "attn.hook_result" in t[0] or t not in edges_to_keep or (t[2] == "blocks.0.hook_resid_pre" and t[0] == "blocks.3.hook_resid_post"):
+        pass
+    else:
+        print("Keeping", t)
 # %%

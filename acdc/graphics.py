@@ -52,8 +52,6 @@ def generate_random_color(colorscheme: str) -> str:
 # -------------------------------------------
 
 def get_node_name(node: TLACDCInterpNode, show_full_index=True):
-    # TODO handle MLPs
-
     name = ""
     qkv_substrings = [f"hook_{letter}" for letter in ["q", "k", "v"]]
     qkv_input_substrings = [f"hook_{letter}_input" for letter in ["q", "k", "v"]]
@@ -65,6 +63,9 @@ def get_node_name(node: TLACDCInterpNode, show_full_index=True):
         if len(node.index.hashable_tuple) > 2:
             name += f"_[{node.index.hashable_tuple[2]}]"
         return name
+
+    elif "embed" in node.name:
+        name = "pos_embeds" if "pos" in node.name else "token_embeds"
 
     # Handle q_input and hook_q etc
     elif any([node.name.endswith(qkv_input_substring) for qkv_input_substring in qkv_input_substrings]):
@@ -91,7 +92,7 @@ def get_node_name(node: TLACDCInterpNode, show_full_index=True):
         raise ValueError(f"Unrecognized node name {node.name}")
 
     if show_full_index:
-        name += f"_{str(node.index)}"
+        name += f"_{str(node.index.graphviz_index())}"
 
     return "<" + name + ">"
 
@@ -241,6 +242,7 @@ def log_metrics_to_wandb(
     evaluated_metric = None,
     result = None,
     picture_fname = None,
+    times = None,
 ) -> None:
     """Arthur added Nones so that just some of the metrics can be plotted"""
 
@@ -257,25 +259,32 @@ def log_metrics_to_wandb(
     if result is not None:
         experiment.metrics_to_plot["results"].append(result)
     if experiment.skip_edges != "yes":
-        experiment.metrics_to_plot["num_edges"].append(experiment.get_no_edges())
+        experiment.metrics_to_plot["num_edges"].append(experiment.count_no_edges())
+    if times is not None:
+        experiment.metrics_to_plot["times"].append(times)
+        experiment.metrics_to_plot["times_diff"].append( # hopefully fixes
+            0 if len(experiment.metrics_to_plot["times"]) == 1 else (experiment.metrics_to_plot["times"][-1] - experiment.metrics_to_plot["times"][-2])
+        )
 
     experiment.metrics_to_plot["acdc_step"] += 1
     list_of_timesteps = [i + 1 for i in range(experiment.metrics_to_plot["acdc_step"])]
     if experiment.metrics_to_plot["acdc_step"] > 1:
         if result is not None:
-            do_plotly_plot_and_log(
-                experiment,
-                x=list_of_timesteps,
-                y=experiment.metrics_to_plot["results"],
-                metadata=[
-                    f"{parent_string} to {child_string}"
-                    for parent_string, child_string in zip(
-                        experiment.metrics_to_plot["list_of_parents_evaluated"],
-                        experiment.metrics_to_plot["list_of_children_evaluated"],
-                    )
-                ],
-                plot_name="results",
-            )
+            for y_name in ["results", "times_diff"]:
+                do_plotly_plot_and_log(
+                    experiment,
+                    x=list_of_timesteps,
+                    y=experiment.metrics_to_plot[y_name],
+                    metadata=[
+                        f"{parent_string} to {child_string}"
+                        for parent_string, child_string in zip(
+                            experiment.metrics_to_plot["list_of_parents_evaluated"],
+                            experiment.metrics_to_plot["list_of_children_evaluated"],
+                        )
+                    ],
+                    plot_name=y_name,
+                )
+
         if evaluated_metric is not None:
             do_plotly_plot_and_log(
                 experiment,

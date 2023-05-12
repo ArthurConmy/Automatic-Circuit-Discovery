@@ -1,6 +1,9 @@
 from typing import Callable, Union, List, Tuple, Dict, Optional, NamedTuple, overload
 from typing_extensions import Literal
 from torchtyping import TensorType as TT
+
+import acdc.utils as utils
+
 import torch
 import torch.nn as nn
 import warnings
@@ -196,12 +199,12 @@ class HookedTransformer(HookedRootModule):
         self.setup()
         self.is_caching = False
 
-    def check_and_add_hook(self, hook_point, hook_point_name, hook, dir="fwd", is_permanent=False) -> None:
+    def check_and_add_hook(self, hook_point, hook_point_name, hook, dir="fwd", is_permanent=False, prepend=False) -> None:
         if hook_point_name.endswith("attn.hook_result"):
             assert self.cfg.use_attn_result, f"Cannot add hook {hook_point_name} if use_attn_result_hook is False"
         if hook_point_name.endswith(("hook_q_input", "hook_k_input", "hook_v_input")):
             assert self.cfg.use_split_qkv_input, f"Cannot add hook {hook_point_name} if use_split_qkv_input is False"
-        return hook_point.add_hook(hook, dir=dir, is_permanent=is_permanent)
+        return hook_point.add_hook(hook, dir=dir, is_permanent=is_permanent, prepend=prepend)
 
     @overload
     def forward(
@@ -532,7 +535,7 @@ class HookedTransformer(HookedRootModule):
             tokens = self.to_tokens(input, prepend_bos=prepend_bos)[0]
         elif isinstance(input, torch.Tensor):
             tokens = input
-            tokens = tokens.squeeze()  # Get rid of a trivial batch dimension
+            tokens = tokens.squeeze(0)  # Get rid of a trivial batch dimension # ugh had to manually add this... later TransformerLens PRs do fix this!
             assert (
                 tokens.dim() == 1
             ), f"Invalid tokens input to to_str_tokens, has shape: {tokens.shape}"

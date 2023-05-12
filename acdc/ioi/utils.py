@@ -12,11 +12,16 @@ from tqdm import tqdm
 import wandb
 from acdc.HookedTransformer import HookedTransformer
 
-def get_ioi_gpt2_small():
+def get_gpt2_small(device="cuda"):
     tl_model = HookedTransformer.from_pretrained("gpt2", use_global_cache=True)
+    tl_model = tl_model.to(device)
     tl_model.set_use_attn_result(True)
     tl_model.set_use_split_qkv_input(True)
     return tl_model
+
+def get_ioi_gpt2_small(device="cuda"):
+    """For backwards compat"""
+    return get_gpt2_small(device=device)
 
 def get_ioi_data(tl_model, N):
     ioi_dataset = IOIDataset(
