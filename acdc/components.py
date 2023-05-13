@@ -107,7 +107,6 @@ class LayerNormPre(nn.Module):
         self.eps = self.cfg.eps
 
         # Adds a hook point for the normalisation scale factor
-        print("Before hook scale", "None" if global_cache is None else "Not None")
         self.hook_scale = HookPoint(global_cache=global_cache)  # [batch, pos]
         # Hook Normalized captures LN output - here it's a vector with std 1 and mean 0
         self.hook_normalized = HookPoint(global_cache=global_cache)  # [batch, pos, length]
