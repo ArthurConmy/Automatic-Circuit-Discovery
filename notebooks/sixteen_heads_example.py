@@ -16,6 +16,7 @@ import torch
 from acdc.acdc_utils import TorchIndex, Edge, EdgeType, OrderedDefaultdict, make_nd_dict
 
 RECOMPUTE = True # turn this off to just get the ordered heads, with no need for a backward pass!
+ZERO_ABLATION = False
 
 if not RECOMPUTE:
     torch.set_grad_enabled(False)
@@ -42,6 +43,8 @@ seq_len = 300
 )
 
 assert tl_model.cfg.use_attn_result, "Set this to True"
+if ZERO_ABLATION:
+    tl_model.global_cache.sixteen_heads_config.zero_ablation = True
 
 # %%
 
@@ -110,11 +113,9 @@ for i in tqdm(range(num_examples)):
             cur_results = torch.abs(
                 torch.einsum(
                     "bshd,bshd->bh",
-                    clean_cache[bwd_hook_name],  # gradient
+                    clean_cache[bwd_hook_name], # gradient
                     clean_cache[fwd_hook_name]
-                    # - corrupted_cache[
-                    #     fwd_hook_name
-                    # ],  # REMOVE LAST BIT FOR ZERO ABLATION
+                    - (0.0 if ZERO_ABLATION else corrupted_cache[fwd_hook_name]), 
                 )
             )
 
