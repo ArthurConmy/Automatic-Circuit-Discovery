@@ -105,7 +105,7 @@ def get_year_data(num_examples, model):
 
     return prompts_tokenized, prompts
 
-def get_all_greaterthan_things(num_examples, device="cuda", sixteen_heads=sixteen_heads):
+def get_all_greaterthan_things(num_examples, device="cuda", sixteen_heads=False):
     model = get_gpt2_small(device=device, sixteen_heads=sixteen_heads)
     data, prompts = get_year_data(num_examples, model)
     return model, data, prompts, partial(greaterthan_metric, tokens=data)
