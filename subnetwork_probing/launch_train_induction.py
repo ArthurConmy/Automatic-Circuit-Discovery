@@ -40,7 +40,7 @@ def main(testing: bool):
                         f"--reset-subject={reset_subject}",
                         f"--seed={seed}",
                         f"--loss-type={loss_type}",
-                        f"--num-examples={1 if testing else 50}",
+                        f"--num-examples={5 if testing else 50}",
                         f"--seq-len=300",
                         f"--n-loss-average-runs={1 if testing else 20}",
                         "--wandb-dir=/training/sp-induction",  # If it doesn't exist wandb will use /tmp

@@ -49,15 +49,16 @@ def launch(commands: list[list[str]], name: str, job: Optional[KubernetesJob] = 
 
     for (command, process, out, err) in to_wait:
         retcode = process.wait()
-        if retcode != 0:
-            out.seek(0)
-            err.seek(0)
+        with open(out.name, 'r') as f:
+            stdout = f.read()
+        with open(err.name, 'r') as f:
+            stderr = f.read()
+
+        if retcode != 0 or "nan" in stdout.lower() or "nan" in stderr.lower():
             s = f""" Command {command} exited with code {retcode}.
 stdout:
-{open(out.name, 'r').read()}
+{stdout}
 stderr:
-{open(err.name, 'r').read()}
+{stderr}
             """
             raise RuntimeError(s)
-        out.close()
-        err.close()
