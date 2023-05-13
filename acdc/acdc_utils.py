@@ -164,6 +164,8 @@ def kl_divergence(
     mask_repeat_candidates: Optional[torch.Tensor] = None,
     last_seq_element_only: bool = True,
     base_model_probs_last_seq_element_only: bool = False,
+    return_tensor: bool = True, # hmm this used to be False by default...
+    return_one_element: bool = True,
 ) -> torch.Tensor:
     # Note: we want base_model_probs_last_seq_element_only to remain False by default, because when the Docstring
     # circuit uses this, it already takes the last position before passing it in.
@@ -181,9 +183,18 @@ def kl_divergence(
         assert kl_div.shape == mask_repeat_candidates.shape, (kl_div.shape, mask_repeat_candidates.shape)
         denom = mask_repeat_candidates.long().sum()
         kl_div = kl_div * mask_repeat_candidates
-        answer = kl_div.sum() / denom
+        if return_one_element:
+            answer = kl_div.sum() / denom
+        else:
+            answer = kl_div
     else:
-        answer = kl_div.mean()
+        if return_one_element:
+            answer = kl_div.mean()
+        else:
+            answer = kl_div
+
+    if not return_tensor:
+        answer = answer.item()
 
     return answer
 

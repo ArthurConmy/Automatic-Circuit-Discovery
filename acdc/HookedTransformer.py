@@ -16,6 +16,7 @@ import re
 from huggingface_hub import HfApi
 from functools import partial, lru_cache
 from collections import namedtuple
+from dataclasses import dataclass
 
 from transformers import (
     AutoTokenizer,
@@ -45,9 +46,18 @@ class Output(NamedTuple):
     logits: TT[T.batch, T.pos, T.d_vocab]
     loss: Loss
 
+@dataclass
+class SixteenHeadsConfig:
+    """Simple class to manage the different forward passes for 16 Heads"""
+    forward_pass_enabled: bool = False
+    zero_ablation: bool = False
 
 class GlobalCache: # this dict stores the activations from the forward pass
-    def __init__(self, device: Union[str, Tuple[str, str]] = "cuda"):
+    """Class for managing some caches for passing activations around
+    
+    Also has flags that are relevant for whether we're doing 16 Heads things or not"""
+
+    def __init__(self, device: Union[str, Tuple[str, str]] = "cuda", sixteen_heads=False):
         # TODO find a way to make the device propagate when we to .to on the p
         # TODO make it essential first key is a str, second a TorchIndex, third a str
 
@@ -57,6 +67,8 @@ class GlobalCache: # this dict stores the activations from the forward pass
         self.cache = OrderedDict() 
         self.second_cache = OrderedDict()
         self.device: Tuple[str, str] = (device, device)
+
+        self.sixteen_heads_config: Optional[SixteenHeadsConfig] = SixteenHeadsConfig() if sixteen_heads else None
 
     def clear(self, just_first_cache=False):
         
@@ -96,7 +108,7 @@ class HookedTransformer(HookedRootModule):
     """
 
     def __init__(
-        self, cfg, is_masked=False, tokenizer=None, move_to_device=True,
+        self, cfg, tokenizer=None, move_to_device=True,
     ):
         """
         Model initialization. Note that if you want to load the model from pretrained weights, you should use the HookedTransformer.from_pretrained() class method instead of this one.
@@ -142,7 +154,7 @@ class HookedTransformer(HookedRootModule):
             self.cfg.d_vocab_out = self.cfg.d_vocab
 
         if self.cfg.use_global_cache:
-            self.global_cache = global_cache = GlobalCache(device=cfg.device)
+            self.global_cache = global_cache = GlobalCache(device=cfg.device, sixteen_heads = self.cfg.sixteen_heads)                
         else:
             self.global_cache = global_cache = None
 
@@ -158,22 +170,22 @@ class HookedTransformer(HookedRootModule):
 
         self.blocks = nn.ModuleList(
             [
-                TransformerBlock(self.cfg, is_masked, block_index, global_cache=global_cache)
+                TransformerBlock(self.cfg, block_index, global_cache=global_cache)
                 for block_index in range(self.cfg.n_layers)
             ]
         )
 
         if self.cfg.normalization_type == "LN":
             if self.cfg.final_rms:
-                self.ln_final = RMSNorm(self.cfg)
+                self.ln_final = RMSNorm(self.cfg, global_cache=global_cache)
             else:
-                self.ln_final = LayerNorm(self.cfg)
+                self.ln_final = LayerNorm(self.cfg, global_cache=global_cache)
         elif self.cfg.normalization_type == "LNPre":
             # We've folded in LayerNorm weights, so just need the center + scale parts
             if self.cfg.final_rms:
-                self.ln_final = RMSNormPre(self.cfg)
+                self.ln_final = RMSNormPre(self.cfg, global_cache=global_cache)
             else:
-                self.ln_final = LayerNormPre(self.cfg)
+                self.ln_final = LayerNormPre(self.cfg, global_cache=global_cache)
         elif self.cfg.normalization_type is None:
             # If it's None, don't create either layer
             pass
@@ -181,7 +193,7 @@ class HookedTransformer(HookedRootModule):
             logging.warning(
                 f"Invalid normalization_type passed in {self.cfg.normalization_type}"
             )
-        self.unembed = Unembed(self.cfg)
+        self.unembed = Unembed(self.cfg, global_cache=global_cache)
 
         if self.cfg.init_weights:
             self.init_weights()
@@ -198,6 +210,15 @@ class HookedTransformer(HookedRootModule):
         # Needed for HookPoints to work
         self.setup()
         self.is_caching = False
+
+        if self.cfg.sixteen_heads: 
+            self.setup_sixteen_heads()
+
+    def setup_sixteen_heads(self):
+        for layer_idx in range(self.cfg.n_layers):
+            self.hook_dict[f"blocks.{layer_idx}.attn.hook_result"].add_xi_parameter(shape = [1, 1, self.cfg.n_heads, 1])
+
+            self.hook_dict[f"blocks.{layer_idx}.hook_mlp_out"].add_xi_parameter(shape = [])
 
     def check_and_add_hook(self, hook_point, hook_point_name, hook, dir="fwd", is_permanent=False, prepend=False) -> None:
         if hook_point_name.endswith("attn.hook_result"):
@@ -680,7 +701,6 @@ class HookedTransformer(HookedRootModule):
     def from_pretrained(
         cls,
         model_name: str,
-        is_masked: bool = False,
         fold_ln=True,
         center_writing_weights=True,
         center_unembed=True,
@@ -691,6 +711,7 @@ class HookedTransformer(HookedRootModule):
         device=None,
         move_state_dict_to_device=True,
         use_global_cache=False,
+        sixteen_heads=False,
         **model_kwargs,
     ):
         """Class method to load in a pretrained model weights to the HookedTransformer format and optionally to do some processing to make the model easier to interpret. Currently supports loading from most autoregressive HuggingFace models (GPT2, GPTNeo, GPTJ, OPT) and from a range of toy models and SoLU models trained by me (Neel Nanda).
@@ -747,6 +768,9 @@ class HookedTransformer(HookedRootModule):
 
         if use_global_cache:
             cfg.use_global_cache = True
+        if sixteen_heads:
+            assert use_global_cache # needed to propagate information through model...            
+            cfg.sixteen_heads = True
 
         # Get the state dict of the model (ie a mapping of parameter names to tensors), processed to match the HookedTransformer parameter names.
         state_dict = loading.get_pretrained_state_dict(
@@ -754,7 +778,7 @@ class HookedTransformer(HookedRootModule):
         )
 
         # Create the HookedTransformer object
-        model = cls(cfg, is_masked, **model_kwargs)
+        model = cls(cfg, **model_kwargs)
 
         model.load_and_process_state_dict(
             state_dict,
@@ -1579,10 +1603,3 @@ class HookedTransformer(HookedRootModule):
                 p.requires_grad = False
             else:
                 print(n, "is not frozen")
-
-
-# class MaskedHookedTransformer(HookedTransformer):
-#     def __init__(self, cfg, tokenizer=None, move_to_device=True):
-#         super().__init__(cfg, tokenizer, move_to_device)
-#         self.is_masked = True
-#         self.is_new = True
