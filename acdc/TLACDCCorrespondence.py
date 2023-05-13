@@ -111,7 +111,7 @@ class TLACDCCorrespondence:
                 cur_mlp = TLACDCInterpNode(
                     name=cur_mlp_name,
                     index=cur_mlp_slice,
-                    incoming_edge_type=EdgeType.DIRECT_COMPUTATION,
+                    incoming_edge_type=EdgeType.PLACEHOLDER,
                 )
                 correspondence.add_node(cur_mlp)
                 for residual_stream_node in downstream_residual_nodes:
@@ -133,7 +133,7 @@ class TLACDCCorrespondence:
                 correspondence.add_edge(
                     parent_node=cur_mlp_input,
                     child_node=cur_mlp,
-                    edge=Edge(edge_type=EdgeType.DIRECT_COMPUTATION),
+                    edge=Edge(edge_type=EdgeType.PLACEHOLDER),
                     safe=False,
                 )
 
