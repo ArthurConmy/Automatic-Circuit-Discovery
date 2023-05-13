@@ -584,6 +584,11 @@ class TLACDCExperiment:
                     {"acdc_graph": wandb.Image(fname),}
                 )
 
+                edges_fname = f"edges_{self.step_idx}.pth"
+                self.save_edges(edges_fname)
+                wandb.log_artifact(wandb.Artifact('my-ar', type='dataset'), files={edges_fname: edges_fname})
+                os.remove(edges_fname)
+
         # increment the current node
         self.increment_current_node()
         self.update_cur_metric(recalc_metric=True, recalc_edges=True) # so we log the correct state...
