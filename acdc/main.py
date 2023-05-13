@@ -269,7 +269,8 @@ exp = TLACDCExperiment(
 #%%
 
 for i in range(args.max_num_epochs):
-    exp.step()
+
+    exp.step() # TODO why aren't we while looping to completion ???
 
     show(
         exp.corr,
@@ -294,5 +295,15 @@ for i in range(args.max_num_epochs):
         break
 
 exp.save_edges("another_final_edges.pkl") 
+
+if USING_WANDB:
+    edges_fname = f"edges.pth"
+    exp.save_edges(edges_fname)
+    artifact = wandb.Artifact(edges_fname, type='dataset')
+    artifact.add_file(edges_fname)
+    wandb.log_artifact(artifact)
+    os.remove(edges_fname)
+    wandb.finish()
+
 
 #%%
