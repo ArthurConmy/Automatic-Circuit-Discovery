@@ -27,6 +27,7 @@ import pickle
 import wandb
 import IPython
 import torch
+from pathlib import Path
 
 # from easy_transformer.ioi_dataset import IOIDataset  # type: ignore
 from tqdm import tqdm
@@ -112,10 +113,19 @@ parser.add_argument('--second-cache-cpu', type=bool, required=False, default=Tru
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
 parser.add_argument('--using-wandb', action='store_true', help='Use wandb')
 parser.add_argument('--wandb-entity-name', type=str, required=False, default="remix_school-of-rock", help='Value for WANDB_ENTITY_NAME')
+parser.add_argument('--wandb-group-name', type=str, required=False, default="default", help='Value for WANDB_GROUP_NAME')
 parser.add_argument('--wandb-project-name', type=str, required=False, default="acdc", help='Value for WANDB_PROJECT_NAME')
 parser.add_argument('--wandb-run-name', type=str, required=False, default=None, help='Value for WANDB_RUN_NAME')
+parser.add_argument("--wandb-dir", type=str, default="/tmp/wandb")
+parser.add_argument("--wandb-mode", type=str, default="online")
 parser.add_argument('--indices-mode', type=str, default="normal")
 parser.add_argument('--names-mode', type=str, default="normal")
+parser.add_argument('--device', type=str, default="cuda")
+parser.add_argument('--reset-network', type=int, default=0, help="Whether to reset the network we're operating on before running interp on it")
+parser.add_argument('--metric', type=str, default="kl_div", help="Which metric to use for the experiment")
+parser.add_argument('--torch-num-threads', type=int, default=0, help="How many threads to use for torch (0=all)")
+parser.add_argument('--seed', type=int, default=1234)
+parser.add_argument("--max-num-epochs",type=int, default=100_000)
 parser.add_argument('--single-step', action='store_true', help='Use single step, mostly for testing')
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
@@ -126,6 +136,11 @@ if IPython.get_ipython() is not None: # heheh get around this failing in noteboo
 else:
     args = parser.parse_args()
 
+
+if args.torch_num_threads > 0:
+    torch.set_num_threads(args.torch_num_threads)
+torch.manual_seed(args.seed)
+
 TASK = args.task
 FIRST_CACHE_CPU = args.first_cache_cpu
 SECOND_CACHE_CPU = args.second_cache_cpu
@@ -135,9 +150,11 @@ USING_WANDB = True if args.using_wandb else False
 WANDB_ENTITY_NAME = args.wandb_entity_name
 WANDB_PROJECT_NAME = args.wandb_project_name
 WANDB_RUN_NAME = args.wandb_run_name
+WANDB_GROUP_NAME = args.wandb_group_name
 INDICES_MODE = args.indices_mode
 NAMES_MODE = args.names_mode
-DEVICE = "cuda"
+DEVICE = args.device
+RESET_NETWORK = args.reset_network
 SINGLE_STEP = True if args.single_step else False
 
 #%% [markdown]
@@ -148,7 +165,7 @@ use_pos_embed = False
 
 if TASK == "ioi":
     num_examples = 100
-    tl_model = get_gpt2_small()
+    tl_model = get_gpt2_small(device=DEVICE)
     toks_int_values, toks_int_values_other, metric = get_ioi_data(tl_model, num_examples)
 elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     tracr_task = TASK.split("-")[-1] # "reverse"
@@ -157,23 +174,49 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     _, tl_model = get_tracr_model_input_and_tl_model(task=TASK)
     toks_int_values, toks_int_values_other, metric = get_tracr_data(tl_model, task=TASK)
 elif TASK == "induction":
-    num_examples = 40
+    num_examples = 50
     seq_len = 300
     # TODO initialize the `tl_model` with the right model
-    tl_model, toks_int_values, toks_int_values_other, metric = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, randomize_data=False, data_seed=int(1_000_000 * THRESHOLD))
+    induction_things = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric=args.metric)
+    tl_model, toks_int_values, toks_int_values_other = induction_things.tl_model, induction_things.validation_data, induction_things.validation_patch_data
+
+    validation_metric = induction_things.validation_metric
+    metric = lambda x: validation_metric(x).item()
+
+    test_metric_fns = {args.metric: induction_things.test_metric}
+    test_metric_data = induction_things.test_data
+
 elif TASK == "docstring":
     num_examples = 50
     seq_len = 41
-    tl_model, toks_int_values, toks_int_values_other, metric, second_metric = get_all_docstring_things(num_examples=num_examples, 
-    seq_len=seq_len, device=DEVICE, metric_name="kl_divergence", correct_incorrect_wandb=True)
+    docstring_things = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE,
+                                                metric_name=args.metric, correct_incorrect_wandb=True)
+
+    tl_model, toks_int_values, toks_int_values_other = docstring_things.tl_model, docstring_things.validation_data, docstring_things.validation_patch_data
+
+    validation_metric = docstring_things.validation_metric
+    metric = lambda x: validation_metric(x).item()
+
+    test_metric_fns = docstring_things.test_metrics
+    test_metric_data = docstring_things.test_data
 elif TASK == "greaterthan":
     num_examples = 100
     tl_model, toks_int_values, prompts, metric = get_all_greaterthan_things(num_examples=num_examples, device=DEVICE)
     toks_int_values_other = toks_int_values.clone()
     toks_int_values_other[:, 7] = 486 # replace with 01
-
 else:
     raise ValueError(f"Unknown task {TASK}")
+
+if RESET_NETWORK:
+    base_dir = Path(__file__).parent.parent / "subnetwork-probing/" / "data" / "induction"
+    reset_state_dict = torch.load(base_dir / "random_model.pt")
+    for layer_i in range(2):
+        for qkv in ["q", "k", "v"]:
+            # Delete subnetwork probing masks
+            del reset_state_dict[f"blocks.{layer_i}.attn.hook_{qkv}.mask_scores"]
+
+    tl_model.load_state_dict(reset_state_dict, strict=True)
+    del reset_state_dict
 
 #%%
 
@@ -185,6 +228,8 @@ tl_model.reset_hooks()
 
 if WANDB_RUN_NAME is None or IPython.get_ipython() is not None:
     WANDB_RUN_NAME = f"{ct()}{'_randomindices' if INDICES_MODE=='random' else ''}_{THRESHOLD}{'_zero' if ZERO_ABLATION else ''}"
+else:
+    assert WANDB_RUN_NAME is not None, "I want named runs, always"
 
 tl_model.reset_hooks()
 exp = TLACDCExperiment(
@@ -194,7 +239,11 @@ exp = TLACDCExperiment(
     wandb_entity_name=WANDB_ENTITY_NAME,
     wandb_project_name=WANDB_PROJECT_NAME,
     wandb_run_name=WANDB_RUN_NAME,
+    wandb_group_name=WANDB_GROUP_NAME,
     wandb_notes=notes,
+    wandb_dir=args.wandb_dir,
+    wandb_mode=args.wandb_mode,
+    wandb_config=args,
     zero_ablation=ZERO_ABLATION,
     ds=toks_int_values,
     ref_ds=toks_int_values_other,
@@ -219,7 +268,7 @@ exp = TLACDCExperiment(
 
 #%%
 
-for i in range(100_000): 
+for i in range(args.max_num_epochs):
     exp.step()
 
     show(
@@ -232,6 +281,14 @@ for i in range(100_000):
 
     if i==0:
         exp.save_edges("edges.pkl")
+
+    if TASK in ["docstring", "induction"]:
+        with torch.no_grad():
+            test_metric_values = {}
+            for k, fn in test_metric_fns.items():
+                test_metric_values["test_"+k] = fn(exp.model(test_metric_data)).item()
+        if USING_WANDB:
+            wandb.log(test_metric_values)
 
     if exp.current_node is None or SINGLE_STEP:
         break

@@ -160,51 +160,97 @@ def ct():
 
 def kl_divergence(
     logits: torch.Tensor,
-    base_model_probs: torch.Tensor,
+    base_model_logprobs: torch.Tensor,
     mask_repeat_candidates: Optional[torch.Tensor] = None,
     last_seq_element_only: bool = True,
     base_model_probs_last_seq_element_only: bool = False,
-    return_tensor: bool = False,
-    return_one_element: bool = True,
-):
-    """Compute KL divergence between base_model_probs and probs"""
+) -> torch.Tensor:
+    # Note: we want base_model_probs_last_seq_element_only to remain False by default, because when the Docstring
+    # circuit uses this, it already takes the last position before passing it in.
 
     if last_seq_element_only:
         logits = logits[:, -1, :]
+
     if base_model_probs_last_seq_element_only:
-        base_model_probs = base_model_probs[:, -1, :]
+        base_model_logprobs = base_model_logprobs[:, -1, :]
 
-    probs = F.softmax(logits, dim=-1)
-
-    assert probs.min() >= 0.0
-    assert probs.max() <= 1.0
-
-    kl_div = (base_model_probs * (base_model_probs.log() - probs.log())).sum(dim=-1)
+    logprobs = F.log_softmax(logits, dim=-1)
+    kl_div = F.kl_div(logprobs, base_model_logprobs, log_target=True, reduction="none").sum(dim=-1)
 
     if mask_repeat_candidates is not None:
-        assert kl_div.shape == mask_repeat_candidates.shape, (
-            kl_div.shape,
-            mask_repeat_candidates.shape,
-        )
-        kl_div = kl_div * mask_repeat_candidates.long()
-        if return_one_element:
-            answer = (kl_div.sum() / mask_repeat_candidates.long().sum().item())
-        else:
-            answer = kl_div # no mask_repeats!!!
-
-        if not return_tensor:
-            answer=answer.item()
-
+        assert kl_div.shape == mask_repeat_candidates.shape, (kl_div.shape, mask_repeat_candidates.shape)
+        denom = mask_repeat_candidates.long().sum()
+        kl_div = kl_div * mask_repeat_candidates
+        answer = kl_div.sum() / denom
     else:
-        if return_one_element:
-            answer = kl_div.mean()  
-        else:
-            answer = kl_div
-
-        if not return_tensor:
-            answer = answer.item()
+        answer = kl_div.mean()
 
     return answer
+
+
+def negative_log_probs(
+    logits: torch.Tensor,
+    labels: torch.Tensor,
+    mask_repeat_candidates: Optional[torch.Tensor] = None,
+    baseline: Union[float, torch.Tensor] = 0.0,
+    last_seq_element_only: bool = True,
+) -> torch.Tensor:
+    logprobs = F.log_softmax(logits, dim=-1)
+
+    if last_seq_element_only:
+        logprobs = logprobs[:, -1, :]
+
+    # Subtract a baseline for each element -- which could be 0 or the NLL of the base_model_logprobs
+    nll_all = (
+        F.nll_loss(logprobs.view(-1, logprobs.size(-1)), labels.view(-1), reduction="none").view(logprobs.size()[:-1])
+        - baseline
+    )
+
+    if mask_repeat_candidates is not None:
+        assert nll_all.shape == mask_repeat_candidates.shape, (
+            nll_all.shape,
+            mask_repeat_candidates.shape,
+        )
+        denom = mask_repeat_candidates.long().sum()
+        nll_all = nll_all * mask_repeat_candidates
+        answer = nll_all.sum() / denom
+    else:
+        answer = nll_all.mean()
+    return answer
+
+
+class MatchNLLMetric:
+    def __init__(
+        self,
+        labels: torch.Tensor,
+        base_model_logprobs: torch.Tensor,
+        mask_repeat_candidates: Optional[torch.Tensor] = None,
+        last_seq_element_only: bool = True,
+    ):
+        self.labels = labels
+        self.mask_repeat_candidates = mask_repeat_candidates
+        self.last_seq_element_only = last_seq_element_only
+
+        logprobs = base_model_logprobs
+        if last_seq_element_only:
+            assert logprobs.ndim == 2
+        else:
+            assert logprobs.ndim == 3
+
+        self.base_nll_unreduced = F.nll_loss(
+            logprobs.view(-1, logprobs.size(-1)), labels.view(-1), reduction="none"
+        ).view(logprobs.size()[:-1])
+        if mask_repeat_candidates is not None:
+            assert self.base_nll_unreduced.shape == mask_repeat_candidates.shape
+
+    def __call__(self, logits: torch.Tensor) -> torch.Tensor:
+        return negative_log_probs(
+            logits,
+            self.labels,
+            mask_repeat_candidates=self.mask_repeat_candidates,
+            baseline=self.base_nll_unreduced,
+            last_seq_element_only=self.last_seq_element_only,
+        )
 
 # ----------------------------------
 # Random helpers for scraping

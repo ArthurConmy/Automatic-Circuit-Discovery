@@ -46,7 +46,9 @@ NOUNS = [
 
 #%% 
 
-model = get_gpt2_small()
+model = get_gpt2_small(device="cpu")
+_TOKENIZER = model.tokenizer
+del model
 
 # %%
 
@@ -56,15 +58,15 @@ YEARS_BY_CENTURY = {}
 for century in range(11, 18):
     all_success = []
     for year in range(century * 100 + 2, (century * 100) + 99):
-        a = model.tokenizer.encode(f" {year}")
-        if a == [model.tokenizer.encode(f" {str(year)[:2]}")[0], model.tokenizer.encode(str(year)[2:])[0]]:
+        a = _TOKENIZER.encode(f" {year}")
+        if a == [_TOKENIZER.encode(f" {str(year)[:2]}")[0], _TOKENIZER.encode(str(year)[2:])[0]]:
             all_success.append(str(year))
             continue
     YEARS.extend(all_success[1:-1])
     YEARS_BY_CENTURY[century] = all_success[1:-1]
 
 TOKENS = {
-    i: model.tokenizer.encode(f"{'0' if i<=9 else ''}{i}")[0] for i in range(0, 100)
+    i: _TOKENIZER.encode(f"{'0' if i<=9 else ''}{i}")[0] for i in range(0, 100)
 }
 INV_TOKENS = {v: k for k, v in TOKENS.items()}
 
