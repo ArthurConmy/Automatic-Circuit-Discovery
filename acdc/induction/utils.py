@@ -97,7 +97,8 @@ class AllInductionThings:
     test_mask: torch.Tensor
     test_patch_data: torch.Tensor
 
-def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric="kl_div", sixteen_heads=False):
+
+def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric="kl_div", sixteen_heads=False, kl_return_tensor=True, return_one_element=True):
     tl_model = get_model(sixteen_heads=sixteen_heads)
     tl_model.to(device)
 
@@ -132,12 +133,16 @@ def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric
             base_model_logprobs=base_val_logprobs,
             mask_repeat_candidates=validation_mask,
             last_seq_element_only=False,
+            return_tensor=kl_return_tensor,
+            return_one_element=return_one_element,
         )
         test_metric = partial(
             kl_divergence,
             base_model_logprobs=base_test_logprobs,
             mask_repeat_candidates=test_mask,
             last_seq_element_only=False,
+            return_tensor=kl_return_tensor,
+            return_one_element=return_one_element,
         )
     elif metric == "nll":
         validation_metric = partial(
