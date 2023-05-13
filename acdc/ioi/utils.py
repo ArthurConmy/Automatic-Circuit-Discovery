@@ -24,7 +24,7 @@ def get_ioi_gpt2_small(device="cuda", sixteen_heads=False):
     """For backwards compat"""
     return get_gpt2_small(device=device, sixteen_heads=sixteen_heads) # TODO continue adding sixteen_heads...
 
-def get_ioi_data(tl_model, N, kl_return_one_element):
+def get_ioi_data(tl_model, N, kl_return_one_element=True):
     ioi_dataset = IOIDataset(
         prompt_type="ABBA",
         N=N,
