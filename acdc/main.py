@@ -186,7 +186,7 @@ elif TASK == "docstring":
                                                 metric_name=args.metric, correct_incorrect_wandb=True)
 elif TASK == "greaterthan":
     num_examples = 100
-    thinds = get_all_greaterthan_things(num_examples=num_examples, metric_name=args.metric, device=DEVICE)
+    things = get_all_greaterthan_things(num_examples=num_examples, metric_name=args.metric, device=DEVICE)
 else:
     raise ValueError(f"Unknown task {TASK}")
 

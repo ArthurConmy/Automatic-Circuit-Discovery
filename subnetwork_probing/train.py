@@ -9,6 +9,8 @@ from functools import partial
 from pathlib import Path
 from typing import Dict, List, Tuple
 import collections
+from acdc.greaterthan.utils import get_all_greaterthan_things
+from acdc.ioi.utils import get_all_ioi_things
 import huggingface_hub
 
 import networkx as nx
@@ -426,7 +428,13 @@ def get_transformer_config():
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    if args.task == "induction":
+    if args.task == "ioi":
+        all_task_things = get_all_ioi_things(
+            num_examples=args.num_examples,
+            device=torch.device(args.device),
+            metric_name=args.loss_type,
+        )
+    elif args.task == "induction":
         all_task_things = get_all_induction_things(
             args.num_examples,
             args.seq_len,
@@ -440,6 +448,12 @@ if __name__ == "__main__":
             device=torch.device(args.device),
             metric_name=args.loss_type,
             correct_incorrect_wandb=True,
+        )
+    elif args.task == "greaterthan":
+        all_task_things = get_all_greaterthan_things(
+            num_examples=args.num_examples,
+            metric_name=args.loss_type,
+            device=args.device,
         )
     else:
         raise ValueError(f"Unknown task {args.task}")
