@@ -50,6 +50,17 @@ class AllDocstringThings:
     test_mask: NoneType
     test_patch_data: torch.Tensor
 
+def get_docstring_model(device="cuda", sixteen_heads=False):
+    tl_model = HookedTransformer.from_pretrained(
+        "attn-only-4l",
+        use_global_cache=True,
+        sixteen_heads=sixteen_heads,
+    )
+    tl_model.set_use_attn_result(True)
+    if not sixteen_heads:
+        tl_model.set_use_split_qkv_input(True)
+    tl_model.to(device)
+    return tl_model
 
 def get_all_docstring_things(
     num_examples,
@@ -58,14 +69,10 @@ def get_all_docstring_things(
     metric_name="kl_div",
     dataset_version="random_random",
     correct_incorrect_wandb=True,
+    sixteen_heads=False,
+    return_one_element=True,
 ) -> AllDocstringThings:
-    tl_model = HookedTransformer.from_pretrained(
-        "attn-only-4l",
-        use_global_cache=True,
-    )
-    tl_model.set_use_attn_result(True)
-    tl_model.set_use_split_qkv_input(True)
-    tl_model.to(device)
+    tl_model = get_docstring_model(device=device, sixteen_heads=sixteen_heads)
 
     docstring_ind_prompt_kwargs = dict(
         n_matching_args=3, n_def_prefix_args=2, n_def_suffix_args=1, n_doc_prefix_args=0, met_desc_len=3, arg_desc_len=2
@@ -105,6 +112,7 @@ def get_all_docstring_things(
         correct_labels: torch.Tensor,
         wrong_labels: torch.Tensor,
         log_correct_incorrect_wandb: bool = False,
+        return_one_element: bool = True,
     ):
         """With neg sign so we minimize this"""
 
@@ -120,18 +128,29 @@ def get_all_docstring_things(
             )
 
         # note neg sign!!!
-        return -(correct_logits.mean() - incorrect_logits.max(dim=-1).values.mean())
+        answer = -(correct_logits - incorrect_logits.max(dim=-1).values)
+        if return_one_element: 
+            answer = answer.mean()
+        return answer
+
 
     def ldgz_docstring_metric(
         logits: torch.Tensor,
         correct_labels: torch.Tensor,
         wrong_labels: torch.Tensor,
+        return_one_element: bool = True,
     ):
         """Logit diff greater zero fraction (with neg sign)"""
         pos_logits = logits[:, -1, :]
         max_correct, _ = torch.gather(pos_logits, index=correct_labels[..., None], dim=1).max(dim=1)
         max_wrong, _ = torch.gather(pos_logits, index=wrong_labels, dim=1).max(dim=1)
-        return -((max_correct - max_wrong > 0).sum() / len(max_correct))
+        
+        answer = -(max_correct - max_wrong > 0).float()
+        if return_one_element:
+            answer = answer.sum()
+            answer /= len(max_correct)
+
+        return answer
 
     if metric_name == "kl_div":
         validation_metric = partial(
@@ -139,6 +158,7 @@ def get_all_docstring_things(
             base_model_logprobs=base_validation_logprobs,
             last_seq_element_only=True,
             base_model_probs_last_seq_element_only=False,
+            return_one_element=return_one_element,
         )
     elif metric_name == "docstring_metric":
         validation_metric = partial(
@@ -146,24 +166,28 @@ def get_all_docstring_things(
             correct_labels=validation_labels,
             wrong_labels=validation_wrong_labels,
             log_correct_incorrect_wandb=correct_incorrect_wandb,
+            return_one_element=return_one_element,
         )
     elif metric_name == "docstring_stefan":
         validation_metric = partial(
             ldgz_docstring_metric,
             correct_labels=validation_labels,
             wrong_labels=validation_wrong_labels,
+            return_one_element=return_one_element,
         )
     elif metric_name == "nll":
         validation_metric = partial(
             negative_log_probs,
             labels=validation_labels,
             last_seq_element_only=True,
+            return_one_element=return_one_element,
         )
     elif metric_name == "match_nll":
         validation_metric = MatchNLLMetric(
             labels=validation_labels,
             base_model_logprobs=base_validation_logprobs,
             last_seq_element_only=True,
+            return_one_element=return_one_element,
         )
     else:
         raise ValueError(f"metric_name {metric_name} not recognized")
@@ -175,27 +199,32 @@ def get_all_docstring_things(
             base_model_logprobs=base_test_logprobs,
             last_seq_element_only=True,
             base_model_probs_last_seq_element_only=False,
+            return_one_element=return_one_element,
         ),
         "docstring_metric": partial(
             raw_docstring_metric,
             correct_labels=test_labels,
             wrong_labels=test_wrong_labels,
             log_correct_incorrect_wandb=correct_incorrect_wandb,
+            return_one_element=return_one_element,
         ),
         "docstring_stefan": partial(
             ldgz_docstring_metric,
             correct_labels=test_labels,
             wrong_labels=test_wrong_labels,
+            return_one_element=return_one_element,
         ),
         "nll": partial(
             negative_log_probs,
             labels=test_labels,
             last_seq_element_only=True,
+            return_one_element=return_one_element,
         ),
         "match_nll": MatchNLLMetric(
             labels=test_labels,
             base_model_logprobs=base_test_logprobs,
             last_seq_element_only=True,
+            return_one_element=return_one_element,
         ),
     }
 

@@ -6,6 +6,7 @@ from IPython import get_ipython
 if get_ipython() is not None:
     get_ipython().run_line_magic('load_ext', 'autoreload')
     get_ipython().run_line_magic('autoreload', '2')
+
 from copy import deepcopy
 from typing import (
     List,
@@ -57,7 +58,7 @@ from acdc.HookedTransformer import (
     HookedTransformer,
 )
 from acdc.tracr.utils import get_tracr_data, get_tracr_model_input_and_tl_model
-from acdc.docstring.utils import get_all_docstring_things
+from acdc.docstring.utils import get_all_docstring_things, get_docstring_model
 from acdc.acdc_utils import (
     make_nd_dict,
     shuffle_tensor,
@@ -94,11 +95,6 @@ import argparse
 
 #%%
 
-# then some looping
-# probably a WANDB run is easiest SAVE THE ARTIFACT
-
-#%%
-
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
 parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr (no guarentee I implement all...)')
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
@@ -110,7 +106,7 @@ parser.add_argument('--device', type=str, default="cuda")
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("--task greaterthan --wandb-run-name test_16_heads".split())
+    args = parser.parse_args("--task docstring --wandb-run-name docstring_sixteen_heads".split())
 else:
     args = parser.parse_args()
 
@@ -136,6 +132,7 @@ if TASK == "ioi":
     assert len(toks_int_values) == len(toks_int_values_other) == num_examples, (len(toks_int_values), len(toks_int_values_other), num_examples)
     seq_len = toks_int_values.shape[1]
     model_getter = get_gpt2_small
+
 if TASK == "greaterthan":
     num_examples = 100
     tl_model, toks_int_values, prompts, metric = get_all_greaterthan_things(num_examples=num_examples, device=DEVICE, sixteen_heads=True, return_tensor=True, return_one_element=False)
@@ -143,6 +140,27 @@ if TASK == "greaterthan":
     toks_int_values_other[:, 7] = 486 # replace with 01
     seq_len = toks_int_values.shape[1]
     model_getter = get_gpt2_small
+
+elif TASK == "docstring":
+    num_examples = 50
+    seq_len = 41
+    docstring_things = get_all_docstring_things(
+        num_examples=num_examples, 
+        seq_len=seq_len,
+        device=DEVICE,
+        metric_name="kl_div", 
+        correct_incorrect_wandb=True,
+        sixteen_heads=True,
+        return_one_element=False,
+    )
+    tl_model, toks_int_values, toks_int_values_other = docstring_things.tl_model, docstring_things.validation_data, docstring_things.validation_patch_data
+
+    metric = docstring_things.validation_metric # we take this as metric, because it splits
+
+    test_metric_fns = docstring_things.test_metrics
+    test_metric_data = docstring_things.test_data
+
+    model_getter = get_docstring_model
 
 elif TASK == "induction":
     raise NotImplementedError("Induction has same sentences with multiple places we take loss / KL divergence; fiddlier implementation")

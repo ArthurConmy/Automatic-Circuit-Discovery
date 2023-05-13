@@ -205,6 +205,7 @@ def negative_log_probs(
     mask_repeat_candidates: Optional[torch.Tensor] = None,
     baseline: Union[float, torch.Tensor] = 0.0,
     last_seq_element_only: bool = True,
+    return_one_element: bool=True,
 ) -> torch.Tensor:
     logprobs = F.log_softmax(logits, dim=-1)
 
@@ -224,9 +225,14 @@ def negative_log_probs(
         )
         denom = mask_repeat_candidates.long().sum()
         nll_all = nll_all * mask_repeat_candidates
-        answer = nll_all.sum() / denom
+        answer = nll_all
+        if return_one_element:
+            answer = nll_all.sum() / denom
+
     else:
-        answer = nll_all.mean()
+        if return_one_element:
+            answer = nll_all.mean()
+
     return answer
 
 
@@ -237,6 +243,7 @@ class MatchNLLMetric:
         base_model_logprobs: torch.Tensor,
         mask_repeat_candidates: Optional[torch.Tensor] = None,
         last_seq_element_only: bool = True,
+        return_one_element: bool = True,
     ):
         self.labels = labels
         self.mask_repeat_candidates = mask_repeat_candidates
@@ -254,6 +261,8 @@ class MatchNLLMetric:
         if mask_repeat_candidates is not None:
             assert self.base_nll_unreduced.shape == mask_repeat_candidates.shape
 
+        self.return_one_element = return_one_element
+
     def __call__(self, logits: torch.Tensor) -> torch.Tensor:
         return negative_log_probs(
             logits,
@@ -261,6 +270,7 @@ class MatchNLLMetric:
             mask_repeat_candidates=self.mask_repeat_candidates,
             baseline=self.base_nll_unreduced,
             last_seq_element_only=self.last_seq_element_only,
+            return_one_element=self.return_one_element,
         )
 
 # ----------------------------------
