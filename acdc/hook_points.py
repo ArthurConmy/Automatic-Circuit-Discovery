@@ -46,7 +46,7 @@ class HookPoint(nn.Module):
     def add_xi_parameter(self, shape=[]):
         """Add parameter for 16 Heads"""
 
-        self.xi = torch.nn.Parameter(torch.zeros(size=shape))# empty list implies scalar
+        self.xi = torch.nn.Parameter(torch.ones(size=shape)) # empty list implies scalar
 
     def add_perma_hook(self, hook, dir="fwd") -> None:
         self.add_hook(hook, dir=dir, is_permanent=True)

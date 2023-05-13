@@ -114,13 +114,13 @@ for i in tqdm(range(num_examples)):
                 torch.einsum(
                     "bshd,bshd->bh",
                     clean_cache[bwd_hook_name], # gradient
-                    clean_cache[fwd_hook_name]
-                    - (0.0 if ZERO_ABLATION else corrupted_cache[fwd_hook_name]), 
+                    clean_cache[fwd_hook_name]- (0.0 if ZERO_ABLATION else corrupted_cache[fwd_hook_name]), 
                 )
             )
 
             for head_idx in range(8):
-                results[(layer_idx, head_idx)][(i, j)] = cur_results[i, head_idx].item()
+                results_entry = cur_results[i, head_idx].item()
+                results[(layer_idx, head_idx)][(i, j)] = results_entry
 
 for k in results:
     results[k].to("cpu")
