@@ -164,7 +164,7 @@ use_pos_embed = False
 if TASK == "ioi":
     num_examples = 100
     tl_model = get_gpt2_small(device=DEVICE)
-    toks_int_values, toks_int_values_other, metric = get_ioi_data(tl_model, num_examples)
+    toks_int_values, toks_int_values_other, metric = get_ioi_data(tl_model, num_examples, return_tensor=False)
 elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     tracr_task = TASK.split("-")[-1] # "reverse"
     # this implementation doesn't ablate the position embeddings (which the plots in the paper do do), so results are different. See the rust_circuit implemntation if this need be checked
