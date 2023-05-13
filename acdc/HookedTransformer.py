@@ -16,6 +16,7 @@ import re
 from huggingface_hub import HfApi
 from functools import partial, lru_cache
 from collections import namedtuple
+from dataclasses import dataclass
 
 from transformers import (
     AutoTokenizer,
@@ -45,9 +46,29 @@ class Output(NamedTuple):
     logits: TT[T.batch, T.pos, T.d_vocab]
     loss: Loss
 
+def hook_attention_name_matcher(name: str) -> bool:
+    """The hooks for attention layers (third dimension = no heads) that we need to be able to corrupt with 16 Heads"""
+
+    return name.endswith("hook_q") or name.endswith("hook_k") or name.endswith("hook_v")
+
+def hook_other_name_matcher(name: str) -> bool:
+    """The hooks for modules other than Attention Heads that we need to be able to corrupt with 16 Heads"""
+
+    return name.endswith("hook_mlp_out")
+
+@dataclass
+class SixteenHeadsConfig:
+    """Simple class to manage the different forward passes for 16 Heads"""
+    forwards_pass_enabled: bool = False
+    zero_ablation: bool = False
+    n_heads: int = - 69
 
 class GlobalCache: # this dict stores the activations from the forward pass
-    def __init__(self, device: Union[str, Tuple[str, str]] = "cuda"):
+    """Class for managing some caches for passing activations around
+    
+    Also has flags that are relevant for whether we're doing 16 Heads things or not"""
+
+    def __init__(self, device: Union[str, Tuple[str, str]] = "cuda", sixteen_heads=False):
         # TODO find a way to make the device propagate when we to .to on the p
         # TODO make it essential first key is a str, second a TorchIndex, third a str
 
@@ -57,6 +78,8 @@ class GlobalCache: # this dict stores the activations from the forward pass
         self.cache = OrderedDict() 
         self.second_cache = OrderedDict()
         self.device: Tuple[str, str] = (device, device)
+
+        self.sixteen_heads_config: Optional[SixteenHeadsConfig] = SixteenHeadsConfig() if sixteen_heads else None
 
     def clear(self, just_first_cache=False):
         
@@ -142,7 +165,7 @@ class HookedTransformer(HookedRootModule):
             self.cfg.d_vocab_out = self.cfg.d_vocab
 
         if self.cfg.use_global_cache:
-            self.global_cache = global_cache = GlobalCache(device=cfg.device)
+            self.global_cache = global_cache = GlobalCache(device=cfg.device, sixteen_heads = self.cfg.sixteen_heads)                
         else:
             self.global_cache = global_cache = None
 
@@ -691,6 +714,7 @@ class HookedTransformer(HookedRootModule):
         device=None,
         move_state_dict_to_device=True,
         use_global_cache=False,
+        sixteen_heads=False,
         **model_kwargs,
     ):
         """Class method to load in a pretrained model weights to the HookedTransformer format and optionally to do some processing to make the model easier to interpret. Currently supports loading from most autoregressive HuggingFace models (GPT2, GPTNeo, GPTJ, OPT) and from a range of toy models and SoLU models trained by me (Neel Nanda).
@@ -747,6 +771,9 @@ class HookedTransformer(HookedRootModule):
 
         if use_global_cache:
             cfg.use_global_cache = True
+        if sixteen_heads:
+            assert use_global_cache # needed to propagate information through model...            
+            cfg.sixteen_heads = True
 
         # Get the state dict of the model (ie a mapping of parameter names to tensors), processed to match the HookedTransformer parameter names.
         state_dict = loading.get_pretrained_state_dict(

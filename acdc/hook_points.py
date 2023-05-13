@@ -31,8 +31,6 @@ class HookPoint(nn.Module):
         super().__init__()
         self.fwd_hooks: List[LensHandle] = []
         self.bwd_hooks: List[LensHandle] = []
-
-        self.xi = torch.nn.Parameter(torch.tensor([[[[1.0] for _ in range(8)]]]))
         self.fwd_hook_functions = [] # Added for ACDC...
 
         self.ctx = {}
@@ -41,8 +39,13 @@ class HookPoint(nn.Module):
 
         # A variable giving the hook's name (from the perspective of the root
         # module) - this is set by the root module at setup.
+
         self.name = None
 
+    def add_xi_parameter(self, shape=[]):
+        """Add parameter for 16 Heads"""
+
+        self.xi = torch.nn.Parameter(shape) # empty list implies scalar
 
     def add_perma_hook(self, hook, dir="fwd") -> None:
         self.add_hook(hook, dir=dir, is_permanent=True)
@@ -58,7 +61,7 @@ class HookPoint(nn.Module):
 
         if dir == "fwd":
             if prepend:
-                print("PREEEEPEDING") # TODO delete
+                print("INFO: prepending a hook")
                 old_fwd_hook_functions = [hook for hook in self.fwd_hook_functions] # so this doesn't get deleted
                 self.remove_hooks()
                 handle = self.add_hook(hook)
@@ -118,17 +121,6 @@ class HookPoint(nn.Module):
         del self.ctx
         self.ctx = {}
 
-    def forward(self, x):
-        if "global_cache" in dir(self) and len(self.global_cache.second_cache)>0:
-            if len(x.shape) == 4 and x.shape[2] == 8:
-                # super hacky way of identifying hooks that have a head dimension!!!!
-                return self.xi * x # + (-self.xi + 1) * self.global_cache.second_cache[self.name] # COMMENT OUT LAST BIT FOR ZERO ABLATION
-            else:
-                return self.xi[0, 0, 0, 0] * x # + (-self.xi[0, 0, 0, 0] + 1) * self.global_cache.second_cache[self.name] # COMMENT OUT LAST BIT FOR ZERO ABLATION
-
-        else:
-            return x
-
     def layer(self):
         # Returns the layer index if the name has the form 'blocks.{layer}.{...}'
         # Helper function that's mainly useful on HookedTransformer
@@ -136,6 +128,16 @@ class HookPoint(nn.Module):
         split_name = self.name.split(".")
         return int(split_name[1])
 
+    def forward(self, x):
+        if self.global_cache.sixteen_heads_config is not None and self.global_cache.sixteen_heads_config.forwards_pass_enabled:
+            if self.global_cache.sixteen_heads_config.zero_ablation:
+                return self.xi * x
+
+            else:
+                return self.xi * x + (-self.xi + 1) * self.global_cache.second_cache[self.name]
+
+        else:
+            return x
 
 class MaskedHookPoint(HookPoint):
     pass

@@ -719,13 +719,13 @@ class TransformerBlock(nn.Module):
         if not self.cfg.attn_only and not self.cfg.parallel_attn_mlp:
             resid_mid = self.hook_resid_mid(
                 resid_pre + attn_out
-            )  # [batch, pos, d_model]
+            )  # [batch, pos, d_model] # see below, pretty much editing the input to MLP ONLY 
             normalized_resid_mid = self.ln2(resid_mid)
             mlp_out = self.hook_mlp_out(
                 self.mlp(normalized_resid_mid)
             )  # [batch, pos, d_model]
             resid_post = self.hook_resid_post(
-                resid_pre + attn_out + mlp_out
+                resid_pre + attn_out + mlp_out # pretty sure this is edited from the original implementation so that we can edit MLP input only
             )  # [batch, pos, d_model]
         elif self.cfg.parallel_attn_mlp:
             # Dumb thing done by GPT-J, both MLP and Attn read from resid_pre and write to resid_post, no resid_mid used.
