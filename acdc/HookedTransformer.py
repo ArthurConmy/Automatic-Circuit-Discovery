@@ -46,22 +46,11 @@ class Output(NamedTuple):
     logits: TT[T.batch, T.pos, T.d_vocab]
     loss: Loss
 
-def hook_attention_name_matcher(name: str) -> bool:
-    """The hooks for attention layers (third dimension = no heads) that we need to be able to corrupt with 16 Heads"""
-
-    return name.endswith("hook_q") or name.endswith("hook_k") or name.endswith("hook_v")
-
-def hook_other_name_matcher(name: str) -> bool:
-    """The hooks for modules other than Attention Heads that we need to be able to corrupt with 16 Heads"""
-
-    return name.endswith("hook_mlp_out")
-
 @dataclass
 class SixteenHeadsConfig:
     """Simple class to manage the different forward passes for 16 Heads"""
     forward_pass_enabled: bool = False
     zero_ablation: bool = False
-    n_heads: int = - 69
 
 class GlobalCache: # this dict stores the activations from the forward pass
     """Class for managing some caches for passing activations around
