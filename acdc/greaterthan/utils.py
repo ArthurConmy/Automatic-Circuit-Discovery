@@ -69,16 +69,20 @@ TOKENS = {
 }
 INV_TOKENS = {v: k for k, v in TOKENS.items()}
 
-def greaterthan_metric(logits, tokens):
+def greaterthan_metric(logits, tokens, return_one_element=False, return_tensor=False):
     probs = F.softmax(logits[:, -1], dim=-1) # last elem???
-    ans = 0.0
+    ans = torch.zeros((logits.shape[0],)).to(logits.device)
     for i in range(len(probs)):
         yearend = INV_TOKENS[tokens[i][7].item()]
         for year_suff in range(yearend, 100):
-            ans += probs[i, TOKENS[year_suff]]
+            ans[i] = ans[i] + probs[i, TOKENS[year_suff]]
         for year_pref in range(0, yearend):
-            ans -= probs[i, TOKENS[year_pref]]
-    return - float(ans / len(probs))
+            ans[i] = ans[i] - probs[i, TOKENS[year_pref]]
+    if return_one_element:
+        ans=ans.mean()
+    if not return_tensor:
+        ans = ans.item()
+    return ans
 
 def get_year_data(num_examples, model):
     template = "The {noun} lasted from the year {year1} to "
@@ -105,7 +109,7 @@ def get_year_data(num_examples, model):
 
     return prompts_tokenized, prompts
 
-def get_all_greaterthan_things(num_examples, device="cuda", sixteen_heads=False):
+def get_all_greaterthan_things(num_examples, device="cuda", sixteen_heads=False, return_one_element=False, return_tensor=True):
     model = get_gpt2_small(device=device, sixteen_heads=sixteen_heads)
     data, prompts = get_year_data(num_examples, model)
-    return model, data, prompts, partial(greaterthan_metric, tokens=data)
+    return model, data, prompts, partial(greaterthan_metric, tokens=data, return_one_element=return_one_element, return_tensor=return_tensor)

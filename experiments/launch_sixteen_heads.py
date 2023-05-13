@@ -110,7 +110,7 @@ parser.add_argument('--device', type=str, default="cuda")
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("--task ioi --wandb-run-name test_16_heads".split())
+    args = parser.parse_args("--task greaterthan --wandb-run-name test_16_heads".split())
 else:
     args = parser.parse_args()
 
@@ -136,8 +136,17 @@ if TASK == "ioi":
     assert len(toks_int_values) == len(toks_int_values_other) == num_examples, (len(toks_int_values), len(toks_int_values_other), num_examples)
     seq_len = toks_int_values.shape[1]
     model_getter = get_gpt2_small
+if TASK == "greaterthan":
+    num_examples = 100
+    tl_model, toks_int_values, prompts, metric = get_all_greaterthan_things(num_examples=num_examples, device=DEVICE, sixteen_heads=True, return_tensor=True, return_one_element=False)
+    toks_int_values_other = toks_int_values.clone()
+    toks_int_values_other[:, 7] = 486 # replace with 01
+    seq_len = toks_int_values.shape[1]
+    model_getter = get_gpt2_small
+
 elif TASK == "induction":
     raise NotImplementedError("Induction has same sentences with multiple places we take loss / KL divergence; fiddlier implementation")
+
 # note to self: turn of split_qkv for less OOM
 
 else:
@@ -375,6 +384,8 @@ for nodes_present in tqdm(range(len(sorted_indices) + 1)):
 
     wandb.log(
         {
+            "layer_idx": layer_idx,
+            "head_idx": head_idx,
             "nodes": nodes_present,
             "metric": metric_result.item(),
             "edges": cur_edges,
@@ -384,3 +395,5 @@ for nodes_present in tqdm(range(len(sorted_indices) + 1)):
 # %%
 
 wandb.finish()
+
+#%%
