@@ -9,6 +9,7 @@ import click
 import IPython
 from acdc.acdc_utils import kl_divergence
 import torch
+from acdc.docstring.utils import AllDocstringThings
 from acdc.ioi.ioi_dataset import IOIDataset  # NOTE: we now import this LOCALLY so it is deterministic
 from tqdm import tqdm
 import wandb
@@ -70,7 +71,12 @@ TOKENS = {
 }
 INV_TOKENS = {v: k for k, v in TOKENS.items()}
 
-def greaterthan_metric(logits, tokens):
+TOKENS_TENSOR = torch.as_tensor([TOKENS[i] for i in range(0, 100)], dtype=torch.long)
+INV_TOKENS_TENSOR = torch.zeros(50290, dtype=torch.long)
+for i, v in enumerate(TOKENS_TENSOR):
+    INV_TOKENS_TENSOR[v] = i
+
+def greaterthan_metric_reference(logits, tokens):
     probs = F.softmax(logits[:, -1], dim=-1) # last elem???
     ans = 0.0
     for i in range(len(probs)):
@@ -80,6 +86,19 @@ def greaterthan_metric(logits, tokens):
         for year_pref in range(0, yearend):
             ans -= probs[i, TOKENS[year_pref]]
     return - float(ans / len(probs))
+
+def greaterthan_metric(logits, tokens):
+    probs = F.softmax(logits[:, -1], dim=-1)
+    csum = torch.cumsum(probs[:, TOKENS_TENSOR], dim=-1)
+    yearend = INV_TOKENS_TENSOR[tokens[:, 7]]
+
+    # At or after: positive term
+    range = torch.arange(len(yearend))
+    positive = csum[:, -1]
+    # Before: negative term
+    negative = torch.where(yearend == 0, torch.zeros(()), csum[range, yearend-1])
+    return - (positive - 2*negative).mean()
+
 
 def get_year_data(num_examples, model):
     template = "The {noun} lasted from the year {year1} to "
@@ -106,7 +125,55 @@ def get_year_data(num_examples, model):
 
     return prompts_tokenized, prompts
 
-def get_all_greaterthan_things(num_examples, device="cuda"):
+def get_all_greaterthan_things(num_examples, metric_name, device="cuda"):
     model = get_gpt2_small(device=device)
-    data, prompts = get_year_data(num_examples, model)
-    return model, data, prompts, partial(greaterthan_metric, tokens=data)
+    data, prompts = get_year_data(num_examples*2, model)
+    patch_data = data.clone()
+    patch_data[:, 7] = 486  # replace with 01
+
+    validation_data = data[:num_examples]
+    validation_patch_data = patch_data[:num_examples]
+
+    test_data = data[num_examples:]
+    test_patch_data = patch_data[num_examples:]
+
+    with torch.no_grad():
+        base_logits = model(data)[:, -1, :]
+        base_logprobs = F.log_softmax(base_logits, dim=-1)
+        base_validation_logprobs = base_logprobs[:num_examples]
+        base_test_logprobs = base_logprobs[num_examples:]
+
+    if metric_name == "greaterthan":
+        validation_metric = partial(greaterthan_metric, tokens=validation_data)
+    elif metric_name == "kl_div":
+        validation_metric = partial(
+            kl_divergence,
+            base_model_logprobs=base_validation_logprobs,
+            mask_repeat_candidates=None,
+            last_seq_element_only=True,
+        )
+    else:
+        raise ValueError(f"Unknown metric {metric_name}")
+
+    test_metrics = {
+        "greaterthan": partial(greaterthan_metric, tokens=test_data),
+        "kl_div": partial(
+            kl_divergence,
+            base_model_logprobs=base_test_logprobs,
+            mask_repeat_candidates=None,
+            last_seq_element_only=True,
+        ),
+    }
+
+    return AllDocstringThings(
+        tl_model=model,
+        validation_metric=validation_metric,
+        validation_data=validation_data,
+        validation_labels=None,
+        validation_mask=None,
+        validation_patch_data=validation_patch_data,
+        test_metrics=test_metrics,
+        test_data=test_data,
+        test_labels=None,
+        test_mask=None,
+        test_patch_data=test_patch_data)

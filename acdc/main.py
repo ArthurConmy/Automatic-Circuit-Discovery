@@ -85,6 +85,7 @@ from acdc.acdc_utils import (
     kl_divergence,
 )
 from acdc.ioi.utils import (
+    get_all_ioi_things,
     get_ioi_data,
     get_gpt2_small,
 )
@@ -165,8 +166,7 @@ use_pos_embed = False
 
 if TASK == "ioi":
     num_examples = 100
-    tl_model = get_gpt2_small(device=DEVICE)
-    toks_int_values, toks_int_values_other, metric = get_ioi_data(tl_model, num_examples)
+    things = get_all_ioi_things(num_examples=num_examples, device=DEVICE, metric_name=args.metric)
 elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     tracr_task = TASK.split("-")[-1] # "reverse"
     # this implementation doesn't ablate the position embeddings (which the plots in the paper do do), so results are different. See the rust_circuit implemntation if this need be checked
@@ -177,35 +177,28 @@ elif TASK == "induction":
     num_examples = 50
     seq_len = 300
     # TODO initialize the `tl_model` with the right model
-    induction_things = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric=args.metric)
-    tl_model, toks_int_values, toks_int_values_other = induction_things.tl_model, induction_things.validation_data, induction_things.validation_patch_data
-
-    validation_metric = induction_things.validation_metric
-    metric = lambda x: validation_metric(x).item()
-
-    test_metric_fns = {args.metric: induction_things.test_metric}
-    test_metric_data = induction_things.test_data
+    things = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric=args.metric)
 
 elif TASK == "docstring":
     num_examples = 50
     seq_len = 41
-    docstring_things = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE,
+    things = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE,
                                                 metric_name=args.metric, correct_incorrect_wandb=True)
-
-    tl_model, toks_int_values, toks_int_values_other = docstring_things.tl_model, docstring_things.validation_data, docstring_things.validation_patch_data
-
-    validation_metric = docstring_things.validation_metric
-    metric = lambda x: validation_metric(x).item()
-
-    test_metric_fns = docstring_things.test_metrics
-    test_metric_data = docstring_things.test_data
 elif TASK == "greaterthan":
     num_examples = 100
-    tl_model, toks_int_values, prompts, metric = get_all_greaterthan_things(num_examples=num_examples, device=DEVICE)
-    toks_int_values_other = toks_int_values.clone()
-    toks_int_values_other[:, 7] = 486 # replace with 01
+    thinds = get_all_greaterthan_things(num_examples=num_examples, metric_name=args.metric, device=DEVICE)
 else:
     raise ValueError(f"Unknown task {TASK}")
+
+if not TASK.startswith("tracr"):
+    validation_metric = things.validation_metric
+    def metric(x):
+        return validation_metric(x).item()
+
+    toks_int_values = things.validation_data
+    toks_int_values_other = things.validation_patch_data
+
+
 
 if RESET_NETWORK:
     base_dir = Path(__file__).parent.parent / "subnetwork-probing/" / "data" / "induction"
