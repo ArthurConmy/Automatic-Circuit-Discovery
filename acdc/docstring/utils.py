@@ -41,13 +41,13 @@ class AllDataThings:
     tl_model: HookedTransformer
     validation_metric: Callable[[torch.Tensor], torch.Tensor]
     validation_data: torch.Tensor
-    validation_labels: torch.Tensor
-    validation_mask: NoneType
+    validation_labels: Optional[torch.Tensor]
+    validation_mask: Optional[torch.Tensor]
     validation_patch_data: torch.Tensor
     test_metrics: dict[str, Any]
     test_data: torch.Tensor
-    test_labels: torch.Tensor
-    test_mask: NoneType
+    test_labels: Optional[torch.Tensor]
+    test_mask: Optional[torch.Tensor]
     test_patch_data: torch.Tensor
 
 

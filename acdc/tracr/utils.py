@@ -1,4 +1,5 @@
 import IPython
+from acdc.docstring.utils import AllDataThings
 if IPython.get_ipython() is not None:
     IPython.get_ipython().magic('load_ext autoreload')
     IPython.get_ipython().magic('autoreload 2')
@@ -235,44 +236,75 @@ def get_perm(n, no_fp = True):
         perm = torch.randperm(n)
     return perm
 
-def get_tracr_data(tl_model, task: Literal["reverse", "proportion"]):
+def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: str, num_examples: int, device):
+    _, tl_model = get_tracr_model_input_and_tl_model(task=task)
+    tl_model = tl_model.to(device)
+
     if task == "reverse":
         batch_size = 6
         seq_len = 4
-        data_tens = torch.zeros((batch_size, seq_len)).int()
+        data_tens = torch.zeros((batch_size, seq_len), device=device, dtype=torch.long)
+
+        if num_examples != batch_size:
+            raise ValueError("num_examples must be equal to batch_size for reverse task")
 
         vals=[0,1,2]
         import itertools
         for perm_idx, perm in enumerate(itertools.permutations(vals)):
             data_tens[perm_idx] = torch.tensor([3, perm[0], perm[1], perm[2]])
 
-        n = len(data_tens)
-        data_tens = data_tens.long()
-        patch_data_indices = get_perm(n)
+        patch_data_indices = get_perm(len(data_tens))
         warnings.warn("Test that this only considers the relevant part of the sequence...")
         patch_data_tens = data_tens[patch_data_indices]
         base_model_logprobs = F.log_softmax(tl_model(data_tens), dim=-1)
-        metric = partial(kl_divergence, base_model_logprobs=base_model_logprobs, mask_repeat_candidates=None)
+
+        if metric_name == "kl_divergence":
+            metric = partial(kl_divergence, base_model_logprobs=base_model_logprobs, mask_repeat_candidates=None)
+        else:
+            raise ValueError(f"Metric {metric_name} not recognized")
+
+        return AllDataThings(
+            tl_model,
+            validation_metric=metric,
+            validation_data=data_tens,
+            validation_labels=None,
+            validation_mask=None,
+            validation_patch_data=patch_data_tens,
+            test_metrics={"kl_div": metric},
+            test_data=data_tens,
+            test_labels=None,
+            test_mask=None,
+            test_patch_data=patch_data_tens,
+        )
+
         
     if task == "proportion":
-        batch_size = 50
         seq_len = 4
         def to_tens(s):
             assert isinstance(s, str) or isinstance(s, list) or isinstance(s, tuple)
             assert len(s)==seq_len
             assert all([c in ["w", "x", "y", "z"] for c in s]), s
             return torch.tensor([ord(c)-ord("w") for c in s]).int()
-        data_tens = torch.zeros((batch_size, seq_len)).int()
+        data_tens = torch.zeros((num_examples*2, seq_len), dtype=torch.long, device=device)
         alphabet = "wxyz"
         import itertools
         all_things = list(itertools.product(alphabet, repeat=seq_len))
         rand_perm1 = torch.randperm(len(all_things))
-        for i in range(batch_size):
+        for i in range(len(data_tens)):
             data_tens[i] = to_tens(all_things[rand_perm1[i]])
-        data_tens = data_tens.long()
-        rand_perm2 = torch.randperm(batch_size)
-        patch_data_tens = data_tens[rand_perm2]
-        base_model_vals = tl_model(data_tens)[:, 1:, 0]
+
+        rand_perm2 = torch.randperm(num_examples)
+        validation_patch_data = data_tens[rand_perm2]
+
+        rand_perm3 = torch.randperm(num_examples)
+        test_patch_data = data_tens[rand_perm3 + num_examples]
+
+        validation_data = data_tens[:num_examples]
+        test_data = data_tens[num_examples:]
+
+        with torch.no_grad():
+            validation_outputs = tl_model(validation_data)
+            test_outputs = tl_model(test_data)
 
         def l2_metric( # this is for proportion... it's unclear how to format this tbh sad
             dataset: Dataset,
@@ -286,6 +318,36 @@ def get_tracr_data(tl_model, task: Literal["reverse", "proportion"]):
             
             return ((proc - base_model_vals)**2).mean().item()
 
-        metric = partial(l2_metric, model_out = base_model_vals)
+        if metric_name == "l2":
+            metric = partial(l2_metric, model_out=validation_outputs[:, 1:, 0])
 
-    return data_tens, patch_data_tens, metric
+        elif metric_name == "kl_div":
+            metric = partial(kl_divergence, base_model_logprobs=F.log_softmax(validation_outputs),
+                             mask_repeat_candidates=None, last_seq_element_only=False)
+        else:
+            raise ValueError(f"unknown metric {metric_name}")
+
+        test_metrics = {
+            "l2": partial(l2_metric, model_out=test_outputs[:, 1:, 0]),
+            "kl_div": partial(
+                kl_divergence,
+                base_model_logprobs=F.log_softmax(test_outputs),
+                mask_repeat_candidates=None,
+                last_seq_element_only=False,
+            ),
+        }
+
+        return AllDataThings(
+            tl_model=tl_model,
+            validation_metric=metric,
+            validation_data=validation_data,
+            validation_labels=None,
+            validation_mask=None,
+            validation_patch_data=validation_patch_data,
+            test_metrics=test_metrics,
+            test_data=test_data,
+            test_labels=None,
+            test_mask=None,
+            test_patch_data=test_patch_data,
+        )
+    raise ValueError(f"unknown task {task}")

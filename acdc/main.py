@@ -64,7 +64,7 @@ from acdc.graphics import show
 from acdc.HookedTransformer import (
     HookedTransformer,
 )
-from acdc.tracr.utils import get_tracr_data, get_tracr_model_input_and_tl_model
+from acdc.tracr.utils import get_all_tracr_things, get_tracr_data, get_tracr_model_input_and_tl_model
 from acdc.docstring.utils import get_all_docstring_things
 from acdc.acdc_utils import (
     make_nd_dict,
@@ -167,12 +167,12 @@ use_pos_embed = False
 if TASK == "ioi":
     num_examples = 100
     things = get_all_ioi_things(num_examples=num_examples, device=DEVICE, metric_name=args.metric)
-elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
-    tracr_task = TASK.split("-")[-1] # "reverse"
-    # this implementation doesn't ablate the position embeddings (which the plots in the paper do do), so results are different. See the rust_circuit implemntation if this need be checked
-    # also there's no splitting by neuron yet TODO
-    _, tl_model = get_tracr_model_input_and_tl_model(task=TASK)
-    toks_int_values, toks_int_values_other, metric = get_tracr_data(tl_model, task=TASK)
+elif TASK == "tracr-reverse":
+    num_examples = 6
+    things = get_all_tracr_things(task="reverse", metric_name=args.metric, num_examples=num_examples, device=DEVICE)
+elif TASK == "tracr-proportion":
+    num_examples = 50
+    things = get_all_tracr_things(task="proportion", metric_name=args.metric, num_examples=num_examples, device=DEVICE)
 elif TASK == "induction":
     num_examples = 50
     seq_len = 300
@@ -190,17 +190,16 @@ elif TASK == "greaterthan":
 else:
     raise ValueError(f"Unknown task {TASK}")
 
-if not TASK.startswith("tracr"):
-    validation_metric = things.validation_metric
-    def metric(x):
-        return validation_metric(x).item()
 
-    toks_int_values = things.validation_data
-    toks_int_values_other = things.validation_patch_data
+validation_metric = things.validation_metric
+def metric(x):
+    return validation_metric(x).item()
 
-
+toks_int_values = things.validation_data
+toks_int_values_other = things.validation_patch_data
 
 if RESET_NETWORK:
+    raise NotImplementedError("TODO")
     base_dir = Path(__file__).parent.parent / "subnetwork-probing/" / "data" / "induction"
     reset_state_dict = torch.load(base_dir / "random_model.pt")
     for layer_i in range(2):
