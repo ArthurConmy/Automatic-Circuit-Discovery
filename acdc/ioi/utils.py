@@ -7,7 +7,7 @@ import click
 import IPython
 from acdc.acdc_utils import MatchNLLMetric, frac_correct_metric, logit_diff_metric, kl_divergence, negative_log_probs
 import torch
-from acdc.docstring.utils import AllDocstringThings
+from acdc.docstring.utils import AllDataThings
 from acdc.ioi.ioi_dataset import IOIDataset  # NOTE: we now import this LOCALLY so it is deterministic
 from tqdm import tqdm
 import wandb
@@ -130,7 +130,7 @@ def get_all_ioi_things(num_examples, device, metric_name):
         ),
     }
 
-    return AllDocstringThings(
+    return AllDataThings(
         tl_model=tl_model,
         validation_metric=validation_metric,
         validation_data=validation_data,

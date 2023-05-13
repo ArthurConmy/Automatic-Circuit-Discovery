@@ -1,6 +1,6 @@
 import dataclasses
 from functools import partial
-from acdc.docstring.utils import AllDocstringThings
+from acdc.docstring.utils import AllDataThings
 import wandb
 import os
 from collections import defaultdict
@@ -84,7 +84,7 @@ def get_mask_repeat_candidates(num_examples=None, seq_len=None, device=None):
         return mask_repeat_candidates[:num_examples, :seq_len]
 
 
-def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric="kl_div") -> AllDocstringThings:
+def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric="kl_div") -> AllDataThings:
     tl_model = get_model(device=device)
     tl_model.to(device)
 
@@ -153,7 +153,7 @@ def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric
             last_seq_element_only=False,
         ),
     }
-    return AllDocstringThings(
+    return AllDataThings(
         tl_model=tl_model,
         validation_metric=validation_metric,
         validation_data=validation_data,

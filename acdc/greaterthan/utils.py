@@ -9,7 +9,7 @@ import click
 import IPython
 from acdc.acdc_utils import kl_divergence
 import torch
-from acdc.docstring.utils import AllDocstringThings
+from acdc.docstring.utils import AllDataThings
 from acdc.ioi.ioi_dataset import IOIDataset  # NOTE: we now import this LOCALLY so it is deterministic
 from tqdm import tqdm
 import wandb
@@ -165,7 +165,7 @@ def get_all_greaterthan_things(num_examples, metric_name, device="cuda"):
         ),
     }
 
-    return AllDocstringThings(
+    return AllDataThings(
         tl_model=model,
         validation_metric=validation_metric,
         validation_data=validation_data,

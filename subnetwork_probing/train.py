@@ -15,7 +15,7 @@ import huggingface_hub
 
 import networkx as nx
 import numpy as np
-from acdc.docstring.utils import AllDocstringThings, get_all_docstring_things
+from acdc.docstring.utils import AllDataThings, get_all_docstring_things
 import pandas as pd
 import torch
 import torch.nn.functional as F
@@ -160,7 +160,7 @@ def do_zero_caching(model: HookedTransformer) -> None:
 
 
 def train_induction(
-    args, induction_model: HookedTransformer, all_task_things: AllInductionThings | AllDocstringThings,
+    args, induction_model: HookedTransformer, all_task_things: AllInductionThings | AllDataThings,
 ):
     epochs = args.epochs
     lambda_reg = args.lambda_reg

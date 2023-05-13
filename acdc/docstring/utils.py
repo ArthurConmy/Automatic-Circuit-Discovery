@@ -37,7 +37,7 @@ from acdc.acdc_utils import kl_divergence
 
 
 @dataclasses.dataclass(frozen=False)
-class AllDocstringThings:
+class AllDataThings:
     tl_model: HookedTransformer
     validation_metric: Callable[[torch.Tensor], torch.Tensor]
     validation_data: torch.Tensor
@@ -58,7 +58,7 @@ def get_all_docstring_things(
     metric_name="kl_div",
     dataset_version="random_random",
     correct_incorrect_wandb=True,
-) -> AllDocstringThings:
+) -> AllDataThings:
     tl_model = HookedTransformer.from_pretrained(
         "attn-only-4l",
         use_global_cache=True,
@@ -200,7 +200,7 @@ def get_all_docstring_things(
         ),
     }
 
-    return AllDocstringThings(
+    return AllDataThings(
         tl_model=tl_model,
         validation_metric=validation_metric,
         validation_data=validation_data,
