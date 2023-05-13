@@ -34,6 +34,7 @@ class HookPoint(nn.Module):
         self.fwd_hook_functions = [] # Added for ACDC...
 
         self.ctx = {}
+
         if global_cache is not None:
             self.global_cache = global_cache
 
@@ -139,104 +140,6 @@ class HookPoint(nn.Module):
         else:
             return x
 
-class MaskedHookPoint(HookPoint):
-    pass
-    def __init__(
-        self, 
-        mask_shape, 
-        name,
-        **kwargs,
-    ):
-        warnings.warn("MaskedHookPoint is just a HookPoint at the moment - it was breaking cache_all : (")
-        super().__init__(**kwargs)
-    # self.mask_scores = torch.nn.Parameter(torch.ones(mask_shape))
-    # self.beta = (
-        # 2 / 3
-    #     name, 
-    #     mask_p=0.9, 
-    #     is_mlp=False, 
-    #     global_cache=None,
-    #     is_disabled=False,
-    # ):
-    #     super().__init__(global_cache=global_cache)
-    #     self.training = True  # assume always training for now
-    #     self.mask_scores = torch.nn.Parameter(torch.ones(mask_shape))
-    #     self.beta = (
-    #         2 / 3
-    #     )  # TODO: make this hyperaparams globally set and synced somehow
-    #     self.gamma = -0.1
-    #     self.zeta = 1.1
-    #     self.mask_p = 0.9
-    #     self.name = name
-    #     self.is_mlp = is_mlp
-    #     self.init_weights()
-    #     self.is_caching = False
-    #     self.is_disabled = is_disabled
-    #     self.cache = None
-
-    # def __repr__(self):
-    #     return super().__repr__() + f" with mask_scores {self.mask_scores}"
-
-    # def init_weights(self):
-    #     """
-    #     this is how they initialise (their code pasted)
-    #     """
-    #     p = (self.mask_p - self.gamma) / (self.zeta - self.gamma)
-    #     torch.nn.init.constant_(self.mask_scores, val=np.log(p / (1 - p)))
-
-    # def sample_mask(self):
-    #     # reparam trick taken from their code
-    #     uniform_sample = (
-    #         torch.zeros_like(self.mask_scores).uniform_().clamp(0.0001, 0.9999)
-    #     )
-    #     s = torch.sigmoid(
-    #         (uniform_sample.log() - (1 - uniform_sample).log() + self.mask_scores)
-    #         / self.beta
-    #     )
-    #     s_bar = s * (self.zeta - self.gamma) + self.gamma
-    #     mask = s_bar.clamp(min=0.0, max=1.0)
-    #     return mask
-
-    # def forward(self, x):
-    #     assert not (self.is_disabled and self.is_caching)
-    #     if self.is_caching:
-    #         # indices = list(range(len(x)))
-    #         # np.random.shuffle(indices)
-    #         # x = x[indices]
-    #         self.cache = x.cpu()
-    #         return x
-    #     elif self.is_disabled:
-    #         return x
-    #     else:
-    #         import einops
-
-    #         if not self.is_mlp:
-    #             assert x.shape[2] % self.mask_scores.shape[0] == 0
-    #             assert x.shape[3] % self.mask_scores.shape[1] == 0
-    #             assert len(x.shape) == 4
-
-    #         mask = self.sample_mask()
-    #         if self.is_mlp:
-    #             broadcasted_mask_scores = einops.repeat(
-    #                 mask[:, 0],
-    #                 "a-> c d a",
-    #                 c=x.shape[0],
-    #                 d=x.shape[1],  # TODO: not confident with this, needs review
-    #             )
-    #         else:
-    #             broadcasted_mask_scores = einops.repeat(
-    #                 mask,
-    #                 "a b -> (a c) (b d)",
-    #                 c=x.shape[2] // self.mask_scores.shape[0],
-    #                 d=x.shape[3] // self.mask_scores.shape[1],
-    #             )
-    #         interpolation = (1 - broadcasted_mask_scores) * self.cache.to(
-    #             "cuda:0"
-    #         ) + broadcasted_mask_scores * x
-
-    #         return interpolation
-    #         # return broadcasted_mask_scores * x
-
 
 # %%
 class HookedRootModule(nn.Module):
@@ -272,7 +175,6 @@ class HookedRootModule(nn.Module):
     def remove_all_hook_fns(self, direction="both", including_permanent=False):
         for hp in self.hook_points():
             hp.remove_hooks(direction, including_permanent=including_permanent)
-
 
     def clear_contexts(self):
         for hp in self.hook_points():

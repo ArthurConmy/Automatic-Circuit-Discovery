@@ -8,7 +8,7 @@ import logging
 
 from functools import *
 import warnings
-from acdc.hook_points import HookPoint, MaskedHookPoint
+from acdc.hook_points import HookPoint
 from acdc.utils import gelu_new, solu, gelu_fast
 from acdc.HookedTransformerConfig import HookedTransformerConfig
 from acdc.FactoredMatrix import FactoredMatrix
@@ -107,6 +107,7 @@ class LayerNormPre(nn.Module):
         self.eps = self.cfg.eps
 
         # Adds a hook point for the normalisation scale factor
+        print("Before hook scale", "None" if global_cache is None else "Not None")
         self.hook_scale = HookPoint(global_cache=global_cache)  # [batch, pos]
         # Hook Normalized captures LN output - here it's a vector with std 1 and mean 0
         self.hook_normalized = HookPoint(global_cache=global_cache)  # [batch, pos, length]
@@ -215,7 +216,6 @@ class Attention(nn.Module):
     def __init__(
         self,
         cfg: Union[Dict, HookedTransformerConfig],
-        is_masked: bool,
         attn_type: str = "global",
         layer_id: Optional[int] = None,
         global_cache=None,
@@ -278,23 +278,9 @@ class Attention(nn.Module):
         if self.cfg.scale_attn_by_inverse_layer_idx:
             self.attn_scale *= self.layer_id + 1
 
-        if is_masked:
-            self.hook_k = MaskedHookPoint(
-                global_cache=global_cache,
-                mask_shape=(self.cfg.n_heads, 1), name=str(layer_id) + "k"
-            )
-            self.hook_q = MaskedHookPoint(
-                global_cache=global_cache,
-                mask_shape=(self.cfg.n_heads, 1), name=str(layer_id) + "q"
-            )
-            self.hook_v = MaskedHookPoint(
-                global_cache=global_cache,
-                mask_shape=(self.cfg.n_heads, 1), name=str(layer_id) + "v"
-            )
-        else:
-            self.hook_k = HookPoint(global_cache=global_cache)
-            self.hook_q = HookPoint(global_cache=global_cache)
-            self.hook_v = HookPoint(global_cache=global_cache)
+        self.hook_k = HookPoint(global_cache=global_cache)
+        self.hook_q = HookPoint(global_cache=global_cache)
+        self.hook_v = HookPoint(global_cache=global_cache)
         self.hook_z = HookPoint(global_cache=global_cache)  # [batch, pos, head_index, d_head]
         self.hook_attn_scores = HookPoint(global_cache=global_cache)  # [batch, head_index, query_pos, key_pos]
         self.hook_pattern = HookPoint(global_cache=global_cache)  # [batch, head_index, query_pos, key_pos]
@@ -579,9 +565,6 @@ class MLP(nn.Module):
         self.b_out = nn.Parameter(torch.zeros(self.cfg.d_model))
 
         self.hook_pre = HookPoint(global_cache=global_cache)  # [batch, pos, d_mlp]
-        # self.hook_pre = MaskedHookPoint(global_cache=global_cache
-        #     mask_shape=(self.cfg.d_mlp, 1), is_mlp=True
-        # )  # TODO: get Arthur to check this
         self.hook_post = HookPoint(global_cache=global_cache)  # [batch, pos, d_mlp]
 
         if self.cfg.act_fn == "relu":
@@ -632,7 +615,7 @@ class MLP(nn.Module):
 # Transformer Block
 class TransformerBlock(nn.Module):
     def __init__(
-        self, cfg: Union[Dict, HookedTransformerConfig], is_masked: bool, block_index, global_cache = None,
+        self, cfg: Union[Dict, HookedTransformerConfig], block_index, global_cache = None,
     ):
         super().__init__()
         if isinstance(cfg, Dict):
@@ -657,11 +640,11 @@ class TransformerBlock(nn.Module):
             )
 
         if not self.cfg.use_local_attn:
-            self.attn = Attention(cfg, is_masked, "global", block_index, global_cache = global_cache)
+            self.attn = Attention(cfg, "global", block_index, global_cache = global_cache)
         else:
             assert self.cfg.attn_types is not None
             attn_type = self.cfg.attn_types[block_index]
-            self.attn = Attention(cfg, is_masked, attn_type, block_index, global_cache = global_cache)
+            self.attn = Attention(cfg, attn_type, block_index, global_cache = global_cache)
         if not self.cfg.attn_only:
             self.mlp = MLP(cfg, global_cache = global_cache)
 

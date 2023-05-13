@@ -119,7 +119,7 @@ class HookedTransformer(HookedRootModule):
     """
 
     def __init__(
-        self, cfg, is_masked=False, tokenizer=None, move_to_device=True,
+        self, cfg, tokenizer=None, move_to_device=True,
     ):
         """
         Model initialization. Note that if you want to load the model from pretrained weights, you should use the HookedTransformer.from_pretrained() class method instead of this one.
@@ -181,22 +181,22 @@ class HookedTransformer(HookedRootModule):
 
         self.blocks = nn.ModuleList(
             [
-                TransformerBlock(self.cfg, is_masked, block_index, global_cache=global_cache)
+                TransformerBlock(self.cfg, block_index, global_cache=global_cache)
                 for block_index in range(self.cfg.n_layers)
             ]
         )
 
         if self.cfg.normalization_type == "LN":
             if self.cfg.final_rms:
-                self.ln_final = RMSNorm(self.cfg)
+                self.ln_final = RMSNorm(self.cfg, global_cache=global_cache)
             else:
-                self.ln_final = LayerNorm(self.cfg)
+                self.ln_final = LayerNorm(self.cfg, global_cache=global_cache)
         elif self.cfg.normalization_type == "LNPre":
             # We've folded in LayerNorm weights, so just need the center + scale parts
             if self.cfg.final_rms:
-                self.ln_final = RMSNormPre(self.cfg)
+                self.ln_final = RMSNormPre(self.cfg, global_cache=global_cache)
             else:
-                self.ln_final = LayerNormPre(self.cfg)
+                self.ln_final = LayerNormPre(self.cfg, global_cache=global_cache)
         elif self.cfg.normalization_type is None:
             # If it's None, don't create either layer
             pass
@@ -204,7 +204,7 @@ class HookedTransformer(HookedRootModule):
             logging.warning(
                 f"Invalid normalization_type passed in {self.cfg.normalization_type}"
             )
-        self.unembed = Unembed(self.cfg)
+        self.unembed = Unembed(self.cfg, global_cache=global_cache)
 
         if self.cfg.init_weights:
             self.init_weights()
@@ -703,7 +703,6 @@ class HookedTransformer(HookedRootModule):
     def from_pretrained(
         cls,
         model_name: str,
-        is_masked: bool = False,
         fold_ln=True,
         center_writing_weights=True,
         center_unembed=True,
@@ -781,7 +780,7 @@ class HookedTransformer(HookedRootModule):
         )
 
         # Create the HookedTransformer object
-        model = cls(cfg, is_masked, **model_kwargs)
+        model = cls(cfg, **model_kwargs)
 
         model.load_and_process_state_dict(
             state_dict,
@@ -1606,10 +1605,3 @@ class HookedTransformer(HookedRootModule):
                 p.requires_grad = False
             else:
                 print(n, "is not frozen")
-
-
-# class MaskedHookedTransformer(HookedTransformer):
-#     def __init__(self, cfg, tokenizer=None, move_to_device=True):
-#         super().__init__(cfg, tokenizer, move_to_device)
-#         self.is_masked = True
-#         self.is_new = True
