@@ -595,7 +595,7 @@ class Attention(nn.Module):
 
 # MLP Layers
 class MLP(nn.Module):
-    def __init__(self, cfg: Union[Dict, HookedTransformerConfig], is_masked: bool):
+    def __init__(self, cfg: Union[Dict, HookedTransformerConfig]):
         super().__init__()
         if isinstance(cfg, Dict):
             cfg = HookedTransformerConfig.from_dict(cfg)
@@ -609,7 +609,7 @@ class MLP(nn.Module):
         # self.hook_pre = MaskedHookPoint(
         #     mask_shape=(self.cfg.d_mlp, 1), is_mlp=True
         # )  # TODO: get Arthur to check this
-        self.hook_post = MaskedHookPoint(mask_shape=(self.cfg.d_mlp,), is_mlp=True, name="mlp")  # [batch, pos, d_mlp]
+        self.hook_post = HookPoint()
 
         if self.cfg.act_fn == "relu":
             self.act_fn = F.relu
@@ -690,10 +690,13 @@ class TransformerBlock(nn.Module):
             attn_type = self.cfg.attn_types[block_index]
             self.attn = Attention(cfg, is_masked, attn_type, block_index)
         if not self.cfg.attn_only:
-            self.mlp = MLP(cfg, is_masked=is_masked)
+            self.mlp = MLP(cfg)
 
         self.hook_attn_out = HookPoint()  # [batch, pos, d_model]
-        self.hook_mlp_out = HookPoint()  # [batch, pos, d_model]
+        if is_masked:
+            self.hook_mlp_out = MaskedHookPoint(mask_shape=(cfg.d_mlp,), is_mlp=True, name=f"mlp_{block_index}")  # [batch, pos, d_mlp]
+        else:
+            self.hook_mlp_out = HookPoint()  # [batch, pos, d_model]
         self.hook_resid_pre = HookPoint()  # [batch, pos, d_model]
         if not self.cfg.attn_only and not self.cfg.parallel_attn_mlp:
             self.hook_resid_mid = HookPoint()  # [batch, pos, d_model]

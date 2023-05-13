@@ -108,7 +108,18 @@ def visualize_mask(model: HookedTransformer) -> tuple[int, list[TLACDCInterpNode
                 if mask_sample < 0.5:
                     nodes_to_mask.append(node)
 
-    assert len(mask_scores_for_names) == 3 * number_of_heads * number_of_layers
+        # MLP
+        node_name = f"blocks.{layer_index}.hook_mlp_out"
+        node_name_list.append(node_name)
+        node = TLACDCInterpNode(node_name, TorchIndex([None]), EdgeType.PLACEHOLDER)
+        total_nodes += 1
+
+        mask_sample = layer.mlp.hook_post.sample_mask().cpu().item()
+        mask_scores_for_names.append(mask_sample)
+        if mask_sample < 0.5:
+            nodes_to_mask.append(node)
+
+    # assert len(mask_scores_for_names) == 3 * number_of_heads * number_of_layers
     log_plotly_bar_chart(x=node_name_list, y=mask_scores_for_names)
     node_count = total_nodes - len(nodes_to_mask)
     return node_count, nodes_to_mask
