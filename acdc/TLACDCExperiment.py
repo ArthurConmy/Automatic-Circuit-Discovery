@@ -699,8 +699,8 @@ class TLACDCExperiment:
 
             print("But it's bad")
 
-    def count_no_edges(self) -> int:
-        cnt = self.corr.count_no_edges()
+    def count_no_edges(self, verbose=False) -> int:
+        cnt = self.corr.count_no_edges(verbose=verbose)
         if self.verbose:
             print("No edge", cnt)
         return cnt

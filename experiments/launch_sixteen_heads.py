@@ -138,6 +138,7 @@ if TASK == "ioi":
     toks_int_values, toks_int_values_other, metric = get_ioi_data(tl_model, num_examples, kl_return_one_element=False)
     assert len(toks_int_values) == len(toks_int_values_other) == num_examples, (len(toks_int_values), len(toks_int_values_other), num_examples)
     seq_len = toks_int_values.shape[1]
+    model_getter = get_gpt2_small
 elif TASK == "induction":
     raise NotImplementedError("Induction has same sentences with multiple places we take loss / KL divergence; fiddlier implementation")
 # note to self: turn of split_qkv for less OOM
@@ -231,7 +232,6 @@ for k in kls:
 #%%
 
 if DO_CHECKING_RECALC:
-
     for i in tqdm(range(num_examples)):
         tl_model.zero_grad()
         tl_model.reset_hooks()
@@ -280,7 +280,106 @@ if DO_CHECKING_RECALC:
 
     for k in results:
         print(k, results[k].norm().item(), kls[k].norm().item())  # should all be close!!!
+        if k[1] == None: continue
         assert torch.allclose(results[k], kls[k]) # oh lol we forgot the MLPs
 
 #%%
 
+kl_dict = deepcopy(kls)
+
+scores_list = torch.zeros(size=(tl_model.cfg.n_layers, tl_model.cfg.n_heads + int(not tl_model.cfg.attn_only)))
+
+mask_list = []
+for layer_idx in range(tl_model.cfg.n_layers):
+    for head_idx in range(tl_model.cfg.n_heads):
+        score = kl_dict[(layer_idx, head_idx)].sum()
+        scores_list[layer_idx, head_idx] = score
+    if not tl_model.cfg.attn_only:
+        scores_list[layer_idx, -1] = kl_dict[(layer_idx, None)].sum()
+
+
+# normalize by L2 of the layers
+l2_norms = scores_list.norm(dim=1).unsqueeze(-1)
+scores_list = scores_list / l2_norms
+
+all_heads = []
+for layer_idx in range(tl_model.cfg.n_layers):
+    for head_idx in range(tl_model.cfg.n_heads):
+        all_heads.append((layer_idx, head_idx))
+    if not tl_model.cfg.attn_only:
+        all_heads.append((layer_idx, -1))
+
+# sort both lists by scores
+sorted_indices = sorted(all_heads, key=lambda x: scores_list[x], reverse=True)
+
+#%%
+
+# reload in a TLModel that is more memory hungry 
+# but does not use backwards pass things
+
+del tl_model
+tl_model = model_getter(device=DEVICE, sixteen_heads=False)
+
+#%%
+
+with open(__file__, "r") as f:
+    notes = f.read()
+exp = TLACDCExperiment(
+    model=tl_model,
+    threshold=100_000,
+    using_wandb=True, # for now
+    wandb_entity_name=WANDB_ENTITY_NAME,
+    wandb_project_name=WANDB_PROJECT_NAME,
+    wandb_run_name=WANDB_RUN_NAME,
+    wandb_group_name=WANDB_GROUP_NAME,
+    wandb_notes=notes,
+    zero_ablation=ZERO_ABLATION,
+    ds=toks_int_values,
+    ref_ds=toks_int_values_other,
+    metric=metric,
+    second_metric=None,
+    verbose=True,
+    hook_verbose=False,
+    add_sender_hooks=True,
+    add_receiver_hooks=False,
+    remove_redundant=False,
+)
+exp.setup_model_hooks( # so we have complete control over connections
+    add_sender_hooks=True,
+    add_receiver_hooks=True,
+    doing_acdc_runs=False,
+)
+
+# %%
+
+# remove all connection except the MLP connections
+
+includes_attention = [ # substrings of hook names that imply they're relatred to attention
+    "attn",
+    "hook_q",
+    "hook_k",
+    "hook_v",
+]
+
+for receiver_name in exp.corr.edges:
+    for receiver_index in exp.corr.edges[receiver_name]:
+        for sender_name in exp.corr.edges[receiver_name][receiver_index]:
+            for receiever_index in exp.corr.edges[receiver_name][receiver_index][sender_name]:
+                related_to_attention = False
+
+                for substr in includes_attention:
+                    if substr in sender_name or substr in receiver_name:
+                        related_to_attention = True
+                        break
+
+                if not related_to_attention:
+                    continue
+
+                edge = exp.corr.edges[receiver_name][receiver_index][sender_name][receiever_index]
+                edge.present = False
+
+# %%
+
+exp.count_no_edges(verbose=True)
+
+# %%
