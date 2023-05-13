@@ -1,5 +1,6 @@
 import dataclasses
 from functools import partial
+from acdc.docstring.utils import AllDocstringThings
 import wandb
 import os
 from collections import defaultdict
@@ -83,21 +84,7 @@ def get_mask_repeat_candidates(num_examples=None, seq_len=None, device=None):
         return mask_repeat_candidates[:num_examples, :seq_len]
 
 
-@dataclasses.dataclass(frozen=False)
-class AllInductionThings:
-    tl_model: HookedTransformer
-    validation_metric: Callable[[torch.Tensor], torch.Tensor]
-    validation_data: torch.Tensor
-    validation_labels: torch.Tensor
-    validation_mask: torch.Tensor
-    validation_patch_data: torch.Tensor
-    test_metric: Any
-    test_data: torch.Tensor
-    test_labels: torch.Tensor
-    test_mask: torch.Tensor
-    test_patch_data: torch.Tensor
-
-def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric="kl_div"):
+def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric="kl_div") -> AllDocstringThings:
     tl_model = get_model(device=device)
     tl_model.to(device)
 
@@ -133,12 +120,6 @@ def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric
             mask_repeat_candidates=validation_mask,
             last_seq_element_only=False,
         )
-        test_metric = partial(
-            kl_divergence,
-            base_model_logprobs=base_test_logprobs,
-            mask_repeat_candidates=test_mask,
-            last_seq_element_only=False,
-        )
     elif metric == "nll":
         validation_metric = partial(
             negative_log_probs,
@@ -146,32 +127,40 @@ def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric
             mask_repeat_candidates=validation_mask,
             last_seq_element_only=False,
         )
-        test_metric = partial(
-            negative_log_probs,
-            labels=test_labels,
-            mask_repeat_candidates=test_mask,
-            last_seq_element_only=False,
-        )
     elif metric == "match_nll":
         validation_metric = MatchNLLMetric(
             labels=validation_labels, base_model_logprobs=base_val_logprobs, mask_repeat_candidates=validation_mask,
             last_seq_element_only=False,
         )
-        test_metric = MatchNLLMetric(
-            labels=test_labels, base_model_logprobs=base_test_logprobs, mask_repeat_candidates=test_mask,
-            last_seq_element_only=False,
-        )
     else:
         raise ValueError(f"Unknown metric {metric}")
 
-    return AllInductionThings(
+    test_metrics = {
+        "kl_div": partial(
+            kl_divergence,
+            base_model_logprobs=base_test_logprobs,
+            mask_repeat_candidates=test_mask,
+            last_seq_element_only=False,
+        ),
+        "nll": partial(
+            negative_log_probs,
+            labels=test_labels,
+            mask_repeat_candidates=test_mask,
+            last_seq_element_only=False,
+        ),
+        "match_nll": MatchNLLMetric(
+            labels=test_labels, base_model_logprobs=base_test_logprobs, mask_repeat_candidates=test_mask,
+            last_seq_element_only=False,
+        ),
+    }
+    return AllDocstringThings(
         tl_model=tl_model,
         validation_metric=validation_metric,
         validation_data=validation_data,
         validation_labels=validation_labels,
         validation_mask=validation_mask,
         validation_patch_data=validation_patch_data,
-        test_metric=test_metric,
+        test_metrics=test_metrics,
         test_data=test_data,
         test_labels=test_labels,
         test_mask=test_mask,
