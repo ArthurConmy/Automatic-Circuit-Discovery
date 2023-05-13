@@ -1,3 +1,4 @@
+from argparse import Namespace
 import os
 import pickle
 import gc
@@ -55,13 +56,17 @@ class TLACDCExperiment:
         wandb_entity_name: str = "",
         wandb_project_name: str = "",
         wandb_run_name: str = "",
+        wandb_group_name: str = "",
         wandb_notes: str = "",
+        wandb_dir: Optional[str]=None,
+        wandb_mode: str="online",
         use_pos_embed: bool = False,
         skip_edges = "no",
         add_sender_hooks: bool = True,
         add_receiver_hooks: bool = False,
         indices_mode: Literal["normal", "reverse", "shuffle"] = "reverse", # we get best performance with reverse I think
         names_mode: Literal["normal", "reverse", "shuffle"] = "normal",
+        wandb_config: Optional[Namespace] = None,
     ):
         """Initialize the ACDC experiment"""
 
@@ -118,9 +123,13 @@ class TLACDCExperiment:
         if using_wandb:
             wandb.init(
                 entity=wandb_entity_name,
+                group=wandb_group_name,
                 project=wandb_project_name,
                 name=wandb_run_name,
                 notes=wandb_notes,
+                dir=wandb_dir,
+                mode=wandb_mode,
+                config=wandb_config,
             )
 
         self.metric = metric
@@ -689,13 +698,8 @@ class TLACDCExperiment:
 
             print("But it's bad")
 
-    def count_no_edges(self):
-        cnt = 0
-
-        for edge in self.corr.all_edges().values():
-            if edge.present and edge.edge_type != EdgeType.PLACEHOLDER:
-                cnt += 1
-
+    def count_no_edges(self) -> int:
+        cnt = self.corr.count_no_edges()
         if self.verbose:
             print("No edge", cnt)
         return cnt

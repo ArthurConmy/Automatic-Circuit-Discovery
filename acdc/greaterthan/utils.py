@@ -2,6 +2,7 @@
 
 import warnings
 from functools import partial
+from transformers import AutoTokenizer
 from copy import deepcopy
 import torch.nn.functional as F
 from typing import List
@@ -46,7 +47,7 @@ NOUNS = [
 
 #%% 
 
-model = get_gpt2_small()
+_TOKENIZER = AutoTokenizer.from_pretrained("gpt2") # TODO test
 
 # %%
 
@@ -56,15 +57,15 @@ YEARS_BY_CENTURY = {}
 for century in range(11, 18):
     all_success = []
     for year in range(century * 100 + 2, (century * 100) + 99):
-        a = model.tokenizer.encode(f" {year}")
-        if a == [model.tokenizer.encode(f" {str(year)[:2]}")[0], model.tokenizer.encode(str(year)[2:])[0]]:
+        a = _TOKENIZER.encode(f" {year}")
+        if a == [_TOKENIZER.encode(f" {str(year)[:2]}")[0], _TOKENIZER.encode(str(year)[2:])[0]]:
             all_success.append(str(year))
             continue
     YEARS.extend(all_success[1:-1])
     YEARS_BY_CENTURY[century] = all_success[1:-1]
 
 TOKENS = {
-    i: model.tokenizer.encode(f"{'0' if i<=9 else ''}{i}")[0] for i in range(0, 100)
+    i: _TOKENIZER.encode(f"{'0' if i<=9 else ''}{i}")[0] for i in range(0, 100)
 }
 INV_TOKENS = {v: k for k, v in TOKENS.items()}
 
@@ -104,7 +105,7 @@ def get_year_data(num_examples, model):
 
     return prompts_tokenized, prompts
 
-def get_all_greaterthan_things(num_examples, device="cuda"):
-    model = get_gpt2_small(device=device)
+def get_all_greaterthan_things(num_examples, device="cuda", sixteen_heads=sixteen_heads):
+    model = get_gpt2_small(device=device, sixteen_heads=sixteen_heads)
     data, prompts = get_year_data(num_examples, model)
     return model, data, prompts, partial(greaterthan_metric, tokens=data)

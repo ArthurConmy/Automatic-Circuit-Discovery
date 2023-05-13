@@ -222,7 +222,7 @@ class TLACDCCorrespondence:
                 )
     
         return correspondence
-    
+
     def count_no_edges(self, verbose=False):
         cnt = 0
 

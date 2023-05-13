@@ -44,8 +44,8 @@ def get_ioi_data(tl_model, N):
     patch_data = abc_dataset.toks.long()[:N, : seq_len - 1]
 
     base_model_logits = tl_model(default_data)
-    base_model_probs = F.softmax(base_model_logits, dim=-1)
-    base_model_probs = base_model_probs[:, -1]
+    base_model_logprobs = F.log_softmax(base_model_logits, dim=-1)
+    base_model_logprobs = base_model_logprobs[:, -1]
 
-    metric = partial(kl_divergence, base_model_probs=base_model_probs, last_seq_element_only=True)
+    metric = partial(kl_divergence, base_model_logprobs=base_model_logprobs, last_seq_element_only=True)
     return default_data, patch_data, metric

@@ -3,8 +3,9 @@ from setuptools import setup
 setup(
     name="acdc",
     version="0.1.0",
-    packages=["acdc"],
-    license="LICENSE",    description="ACDC: built on top of TransformerLens: an implementation of transformers tailored for mechanistic interpretability.",
+    packages=["acdc", "subnetwork_probing"],
+    license="LICENSE",
+    description="ACDC: built on top of TransformerLens: an implementation of transformers tailored for mechanistic interpretability.",
     long_description=open("README.md").read(),
     install_requires=[
         "einops",
