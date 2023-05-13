@@ -113,7 +113,7 @@ parser.add_argument('--device', type=str, default="cuda")
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("--task docstring --wandb-run-name test_16_heads".split())
+    args = parser.parse_args("--task ioi --wandb-run-name test_16_heads".split())
 else:
     args = parser.parse_args()
 
