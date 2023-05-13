@@ -133,10 +133,145 @@ DEVICE = args.device
 
 if TASK == "ioi":
     num_examples = 100 
-    tl_model = get_gpt2_small(device=DEVICE)
-    toks_int_values, toks_int_values_other, metric = get_ioi_data(tl_model, num_examples)
+    tl_model = get_gpt2_small(device=DEVICE, sixteen_heads=True)
+    toks_int_values, toks_int_values_other, metric = get_ioi_data(tl_model, num_examples, kl_return_one_element=False)
+    assert len(toks_int_values) == len(toks_int_values_other) == num_examples, (len(toks_int_values), len(toks_int_values_other), num_examples)
+    seq_len = toks_int_values.shape[1]
+elif TASK == "induction":
+    raise NotImplementedError("Induction has same sentences with multiple places we take loss / KL divergence; fiddlier implementation")
+
 else:
     raise NotImplementedError("TODO")
 
 # %%
 
+assert not tl_model.global_cache.sixteen_heads_config.forward_pass_enabled
+
+with torch.no_grad():
+    _, corrupted_cache = tl_model.run_with_cache(
+        toks_int_values_other,
+    )
+corrupted_cache.to("cpu")
+tl_model.zero_grad()
+tl_model.global_cache.second_cache = corrupted_cache
+
+#%%
+# [markdown]
+# <h1>Try a demo backwards pass of the model</h1>
+
+tl_model.global_cache.sixteen_heads_config.forward_pass_enabled = True
+clean_cache = tl_model.add_caching_hooks(
+    # toks_int_values,
+    incl_bwd=True,
+)
+clean_logits = tl_model(toks_int_values)
+metric_result = metric(clean_logits)
+assert list(metric_result.shape) == [num_examples], metric_result.shape
+metric_result = metric_result.sum() / len(metric_result)
+metric_result.backward(retain_graph=True)
+
+#%%
+
+keys = []
+for layer_idx in range(tl_model.cfg.n_layers):
+    for head_idx in range(tl_model.cfg.n_heads):
+        keys.append((layer_idx, head_idx))
+    if not tl_model.cfg.attn_only:
+        keys.append((layer_idx, None)) # MLP
+
+results = {
+    (layer_idx, head_idx): torch.zeros(size=(num_examples,))
+    for layer_idx, head_idx in keys
+}
+
+
+# %%
+
+kls = {
+    (layer_idx, head_idx): torch.zeros(size=(num_examples,))
+    for layer_idx, head_idx in results.keys()
+}
+
+from tqdm import tqdm
+
+for i in tqdm(range(num_examples)):
+    tl_model.zero_grad()
+    tl_model.reset_hooks()
+    clean_cache = tl_model.add_caching_hooks(names_filter=lambda name: "hook_result" in name, incl_bwd=True)
+    clean_logits = tl_model(toks_int_values)
+    kl_result = metric(clean_logits)[i]
+    kl_result.backward(retain_graph=True)
+
+    for layer_idx in range(tl_model.cfg.n_layers):
+        fwd_hook_name = f"blocks.{layer_idx}.attn.hook_result"
+
+        for head_idx in range(tl_model.cfg.n_heads):
+            g = (
+                tl_model.hook_dict[fwd_hook_name]
+                .xi.grad[0, 0, head_idx, 0]
+                .norm()
+                .item()
+            )
+            kls[(layer_idx, head_idx)][i] = g
+
+    # TODO implement MLP
+
+    tl_model.zero_grad()
+    tl_model.reset_hooks()
+    del clean_cache
+    del clean_logits
+    import gc; gc.collect()
+    torch.cuda.empty_cache()
+
+for k in kls:
+    kls[k].to("cpu")
+
+#%%
+
+for i in tqdm(range(num_examples)):
+    tl_model.zero_grad()
+    tl_model.reset_hooks()
+
+    clean_cache = tl_model.add_caching_hooks(incl_bwd=True)
+    clean_logits = tl_model(toks_int_values)
+    kl_result = metric(clean_logits)[i]
+    kl_result.backward(retain_graph=True)
+
+    for layer_idx in range(tl_model.cfg.n_layers):
+        fwd_hook_name = f"blocks.{layer_idx}.attn.hook_result"
+        bwd_hook_name = f"blocks.{layer_idx}.attn.hook_result_grad"
+
+        cur_results = torch.abs( # TODO implement abs and not abs???
+            torch.einsum(
+                "bshd,bshd->bh",
+                clean_cache[bwd_hook_name], # gradient
+                clean_cache[fwd_hook_name]- (0.0 if ZERO_ABLATION else corrupted_cache[fwd_hook_name].to(DEVICE)),
+            )
+        )
+
+        for head_idx in range(tl_model.cfg.n_heads):
+            results_entry = cur_results[i, head_idx].item()
+            results[(layer_idx, head_idx)][i] = results_entry
+
+        cur_mlp_result = torch.abs(
+            torch.einsum(
+                "bsd,bsd->b", # TODO check
+                clean_cache[f"blocks.{layer_idx}.hook_mlp_out_grad"],
+                clean_cache[f"blocks.{layer_idx}.hook_mlp_out"] - (0.0 if ZERO_ABLATION else corrupted_cache[f"blocks.{layer_idx}.hook_mlp_out"]),
+            )
+        )
+
+        results[(layer_idx, None)][i] = cur_mlp_result[i].item()
+        # tl_model = get_gpt2_small(device=DEVICE, sixteen_heads=True)
+
+    del clean_cache
+    del clean_logits
+    tl_model.reset_hooks()
+    tl_model.zero_grad()
+    torch.cuda.empty_cache()
+    import gc; gc.collect()
+
+for k in results:
+    results[k].to("cpu")
+
+# %%

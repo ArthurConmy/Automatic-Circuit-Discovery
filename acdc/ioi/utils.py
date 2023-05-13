@@ -16,14 +16,15 @@ def get_gpt2_small(device="cuda", sixteen_heads=False):
     tl_model = HookedTransformer.from_pretrained("gpt2", use_global_cache=True, sixteen_heads=sixteen_heads)
     tl_model = tl_model.to(device)
     tl_model.set_use_attn_result(True)
-    tl_model.set_use_split_qkv_input(True)
+    if not sixteen_heads:
+        tl_model.set_use_split_qkv_input(True)
     return tl_model
 
 def get_ioi_gpt2_small(device="cuda", sixteen_heads=False):
     """For backwards compat"""
     return get_gpt2_small(device=device, sixteen_heads=sixteen_heads) # TODO continue adding sixteen_heads...
 
-def get_ioi_data(tl_model, N):
+def get_ioi_data(tl_model, N, kl_return_one_element):
     ioi_dataset = IOIDataset(
         prompt_type="ABBA",
         N=N,
@@ -47,5 +48,5 @@ def get_ioi_data(tl_model, N):
     base_model_logprobs = F.log_softmax(base_model_logits, dim=-1)
     base_model_logprobs = base_model_logprobs[:, -1]
 
-    metric = partial(kl_divergence, base_model_logprobs=base_model_logprobs, last_seq_element_only=True)
+    metric = partial(kl_divergence, base_model_logprobs=base_model_logprobs, last_seq_element_only=True, return_one_element=kl_return_one_element)
     return default_data, patch_data, metric

@@ -135,7 +135,7 @@ class HookPoint(nn.Module):
                 return self.xi * x
 
             else:
-                return self.xi * x + (-self.xi + 1) * self.global_cache.second_cache[self.name]
+                return self.xi * x + (-self.xi + 1) * self.global_cache.second_cache[self.name].to(x.device)
 
         else:
             return x
