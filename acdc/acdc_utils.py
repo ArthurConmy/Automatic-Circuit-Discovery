@@ -252,6 +252,27 @@ class MatchNLLMetric:
             last_seq_element_only=self.last_seq_element_only,
         )
 
+def logit_diff_metric(correct_labels, wrong_labels, logits) -> torch.Tensor:
+    range = torch.arange(len(logits))
+    correct_logits = logits[range, -1, correct_labels]
+    incorrect_logits = logits[range, -1, wrong_labels]
+
+    # Note: negative sign so we minimize
+    # TODO de-duplicate with docstring/utils.py `raw_docstring_metric`
+    return -(correct_logits.mean() - incorrect_logits.mean())
+
+def frac_correct_metric(correct_labels, wrong_labels, logits) -> torch.Tensor:
+    range = torch.arange(len(logits))
+    correct_logits = logits[range, -1, correct_labels]
+    incorrect_logits = logits[range, -1, wrong_labels]
+
+    # Neg so we maximize correct
+    return -(correct_logits > incorrect_logits).float().mean()
+
+
+
+
+
 # ----------------------------------
 # Random helpers for scraping
 # ----------------------------------
