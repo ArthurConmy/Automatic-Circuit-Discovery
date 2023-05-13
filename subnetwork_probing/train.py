@@ -141,6 +141,7 @@ def do_random_resample_caching(
         layer.attn.hook_q.is_caching = True
         layer.attn.hook_k.is_caching = True
         layer.attn.hook_v.is_caching = True
+        layer.mlp.hook_post.is_caching = True
 
     with torch.no_grad():
         outs = model(train_data)
@@ -149,6 +150,7 @@ def do_random_resample_caching(
         layer.attn.hook_q.is_caching = False
         layer.attn.hook_k.is_caching = False
         layer.attn.hook_v.is_caching = False
+        layer.mlp.hook_post.is_caching = falase
 
     return outs
 
@@ -157,6 +159,7 @@ def do_zero_caching(model: HookedTransformer) -> None:
         layer.attn.hook_q.cache = None
         layer.attn.hook_k.cache = None
         layer.attn.hook_v.cache = None
+        layer.mlp.hook_post.cache = None
 
 
 def train_induction(
