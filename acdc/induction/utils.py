@@ -32,13 +32,14 @@ from acdc.acdc_utils import (
 from acdc import HookedTransformer
 from acdc.acdc_utils import kl_divergence, negative_log_probs
 
-def get_model():
+def get_model(device):
     tl_model = HookedTransformer.from_pretrained(
         "redwood_attn_2l",  # load Redwood's model
         use_global_cache=True,  # use the global cache: this is needed for ACDC to work
         center_writing_weights=False,  # these are needed as this model is a Shortformer; this is a technical detail
         center_unembed=False,
         fold_ln=False,
+        device=device,
     )
 
     # standard ACDC options
@@ -97,7 +98,7 @@ class AllInductionThings:
     test_patch_data: torch.Tensor
 
 def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric="kl_div"):
-    tl_model = get_model()
+    tl_model = get_model(device=device)
     tl_model.to(device)
 
     validation_data_orig = get_validation_data(device=device)
