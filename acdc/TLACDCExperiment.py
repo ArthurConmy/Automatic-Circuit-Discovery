@@ -586,7 +586,11 @@ class TLACDCExperiment:
 
                 edges_fname = f"edges_{self.step_idx}.pth"
                 self.save_edges(edges_fname)
-                wandb.log_artifact(wandb.Artifact('my-ar', type='dataset'), files={edges_fname: edges_fname})
+                artifact = wandb.Artifact(edges_fname, type='dataset')
+                # Add file to the artifact
+                artifact.add_file(edges_fname)
+                # Log the artifact
+                wandb.log_artifact(artifact)
                 os.remove(edges_fname)
 
         # increment the current node
