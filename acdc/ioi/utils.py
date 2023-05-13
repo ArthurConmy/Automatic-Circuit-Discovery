@@ -16,7 +16,7 @@ def get_gpt2_small(device="cuda", sixteen_heads=False):
     tl_model = HookedTransformer.from_pretrained("gpt2", use_global_cache=True, sixteen_heads=sixteen_heads)
     tl_model = tl_model.to(device)
     tl_model.set_use_attn_result(True)
-    if not sixteen_heads:
+    if not sixteen_heads: # fight the OOM!
         tl_model.set_use_split_qkv_input(True)
     return tl_model
 

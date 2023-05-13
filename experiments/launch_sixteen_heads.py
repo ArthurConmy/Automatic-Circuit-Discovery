@@ -126,6 +126,7 @@ WANDB_PROJECT_NAME = args.wandb_project_name
 WANDB_RUN_NAME = args.wandb_run_name
 WANDB_GROUP_NAME = args.wandb_group_name
 DEVICE = args.device
+DO_CHECKING_RECALC = False # testing only
 
 #%%
 
@@ -139,6 +140,7 @@ if TASK == "ioi":
     seq_len = toks_int_values.shape[1]
 elif TASK == "induction":
     raise NotImplementedError("Induction has same sentences with multiple places we take loss / KL divergence; fiddlier implementation")
+# note to self: turn of split_qkv for less OOM
 
 else:
     raise NotImplementedError("TODO")
@@ -228,50 +230,57 @@ for k in kls:
 
 #%%
 
-for i in tqdm(range(num_examples)):
-    tl_model.zero_grad()
-    tl_model.reset_hooks()
+if DO_CHECKING_RECALC:
 
-    clean_cache = tl_model.add_caching_hooks(incl_bwd=True)
-    clean_logits = tl_model(toks_int_values)
-    kl_result = metric(clean_logits)[i]
-    kl_result.backward(retain_graph=True)
+    for i in tqdm(range(num_examples)):
+        tl_model.zero_grad()
+        tl_model.reset_hooks()
 
-    for layer_idx in range(tl_model.cfg.n_layers):
-        fwd_hook_name = f"blocks.{layer_idx}.attn.hook_result"
-        bwd_hook_name = f"blocks.{layer_idx}.attn.hook_result_grad"
+        clean_cache = tl_model.add_caching_hooks(incl_bwd=True)
+        clean_logits = tl_model(toks_int_values)
+        kl_result = metric(clean_logits)[i]
+        kl_result.backward(retain_graph=True)
 
-        cur_results = torch.abs( # TODO implement abs and not abs???
-            torch.einsum(
-                "bshd,bshd->bh",
-                clean_cache[bwd_hook_name], # gradient
-                clean_cache[fwd_hook_name]- (0.0 if ZERO_ABLATION else corrupted_cache[fwd_hook_name].to(DEVICE)),
+        for layer_idx in range(tl_model.cfg.n_layers):
+            fwd_hook_name = f"blocks.{layer_idx}.attn.hook_result"
+            bwd_hook_name = f"blocks.{layer_idx}.attn.hook_result_grad"
+
+            cur_results = torch.abs( # TODO implement abs and not abs???
+                torch.einsum(
+                    "bshd,bshd->bh",
+                    clean_cache[bwd_hook_name], # gradient
+                    clean_cache[fwd_hook_name]- (0.0 if ZERO_ABLATION else corrupted_cache[fwd_hook_name].to(DEVICE)),
+                )
             )
-        )
 
-        for head_idx in range(tl_model.cfg.n_heads):
-            results_entry = cur_results[i, head_idx].item()
-            results[(layer_idx, head_idx)][i] = results_entry
+            for head_idx in range(tl_model.cfg.n_heads):
+                results_entry = cur_results[i, head_idx].item()
+                results[(layer_idx, head_idx)][i] = results_entry
 
-        cur_mlp_result = torch.abs(
-            torch.einsum(
-                "bsd,bsd->b", # TODO check
-                clean_cache[f"blocks.{layer_idx}.hook_mlp_out_grad"],
-                clean_cache[f"blocks.{layer_idx}.hook_mlp_out"] - (0.0 if ZERO_ABLATION else corrupted_cache[f"blocks.{layer_idx}.hook_mlp_out"]),
+            cur_mlp_result = torch.abs(
+                torch.einsum(
+                    "bsd,bsd->b", # TODO check
+                    clean_cache[f"blocks.{layer_idx}.hook_mlp_out_grad"],
+                    clean_cache[f"blocks.{layer_idx}.hook_mlp_out"] - (0.0 if ZERO_ABLATION else corrupted_cache[f"blocks.{layer_idx}.hook_mlp_out"].to(DEVICE)),
+                )
             )
-        )
 
-        results[(layer_idx, None)][i] = cur_mlp_result[i].item()
-        # tl_model = get_gpt2_small(device=DEVICE, sixteen_heads=True)
+            results[(layer_idx, None)][i] = cur_mlp_result[i].item()
+            # tl_model = get_gpt2_small(device=DEVICE, sixteen_heads=True)
 
-    del clean_cache
-    del clean_logits
-    tl_model.reset_hooks()
-    tl_model.zero_grad()
-    torch.cuda.empty_cache()
-    import gc; gc.collect()
+        del clean_cache
+        del clean_logits
+        tl_model.reset_hooks()
+        tl_model.zero_grad()
+        torch.cuda.empty_cache()
+        import gc; gc.collect()
 
-for k in results:
-    results[k].to("cpu")
+    for k in results:
+        results[k].to("cpu")
 
-# %%
+    for k in results:
+        print(k, results[k].norm().item(), kls[k].norm().item())  # should all be close!!!
+        assert torch.allclose(results[k], kls[k]) # oh lol we forgot the MLPs
+
+#%%
+
