@@ -59,7 +59,7 @@ def hook_other_name_matcher(name: str) -> bool:
 @dataclass
 class SixteenHeadsConfig:
     """Simple class to manage the different forward passes for 16 Heads"""
-    forwards_pass_enabled: bool = False
+    forward_pass_enabled: bool = False
     zero_ablation: bool = False
     n_heads: int = - 69
 
@@ -221,6 +221,15 @@ class HookedTransformer(HookedRootModule):
         # Needed for HookPoints to work
         self.setup()
         self.is_caching = False
+
+        if self.cfg.sixteen_heads: 
+            self.setup_sixteen_heads()
+
+    def setup_sixteen_heads(self):
+        for layer_idx in range(self.cfg.n_layers):
+            self.hook_dict[f"blocks.{layer_idx}.attn.hook_result"].add_xi_parameter(shape = [1, 1, self.cfg.n_heads, 1])
+
+            self.hook_dict[f"blocks.{layer_idx}.hook_mlp_out"].add_xi_parameter(shape = [])
 
     def check_and_add_hook(self, hook_point, hook_point_name, hook, dir="fwd", is_permanent=False, prepend=False) -> None:
         if hook_point_name.endswith("attn.hook_result"):

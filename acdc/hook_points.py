@@ -46,7 +46,7 @@ class HookPoint(nn.Module):
     def add_xi_parameter(self, shape=[]):
         """Add parameter for 16 Heads"""
 
-        self.xi = torch.nn.Parameter(shape) # empty list implies scalar
+        self.xi = torch.nn.Parameter(torch.zeros(size=shape))# empty list implies scalar
 
     def add_perma_hook(self, hook, dir="fwd") -> None:
         self.add_hook(hook, dir=dir, is_permanent=True)
@@ -130,7 +130,7 @@ class HookPoint(nn.Module):
         return int(split_name[1])
 
     def forward(self, x):
-        if self.global_cache.sixteen_heads_config is not None and self.global_cache.sixteen_heads_config.forwards_pass_enabled:
+        if self.global_cache.sixteen_heads_config is not None and self.global_cache.sixteen_heads_config.forward_pass_enabled and "xi" in dir(self):
             if self.global_cache.sixteen_heads_config.zero_ablation:
                 return self.xi * x
 
@@ -168,6 +168,8 @@ class HookedRootModule(nn.Module):
             self.mod_dict[name] = module
             if "HookPoint" in str(type(module)):
                 self.hook_dict[name] = module
+
+        
 
     def hook_points(self):
         return self.hook_dict.values()

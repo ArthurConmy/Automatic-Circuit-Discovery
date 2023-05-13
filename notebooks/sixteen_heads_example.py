@@ -15,7 +15,7 @@ from acdc.induction.utils import get_all_induction_things
 import torch
 from acdc.acdc_utils import TorchIndex, Edge, EdgeType, OrderedDefaultdict, make_nd_dict
 
-RECOMPUTE = False
+RECOMPUTE = True # turn this off to just get the ordered heads, with no need for a backward pass!
 
 if not RECOMPUTE:
     torch.set_grad_enabled(False)
@@ -38,11 +38,14 @@ seq_len = 300
     seq_len=seq_len,
     return_mask_rep=True,
     return_one_element=False,
+    sixteen_heads=True,
 )
 
 assert tl_model.cfg.use_attn_result, "Set this to True"
 
 # %%
+
+assert not tl_model.global_cache.sixteen_heads_config.forward_pass_enabled
 
 with torch.no_grad():
     _, corrupted_cache = tl_model.run_with_cache(
@@ -52,6 +55,8 @@ tl_model.zero_grad()
 tl_model.global_cache.second_cache = corrupted_cache
 
 # %%
+
+tl_model.global_cache.sixteen_heads_config.forward_pass_enabled = True
 
 clean_cache = tl_model.add_caching_hooks(
     # toks_int_values,

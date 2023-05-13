@@ -30,13 +30,14 @@ from acdc.acdc_utils import (
 from acdc import HookedTransformer
 from acdc.acdc_utils import kl_divergence
 
-def get_model():
+def get_model(sixteen_heads=False):
     tl_model = HookedTransformer.from_pretrained(
         "redwood_attn_2l",  # load Redwood's model
         use_global_cache=True,  # use the global cache: this is needed for ACDC to work
         center_writing_weights=False,  # these are needed as this model is a Shortformer; this is a technical detail
         center_unembed=False,
         fold_ln=False,
+        sixteen_heads=sixteen_heads,
     )
 
     # standard ACDC options
@@ -80,9 +81,9 @@ def get_mask_repeat_candidates(num_examples=None, seq_len=None):
         return mask_repeat_candidates[:num_examples, :seq_len]
 
 def get_all_induction_things(
-    num_examples, seq_len, device, randomize_data=True, data_seed=42, kl_return_tensor=False, return_mask_rep=False, return_one_element=True,
+    num_examples, seq_len, device, randomize_data=True, data_seed=42, kl_return_tensor=False, return_mask_rep=False, return_one_element=True, sixteen_heads=False,
 ):
-    tl_model = get_model()
+    tl_model = get_model(sixteen_heads=sixteen_heads)
     tl_model.to(device)
 
     validation_data = get_validation_data()
