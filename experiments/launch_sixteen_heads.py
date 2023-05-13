@@ -94,9 +94,6 @@ import argparse
 
 #%%
 
-# TODO what we need
-# similar to main.py setup of metrics
-# but these need be adapted so that we have KLs for each datapoint
 # then some looping
 # probably a WANDB run is easiest SAVE THE ARTIFACT
 
@@ -179,14 +176,11 @@ keys = []
 for layer_idx in range(tl_model.cfg.n_layers):
     for head_idx in range(tl_model.cfg.n_heads):
         keys.append((layer_idx, head_idx))
-    if not tl_model.cfg.attn_only:
-        keys.append((layer_idx, None)) # MLP
 
 results = {
     (layer_idx, head_idx): torch.zeros(size=(num_examples,))
     for layer_idx, head_idx in keys
 }
-
 
 # %%
 
@@ -216,8 +210,6 @@ for i in tqdm(range(num_examples)):
                 .item()
             )
             kls[(layer_idx, head_idx)][i] = g
-
-    # TODO implement MLP
 
     tl_model.zero_grad()
     tl_model.reset_hooks()
@@ -257,17 +249,6 @@ if DO_CHECKING_RECALC:
                 results_entry = cur_results[i, head_idx].item()
                 results[(layer_idx, head_idx)][i] = results_entry
 
-            cur_mlp_result = torch.abs(
-                torch.einsum(
-                    "bsd,bsd->b", # TODO check
-                    clean_cache[f"blocks.{layer_idx}.hook_mlp_out_grad"],
-                    clean_cache[f"blocks.{layer_idx}.hook_mlp_out"] - (0.0 if ZERO_ABLATION else corrupted_cache[f"blocks.{layer_idx}.hook_mlp_out"].to(DEVICE)),
-                )
-            )
-
-            results[(layer_idx, None)][i] = cur_mlp_result[i].item()
-            # tl_model = get_gpt2_small(device=DEVICE, sixteen_heads=True)
-
         del clean_cache
         del clean_logits
         tl_model.reset_hooks()
@@ -281,22 +262,17 @@ if DO_CHECKING_RECALC:
     for k in results:
         print(k, results[k].norm().item(), kls[k].norm().item())  # should all be close!!!
         if k[1] == None: continue
-        assert torch.allclose(results[k], kls[k]) # oh lol we forgot the MLPs
+        assert torch.allclose(results[k], kls[k]) # oh lol we forgot the MLPs ... and then later I remove these as I don't think HISP is using them
 
 #%%
 
 kl_dict = deepcopy(kls)
-
-scores_list = torch.zeros(size=(tl_model.cfg.n_layers, tl_model.cfg.n_heads + int(not tl_model.cfg.attn_only)))
-
+scores_list = torch.zeros(size=(tl_model.cfg.n_layers, tl_model.cfg.n_heads))
 mask_list = []
 for layer_idx in range(tl_model.cfg.n_layers):
     for head_idx in range(tl_model.cfg.n_heads):
         score = kl_dict[(layer_idx, head_idx)].sum()
         scores_list[layer_idx, head_idx] = score
-    if not tl_model.cfg.attn_only:
-        scores_list[layer_idx, -1] = kl_dict[(layer_idx, None)].sum()
-
 
 # normalize by L2 of the layers
 l2_norms = scores_list.norm(dim=1).unsqueeze(-1)
@@ -306,8 +282,6 @@ all_heads = []
 for layer_idx in range(tl_model.cfg.n_layers):
     for head_idx in range(tl_model.cfg.n_heads):
         all_heads.append((layer_idx, head_idx))
-    if not tl_model.cfg.attn_only:
-        all_heads.append((layer_idx, -1))
 
 # sort both lists by scores
 sorted_indices = sorted(all_heads, key=lambda x: scores_list[x], reverse=True)
@@ -352,8 +326,9 @@ exp.setup_model_hooks( # so we have complete control over connections
 
 # %%
 
-# remove all connection except the MLP connections
+max_edges = exp.count_no_edges()
 
+# remove all connection except the MLP connections
 includes_attention = [ # substrings of hook names that imply they're relatred to attention
     "attn",
     "hook_q",
@@ -380,6 +355,32 @@ for receiver_name in exp.corr.edges:
 
 # %%
 
-exp.count_no_edges(verbose=True)
+edges_to_metric = {}
+
+for nodes_present in tqdm(range(len(sorted_indices) + 1)):
+
+    # measure performance
+    clean_logits = tl_model(toks_int_values)
+    metric_result = metric(clean_logits).mean()
+    cur_edges = exp.count_no_edges()
+    edges_to_metric[cur_edges] = metric_result.item()
+
+    # then add next node
+    layer_idx, head_idx = sorted_indices[nodes_present]
+
+    for (tupl, edge) in exp.corr.all_edges().items():
+        for hook_name, hook_idx in [(tupl[0], tupl[1]), (tupl[2], tupl[3])]:
+            if hook_name.startswith(f"blocks.{layer_idx}") and len(hook_idx.hashable_tuple) >= 3 and int(hook_idx.hashable_tuple[2]) == head_idx:
+                edge.present = True
+
+    wandb.log(
+        {
+            "nodes": nodes_present,
+            "metric": metric_result.item(),
+            "edges": cur_edges,
+        }
+    )
 
 # %%
+
+wandb.finish()
