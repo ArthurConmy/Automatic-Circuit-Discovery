@@ -120,7 +120,7 @@ def visualize_mask(model: HookedTransformer) -> tuple[int, list[TLACDCInterpNode
             node = TLACDCInterpNode(node_name, TorchIndex([None]), incoming_edge_type=edge_type)
             total_nodes += 1
 
-        mask_sample = layer.mlp.hook_post.sample_mask().cpu().item()
+        mask_sample = layer.hook_mlp_out.sample_mask().cpu().item()
         mask_scores_for_names.append(mask_sample)
         if mask_sample < 0.5:
             nodes_to_mask.append(node)
