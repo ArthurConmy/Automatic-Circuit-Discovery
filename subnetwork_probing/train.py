@@ -37,6 +37,8 @@ def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACD
     # to the list of nodes to mask
     head_parents = collections.defaultdict(lambda: 0)
     for node in nodes_to_mask:
+        if "_q" not in node.name and "_k" not in node.name and "_v" not in node.name:
+            continue
         child_name = node.name.replace("_q", "_result").replace("_k", "_result").replace("_v", "_result")
         head_parents[(child_name, node.index)] += 1
 
