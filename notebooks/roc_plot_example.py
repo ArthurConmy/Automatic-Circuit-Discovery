@@ -110,11 +110,12 @@ torch.autograd.set_grad_enabled(False)
 parser = argparse.ArgumentParser(description="Used to control ROC plot scripts (for standardisation with other files...)")
 parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr (WIPs except docstring!!!)')
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
-parser.add_argument("--ignore-sixteen-heads", action="store_true", help="Ignore the 16 heads stuff TODO")
+parser.add_argument("--skip-sixteen-heads", action="store_true", help="Skip the 16 heads stuff TODO")
+parser.add_argument("--testing", action="store_true", help="Use testing data instead of validation data")
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("--task docstring".split())
+    args = parser.parse_args("--task docstring --testing --skip-sixteen-heads".split())
 else:
     args = parser.parse_args()
 
@@ -122,7 +123,8 @@ TASK = args.task
 ZERO_ABLATION = True if args.zero_ablation else False
 SKIP_ACDC=False
 SKIP_SP = False
-SKIP_SIXTEEN_HEADS = True if args.ignore_sixteen_heads else False
+SKIP_SIXTEEN_HEADS = True if args.skip_sixteen_heads else False
+TESTING = True if args.testing else False
 
 #%% [markdown]
 # Setup
@@ -181,6 +183,7 @@ for k in d_trues:
     d[k] = True
 exp.load_subgraph(d)
 canonical_circuit_subgraph = deepcopy(exp.corr)
+canonical_circuit_subgraph_size = canonical_circuit_subgraph.count_no_edges()
 
 #%% [markdown]
 # <h2> Arthur plays about with loading in graphs </h2>
@@ -191,11 +194,15 @@ def get_acdc_runs(
     experiment,
     project_name: str = ACDC_PROJECT_NAME,
     run_name_filter: Callable[[str], bool] = ACDC_RUN_FILTER,
+    clip = None,
 ):
+    if clip is None:
+        clip = 100_000 # so we don't clip anything
+
     api = wandb.Api()
     runs = api.runs(project_name)
     filtered_runs = []
-    for run in tqdm(runs):
+    for run in tqdm(runs[:clip]):
         if run_name_filter(run.name):
             filtered_runs.append(run)
     cnt = 0
@@ -212,8 +219,8 @@ def get_acdc_runs(
             continue
     return corrs
 
-if "corrs" not in locals(): # this is slow, so run once
-    corrs = get_acdc_runs(exp)
+if "acdc_corrs" not in locals(): # this is slow, so run once
+    acdc_corrs = get_acdc_runs(exp, clip = 100 if TESTING else None)
 
 #%%
 
@@ -224,7 +231,11 @@ def get_sp_corrs(
     project_name: str = SP_PROJECT_NAME,
     pre_run_filter: Dict = SP_PRE_RUN_FILTER,
     run_name_filter: Callable[[str], bool] = SP_RUN_NAME_FILTER,
+    clip = None,
 ):
+    if clip is None:
+        clip = 100_000
+
     api = wandb.Api()
     runs=api.runs(
         project_name,
@@ -239,14 +250,19 @@ def get_sp_corrs(
 
     ret = []
 
-    for run in tqdm(filtered_runs):
+    for run in tqdm(filtered_runs[:clip]):
         df = pd.DataFrame(run.scan_history())
 
         mask_scores_entries = get_col(df, "mask_scores")
         assert len(mask_scores_entries) > 0
         entry = mask_scores_entries[-1]
 
-        nodes_to_mask_entries = get_col(df, "nodes_to_mask")
+        try:
+            nodes_to_mask_entries = get_col(df, "nodes_to_mask")
+        except Exception as e:
+            print(e, "... was an error")
+            continue        
+
         assert len(nodes_to_mask_entries) ==1, len(nodes_to_mask_entries)
         nodes_to_mask_strings = nodes_to_mask_entries[0]
         nodes_to_mask = [parse_interpnode(s) for s in nodes_to_mask_strings]
@@ -265,64 +281,46 @@ def get_sp_corrs(
         )
 
         assert corr.count_no_edges() == number_of_edges, (corr.count_no_edges(), number_of_edges)
+        ret.append(corr) # do we need KL too? I think no..
+    return ret
 
-        ret.append((corr, kl_div))
-
-        # # ANOTHER DEPRECATED CURSED THING
-        # fname = entry['path']    
-        # run.file(fname).download(replace=True, root="/tmp/")
-        # with open("/tmp/" + fname, "r") as f:
-        #     plotly_file = json.load(f)
-        # interp_nodes = []
-        # for name, y in zip(
-        #     plotly_file["data"][0]["x"], 
-        #     plotly_file["data"][0]["y"],
-        # ):
-        #     interp_node = parse_interpnode(name)
-        #     interp_nodes.append(interp_node)
-        
-    # # DEPRECATED CURSED WAY OF LAZARUS-ING THE PLOTLY
-    #     args = project_name.split("/")
-    #     last_plotly = None
-    #     for run in tqdm(filtered_runs):
-    #         for f in run.files():
-    #             if "media/plotly" not in str(f):
-    #                 continue
-    #             if last_plotly is None or int(f.name.split("_")[2]) > int(last_plotly.name.split("_")[2]):
-    #                 last_plotly = f
-    #     last_plotly.download(replace=True, root="/tmp/")
-    #     with open("/tmp/" + last_plotly.name, "r") as f:
-    #         plotly = json.load(f)
-    #     return plotly
-
-my_list = get_sp_corrs(exp)
-
-#%%
-
-# reload in the circuit
-exp.load_subgraph(d)
-ground_truth = exp.corr
-ground_truth_size = ground_truth.count_no_edges()
+if "sp_corrs" not in locals(): # this is slow, so run once
+    sp_corrs = get_sp_corrs(exp, clip = 10 if TESTING else None) # clip for testing
 
 #%%
 
 points = {}
-if not SKIP_ACDC: points["ACDC"] = []    
-if not SKIP_SP: points["SP"] = []
-if not SKIP_SIXTEEN_HEADS: points["16H"] = []
+methods = []
+
+if not SKIP_ACDC: methods.append("ACDC") 
+if not SKIP_SP: methods.append("SP")
+if not SKIP_SIXTEEN_HEADS: methods.append("16H")
 
 #%%
 
-# this is for ACDC
-for corr in tqdm(corrs): 
-    circuit_size = corr.count_no_edges()
-    if circuit_size == 0:
-        continue
-    points["ACDC"].append((false_positive_rate(ground_truth, corr)/circuit_size, true_positive_stat(ground_truth, corr)/ground_truth_size))
-    print(points["ACDC"][-1])
-    if points["ACDC"][-1][0] > 1:
-        print(false_positive_rate(ground_truth, corr, verbose=True))
-        assert False
+# get points from correspondence
+def get_points(corrs):
+    points = []
+    for corr in tqdm(corrs): 
+        circuit_size = corr.count_no_edges()
+        if circuit_size == 0:
+            continue
+        points.append((false_positive_rate(canonical_circuit_subgraph, corr)/circuit_size, true_positive_stat(canonical_circuit_subgraph, corr)/canonical_circuit_subgraph_size))
+        print(points[-1])
+        if points[-1][0] > 1:
+            print(false_positive_rate(canonical_circuit_subgraph, corr, verbose=True))
+            assert False
+    return points
+
+#%%
+
+if "ACDC" in methods:
+    points["ACDC"] = get_points(acdc_corrs)
+
+#%%
+
+if "SP" in methods:
+    points["SP"] = get_points(sp_corrs)
 
 #%%
 
@@ -336,10 +334,11 @@ def discard_non_pareto_optimal(points):
             ret.append((x, y))
     return ret
 
-processed_points = {key: discard_non_pareto_optimal(points[key]) for key in points}
-
-# sort by x
-processed_points = {k: sorted(processed_points[k], key=lambda x: x[0]) for k in processed_points}
+for method in methods:
+    processed_points = discard_non_pareto_optimal(points[method]) #  for key in points[method]}
+    # sort by x
+    processed_points = sorted(processed_points, key=lambda x: x[0])  # for k in processed_points}
+    points[method] = processed_points
 
 #%%
 
@@ -360,7 +359,7 @@ def get_roc_figure(all_points, names):
     roc_figure.update_yaxes(title_text="True positive rate")
     return roc_figure
 
-fig = get_roc_figure(list(processed_points.values()), list(processed_points.keys()))
+fig = get_roc_figure(list(points.values()), list(points.keys()))
 fig.show()
 
 # %%
