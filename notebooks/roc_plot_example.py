@@ -32,7 +32,7 @@ import torch
 # from easy_transformer.ioi_dataset import IOIDataset  # type: ignore
 from tqdm import tqdm
 import random
-from functools import *
+from functools import partial
 import json
 import pathlib
 import warnings
@@ -58,7 +58,6 @@ import plotly.io as pio
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
-pio.renderers.default = "colab"
 from acdc.hook_points import HookedRootModule, HookPoint
 from acdc.HookedTransformer import (
     HookedTransformer,
