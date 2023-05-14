@@ -211,11 +211,14 @@ if "corrs" not in locals(): # this is slow, so run once
 
 # do SP stuff
 
-def get_sp_runs(
-    experiment, 
-    project_name: str = SP_PROJECT_NAME,
-    run_name_filter: Callable[[str], bool] = SP_RUN_FILTER,
-):
+# def get_sp_runs(
+#     experiment, 
+#     project_name: str = SP_PROJECT_NAME,
+#     run_name_filter: Callable[[str], bool] = SP_RUN_FILTER,
+# ):
+project_name = SP_PROJECT_NAME
+run_name_filter = SP_RUN_FILTER
+if True:
     api = wandb.Api()
     runs = api.runs(project_name)
     filtered_runs = []
@@ -225,23 +228,19 @@ def get_sp_runs(
     cnt = 0
     corrs = []
 
-    args = project_name.split("/")
-
-    last_plotly = None
-
-    for run in tqdm(filtered_runs):
-        for f in run.files():
-            if "media/plotly" not in str(f):
-                continue
-            if last_plotly is None or int(f.name.split("_")[2]) > int(last_plotly.name.split("_")[2]):
-                last_plotly = f
-
-    last_plotly.download(replace=True, root="/tmp/")
-    with open("/tmp/" + last_plotly.name, "r") as f:
-        plotly = json.load(f)
-    return plotly
-
-plotlies = get_sp_runs(exp)
+#     args = project_name.split("/")
+#     last_plotly = None
+#     for run in tqdm(filtered_runs):
+#         for f in run.files():
+#             if "media/plotly" not in str(f):
+#                 continue
+#             if last_plotly is None or int(f.name.split("_")[2]) > int(last_plotly.name.split("_")[2]):
+#                 last_plotly = f
+#     last_plotly.download(replace=True, root="/tmp/")
+#     with open("/tmp/" + last_plotly.name, "r") as f:
+#         plotly = json.load(f)
+#     return plotly
+# plotlies = get_sp_runs(exp)
 
 #%%
 
