@@ -236,7 +236,7 @@ def get_perm(n, no_fp = True):
         perm = torch.randperm(n)
     return perm
 
-def get_tracr_data(tl_model, task: Literal["reverse", "proportion"]):
+def get_tracr_data(tl_model, task: Literal["reverse", "proportion"], return_one_element=True):
     if task == "reverse":
         batch_size = 6
         seq_len = 4
@@ -253,7 +253,7 @@ def get_tracr_data(tl_model, task: Literal["reverse", "proportion"]):
         warnings.warn("Test that this only considers the relevant part of the sequence...")
         patch_data_tens = data_tens[patch_data_indices]
         base_model_logprobs = F.log_softmax(tl_model(data_tens), dim=-1)
-        metric = partial(kl_divergence, base_model_logprobs=base_model_logprobs, mask_repeat_candidates=None)
+        metric = partial(kl_divergence, base_model_logprobs=base_model_logprobs, mask_repeat_candidates=None, return_one_element=return_one_element)
         
     if task == "proportion":
         batch_size = 50
@@ -278,6 +278,7 @@ def get_tracr_data(tl_model, task: Literal["reverse", "proportion"]):
         def l2_metric( # this is for proportion... it's unclear how to format this tbh sad
             model_out: torch.Tensor,
             base_model_vals: torch.Tensor,
+            return_one_element: bool = True,
         ):
             # [1:, 0] shit
 
@@ -285,13 +286,21 @@ def get_tracr_data(tl_model, task: Literal["reverse", "proportion"]):
             for tens in [proc, base_model_vals]:    
                 assert 0<=tens.min()<=tens.max()<=1, (tens.min(), tens.max())
             
-            return ((proc - base_model_vals)**2).mean()
+            answer = ((proc - base_model_vals)**2).sum(dim=-1) # collapse the L2
 
-        metric = partial(l2_metric, base_model_vals = base_model_vals)
+            if return_one_element: 
+                answer = answer.item()
+
+            return answer
+
+        metric = partial(l2_metric, base_model_vals = base_model_vals, return_one_element=return_one_element)
 
     return data_tens, patch_data_tens, metric
 
 def get_tracr_proportion_edges():
+
+    # generated from acdc/main.py commit 3a3770bb7
+
     return OrderedDict([(('blocks.1.hook_resid_post',
                (None,),
                'blocks.1.attn.hook_result',

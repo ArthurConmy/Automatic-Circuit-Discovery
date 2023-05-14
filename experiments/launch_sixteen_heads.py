@@ -51,7 +51,6 @@ import plotly.express as px
 import plotly.io as pio
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
-pio.renderers. = "colab"
 from acdc.hook_points import HookedRootModule, HookPoint
 from acdc.graphics import show
 from acdc.HookedTransformer import (
@@ -96,7 +95,7 @@ import argparse
 #%%
 
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
-parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr (no guarentee I implement all...)')
+parser.add_argument('--task', type=str, required=True, help='Choose a task from the available options: ioi, docstring, induction, tracr (no guarentee I implement all...)')
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
 parser.add_argument('--wandb-entity-name', type=str, required=False, default="remix_school-of-rock", help='Value for WANDB_ENTITY_NAME')
 parser.add_argument('--wandb-group-name', type=str, required=False, default="default", help='Value for WANDB_GROUP_NAME')
@@ -106,7 +105,7 @@ parser.add_argument('--device', type=str, default="cuda")
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("--task docstring --wandb-run-name docstring_sixteen_heads".split())
+    args = parser.parse_args("--task tracr-proportion --wandb-run-name docstring_sixteen_heads".split())
 else:
     args = parser.parse_args()
 
@@ -161,6 +160,25 @@ elif TASK == "docstring":
     test_metric_data = docstring_things.test_data
 
     model_getter = get_docstring_model
+
+elif TASK in ["tracr-proportion", "tracr-reverse"]:
+    tracr_task = TASK.split("-")[-1] # "reverse"
+    assert tracr_task == "proportion" # yet to implemenet reverse
+
+    # this implementation doesn't ablate the position embeddings (which the plots in the paper do do), so results are different. See the rust_circuit implemntation if this need be checked
+    # also there's no splitting by neuron yet TODO
+    
+    create_model_input, tl_model = get_tracr_model_input_and_tl_model(task=tracr_task, sixteen_heads=True)
+    toks_int_values, toks_int_values_other, metric = get_tracr_data(tl_model, task=tracr_task, return_one_element=False) 
+
+    num_examples = len(toks_int_values)
+    tl_model.to(DEVICE)
+
+    model_getter = lambda device, sixteen_heads: get_tracr_model_input_and_tl_model(task=tracr_task, sixteen_heads=sixteen_heads)[1].to(device)
+
+    # # for propotion, 
+    # tl_model(toks_int_values[:1])[0, :, 0] 
+    # is the proportion at each space (including irrelevant first position
 
 elif TASK == "induction":
     raise NotImplementedError("Induction has same sentences with multiple places we take loss / KL divergence; fiddlier implementation")
@@ -337,7 +355,7 @@ exp = TLACDCExperiment(
     zero_ablation=ZERO_ABLATION,
     ds=toks_int_values,
     ref_ds=toks_int_values_other,
-    metric=metric,
+    metric=lambda x: torch.tensor([-100_000.987]), # ooh-er, need to implement the one element version of everything to get this to work
     second_metric=None,
     verbose=True,
     hook_verbose=False,

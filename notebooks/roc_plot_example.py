@@ -190,14 +190,12 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     create_model_input, tl_model = get_tracr_model_input_and_tl_model(task=tracr_task)
     toks_int_values, toks_int_values_other, metric = get_tracr_data(tl_model, task=tracr_task)
 
-    if task == "proportion":
+    if tracr_task == "proportion":
         get_true_edges = get_tracr_proportion_edges
 
     # # for propotion, 
     # tl_model(toks_int_values[:1])[0, :, 0] 
     # is the proportion at each space (including irrelevant first position
-
-
 
 else:
     raise NotImplementedError("TODO " + TASK)
