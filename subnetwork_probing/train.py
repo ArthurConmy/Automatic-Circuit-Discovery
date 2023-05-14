@@ -30,7 +30,7 @@ from subnetwork_probing.transformer_lens.transformer_lens.ioi_dataset import IOI
 import wandb
 
 
-def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACDCInterpNode]) -> TLACDCCorrespondence:
+def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACDCInterpNode], newv = False) -> TLACDCCorrespondence:
     corr = TLACDCCorrespondence.setup_from_model(model)
 
     # If all of {qkv} is masked, also add its head child
@@ -42,12 +42,13 @@ def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACD
         child_name = node.name.replace("_q", "_result").replace("_k", "_result").replace("_v", "_result")
         head_parents[(child_name, node.index)] += 1
 
-    assert all([v <= 3 for v in head_parents.values()])
+    assert all([v <= 3 + 3*int(newv) for v in head_parents.values()])
 
     for (child_name, child_index), count in head_parents.items():
-        if count == 3:
+        if count == 3 + 3*int(newv):
             nodes_to_mask.append(TLACDCInterpNode(child_name, child_index, EdgeType.ADDITION))
 
+    # TODO maybe check that all interpnodes were found?
     for node in nodes_to_mask:
         # Mark edges where this is child as not present
         rest2 = corr.edges[node.name][node.index]

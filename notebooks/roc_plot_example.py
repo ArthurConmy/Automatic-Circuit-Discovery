@@ -297,10 +297,12 @@ def get_sixteen_heads_corrs(
     experiment = exp,
     project_name = SIXTEEN_HEADS_PROJECT_NAME,
     run_name = SIXTEEN_HEADS_RUN_NAME,
+    model= tl_model,
 ):
 # experiment = exp
 # project_name = SIXTEEN_HEADS_PROJECT_NAME
 # run_name = SIXTEEN_HEADS_RUN_NAME
+# model = tl_model
 # if True:
     api = wandb.Api()
     run=api.run(SIXTEEN_HEADS_PROJECT_NAME + "/" + SIXTEEN_HEADS_RUN_NAME) # sorry fomratting..
@@ -310,8 +312,8 @@ def get_sixteen_heads_corrs(
     for t, e in experiment.corr.all_edges().items():
         e.present = True
     experiment.remove_all_non_attention_connections()
-    corrs = [deepcopy(exp.corr)]
-    print(exp.count_no_edges())
+    corrs = [deepcopy(experiment.corr)]
+    print(experiment.count_no_edges())
 
     history = run.scan_history()
     layer_indices = list(pd.DataFrame(history)["layer_idx"])
@@ -328,10 +330,41 @@ def get_sixteen_heads_corrs(
     head_indices = [int(i) for i in head_indices]
     layer_indices = [int(i) for i in layer_indices]
 
+    nodes_to_mask_strings = [
+        f"blocks.{layer_idx}{'.attn' if not inputting else ''}.hook_{letter}{'_input' if inputting else ''}[COL, COL, {head_idx}]"
+        for layer_idx in range(model.cfg.n_layers)
+        for head_idx in range(model.cfg.n_heads)
+        for letter in ["q", "k", "v"]
+        for inputting in [True, False]
+    ]
+    nodes_to_mask_strings.extend([
+        f"blocks.{layer_idx}.attn.hook_result[COL, COL, {head_idx}]"
+        for layer_idx in range(model.cfg.n_layers)
+        for head_idx in range(model.cfg.n_heads)
+    ])
+    nodes_to_mask = {s: parse_interpnode(s) for s in nodes_to_mask_strings}
+    corr2 = correspondence_from_mask(
+        model = model,
+        nodes_to_mask=list(nodes_to_mask.values()),
+    )
+
+    assert set(corr2.all_edges().keys()) == set(experiment.corr.all_edges().keys())
+    for t, e in corr2.all_edges().items():
+        assert experiment.corr.edges[t[0]][t[1]][t[2]][t[3]].present == e.present, (t, e.present, experiment.corr.edges[t[0]][t[1]][t[2]][t[3]].present)
+
     for layer_idx, head_idx in tqdm(zip(layer_indices, head_indices)):
-        exp.add_back_head(layer_idx, head_idx)
-        corrs.append(deepcopy(exp.corr))
-        print(exp.count_no_edges())
+        # exp.add_back_head(layer_idx, head_idx)
+        for letter in "qkv":
+            nodes_to_mask.pop(f"blocks.{layer_idx}.attn.hook_{letter}[COL, COL, {head_idx}]")
+        nodes_to_mask.pop(f"blocks.{layer_idx}.attn.hook_result[COL, COL, {head_idx}]")
+
+        corr = correspondence_from_mask(
+            model = model,
+            nodes_to_mask=list(nodes_to_mask.values()),
+        )
+
+        corrs.append(deepcopy(corr))
+        print(corr.count_no_edges())
 
     return corrs
 
