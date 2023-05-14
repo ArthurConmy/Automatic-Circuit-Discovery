@@ -181,7 +181,7 @@ elif TASK == "induction":
     tl_model, toks_int_values, toks_int_values_other = induction_things.tl_model, induction_things.validation_data, induction_things.validation_patch_data
 
     validation_metric = induction_things.validation_metric
-    metric = lambda x: validation_metric(x).item()
+    metric = lambda x: validation_metric(x)
 
     test_metric_fns = {args.metric: induction_things.test_metric}
     test_metric_data = induction_things.test_data
@@ -195,7 +195,7 @@ elif TASK == "docstring":
     tl_model, toks_int_values, toks_int_values_other = docstring_things.tl_model, docstring_things.validation_data, docstring_things.validation_patch_data
 
     validation_metric = docstring_things.validation_metric
-    metric = lambda x: validation_metric(x).item()
+    metric = lambda x: validation_metric(x)
 
     test_metric_fns = docstring_things.test_metrics
     test_metric_data = docstring_things.test_data
@@ -286,7 +286,7 @@ for i in range(args.max_num_epochs):
         with torch.no_grad():
             test_metric_values = {}
             for k, fn in test_metric_fns.items():
-                test_metric_values["test_"+k] = fn(exp.model(test_metric_data)).item()
+                test_metric_values["test_"+k] = fn(exp.model(test_metric_data))
         if USING_WANDB:
             wandb.log(test_metric_values)
 
