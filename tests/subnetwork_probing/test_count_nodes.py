@@ -17,13 +17,7 @@ sys.path.append(str(Path(__file__).parent.parent / "code"))
 
 from subnetwork_probing.train import correspondence_from_mask, get_transformer_config
 import networkx as nx
-
-
-def parse_interpnode(s: str) -> TLACDCInterpNode:
-    name, idx = s.split("[")
-    idx = int(idx[-2])
-    return TLACDCInterpNode(name, TorchIndex([None, None, idx]), EdgeType.ADDITION)
-
+from acdc.munging_utils import parse_interpnode
 
 def delete_nested_dict(d: dict, keys: list):
     inner_dicts = [d]

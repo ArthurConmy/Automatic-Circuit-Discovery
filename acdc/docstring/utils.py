@@ -50,6 +50,17 @@ class AllDocstringThings:
     test_mask: NoneType
     test_patch_data: torch.Tensor
 
+def get_docstring_model(device="cuda", sixteen_heads=False):
+    tl_model = HookedTransformer.from_pretrained(
+        "attn-only-4l",
+        use_global_cache=True,
+        sixteen_heads=sixteen_heads,
+    )
+    tl_model.set_use_attn_result(True)
+    if not sixteen_heads:
+        tl_model.set_use_split_qkv_input(True)
+    tl_model.to(device)
+    return tl_model
 
 def get_all_docstring_things(
     num_examples,
@@ -58,14 +69,10 @@ def get_all_docstring_things(
     metric_name="kl_div",
     dataset_version="random_random",
     correct_incorrect_wandb=True,
+    sixteen_heads=False,
+    return_one_element=True,
 ) -> AllDocstringThings:
-    tl_model = HookedTransformer.from_pretrained(
-        "attn-only-4l",
-        use_global_cache=True,
-    )
-    tl_model.set_use_attn_result(True)
-    tl_model.set_use_split_qkv_input(True)
-    tl_model.to(device)
+    tl_model = get_docstring_model(device=device, sixteen_heads=sixteen_heads)
 
     docstring_ind_prompt_kwargs = dict(
         n_matching_args=3, n_def_prefix_args=2, n_def_suffix_args=1, n_doc_prefix_args=0, met_desc_len=3, arg_desc_len=2
@@ -105,6 +112,7 @@ def get_all_docstring_things(
         correct_labels: torch.Tensor,
         wrong_labels: torch.Tensor,
         log_correct_incorrect_wandb: bool = False,
+        return_one_element: bool = True,
     ):
         """With neg sign so we minimize this"""
 
@@ -120,18 +128,29 @@ def get_all_docstring_things(
             )
 
         # note neg sign!!!
-        return -(correct_logits.mean() - incorrect_logits.max(dim=-1).values.mean())
+        answer = -(correct_logits - incorrect_logits.max(dim=-1).values)
+        if return_one_element: 
+            answer = answer.mean()
+        return answer
+
 
     def ldgz_docstring_metric(
         logits: torch.Tensor,
         correct_labels: torch.Tensor,
         wrong_labels: torch.Tensor,
+        return_one_element: bool = True,
     ):
         """Logit diff greater zero fraction (with neg sign)"""
         pos_logits = logits[:, -1, :]
         max_correct, _ = torch.gather(pos_logits, index=correct_labels[..., None], dim=1).max(dim=1)
         max_wrong, _ = torch.gather(pos_logits, index=wrong_labels, dim=1).max(dim=1)
-        return -((max_correct - max_wrong > 0).sum() / len(max_correct))
+        
+        answer = -(max_correct - max_wrong > 0).float()
+        if return_one_element:
+            answer = answer.sum()
+            answer /= len(max_correct)
+
+        return answer
 
     if metric_name == "kl_div":
         validation_metric = partial(
@@ -139,6 +158,7 @@ def get_all_docstring_things(
             base_model_logprobs=base_validation_logprobs,
             last_seq_element_only=True,
             base_model_probs_last_seq_element_only=False,
+            return_one_element=return_one_element,
         )
     elif metric_name == "docstring_metric":
         validation_metric = partial(
@@ -146,24 +166,28 @@ def get_all_docstring_things(
             correct_labels=validation_labels,
             wrong_labels=validation_wrong_labels,
             log_correct_incorrect_wandb=correct_incorrect_wandb,
+            return_one_element=return_one_element,
         )
     elif metric_name == "docstring_stefan":
         validation_metric = partial(
             ldgz_docstring_metric,
             correct_labels=validation_labels,
             wrong_labels=validation_wrong_labels,
+            return_one_element=return_one_element,
         )
     elif metric_name == "nll":
         validation_metric = partial(
             negative_log_probs,
             labels=validation_labels,
             last_seq_element_only=True,
+            return_one_element=return_one_element,
         )
     elif metric_name == "match_nll":
         validation_metric = MatchNLLMetric(
             labels=validation_labels,
             base_model_logprobs=base_validation_logprobs,
             last_seq_element_only=True,
+            return_one_element=return_one_element,
         )
     else:
         raise ValueError(f"metric_name {metric_name} not recognized")
@@ -175,27 +199,32 @@ def get_all_docstring_things(
             base_model_logprobs=base_test_logprobs,
             last_seq_element_only=True,
             base_model_probs_last_seq_element_only=False,
+            return_one_element=return_one_element,
         ),
         "docstring_metric": partial(
             raw_docstring_metric,
             correct_labels=test_labels,
             wrong_labels=test_wrong_labels,
             log_correct_incorrect_wandb=correct_incorrect_wandb,
+            return_one_element=return_one_element,
         ),
         "docstring_stefan": partial(
             ldgz_docstring_metric,
             correct_labels=test_labels,
             wrong_labels=test_wrong_labels,
+            return_one_element=return_one_element,
         ),
         "nll": partial(
             negative_log_probs,
             labels=test_labels,
             last_seq_element_only=True,
+            return_one_element=return_one_element,
         ),
         "match_nll": MatchNLLMetric(
             labels=test_labels,
             base_model_logprobs=base_test_logprobs,
             last_seq_element_only=True,
+            return_one_element=return_one_element,
         ),
     }
 
@@ -212,3 +241,42 @@ def get_all_docstring_things(
         test_mask=None,
         test_patch_data=test_patch_data,
     )
+
+def get_docstring_subgraph_true_edges():
+    # the manual graph, from Stefan
+    edges_to_keep = []
+    COL = TorchIndex([None])
+    H0 = TorchIndex([None, None, 0])
+    H4 = TorchIndex([None, None, 4])
+    H5 = TorchIndex([None, None, 5])
+    H6 = TorchIndex([None, None, 6])
+    H = lambda i: TorchIndex([None, None, i])
+    for L3H in [H0, H6]:
+        edges_to_keep.append(("blocks.3.hook_resid_post", COL, "blocks.3.attn.hook_result", L3H))
+        edges_to_keep.append(("blocks.3.attn.hook_q", L3H, "blocks.3.hook_q_input", L3H))
+        edges_to_keep.append(("blocks.3.hook_q_input", L3H, "blocks.1.attn.hook_result", H4))
+        edges_to_keep.append(("blocks.3.attn.hook_v", L3H, "blocks.3.hook_v_input", L3H))
+        edges_to_keep.append(("blocks.3.hook_v_input", L3H, "blocks.0.hook_resid_pre", COL))
+        edges_to_keep.append(("blocks.3.hook_v_input", L3H, "blocks.0.attn.hook_result", H5))
+        edges_to_keep.append(("blocks.3.attn.hook_k", L3H, "blocks.3.hook_k_input", L3H))
+        edges_to_keep.append(("blocks.3.hook_k_input", L3H, "blocks.2.attn.hook_result", H0))
+    edges_to_keep.append(("blocks.2.attn.hook_q", H0, "blocks.2.hook_q_input", H0))
+    edges_to_keep.append(("blocks.2.hook_q_input", H0, "blocks.0.hook_resid_pre", COL))
+    edges_to_keep.append(("blocks.2.hook_q_input", H0, "blocks.0.attn.hook_result", H5))
+    edges_to_keep.append(("blocks.2.attn.hook_v", H0, "blocks.2.hook_v_input", H0))
+    edges_to_keep.append(("blocks.2.hook_v_input", H0, "blocks.1.attn.hook_result", H4))
+    edges_to_keep.append(("blocks.0.attn.hook_v", H5, "blocks.0.hook_v_input", H5))
+    edges_to_keep.append(("blocks.0.hook_v_input", H5, "blocks.0.hook_resid_pre", COL))
+    edges_to_keep.append(("blocks.1.attn.hook_v", H4, "blocks.1.hook_v_input", H4))
+    edges_to_keep.append(("blocks.1.hook_v_input", H4, "blocks.0.hook_resid_pre", COL)) 
+    print(len(edges_to_keep))
+
+    # format this into the dict thing... munging ugh
+    # d = {(d[0], d[1].hashable_tuple, d[2], d[3].hashable_tuple): False for d in exp.corr.all_edges()}
+    d = {}
+
+    for k in edges_to_keep:
+        tupl = (k[0], k[1].hashable_tuple, k[2], k[3].hashable_tuple)
+        d[tupl] = True
+
+    return d
