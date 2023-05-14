@@ -317,36 +317,36 @@ if __name__ == "__main__":
 # Precision and recall etc metrics
 # ----------------------------------
 
-def get_rate(ground_truth, recovered, mode, verbose=False):
+def get_stat(ground_truth, recovered, mode, verbose=False):
     assert mode in ["true positive", "false positive", "false negative"]
     assert set(ground_truth.all_edges().keys()) == set(recovered.all_edges().keys()), "There is a mismatch between the keys we're comparing here"
 
-    warnings.warn("All edges a bunch will slow things down, find alternative. Also these are not rates atm, rename")
+    ground_truth_all_edges = ground_truth.all_edges()
+    recovered_all_edges = recovered.all_edges()
 
     cnt = 0
-    for tupl, edge in ground_truth.all_edges().items():
+    for tupl, edge in ground_truth_all_edges.items():
         if edge.edge_type == EdgeType.PLACEHOLDER:
             continue
         if mode == "false positive": 
-            if recovered.all_edges()[tupl].present and not edge.present:
+            if recovered_all_edges[tupl].present and not edge.present:
                 cnt += 1
                 if verbose:
                     print(tupl)
         elif mode == "negative":
-            if not recovered.all_edges()[tupl].present and edge.present:
+            if not recovered_all_edges[tupl].present and edge.present:
                 cnt += 1
         elif mode == "true positive":
-            if recovered.all_edges()[tupl].present and edge.present:
+            if recovered_all_edges[tupl].present and edge.present:
                 cnt += 1
 
-    # cnt /= ground_truth.count_no_edges()
     return cnt
 
 def false_positive_rate(ground_truth, recovered, verbose=False):
-    return get_rate(ground_truth, recovered, mode="false positive", verbose=verbose)
+    return get_stat(ground_truth, recovered, mode="false positive", verbose=verbose)
 
 def false_negative_rate(ground_truth, recovered, verbose=False):
-    return get_rate(ground_truth, recovered, mode="false negative", verbose=verbose)
+    return get_stat(ground_truth, recovered, mode="false negative", verbose=verbose)
 
-def true_positive_rate(ground_truth, recovered, verbose=False):
-    return get_rate(ground_truth, recovered, mode="true positive", verbose=verbose)
+def true_positive_stat(ground_truth, recovered, verbose=False):
+    return get_stat(ground_truth, recovered, mode="true positive", verbose=verbose)

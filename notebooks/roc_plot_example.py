@@ -1,8 +1,5 @@
 # %% [markdown]
-# This notebook / script shows several use cases of ACDC
-# 
-# (The code relies on our modification of the TransformerLens codebase, 
-# mainly giving all HookPoints access to a global cache)
+# Script of ROC Plots
 
 import IPython
 
@@ -11,6 +8,7 @@ if IPython.get_ipython() is not None:
     IPython.get_ipython().run_line_magic("autoreload", "2")  # type: ignore
 
 from copy import deepcopy
+from acdc.acdc_utils import false_positive_rate, false_negative_rate, true_positive_stat
 from typing import (
     List,
     Tuple,
@@ -63,7 +61,7 @@ from acdc.HookedTransformer import (
     HookedTransformer,
 )
 from acdc.tracr.utils import get_tracr_data, get_tracr_model_input_and_tl_model
-from acdc.docstring.utils import get_all_docstring_things
+from acdc.docstring.utils import get_all_docstring_things, get_docstring_model, get_docstring_subgraph_true_edges
 from acdc.acdc_utils import (
     make_nd_dict,
     shuffle_tensor,
@@ -101,16 +99,58 @@ import argparse
 torch.autograd.set_grad_enabled(False)
 
 #%% [markdown]
+
+parser = argparse.ArgumentParser(description="Used to control ROC plot scripts (for standardisation with other files...)")
+parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr (WIPs except docstring!!!)')
+parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
+parser.add_argument("--ignore-sixteen-heads", action="store_true", help="Ignore the 16 heads stuff TODO")
+
+# for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
+if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
+    args = parser.parse_args("--task docstring".split())
+else:
+    args = parser.parse_args()
+
+TASK = args.task
+ZERO_ABLATION = True if args.zero_ablation else False
+SKIP_ACDC=False
+SKIP_SP = False
+SKIP_SIXTEEN_HEADS = True if args.ignore_sixteen_heads else False
+
+#%% [markdown]
 # Setup
 
-num_examples = 50
-seq_len = 41
-tl_model, toks_int_values, toks_int_values_other, metric, second_metric = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device="cuda", metric_name="kl_divergence", correct_incorrect_wandb=False)
+if TASK == "docstring":
+    num_examples = 50
+    seq_len = 41
+    all_docstring_things = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device="cuda", metric_name="kl_div", correct_incorrect_wandb=False)
+    toks_int_values = all_docstring_things.validation_data
+    toks_int_values_other = all_docstring_things.validation_patch_data
+    tl_model = all_docstring_things.tl_model
+    metric = all_docstring_things.validation_metric
+    second_metric = None
+    get_true_edges = get_docstring_subgraph_true_edges
 
-#%%
+    ACDC_PROJECT_NAME = "remix_school-of-rock/acdc"
+    ACDC_RUN_FILTER = lambda name: name.startswith("agarriga-docstring")
+
+    SP_PROJECT_NAME = "remix_school-of-rock/induction-sp-replicate"
+    def sp_run_filter(name):
+        if not name.startswith("agarriga-sp-"): return False
+        try: 
+            return int(name.split("-")[-1])
+        except:
+            return False
+        return 0 <= int(name.split("-")[-1]) <= 319
+    SP_RUN_FILTER = lambda name: sp_run_filter(name)
+
+else:
+    raise NotImplementedError("TODO " + TASK)
+
+#%% [markdown]
+# Setup the experiment for wrapping functionality nicely
 
 tl_model.global_cache.clear()
-
 tl_model.reset_hooks()
 exp = TLACDCExperiment(
     model=tl_model,
@@ -125,106 +165,108 @@ exp = TLACDCExperiment(
 )
 
 #%% [markdown]
+# Load the *canonical* circuit
+
+d = {(d[0], d[1].hashable_tuple, d[2], d[3].hashable_tuple): False for d in exp.corr.all_edges()}
+d_trues = get_true_edges()
+for k in d_trues:
+    d[k] = True
+exp.load_subgraph(d)
+canonical_circuit_subgraph = deepcopy(exp.corr)
+
+#%% [markdown]
 # <h2> Arthur plays about with loading in graphs </h2>
 # <h3> Not relevant for doing ACDC runs </h3>
 # <p> Get Adria's docstring runs! </p>
 
-from acdc.acdc_utils import false_positive_rate, false_negative_rate, true_positive_rate
-api = wandb.Api()
-runs = api.runs("remix_school-of-rock/acdc")
-filtered_runs = []
+def get_acdc_runs(
+    experiment,
+    project_name: str = ACDC_PROJECT_NAME,
+    run_name_filter: Callable[[str], bool] = ACDC_RUN_FILTER,
+):
+    api = wandb.Api()
+    runs = api.runs(project_name)
+    filtered_runs = []
+    for run in tqdm(runs):
+        if run_name_filter(run.name):
+            filtered_runs.append(run)
+    cnt = 0
+    corrs = []
+    args = project_name.split("/")
+    for run in tqdm(filtered_runs):
+        run_id = run.id
+        try:
+            experiment.load_from_wandb_run(*args, run_id)
+            corrs.append(deepcopy(exp.corr))
+        except Exception as e:
+            print(e)
+            cnt+=1
+            continue
+    return corrs
 
-for run in tqdm(runs):
-    if "agarriga-docstring" in run.name:
-        filtered_runs.append(run)
-
-assert len(filtered_runs) > 150, len(filtered_runs)
-
-#%% [markdown]
-# <h2> The output log seems malformatted in about 6 cases. I don't know why and it seems OK to just skip these </h2> 
-
-cnt = 0
-corrs = []
-
-for run in tqdm(filtered_runs):
-    run_id = run.id
-    print(len(corrs), "len_corr")
-    try:
-        exp.load_from_wandb_run("remix_school-of-rock", "acdc", run_id)
-        print(exp.count_no_edges())
-        corrs.append(deepcopy(exp.corr))
-    except Exception as e:
-        print(e)
-        cnt+=1
-        continue
-
-# %%
-
-edges_to_keep = []
-COL = TorchIndex([None])
-H0 = TorchIndex([None, None, 0])
-H4 = TorchIndex([None, None, 4])
-H5 = TorchIndex([None, None, 5])
-H6 = TorchIndex([None, None, 6])
-H = lambda i: TorchIndex([None, None, i])
-for L3H in [H0, H6]:
-    edges_to_keep.append(("blocks.3.hook_resid_post", COL, "blocks.3.attn.hook_result", L3H))
-    edges_to_keep.append(("blocks.3.attn.hook_q", L3H, "blocks.3.hook_q_input", L3H))
-    edges_to_keep.append(("blocks.3.hook_q_input", L3H, "blocks.1.attn.hook_result", H4))
-    edges_to_keep.append(("blocks.3.attn.hook_v", L3H, "blocks.3.hook_v_input", L3H))
-    edges_to_keep.append(("blocks.3.hook_v_input", L3H, "blocks.0.hook_resid_pre", COL))
-    edges_to_keep.append(("blocks.3.hook_v_input", L3H, "blocks.0.attn.hook_result", H5))
-    edges_to_keep.append(("blocks.3.attn.hook_k", L3H, "blocks.3.hook_k_input", L3H))
-    edges_to_keep.append(("blocks.3.hook_k_input", L3H, "blocks.2.attn.hook_result", H0))
-edges_to_keep.append(("blocks.2.attn.hook_q", H0, "blocks.2.hook_q_input", H0))
-edges_to_keep.append(("blocks.2.hook_q_input", H0, "blocks.0.hook_resid_pre", COL))
-edges_to_keep.append(("blocks.2.hook_q_input", H0, "blocks.0.attn.hook_result", H5))
-edges_to_keep.append(("blocks.2.attn.hook_v", H0, "blocks.2.hook_v_input", H0))
-edges_to_keep.append(("blocks.2.hook_v_input", H0, "blocks.1.attn.hook_result", H4))
-edges_to_keep.append(("blocks.0.attn.hook_v", H5, "blocks.0.hook_v_input", H5))
-edges_to_keep.append(("blocks.0.hook_v_input", H5, "blocks.0.hook_resid_pre", COL))
-edges_to_keep.append(("blocks.1.attn.hook_v", H4, "blocks.1.hook_v_input", H4))
-edges_to_keep.append(("blocks.1.hook_v_input", H4, "blocks.0.hook_resid_pre", COL)) 
-print(len(edges_to_keep))
-
-# format this into the dict thing... munging ugh
-d = {(d[0], d[1].hashable_tuple, d[2], d[3].hashable_tuple): False for d in exp.corr.all_edges()}
-for k in edges_to_keep:
-    tupl = (k[0], k[1].hashable_tuple, k[2], k[3].hashable_tuple)
-    assert tupl in d
-    d[tupl] = True
-
-# %%
-
-exp2 = deepcopy(exp)
+if "corrs" not in locals(): # this is slow, so run once
+    corrs = get_acdc_runs(exp)
 
 #%%
 
-exp2.load_subgraph(d)
+# do SP stuff
+
+def get_sp_runs(
+    experiment, 
+    project_name: str = SP_PROJECT_NAME,
+    run_name_filter: Callable[[str], bool] = SP_RUN_FILTER,
+):
+    api = wandb.Api()
+    runs = api.runs(project_name)
+    filtered_runs = []
+    for run in tqdm(runs):
+        if run_name_filter(run.name):
+            filtered_runs.append(run)
+    cnt = 0
+    corrs = []
+
+    args = project_name.split("/")
+
+    last_plotly = None
+
+    for run in tqdm(filtered_runs):
+        for f in run.files():
+            if "media/plotly" not in str(f):
+                continue
+            if last_plotly is None or int(f.name.split("_")[2]) > int(last_plotly.name.split("_")[2]):
+                last_plotly = f
+
+    last_plotly.download(replace=True, root="/tmp/")
+    with open("/tmp/" + last_plotly.name, "r") as f:
+        plotly = json.load(f)
+    return plotly
+
+plotlies = get_sp_runs(exp)
 
 #%%
 
-ground_truth = exp2.corr
-
-# %%
-
-false_negative_rate(exp2.corr, exp.corr)
-
-# %%
-
-circuit_size = exp.count_no_edges()
-ground_truth_size = exp2.count_no_edges()
+# reload in the circuit
+exp.load_subgraph(d)
+ground_truth = exp.corr
+ground_truth_size = ground_truth.count_no_edges()
 
 #%%
 
-points = []
-for corr in tqdm(corrs):
+points = {}
+if not SKIP_ACDC: points["ACDC"] = []    
+if not SKIP_SP: points["SP"] = []
+if not SKIP_SIXTEEN_HEADS: points["16H"] = []
+
+#%%
+
+# this is for ACDC
+for corr in tqdm(corrs): 
     circuit_size = corr.count_no_edges()
     if circuit_size == 0:
         continue
-    points.append((false_positive_rate(ground_truth, corr)/circuit_size, true_positive_rate(ground_truth, corr)/ground_truth_size))
-    print(points[-1])
-    if points[-1][0] > 1:
+    points["ACDC"].append((false_positive_rate(ground_truth, corr)/circuit_size, true_positive_stat(ground_truth, corr)/ground_truth_size))
+    print(points["ACDC"][-1])
+    if points["ACDC"][-1][0] > 1:
         print(false_positive_rate(ground_truth, corr, verbose=True))
         assert False
 
@@ -240,16 +282,16 @@ def discard_non_pareto_optimal(points):
             ret.append((x, y))
     return ret
 
-processed_points = discard_non_pareto_optimal(points)
+processed_points = {key: discard_non_pareto_optimal(points[key]) for key in points}
+
 # sort by x
-processed_points = sorted(processed_points, key=lambda x: x[0])
+processed_points = {k: sorted(processed_points[k], key=lambda x: x[0]) for k in processed_points}
 
 #%%
 
-def get_roc_figure(all_points, names): # =""):
+def get_roc_figure(all_points, names):
     """Points are (false positive rate, true positive rate)"""
     roc_figure = go.Figure()
-    # roc_figure.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode="lines", name="Random (assuming binary classification...)"))
     for points, name in zip(all_points, names):
         roc_figure.add_trace(
             go.Scatter(
@@ -264,7 +306,7 @@ def get_roc_figure(all_points, names): # =""):
     roc_figure.update_yaxes(title_text="True positive rate")
     return roc_figure
 
-fig = get_roc_figure([processed_points], ["ACDC"])
+fig = get_roc_figure(list(processed_points.values()), list(processed_points.keys()))
 fig.show()
 
 # %%

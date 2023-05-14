@@ -58,7 +58,7 @@ from acdc.HookedTransformer import (
     HookedTransformer,
 )
 from acdc.tracr.utils import get_tracr_data, get_tracr_model_input_and_tl_model
-from acdc.docstring.utils import get_all_docstring_things, get_docstring_model
+from acdc.docstring.utils import get_all_docstring_things, get_docstring_model, get_docstring_subgraph_true_edges
 from acdc.acdc_utils import (
     make_nd_dict,
     shuffle_tensor,
