@@ -694,7 +694,7 @@ class TransformerBlock(nn.Module):
 
         self.hook_attn_out = HookPoint()  # [batch, pos, d_model]
         if is_masked:
-            self.hook_mlp_out = MaskedHookPoint(mask_shape=(cfg.d_mlp,), is_mlp=True, name=f"mlp_{block_index}")  # [batch, pos, d_mlp]
+            self.hook_mlp_out = MaskedHookPoint(mask_shape=(1,), is_mlp=True, name=f"mlp_{block_index}")  # [batch, pos, d_mlp]
         else:
             self.hook_mlp_out = HookPoint()  # [batch, pos, d_model]
         self.hook_resid_pre = HookPoint()  # [batch, pos, d_model]

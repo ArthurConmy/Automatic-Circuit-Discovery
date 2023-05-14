@@ -153,12 +153,7 @@ class MaskedHookPoint(HookPoint):
 
             mask = self.sample_mask()
             if self.is_mlp:
-                broadcasted_mask_scores = einops.repeat(
-                    mask[:, 0],
-                    "a-> c d a",
-                    c=x.shape[0],
-                    d=x.shape[1],  # TODO: not confident with this, needs review
-                )
+                broadcasted_mask_scores = mask
             else:
                 broadcasted_mask_scores = einops.repeat(
                     mask,
