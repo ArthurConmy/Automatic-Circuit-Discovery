@@ -34,7 +34,6 @@ seq_len = 300
     metric,
     mask_rep,
 ) = get_all_induction_things(
-    kl_return_tensor=True,
     num_examples=num_examples,
     device="cuda",
     seq_len=seq_len,

@@ -276,7 +276,7 @@ def get_tracr_data(tl_model, task: Literal["reverse", "proportion"]):
         base_model_vals = tl_model(data_tens)[:, 1:, 0]
 
         def l2_metric( # this is for proportion... it's unclear how to format this tbh sad
-            dataset: Dataset,
+            dataset,
             model_out: torch.Tensor,
         ):
             # [1:, 0] shit
@@ -285,7 +285,7 @@ def get_tracr_data(tl_model, task: Literal["reverse", "proportion"]):
             for tens in [proc, base_model_vals]:    
                 assert 0<=tens.min()<=tens.max()<=1, (tens.min(), tens.max())
             
-            return ((proc - base_model_vals)**2).mean().item()
+            return ((proc - base_model_vals)**2).mean()
 
         metric = partial(l2_metric, model_out = base_model_vals)
 

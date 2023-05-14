@@ -1,6 +1,6 @@
-    """
-    This indents a notebook so that it can be run entirely as a test!
-    """
+"""
+This indents a notebook so that it can be run entirely as a test!
+"""
 
 def test_notebook():
     # %%
@@ -32,7 +32,6 @@ def test_notebook():
     seq_len = 300
     
     all_induction_things = get_all_induction_things(
-        kl_return_tensor=True,
         num_examples=num_examples,
         device="cuda",
         seq_len=seq_len,
@@ -340,3 +339,6 @@ def test_notebook():
         edge_list.append(edges)
 
     # %%
+
+if __name__ == "__main__":
+    test_notebook()
