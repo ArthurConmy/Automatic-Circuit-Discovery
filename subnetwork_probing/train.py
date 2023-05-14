@@ -24,7 +24,7 @@ from acdc.tracr.utils import get_all_tracr_things
 from acdc.acdc_utils import EdgeType, TorchIndex
 from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from acdc.TLACDCInterpNode import TLACDCInterpNode
-from acdc.induction.utils import AllInductionThings, get_all_induction_things, get_mask_repeat_candidates
+from acdc.induction.utils import get_all_induction_things, get_mask_repeat_candidates
 from tqdm import tqdm
 from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformer import HookedTransformer
 from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformerConfig import HookedTransformerConfig
@@ -180,7 +180,7 @@ def do_zero_caching(model: HookedTransformer) -> None:
 
 
 def train_induction(
-    args, induction_model: HookedTransformer, all_task_things: AllInductionThings | AllDataThings,
+    args, induction_model: HookedTransformer, all_task_things: AllDataThings,
 ):
     epochs = args.epochs
     lambda_reg = args.lambda_reg
@@ -196,12 +196,7 @@ def train_induction(
         dir=args.wandb_dir,
         mode=args.wandb_mode,
     )
-
-    if isinstance(all_task_things, AllInductionThings):
-        test_metric_fns = {args.loss_type: all_task_things.test_metric}
-    else:
-        test_metric_fns = all_task_things.test_metrics
-
+    test_metric_fns = all_task_things.test_metrics
 
     print("Reset subject:", args.reset_subject)
     if args.reset_subject:
