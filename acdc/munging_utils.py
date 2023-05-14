@@ -1,6 +1,14 @@
 import wandb
 import numpy as np
 
+from acdc.TLACDCInterpNode import TLACDCInterpNode
+from acdc.acdc_utils import TorchIndex, EdgeType
+
+def parse_interpnode(s: str) -> TLACDCInterpNode:
+    name, idx = s.split("[")
+    idx = int(idx[-2])
+    return TLACDCInterpNode(name, TorchIndex([None, None, idx]), EdgeType.ADDITION)
+
 def get_col_from_df(df, col_name):
     return df[col_name].values
 

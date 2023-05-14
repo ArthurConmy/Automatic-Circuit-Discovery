@@ -8,7 +8,9 @@ if IPython.get_ipython() is not None:
     IPython.get_ipython().run_line_magic("autoreload", "2")  # type: ignore
 
 from copy import deepcopy
+from subnetwork_probing.train import correspondence_from_mask
 from acdc.acdc_utils import false_positive_rate, false_negative_rate, true_positive_stat
+import pandas as pd
 from typing import (
     List,
     Tuple,
@@ -21,6 +23,7 @@ from typing import (
     Iterable,
     Set,
 )
+from acdc.munging_utils import parse_interpnode
 import pickle
 import wandb
 import IPython
@@ -96,6 +99,10 @@ from acdc.graphics import (
     show,
 )
 import argparse
+def get_col(df, col): # dumb util
+    non_null_entries = list(df.loc[df[col].notnull(), col])
+    return non_null_entries 
+
 torch.autograd.set_grad_enabled(False)
 
 #%% [markdown]
@@ -138,11 +145,12 @@ if TASK == "docstring":
     def sp_run_filter(name):
         if not name.startswith("agarriga-sp-"): return False
         try: 
-            return int(name.split("-")[-1])
+            int(name.split("-")[-1])
         except:
             return False
         return 0 <= int(name.split("-")[-1]) <= 319
-    SP_RUN_FILTER = lambda name: sp_run_filter(name)
+    SP_PRE_RUN_FILTER = {"group": "docstring3"} # used for the api.run(filter=...)
+    SP_RUN_NAME_FILTER = lambda name: sp_run_filter(name)
 
 else:
     raise NotImplementedError("TODO " + TASK)
@@ -209,18 +217,19 @@ if "corrs" not in locals(): # this is slow, so run once
 
 #%%
 
-# do SP stuff
-
-# def get_sp_runs(
-#     experiment, 
-#     project_name: str = SP_PROJECT_NAME,
-#     run_name_filter: Callable[[str], bool] = SP_RUN_FILTER,
-# ):
-project_name = SP_PROJECT_NAME
-run_name_filter = SP_RUN_FILTER
-if True:
+# Do SP stuff
+def get_sp_corrs(
+    experiment, 
+    model = tl_model,
+    project_name: str = SP_PROJECT_NAME,
+    pre_run_filter: Dict = SP_PRE_RUN_FILTER,
+    run_name_filter: Callable[[str], bool] = SP_RUN_NAME_FILTER,
+):
     api = wandb.Api()
-    runs = api.runs(project_name)
+    runs=api.runs(
+        project_name,
+        filters=pre_run_filter,
+    )
     filtered_runs = []
     for run in tqdm(runs):
         if run_name_filter(run.name):
@@ -228,19 +237,65 @@ if True:
     cnt = 0
     corrs = []
 
-#     args = project_name.split("/")
-#     last_plotly = None
-#     for run in tqdm(filtered_runs):
-#         for f in run.files():
-#             if "media/plotly" not in str(f):
-#                 continue
-#             if last_plotly is None or int(f.name.split("_")[2]) > int(last_plotly.name.split("_")[2]):
-#                 last_plotly = f
-#     last_plotly.download(replace=True, root="/tmp/")
-#     with open("/tmp/" + last_plotly.name, "r") as f:
-#         plotly = json.load(f)
-#     return plotly
-# plotlies = get_sp_runs(exp)
+    ret = []
+
+    for run in tqdm(filtered_runs):
+        df = pd.DataFrame(run.scan_history())
+
+        mask_scores_entries = get_col(df, "mask_scores")
+        assert len(mask_scores_entries) > 0
+        entry = mask_scores_entries[-1]
+
+        nodes_to_mask_entries = get_col(df, "nodes_to_mask")
+        assert len(nodes_to_mask_entries) ==1, len(nodes_to_mask_entries)
+        nodes_to_mask_strings = nodes_to_mask_entries[0]
+        nodes_to_mask = [parse_interpnode(s) for s in nodes_to_mask_strings]
+
+        number_of_edges_entries = get_col(df, "number_of_edges")
+        assert len(number_of_edges_entries) == 1, len(number_of_edges_entries)
+        number_of_edges = number_of_edges_entries[0]
+
+        kl_divs = get_col(df, "test_kl_div")
+        assert len(kl_divs) == 1, len(kl_divs)
+        kl_div = kl_divs[0]
+
+        corr = correspondence_from_mask(
+            model = model,
+            nodes_to_mask=nodes_to_mask,
+        )
+
+        assert corr.count_no_edges() == number_of_edges, (corr.count_no_edges(), number_of_edges)
+
+        ret.append((corr, kl_div))
+
+        # # ANOTHER DEPRECATED CURSED THING
+        # fname = entry['path']    
+        # run.file(fname).download(replace=True, root="/tmp/")
+        # with open("/tmp/" + fname, "r") as f:
+        #     plotly_file = json.load(f)
+        # interp_nodes = []
+        # for name, y in zip(
+        #     plotly_file["data"][0]["x"], 
+        #     plotly_file["data"][0]["y"],
+        # ):
+        #     interp_node = parse_interpnode(name)
+        #     interp_nodes.append(interp_node)
+        
+    # # DEPRECATED CURSED WAY OF LAZARUS-ING THE PLOTLY
+    #     args = project_name.split("/")
+    #     last_plotly = None
+    #     for run in tqdm(filtered_runs):
+    #         for f in run.files():
+    #             if "media/plotly" not in str(f):
+    #                 continue
+    #             if last_plotly is None or int(f.name.split("_")[2]) > int(last_plotly.name.split("_")[2]):
+    #                 last_plotly = f
+    #     last_plotly.download(replace=True, root="/tmp/")
+    #     with open("/tmp/" + last_plotly.name, "r") as f:
+    #         plotly = json.load(f)
+    #     return plotly
+
+my_list = get_sp_corrs(exp)
 
 #%%
 
