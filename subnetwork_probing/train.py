@@ -465,11 +465,11 @@ if __name__ == "__main__":
         )
     elif args.task == "tracr-reverse":
         things = get_all_tracr_things(
-            task="reverse", metric_name=args.metric, num_examples=args.num_examples, device=torch.device(args.device)
+            task="reverse", metric_name=args.loss_type, num_examples=args.num_examples, device=torch.device(args.device)
         )
     elif args.task == "tracr-proportion":
         things = get_all_tracr_things(
-            task="proportion", metric_name=args.metric, num_examples=args.num_examples, device=torch.device(args.device)
+            task="proportion", metric_name=args.loss_type, num_examples=args.num_examples, device=torch.device(args.device)
         )
     elif args.task == "docstring":
         all_task_things = get_all_docstring_things(

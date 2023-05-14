@@ -1,5 +1,5 @@
 import torch
-from acdc.greaterthan.utils import TOKENS_TENSOR, INV_TOKENS_TENSOR, greaterthan_metric_reference, greaterthan_metric, get_year_data
+from acdc.greaterthan.utils import greaterthan_metric_reference, greaterthan_metric, get_year_data
 from acdc.ioi.utils import get_gpt2_small
 
 

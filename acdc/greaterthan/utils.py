@@ -4,7 +4,7 @@ import warnings
 from functools import partial
 from copy import deepcopy
 import torch.nn.functional as F
-from typing import List
+from typing import List, ClassVar, Optional
 import click
 import IPython
 from acdc.acdc_utils import kl_divergence
@@ -52,45 +52,73 @@ _TOKENIZER = model.tokenizer
 del model
 
 # %%
+class GreaterThanConstants:
+    YEARS: list[str]
+    YEARS_BY_CENTURY: dict[str, list[str]]
+    TOKENS: list[int]
+    INV_TOKENS: dict[int, int]
+    TOKENS_TENSOR: torch.Tensor
+    INV_TOKENS_TENSOR: torch.Tensor
 
-YEARS = []
-YEARS_BY_CENTURY = {}
+    _instance: ClassVar[Optional["GreaterThanConstants"]] = None
 
-for century in range(11, 18):
-    all_success = []
-    for year in range(century * 100 + 2, (century * 100) + 99):
-        a = _TOKENIZER.encode(f" {year}")
-        if a == [_TOKENIZER.encode(f" {str(year)[:2]}")[0], _TOKENIZER.encode(str(year)[2:])[0]]:
-            all_success.append(str(year))
-            continue
-    YEARS.extend(all_success[1:-1])
-    YEARS_BY_CENTURY[century] = all_success[1:-1]
+    @classmethod
+    def get(cls: type["GreaterThanConstants"], device) -> "GreaterThanConstants":
+        if cls._instance is None:
+            cls._instance = cls(device)
+        return cls._instance
 
-TOKENS = {
-    i: _TOKENIZER.encode(f"{'0' if i<=9 else ''}{i}")[0] for i in range(0, 100)
-}
-INV_TOKENS = {v: k for k, v in TOKENS.items()}
+    def __init__(self, device):
+        model = get_gpt2_small(device=device)
+        _TOKENIZER = model.tokenizer
+        del model
 
-TOKENS_TENSOR = torch.as_tensor([TOKENS[i] for i in range(0, 100)], dtype=torch.long)
-INV_TOKENS_TENSOR = torch.zeros(50290, dtype=torch.long)
-for i, v in enumerate(TOKENS_TENSOR):
-    INV_TOKENS_TENSOR[v] = i
+        self.YEARS = []
+        self.YEARS_BY_CENTURY = {}
+
+        for century in range(11, 18):
+            all_success = []
+            for year in range(century * 100 + 2, (century * 100) + 99):
+                a = _TOKENIZER.encode(f" {year}")
+                if a == [_TOKENIZER.encode(f" {str(year)[:2]}")[0], _TOKENIZER.encode(str(year)[2:])[0]]:
+                    all_success.append(str(year))
+                    continue
+            self.YEARS.extend(all_success[1:-1])
+            self.YEARS_BY_CENTURY[century] = all_success[1:-1]
+
+        TOKENS = {
+            i: _TOKENIZER.encode(f"{'0' if i<=9 else ''}{i}")[0] for i in range(0, 100)
+        }
+        self.INV_TOKENS = {v: k for k, v in TOKENS.items()}
+        self.TOKENS = TOKENS
+
+        TOKENS_TENSOR = torch.as_tensor([TOKENS[i] for i in range(0, 100)], dtype=torch.long)
+        INV_TOKENS_TENSOR = torch.zeros(50290, dtype=torch.long)
+        for i, v in enumerate(TOKENS_TENSOR):
+            INV_TOKENS_TENSOR[v] = i
+
+        self.TOKENS_TENSOR = TOKENS_TENSOR
+        self.INV_TOKENS_TENSOR = INV_TOKENS_TENSOR
 
 def greaterthan_metric_reference(logits, tokens):
+    constants = GreaterThanConstants.get(logits.device)
+
     probs = F.softmax(logits[:, -1], dim=-1) # last elem???
     ans = 0.0
     for i in range(len(probs)):
-        yearend = INV_TOKENS[tokens[i][7].item()]
+        yearend = constants.INV_TOKENS[tokens[i][7].item()]
         for year_suff in range(yearend, 100):
-            ans += probs[i, TOKENS[year_suff]]
+            ans += probs[i, constants.TOKENS[year_suff]]
         for year_pref in range(0, yearend):
-            ans -= probs[i, TOKENS[year_pref]]
+            ans -= probs[i, constants.TOKENS[year_pref]]
     return - float(ans / len(probs))
 
 def greaterthan_metric(logits, tokens):
+    constants = GreaterThanConstants.get(logits.device)
+
     probs = F.softmax(logits[:, -1], dim=-1)
-    csum = torch.cumsum(probs[:, TOKENS_TENSOR], dim=-1)
-    yearend = INV_TOKENS_TENSOR[tokens[:, 7]].to(logits.device)
+    csum = torch.cumsum(probs[:, constants.TOKENS_TENSOR], dim=-1)
+    yearend = constants.INV_TOKENS_TENSOR[tokens[:, 7]].to(logits.device)
 
     # At or after: positive term
     range = torch.arange(len(yearend))
@@ -101,17 +129,19 @@ def greaterthan_metric(logits, tokens):
 
 
 def get_year_data(num_examples, model):
+    constants = GreaterThanConstants.get(model.cfg.device)
+
     template = "The {noun} lasted from the year {year1} to "
 
     # set some random seed
     torch.random.manual_seed(54)
     nouns_perm = torch.randint(0, len(NOUNS), (num_examples,))
-    years_perm = torch.randint(0, len(YEARS), (num_examples,))
+    years_perm = torch.randint(0, len(constants.YEARS), (num_examples,))
 
     prompts = []
     prompts_tokenized = []
     for i in range(num_examples):
-        year = YEARS[years_perm[i]]
+        year = constants.YEARS[years_perm[i]]
         prompts.append(
             template.format(
                 noun=NOUNS[nouns_perm[i]],
