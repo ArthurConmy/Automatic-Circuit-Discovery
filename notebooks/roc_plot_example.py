@@ -48,6 +48,7 @@ from acdc.munging_utils import parse_interpnode
 import pickle
 import wandb
 import IPython
+from acdc.munging_utils import heads_to_nodes_to_mask
 import torch
 
 # from easy_transformer.ioi_dataset import IOIDataset  # type: ignore
@@ -129,7 +130,7 @@ torch.autograd.set_grad_enabled(False)
 
 parser = argparse.ArgumentParser(description="Used to control ROC plot scripts (for standardisation with other files...)")
 parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr (WIPs except docstring!!!)')
-parser.add_argument("--mode", type=str, required=True, choices=["edges", "nodes"], help="Choose a mode from the available options: edges, nodes", default="edges") # TODO implement nodes
+parser.add_argument("--mode", type=str, required=False, choices=["edges", "nodes"], help="Choose a mode from the available options: edges, nodes", default="edges") # TODO implement nodes
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
 parser.add_argument("--skip-sixteen-heads", action="store_true", help="Skip the 16 heads stuff TODO")
 parser.add_argument("--testing", action="store_true", help="Use testing data instead of validation data")
@@ -282,7 +283,7 @@ def get_sp_corrs(
         entry = mask_scores_entries[-1]
 
         try:
-            nodes_to_mask_entries = get_col(df, "nodes_to_mask")
+            nodes_to_mask_entries = get_col(df, "nodes_to_mask_dict")
         except Exception as e:
             print(e, "... was an error")
             continue        
@@ -290,7 +291,7 @@ def get_sp_corrs(
         assert len(nodes_to_mask_entries) ==1, len(nodes_to_mask_entries)
         nodes_to_mask_strings = nodes_to_mask_entries[0]
         print(nodes_to_mask_strings)
-        nodes_to_mask = [parse_interpnode(s) for s in nodes_to_mask_strings]
+        nodes_to_mask_dict = [parse_interpnode(s) for s in nodes_to_mask_strings]
 
         number_of_edges_entries = get_col(df, "number_of_edges")
         assert len(number_of_edges_entries) == 1, len(number_of_edges_entries)
@@ -302,7 +303,7 @@ def get_sp_corrs(
 
         corr = correspondence_from_mask(
             model = model,
-            nodes_to_mask=nodes_to_mask,
+            nodes_to_mask_dict=nodes_to_mask_dict,
         )
 
         assert corr.count_no_edges() == number_of_edges, (corr.count_no_edges(), number_of_edges)
@@ -351,22 +352,13 @@ def get_sixteen_heads_corrs(
     head_indices = [int(i) for i in head_indices]
     layer_indices = [int(i) for i in layer_indices]
 
-    nodes_to_mask_strings = [
-        f"blocks.{layer_idx}{'.attn' if not inputting else ''}.hook_{letter}{'_input' if inputting else ''}[COL, COL, {head_idx}]"
-        for layer_idx in range(model.cfg.n_layers)
-        for head_idx in range(model.cfg.n_heads)
-        for letter in ["q", "k", "v"]
-        for inputting in [True, False]
-    ]
-    nodes_to_mask_strings.extend([
-        f"blocks.{layer_idx}.attn.hook_result[COL, COL, {head_idx}]"
-        for layer_idx in range(model.cfg.n_layers)
-        for head_idx in range(model.cfg.n_heads)
-    ])
-    nodes_to_mask = {s: parse_interpnode(s) for s in nodes_to_mask_strings}
+    nodes_to_mask_dict = heads_to_nodes_to_mask(
+        heads = [(layer_idx, head_idx) for layer_idx in range(tl_model.cfg.n_layers) for head_idx in range(tl_model.cfg.n_heads)], return_dict=True
+    )
+    print(nodes_to_mask_dict)
     corr2 = correspondence_from_mask(
         model = model,
-        nodes_to_mask=list(nodes_to_mask.values()),
+        nodes_to_mask=list(nodes_to_mask_dict.values()),
     )
 
     assert set(corr2.all_edges().keys()) == set(experiment.corr.all_edges().keys())
@@ -376,12 +368,12 @@ def get_sixteen_heads_corrs(
     for layer_idx, head_idx in tqdm(zip(layer_indices, head_indices)):
         # exp.add_back_head(layer_idx, head_idx)
         for letter in "qkv":
-            nodes_to_mask.pop(f"blocks.{layer_idx}.attn.hook_{letter}[COL, COL, {head_idx}]")
-        nodes_to_mask.pop(f"blocks.{layer_idx}.attn.hook_result[COL, COL, {head_idx}]")
+            nodes_to_mask_dict.pop(f"blocks.{layer_idx}.attn.hook_{letter}[COL, COL, {head_idx}]") # weirdly we don't have the q_input; just outputs of things....
+        nodes_to_mask_dict.pop(f"blocks.{layer_idx}.attn.hook_result[COL, COL, {head_idx}]")
 
         corr = correspondence_from_mask(
             model = model,
-            nodes_to_mask=list(nodes_to_mask.values()),
+            nodes_to_mask=list(nodes_to_mask_dict.values()),
         )
 
         corrs.append(deepcopy(corr))
