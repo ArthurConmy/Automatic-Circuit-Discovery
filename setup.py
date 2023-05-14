@@ -24,7 +24,10 @@ setup(
         "graphviz", 
         "networkx",
         "rich",
-        "git+https://github.com/deepmind/tracr.git", # sad does not work
+        # "git+https://github.com/deepmind/tracr.git", # sad does not work; pip deprecated
     ],
-    extras_require={"dev": ["pytest", "mypy", "pytest-cov"]},
+    extras_require={
+        "dev": ["pytest", "mypy", "pytest-cov"],
+        "tracr": ["git+https://github.com/deepmind/tracr.git"]
+    },
 )
