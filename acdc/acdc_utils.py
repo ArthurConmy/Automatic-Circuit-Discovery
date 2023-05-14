@@ -164,6 +164,7 @@ def kl_divergence(
     mask_repeat_candidates: Optional[torch.Tensor] = None,
     last_seq_element_only: bool = True,
     base_model_probs_last_seq_element_only: bool = False,
+    return_one_element: bool = True,
 ) -> torch.Tensor:
     # Note: we want base_model_probs_last_seq_element_only to remain False by default, because when the Docstring
     # circuit uses this, it already takes the last position before passing it in.
@@ -181,9 +182,15 @@ def kl_divergence(
         assert kl_div.shape == mask_repeat_candidates.shape, (kl_div.shape, mask_repeat_candidates.shape)
         denom = mask_repeat_candidates.long().sum()
         kl_div = kl_div * mask_repeat_candidates
-        answer = kl_div.sum() / denom
+        if return_one_element:
+            answer = kl_div.sum() / denom
+        else:
+            answer = kl_div
     else:
-        answer = kl_div.mean()
+        if return_one_element:
+            answer = kl_div.mean()
+        else:
+            answer = kl_div
 
     return answer
 
@@ -194,6 +201,7 @@ def negative_log_probs(
     mask_repeat_candidates: Optional[torch.Tensor] = None,
     baseline: Union[float, torch.Tensor] = 0.0,
     last_seq_element_only: bool = True,
+    return_one_element: bool=True,
 ) -> torch.Tensor:
     logprobs = F.log_softmax(logits, dim=-1)
 
@@ -213,9 +221,14 @@ def negative_log_probs(
         )
         denom = mask_repeat_candidates.long().sum()
         nll_all = nll_all * mask_repeat_candidates
-        answer = nll_all.sum() / denom
+        answer = nll_all
+        if return_one_element:
+            answer = nll_all.sum() / denom
+
     else:
-        answer = nll_all.mean()
+        if return_one_element:
+            answer = nll_all.mean()
+
     return answer
 
 
@@ -226,6 +239,7 @@ class MatchNLLMetric:
         base_model_logprobs: torch.Tensor,
         mask_repeat_candidates: Optional[torch.Tensor] = None,
         last_seq_element_only: bool = True,
+        return_one_element: bool = True,
     ):
         self.labels = labels
         self.mask_repeat_candidates = mask_repeat_candidates
@@ -243,6 +257,8 @@ class MatchNLLMetric:
         if mask_repeat_candidates is not None:
             assert self.base_nll_unreduced.shape == mask_repeat_candidates.shape
 
+        self.return_one_element = return_one_element
+
     def __call__(self, logits: torch.Tensor) -> torch.Tensor:
         return negative_log_probs(
             logits,
@@ -250,6 +266,7 @@ class MatchNLLMetric:
             mask_repeat_candidates=self.mask_repeat_candidates,
             baseline=self.base_nll_unreduced,
             last_seq_element_only=self.last_seq_element_only,
+            return_one_element=self.return_one_element,
         )
 
 def logit_diff_metric(logits, correct_labels, wrong_labels) -> torch.Tensor:
@@ -317,36 +334,36 @@ if __name__ == "__main__":
 # Precision and recall etc metrics
 # ----------------------------------
 
-def get_rate(ground_truth, recovered, mode, verbose=False):
+def get_stat(ground_truth, recovered, mode, verbose=False):
     assert mode in ["true positive", "false positive", "false negative"]
     assert set(ground_truth.all_edges().keys()) == set(recovered.all_edges().keys()), "There is a mismatch between the keys we're comparing here"
 
-    warnings.warn("All edges a bunch will slow things down, find alternative. Also these are not rates atm, rename")
+    ground_truth_all_edges = ground_truth.all_edges()
+    recovered_all_edges = recovered.all_edges()
 
     cnt = 0
-    for tupl, edge in ground_truth.all_edges().items():
+    for tupl, edge in ground_truth_all_edges.items():
         if edge.edge_type == EdgeType.PLACEHOLDER:
             continue
         if mode == "false positive": 
-            if recovered.all_edges()[tupl].present and not edge.present:
+            if recovered_all_edges[tupl].present and not edge.present:
                 cnt += 1
                 if verbose:
                     print(tupl)
         elif mode == "negative":
-            if not recovered.all_edges()[tupl].present and edge.present:
+            if not recovered_all_edges[tupl].present and edge.present:
                 cnt += 1
         elif mode == "true positive":
-            if recovered.all_edges()[tupl].present and edge.present:
+            if recovered_all_edges[tupl].present and edge.present:
                 cnt += 1
 
-    # cnt /= ground_truth.count_no_edges()
     return cnt
 
 def false_positive_rate(ground_truth, recovered, verbose=False):
-    return get_rate(ground_truth, recovered, mode="false positive", verbose=verbose)
+    return get_stat(ground_truth, recovered, mode="false positive", verbose=verbose)
 
 def false_negative_rate(ground_truth, recovered, verbose=False):
-    return get_rate(ground_truth, recovered, mode="false negative", verbose=verbose)
+    return get_stat(ground_truth, recovered, mode="false negative", verbose=verbose)
 
-def true_positive_rate(ground_truth, recovered, verbose=False):
-    return get_rate(ground_truth, recovered, mode="true positive", verbose=verbose)
+def true_positive_stat(ground_truth, recovered, verbose=False):
+    return get_stat(ground_truth, recovered, mode="true positive", verbose=verbose)

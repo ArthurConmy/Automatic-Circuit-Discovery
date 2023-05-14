@@ -39,7 +39,7 @@ class TLACDCExperiment:
         ds: torch.Tensor,
         ref_ds: Optional[torch.Tensor],
         threshold: float,
-        metric: Callable[[torch.Tensor, torch.Tensor], float], # dataset and logits to metric
+        metric: Callable[[torch.Tensor, torch.Tensor], torch.Tensor], # dataset and logits to metric. Output should be a scalar
         second_metric: Optional[Callable[[torch.Tensor, torch.Tensor], float]] = None,
         verbose: bool = False,
         hook_verbose: bool = False,
@@ -132,7 +132,7 @@ class TLACDCExperiment:
                 config=wandb_config,
             )
 
-        self.metric = metric
+        self.metric = lambda x: metric(x).item()
         self.second_metric = second_metric
         self.update_cur_metric()
 
@@ -161,7 +161,7 @@ class TLACDCExperiment:
     def verify_model_setup(self):
         assert self.model.cfg.use_attn_result, "Need to be able to see split by head outputs"
         assert self.model.cfg.use_split_qkv_input, "Need to be able to see split by head QKV inputs"
-        assert self.model.cfg.use_global_cache, "Need to be able to use global chache to do ACDC"
+        assert self.model.cfg.use_global_cache, "Need to be able to use global cache to do ACDC"
 
     def update_cur_metric(self, recalc_metric=True, recalc_edges=True, initial=False):
         if recalc_metric:
@@ -453,7 +453,6 @@ class TLACDCExperiment:
 
         self.update_cur_metric()
         initial_metric = self.cur_metric
-        assert isinstance(initial_metric, float), f"Initial metric is a {type(initial_metric)} not a float"
 
         cur_metric = initial_metric
         if self.verbose:
@@ -698,8 +697,8 @@ class TLACDCExperiment:
 
             print("But it's bad")
 
-    def count_no_edges(self) -> int:
-        cnt = self.corr.count_no_edges()
+    def count_no_edges(self, verbose=False) -> int:
+        cnt = self.corr.count_no_edges(verbose=verbose)
         if self.verbose:
             print("No edge", cnt)
         return cnt
@@ -787,3 +786,41 @@ class TLACDCExperiment:
                     self.corr.edges[current_name][current_torch_index][parent_name][parent_torch_index].present = keeping_connection
         
             assert found_at_least_one_readable_line, f"No readable lines found in the log file. Is this formatted correctly ??? {lines=}"
+        
+    def remove_all_non_attention_connections(self):
+        # remove all connection except the MLP connections
+        includes_attention = [ # substrings of hook names that imply they're relatred to attention
+            "attn",
+            "hook_q",
+            "hook_k",
+            "hook_v",
+        ]
+
+        for receiver_name in self.corr.edges:
+            for receiver_index in self.corr.edges[receiver_name]:
+                for sender_name in self.corr.edges[receiver_name][receiver_index]:
+                    for receiever_index in self.corr.edges[receiver_name][receiver_index][sender_name]:
+                        related_to_attention = False
+
+                        for substr in includes_attention:
+                            if substr in sender_name or substr in receiver_name:
+                                related_to_attention = True
+                                break
+
+                        if not related_to_attention:
+                            continue
+
+                        edge = self.corr.edges[receiver_name][receiver_index][sender_name][receiever_index]
+                        edge.present = False
+
+    def add_back_head(self, layer_idx, head_idx):
+
+        raise NotImplementedError("This is wrong do not use")
+
+        all_edges = self.corr.all_edges()
+        for (tupl, edge) in all_edges.items():
+            for hook_name, hook_idx in [(tupl[0], tupl[1]), (tupl[2], tupl[3])]:
+                if hook_name.startswith(f"blocks.{layer_idx}") and len(hook_idx.hashable_tuple) >= 3 and int(hook_idx.hashable_tuple[2]) == head_idx:
+                    assert edge.present == False or edge.edge_type == EdgeType.PLACEHOLDER, (tupl, edge, hook_name, hook_idx)
+                    edge.present = True
+                    break # don't double remove

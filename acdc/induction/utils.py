@@ -33,7 +33,7 @@ from acdc.acdc_utils import (
 from acdc import HookedTransformer
 from acdc.acdc_utils import kl_divergence, negative_log_probs
 
-def get_model(device):
+def get_model(device, sixteen_heads=False):
     tl_model = HookedTransformer.from_pretrained(
         "redwood_attn_2l",  # load Redwood's model
         use_global_cache=True,  # use the global cache: this is needed for ACDC to work
@@ -41,6 +41,7 @@ def get_model(device):
         center_unembed=False,
         fold_ln=False,
         device=device,
+        sixteen_heads=sixteen_heads,
     )
 
     # standard ACDC options
@@ -84,9 +85,8 @@ def get_mask_repeat_candidates(num_examples=None, seq_len=None, device=None):
         return mask_repeat_candidates[:num_examples, :seq_len]
 
 
-def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric="kl_div") -> AllDataThings:
-    tl_model = get_model(device=device)
-    tl_model.to(device)
+def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric="kl_div", sixteen_heads=False, return_one_element=True) -> AllDataThings:
+    tl_model = get_model(device=device, sixteen_heads=sixteen_heads)
 
     validation_data_orig = get_validation_data(device=device)
     mask_orig = get_mask_repeat_candidates(num_examples=None, device=device) # None so we get all
@@ -119,6 +119,7 @@ def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric
             base_model_logprobs=base_val_logprobs,
             mask_repeat_candidates=validation_mask,
             last_seq_element_only=False,
+            return_one_element=return_one_element,
         )
     elif metric == "nll":
         validation_metric = partial(

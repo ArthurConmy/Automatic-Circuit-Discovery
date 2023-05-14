@@ -133,7 +133,7 @@ class TLACDCCorrespondence:
                 correspondence.add_edge(
                     parent_node=cur_mlp_input,
                     child_node=cur_mlp,
-                    edge=Edge(edge_type=EdgeType.PLACEHOLDER),
+                    edge=Edge(edge_type=EdgeType.PLACEHOLDER), # EDIT: previously, this was a DIRECT_COMPUTATION edge, but that leads to overcounting of MLP edges (I think)
                     safe=False,
                 )
 
@@ -226,9 +226,11 @@ class TLACDCCorrespondence:
     def count_no_edges(self, verbose=False):
         cnt = 0
 
-        for edge in self.all_edges().values():
+        for tupl, edge in self.all_edges().items():
             if edge.present and edge.edge_type != EdgeType.PLACEHOLDER:
                 cnt += 1
+                if verbose:
+                    print(tupl)
 
         if verbose:
             print("No edge", cnt)

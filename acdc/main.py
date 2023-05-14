@@ -28,11 +28,9 @@ import wandb
 import IPython
 import torch
 from pathlib import Path
-
-# from easy_transformer.ioi_dataset import IOIDataset  # type: ignore
 from tqdm import tqdm
 import random
-from functools import *
+from functools import partial
 import json
 import pathlib
 import warnings
@@ -58,7 +56,6 @@ import plotly.io as pio
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
-pio.renderers.default = "colab"
 from acdc.hook_points import HookedRootModule, HookPoint
 from acdc.graphics import show
 from acdc.HookedTransformer import (
@@ -133,7 +130,7 @@ parser.add_argument('--single-step', action='store_true', help='Use single step,
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
     # args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
     # args = parser.parse_args("--threshold 0.001 --using-wandb".split())
-    args = parser.parse_args("--task docstring --using-wandb --threshold 0.005 --wandb-project-name acdc --indices-mode reverse --first-cache-cpu False --second-cache-cpu False".split()) # TODO figure out why this is such high edge count...
+    args = parser.parse_args("--task docstring --using-wandb --threshold 0.005 --wandb-project-name acdc --indices-mode reverse --first-cache-cpu False --second-cache-cpu False".split())
 else:
     args = parser.parse_args()
 
@@ -279,7 +276,7 @@ for i in range(args.max_num_epochs):
         with torch.no_grad():
             test_metric_values = {}
             for k, fn in test_metric_fns.items():
-                test_metric_values["test_"+k] = fn(exp.model(test_metric_data)).item()
+                test_metric_values["test_"+k] = fn(exp.model(test_metric_data))
         if USING_WANDB:
             wandb.log(test_metric_values)
 
@@ -296,6 +293,5 @@ if USING_WANDB:
     wandb.log_artifact(artifact)
     os.remove(edges_fname)
     wandb.finish()
-
 
 #%%
