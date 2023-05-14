@@ -364,12 +364,11 @@ def get_sixteen_heads_corrs(
         )
 
         corrs.append(deepcopy(corr))
-        print(corr.count_no_edges())
 
     return corrs
 
-# if "sixteen_heads_corrs" not in locals() and not SKIP_SIXTEEN_HEADS: # this is slow, so run once
-sixteen_heads_corrs = get_sixteen_heads_corrs()
+if "sixteen_heads_corrs" not in locals() and not SKIP_SIXTEEN_HEADS: # this is slow, so run once
+    sixteen_heads_corrs = get_sixteen_heads_corrs()
 
 #%%
 
@@ -431,7 +430,7 @@ for method in methods:
 
 #%%
 
-def get_roc_figure(all_points, names):
+def get_roc_figure(all_points, names): # TODO make the plots grey / black / yellow?
     """Points are (false positive rate, true positive rate)"""
     roc_figure = go.Figure()
     for points, name in zip(all_points, names):
