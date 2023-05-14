@@ -69,7 +69,7 @@ TOKENS = {
 }
 INV_TOKENS = {v: k for k, v in TOKENS.items()}
 
-def greaterthan_metric(logits, tokens, return_one_element=False, return_tensor=False):
+def greaterthan_metric(logits, tokens, return_one_element=False):
     probs = F.softmax(logits[:, -1], dim=-1) # last elem???
     ans = torch.zeros((logits.shape[0],)).to(logits.device)
     for i in range(len(probs)):
@@ -80,8 +80,6 @@ def greaterthan_metric(logits, tokens, return_one_element=False, return_tensor=F
             ans[i] = ans[i] - probs[i, TOKENS[year_pref]]
     if return_one_element:
         ans=ans.mean()
-    if not return_tensor:
-        ans = ans.item()
     return ans
 
 def get_year_data(num_examples, model):
@@ -109,7 +107,7 @@ def get_year_data(num_examples, model):
 
     return prompts_tokenized, prompts
 
-def get_all_greaterthan_things(num_examples, device="cuda", sixteen_heads=False, return_one_element=False, return_tensor=True):
+def get_all_greaterthan_things(num_examples, device="cuda", sixteen_heads=False, return_one_element=False):
     model = get_gpt2_small(device=device, sixteen_heads=sixteen_heads)
     data, prompts = get_year_data(num_examples, model)
-    return model, data, prompts, partial(greaterthan_metric, tokens=data, return_one_element=return_one_element, return_tensor=return_tensor)
+    return model, data, prompts, partial(greaterthan_metric, tokens=data, return_one_element=return_one_element)

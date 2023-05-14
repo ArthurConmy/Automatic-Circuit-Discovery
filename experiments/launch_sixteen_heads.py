@@ -135,7 +135,7 @@ if TASK == "ioi":
 
 if TASK == "greaterthan":
     num_examples = 100
-    tl_model, toks_int_values, prompts, metric = get_all_greaterthan_things(num_examples=num_examples, device=DEVICE, sixteen_heads=True, return_tensor=True, return_one_element=False)
+    tl_model, toks_int_values, prompts, metric = get_all_greaterthan_things(num_examples=num_examples, device=DEVICE, sixteen_heads=True, return_one_element=False)
     toks_int_values_other = toks_int_values.clone()
     toks_int_values_other[:, 7] = 486 # replace with 01
     seq_len = toks_int_values.shape[1]

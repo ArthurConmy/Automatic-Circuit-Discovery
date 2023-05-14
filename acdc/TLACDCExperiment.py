@@ -454,8 +454,6 @@ class TLACDCExperiment:
         self.update_cur_metric()
         initial_metric = self.cur_metric
 
-        # assert isinstance(initial_metric, float), f"Initial metric is a {type(initial_metric)} not a float" # hehe
-
         cur_metric = initial_metric
         if self.verbose:
             print("New metric:", cur_metric)

@@ -1,5 +1,26 @@
 # %% [markdown]
-# Script of ROC Plots
+# Script of ROC Plots!!!
+
+# You need to define
+
+# # for everything
+# loading in the experiment correctly (toks_int_values_other etc.)
+# get_true_edges # function that return the edges of the *true* circuit (see example of docstring in this code)
+
+# and then a bunch of paths and filters for wandb runs (again see docstring example)
+
+# # for ACDC
+# ACDC_PROJECT_NAME
+# ACDC_RUN_FILTER 
+
+# # for SP # filters are more annoying since some things are nested in groups
+# SP_PROJECT_NAME
+# SP_PRE_RUN_FILTER 
+# SP_RUN_NAME_FILTER
+
+# # for 16 heads # sixteen heads is just one run
+# SIXTEEN_HEADS_PROJECT_NAME
+# SIXTEEN_HEADS_RUN_NAME
 
 import IPython
 
@@ -108,7 +129,7 @@ torch.autograd.set_grad_enabled(False)
 
 parser = argparse.ArgumentParser(description="Used to control ROC plot scripts (for standardisation with other files...)")
 parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr (WIPs except docstring!!!)')
-parser.add_argument("--mode", type=str, required=True, choices=["edges", "nodes"], help="Choose a mode from the available options: edges, nodes", default="edges")
+parser.add_argument("--mode", type=str, required=True, choices=["edges", "nodes"], help="Choose a mode from the available options: edges, nodes", default="edges") # TODO implement nodes
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
 parser.add_argument("--skip-sixteen-heads", action="store_true", help="Skip the 16 heads stuff TODO")
 parser.add_argument("--testing", action="store_true", help="Use testing data instead of validation data")

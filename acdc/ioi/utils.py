@@ -24,7 +24,7 @@ def get_ioi_gpt2_small(device="cuda", sixteen_heads=False):
     """For backwards compat"""
     return get_gpt2_small(device=device, sixteen_heads=sixteen_heads) # TODO continue adding sixteen_heads...
 
-def get_ioi_data(tl_model, N, kl_return_one_element=True, return_tensor=True):
+def get_ioi_data(tl_model, N, kl_return_one_element=True):
     ioi_dataset = IOIDataset(
         prompt_type="ABBA",
         N=N,
@@ -48,5 +48,5 @@ def get_ioi_data(tl_model, N, kl_return_one_element=True, return_tensor=True):
     base_model_logprobs = F.log_softmax(base_model_logits, dim=-1)
     base_model_logprobs = base_model_logprobs[:, -1]
 
-    metric = partial(kl_divergence, base_model_logprobs=base_model_logprobs, last_seq_element_only=True, return_one_element=kl_return_one_element, return_tensor=return_tensor)
+    metric = partial(kl_divergence, base_model_logprobs=base_model_logprobs, last_seq_element_only=True, return_one_element=kl_return_one_element)
     return default_data, patch_data, metric

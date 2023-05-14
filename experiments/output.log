@@ -1,6 +1,0 @@
-Traceback (most recent call last):
-  File "/home/ubuntu/Automatic-Circuit-Discovery/subnetwork_probing/train.py", line 465, in <module>
-    model, to_log_dict = train_induction(
-  File "/home/ubuntu/Automatic-Circuit-Discovery/subnetwork_probing/train.py", line 178, in train_induction
-    test_metric_fns = {args.metric: all_task_things.test_metric}
-AttributeError: 'Namespace' object has no attribute 'metric'
