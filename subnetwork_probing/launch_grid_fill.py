@@ -105,13 +105,13 @@ def main(testing: bool, use_kubernetes: bool):
                             "--wandb-project=induction-sp-replicate",
                             "--wandb-entity=remix_school-of-rock",
                             "--wandb-group=complete-spreadsheet"
-                            f"--device={'cpu' if testing else 'cuda'}",
+                            f"--device=cuda",
                             f"--epochs={1 if testing else 10000}",
                             f"--zero-ablation={zero_ablation}",
                             f"--reset-subject={reset_network}",
                             f"--seed={random.randint(0, 2**32 - 1)}",
                             f"--loss-type={metric}",
-                            f"--num-examples={1 if testing else num_examples}",
+                            f"--num-examples={6 if testing else num_examples}",
                             f"--seq-len={seq_len}",
                             f"--n-loss-average-runs={1 if testing else 20}",
                             "--wandb-dir=/training/sp",  # If it doesn't exist wandb will use /tmp
@@ -123,9 +123,9 @@ def main(testing: bool, use_kubernetes: bool):
         commands,
         name="complete-spreadsheet",
         job=None
-        if testing
-        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.2.12", cpu=2, gpu=0),
+        if not use_kubernetes
+        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.2.18", cpu=2, gpu=1),
     )
 
 if __name__ == "__main__":
-    main(testing=False, use_kubernetes=True)
+    main(testing=True, use_kubernetes=True)
