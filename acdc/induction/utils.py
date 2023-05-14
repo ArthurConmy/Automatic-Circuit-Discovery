@@ -32,13 +32,14 @@ from acdc.acdc_utils import (
 from acdc import HookedTransformer
 from acdc.acdc_utils import kl_divergence, negative_log_probs
 
-def get_model():
+def get_model(sixteen_heads=False):
     tl_model = HookedTransformer.from_pretrained(
         "redwood_attn_2l",  # load Redwood's model
         use_global_cache=True,  # use the global cache: this is needed for ACDC to work
         center_writing_weights=False,  # these are needed as this model is a Shortformer; this is a technical detail
         center_unembed=False,
         fold_ln=False,
+        sixteen_heads=sixteen_heads,
     )
 
     # standard ACDC options
@@ -96,8 +97,9 @@ class AllInductionThings:
     test_mask: torch.Tensor
     test_patch_data: torch.Tensor
 
-def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric="kl_div"):
-    tl_model = get_model()
+
+def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric="kl_div", sixteen_heads=False, return_one_element=True):
+    tl_model = get_model(sixteen_heads=sixteen_heads)
     tl_model.to(device)
 
     validation_data_orig = get_validation_data(device=device)
@@ -131,12 +133,14 @@ def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric
             base_model_logprobs=base_val_logprobs,
             mask_repeat_candidates=validation_mask,
             last_seq_element_only=False,
+            return_one_element=return_one_element,
         )
         test_metric = partial(
             kl_divergence,
             base_model_logprobs=base_test_logprobs,
             mask_repeat_candidates=test_mask,
             last_seq_element_only=False,
+            return_one_element=return_one_element,
         )
     elif metric == "nll":
         validation_metric = partial(

@@ -39,7 +39,7 @@ class TLACDCExperiment:
         ds: torch.Tensor,
         ref_ds: Optional[torch.Tensor],
         threshold: float,
-        metric: Callable[[torch.Tensor, torch.Tensor], float], # dataset and logits to metric
+        metric: Callable[[torch.Tensor, torch.Tensor], torch.Tensor], # dataset and logits to metric. Output should be a scalar
         second_metric: Optional[Callable[[torch.Tensor, torch.Tensor], float]] = None,
         verbose: bool = False,
         hook_verbose: bool = False,
@@ -132,7 +132,7 @@ class TLACDCExperiment:
                 config=wandb_config,
             )
 
-        self.metric = metric
+        self.metric = lambda x: metric(x).item()
         self.second_metric = second_metric
         self.update_cur_metric()
 
@@ -161,7 +161,7 @@ class TLACDCExperiment:
     def verify_model_setup(self):
         assert self.model.cfg.use_attn_result, "Need to be able to see split by head outputs"
         assert self.model.cfg.use_split_qkv_input, "Need to be able to see split by head QKV inputs"
-        assert self.model.cfg.use_global_cache, "Need to be able to use global chache to do ACDC"
+        assert self.model.cfg.use_global_cache, "Need to be able to use global cache to do ACDC"
 
     def update_cur_metric(self, recalc_metric=True, recalc_edges=True, initial=False):
         if recalc_metric:

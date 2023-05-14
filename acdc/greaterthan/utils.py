@@ -2,6 +2,7 @@
 
 import warnings
 from functools import partial
+from transformers import AutoTokenizer
 from copy import deepcopy
 import torch.nn.functional as F
 from typing import List
@@ -46,9 +47,7 @@ NOUNS = [
 
 #%% 
 
-model = get_gpt2_small(device="cpu")
-_TOKENIZER = model.tokenizer
-del model
+_TOKENIZER = AutoTokenizer.from_pretrained("gpt2") # TODO test
 
 # %%
 
@@ -106,7 +105,7 @@ def get_year_data(num_examples, model):
 
     return prompts_tokenized, prompts
 
-def get_all_greaterthan_things(num_examples, device="cuda"):
-    model = get_gpt2_small(device=device)
+def get_all_greaterthan_things(num_examples, device="cuda", sixteen_heads=False):
+    model = get_gpt2_small(device=device, sixteen_heads=sixteen_heads)
     data, prompts = get_year_data(num_examples, model)
     return model, data, prompts, partial(greaterthan_metric, tokens=data)
