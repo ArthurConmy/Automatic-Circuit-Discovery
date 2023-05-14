@@ -115,6 +115,7 @@ def test_count_nodes():
                         for n in nodes_to_mask
                     ):
                         edge.effect_size = 1
+                        
     with tempfile.TemporaryDirectory() as tmpdir:
         g = show(corr, os.path.join(tmpdir, "out.png"), show_full_index=False)
         assert isinstance(g, graphviz.Digraph)

@@ -1,6 +1,7 @@
 import wandb
 import numpy as np
 
+from typing import List, Tuple
 from acdc.TLACDCInterpNode import TLACDCInterpNode
 from acdc.acdc_utils import TorchIndex, EdgeType
 
@@ -124,3 +125,22 @@ def process_nan(tens, reverse=False):
     return tens
 
     
+def heads_to_nodes_to_mask(heads: List[Tuple[int, int]], return_dict=False):
+    nodes_to_mask_strings = [
+        f"blocks.{layer_idx}{'.attn' if not inputting else ''}.hook_{letter}{'_input' if inputting else ''}[COL, COL, {head_idx}]"
+        # for layer_idx in range(model.cfg.n_layers)
+        # for head_idx in range(model.cfg.n_heads)
+        for layer_idx, head_idx in heads
+        for letter in ["q", "k", "v"]
+        for inputting in [True, False]
+    ]
+    nodes_to_mask_strings.extend([
+        f"blocks.{layer_idx}.attn.hook_result[COL, COL, {head_idx}]"
+        for layer_idx, head_idx in heads
+    ])
+
+    if return_dict:
+        return {s: parse_interpnode(s) for s in nodes_to_mask_strings}
+
+    else:
+        return [parse_interpnode(s) for s in nodes_to_mask_strings]
