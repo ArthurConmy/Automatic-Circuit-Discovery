@@ -1,6 +1,7 @@
 from experiments.launcher import KubernetesJob, launch
 import numpy as np
 import random
+from typing import List
 
 TASKS = ["ioi", "tracr-reverse", "tracr-proportion", "induction", "docstring", "greaterthan"]
 
@@ -14,7 +15,7 @@ METRICS_FOR_TASK = {
 }
 
 
-def main(testing: bool):
+def main(testing: bool, use_kubernetes: bool):
     base_regularization_params = np.concatenate(
         [
             10 ** np.linspace(-2, 0, 11),
@@ -25,7 +26,7 @@ def main(testing: bool):
     seed = 1507014021
     random.seed(seed)
 
-    commands: list[list[str]] = []
+    commands: List[List[str]] = []
     for reset_network in [0, 1]:
         for zero_ablation in [0, 1]:
             for task in TASKS:
@@ -123,8 +124,8 @@ def main(testing: bool):
         name="complete-spreadsheet",
         job=None
         if testing
-        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.2.12", cpu=2, gpu=0.5),
+        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.2.12", cpu=2, gpu=0),
     )
 
 if __name__ == "__main__":
-    main(testing=True)
+    main(testing=False, use_kubernetes=True)

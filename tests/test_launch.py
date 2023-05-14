@@ -18,4 +18,4 @@ def test_acdc_induction():
     experiments.launch_induction.main(testing=True)
 
 def test_sp_grid():
-    subnetwork_probing.launch_grid_fill.main(testing=True)
+    subnetwork_probing.launch_grid_fill.main(testing=True, use_kubernetes=True)

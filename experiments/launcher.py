@@ -1,6 +1,6 @@
 from pathlib import Path
 import subprocess
-from typing import Optional, TextIO
+from typing import Optional, TextIO, List, Tuple
 import numpy as np
 import shlex
 import dataclasses
@@ -11,8 +11,8 @@ class KubernetesJob:
     cpu: int
     gpu: int
 
-def launch(commands: list[list[str]], name: str, job: Optional[KubernetesJob] = None):
-    to_wait: list[tuple[str, subprocess.Popen, TextIO, TextIO]] = []
+def launch(commands: List[List[str]], name: str, job: Optional[KubernetesJob] = None):
+    to_wait: List[Tuple[str, subprocess.Popen, TextIO, TextIO]] = []
 
     for i, command in enumerate(commands):
         command_str = shlex.join(command)
