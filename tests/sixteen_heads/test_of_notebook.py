@@ -32,7 +32,6 @@ def test_notebook():
     seq_len = 300
     
     all_induction_things = get_all_induction_things(
-        kl_return_tensor=True,
         num_examples=num_examples,
         device="cuda",
         seq_len=seq_len,

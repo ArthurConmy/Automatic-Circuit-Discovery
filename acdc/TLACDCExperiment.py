@@ -39,7 +39,7 @@ class TLACDCExperiment:
         ds: torch.Tensor,
         ref_ds: Optional[torch.Tensor],
         threshold: float,
-        metric: Callable[[torch.Tensor, torch.Tensor], float], # dataset and logits to metric
+        metric: Callable[[torch.Tensor, torch.Tensor], torch.Tensor], # dataset and logits to metric. Output should be a scalar
         second_metric: Optional[Callable[[torch.Tensor, torch.Tensor], float]] = None,
         verbose: bool = False,
         hook_verbose: bool = False,
@@ -132,7 +132,7 @@ class TLACDCExperiment:
                 config=wandb_config,
             )
 
-        self.metric = metric
+        self.metric = lambda x: metric(x).item()
         self.second_metric = second_metric
         self.update_cur_metric()
 

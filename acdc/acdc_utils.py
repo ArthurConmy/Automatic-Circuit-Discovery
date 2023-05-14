@@ -164,7 +164,6 @@ def kl_divergence(
     mask_repeat_candidates: Optional[torch.Tensor] = None,
     last_seq_element_only: bool = True,
     base_model_probs_last_seq_element_only: bool = False,
-    return_tensor: bool = True, # hmm this used to be False by default...
     return_one_element: bool = True,
 ) -> torch.Tensor:
     # Note: we want base_model_probs_last_seq_element_only to remain False by default, because when the Docstring
@@ -192,9 +191,6 @@ def kl_divergence(
             answer = kl_div.mean()
         else:
             answer = kl_div
-
-    if not return_tensor:
-        answer = answer.item()
 
     return answer
 
