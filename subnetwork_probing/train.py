@@ -20,6 +20,7 @@ import pandas as pd
 import torch
 import torch.nn.functional as F
 import subnetwork_probing.transformer_lens.transformer_lens.utils as utils
+from acdc.tracr.utils import get_all_tracr_things
 from acdc.acdc_utils import EdgeType, TorchIndex
 from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from acdc.TLACDCInterpNode import TLACDCInterpNode
@@ -204,19 +205,26 @@ def train_induction(
 
     print("Reset subject:", args.reset_subject)
     if args.reset_subject:
-        assert isinstance(all_task_things, AllInductionThings)
+        filename = {
+            "ioi": "ioi_reset_heads_neurons.pt",
+            "tracr-reverse": "tracr_reverse_reset_heads_neurons.pt",
+            "tracr-proportion": "tracr_proportion_reset_heads_neurons.pt",
+            "induction": "induction_reset_heads_neurons.pt",
+            "docstring": "docstring_reset_heads_neurons.pt",
+            "greaterthan": "greaterthan_reset_heads_neurons.pt",
+        }[args.task]
         random_model_file = huggingface_hub.hf_hub_download(
-            repo_id="agaralon/acdc_reset_models", filename="induction_random_model.pt"
+            repo_id="agaralon/acdc_reset_models", filename=filename,
         )
         reset_state_dict = torch.load(random_model_file, map_location=args.device)
-        induction_model.load_state_dict(reset_state_dict)
+        induction_model.load_state_dict(reset_state_dict, strict=False)
         del reset_state_dict
         induction_model.freeze_weights()
 
         reset_logits = do_random_resample_caching(induction_model, all_task_things.validation_data)
         print("Reset validation metric: ", all_task_things.validation_metric(reset_logits))
         reset_logits = do_random_resample_caching(induction_model, all_task_things.test_data)
-        print("Reset test metric: ", all_task_things.test_metric(reset_logits))
+        print("Reset test metric: ", {k: v(reset_logits).item() for k, v in all_task_things.test_metrics.items()})
 
     # one parameter per thing that is masked
     mask_params = [
@@ -459,6 +467,14 @@ if __name__ == "__main__":
             args.seq_len,
             device=torch.device(args.device),
             metric=args.loss_type,
+        )
+    elif args.task == "tracr-reverse":
+        things = get_all_tracr_things(
+            task="reverse", metric_name=args.metric, num_examples=args.num_examples, device=torch.device(args.device)
+        )
+    elif args.task == "tracr-proportion":
+        things = get_all_tracr_things(
+            task="proportion", metric_name=args.metric, num_examples=args.num_examples, device=torch.device(args.device)
         )
     elif args.task == "docstring":
         all_task_things = get_all_docstring_things(
