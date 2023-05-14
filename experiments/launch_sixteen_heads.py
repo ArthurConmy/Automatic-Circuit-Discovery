@@ -51,6 +51,7 @@ import plotly.express as px
 import plotly.io as pio
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
+pio.renderers. = "colab"
 from acdc.hook_points import HookedRootModule, HookPoint
 from acdc.graphics import show
 from acdc.HookedTransformer import (

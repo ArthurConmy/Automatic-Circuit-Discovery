@@ -108,6 +108,7 @@ torch.autograd.set_grad_enabled(False)
 
 parser = argparse.ArgumentParser(description="Used to control ROC plot scripts (for standardisation with other files...)")
 parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr (WIPs except docstring!!!)')
+parser.add_argument("--mode", type=str, required=True, choices=["edges", "nodes"], help="Choose a mode from the available options: edges, nodes", default="edges")
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
 parser.add_argument("--skip-sixteen-heads", action="store_true", help="Skip the 16 heads stuff TODO")
 parser.add_argument("--testing", action="store_true", help="Use testing data instead of validation data")
