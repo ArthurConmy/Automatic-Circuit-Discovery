@@ -71,7 +71,7 @@ def get_all_docstring_things(
     correct_incorrect_wandb=True,
     sixteen_heads=False,
     return_one_element=True,
-) -> AllDocstringThings:
+) -> AllDataThings:
     tl_model = get_docstring_model(device=device, sixteen_heads=sixteen_heads)
 
     docstring_ind_prompt_kwargs = dict(
