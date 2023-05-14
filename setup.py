@@ -28,6 +28,5 @@ setup(
     ],
     extras_require={
         "dev": ["pytest", "mypy", "pytest-cov"],
-        "tracr": ["git+https://github.com/deepmind/tracr.git"]
     },
 )
