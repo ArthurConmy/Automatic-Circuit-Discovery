@@ -18,7 +18,7 @@ import torch.nn.functional as F
 
 bos = "BOS"
 
-def get_tracr_model_input_and_tl_model(task: Literal["reverse", "proportion"], return_im = False, sixteen_heads=False):
+def get_tracr_model_input_and_tl_model(task: Literal["reverse", "proportion"], device, return_im = False, sixteen_heads=False):
     """
     This function adapts Neel's TransformerLens porting of tracr
     """
@@ -92,6 +92,7 @@ def get_tracr_model_input_and_tl_model(task: Literal["reverse", "proportion"], r
         sixteen_heads=sixteen_heads,
         use_attn_result=True,
         use_split_qkv_input=True,
+        device=device,
     )
     tl_model = HookedTransformer(cfg)
     # Extract the state dict, and do some reshaping so that everything has a n_heads dimension
@@ -238,7 +239,7 @@ def get_perm(n, no_fp = True):
     return perm
 
 def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: str, num_examples: int, device):
-    _, tl_model = get_tracr_model_input_and_tl_model(task=task)
+    _, tl_model = get_tracr_model_input_and_tl_model(task=task, device=device)
     tl_model = tl_model.to(device)
 
     if task == "reverse":
