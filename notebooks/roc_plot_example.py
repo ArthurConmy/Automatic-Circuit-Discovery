@@ -115,7 +115,7 @@ parser.add_argument("--testing", action="store_true", help="Use testing data ins
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("--task docstring --testing --skip-sixteen-heads".split())
+    args = parser.parse_args("--task docstring --testing".split())
 else:
     args = parser.parse_args()
 
@@ -153,6 +153,9 @@ if TASK == "docstring":
         return 0 <= int(name.split("-")[-1]) <= 319
     SP_PRE_RUN_FILTER = {"group": "docstring3"} # used for the api.run(filter=...)
     SP_RUN_NAME_FILTER = lambda name: sp_run_filter(name)
+
+    SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
+    SIXTEEN_HEADS_RUN_NAME = "mrzpsjtw"
 
 else:
     raise NotImplementedError("TODO " + TASK)
@@ -219,7 +222,7 @@ def get_acdc_runs(
             continue
     return corrs
 
-if "acdc_corrs" not in locals(): # this is slow, so run once
+if "acdc_corrs" not in locals() and not SKIP_ACDC: # this is slow, so run once
     acdc_corrs = get_acdc_runs(exp, clip = 100 if TESTING else None)
 
 #%%
@@ -265,6 +268,7 @@ def get_sp_corrs(
 
         assert len(nodes_to_mask_entries) ==1, len(nodes_to_mask_entries)
         nodes_to_mask_strings = nodes_to_mask_entries[0]
+        print(nodes_to_mask_strings)
         nodes_to_mask = [parse_interpnode(s) for s in nodes_to_mask_strings]
 
         number_of_edges_entries = get_col(df, "number_of_edges")
@@ -284,8 +288,55 @@ def get_sp_corrs(
         ret.append(corr) # do we need KL too? I think no..
     return ret
 
-if "sp_corrs" not in locals(): # this is slow, so run once
+if "sp_corrs" not in locals() and not SKIP_SP: # this is slow, so run once
     sp_corrs = get_sp_corrs(exp, clip = 10 if TESTING else None) # clip for testing
+
+#%%
+
+def get_sixteen_heads_corrs(
+    experiment = exp,
+    project_name = SIXTEEN_HEADS_PROJECT_NAME,
+    run_name = SIXTEEN_HEADS_RUN_NAME,
+):
+# experiment = exp
+# project_name = SIXTEEN_HEADS_PROJECT_NAME
+# run_name = SIXTEEN_HEADS_RUN_NAME
+# if True:
+    api = wandb.Api()
+    run=api.run(SIXTEEN_HEADS_PROJECT_NAME + "/" + SIXTEEN_HEADS_RUN_NAME) # sorry fomratting..
+    df = pd.DataFrame(run.scan_history()) 
+
+    # start with everything involved except attention
+    for t, e in experiment.corr.all_edges().items():
+        e.present = True
+    experiment.remove_all_non_attention_connections()
+    corrs = [deepcopy(exp.corr)]
+    print(exp.count_no_edges())
+
+    history = run.scan_history()
+    layer_indices = list(pd.DataFrame(history)["layer_idx"])
+    try:
+        int(layer_indices[0])
+    except:
+        pass
+    else:
+        raise ValueError("Expected a NAN at start, formatting different")
+    
+    layer_indices = layer_indices[1:]
+    head_indices = list(pd.DataFrame(history)["head_idx"])[1:]
+    assert len(head_indices) == len(layer_indices), (len(head_indices), len(layer_indices))
+    head_indices = [int(i) for i in head_indices]
+    layer_indices = [int(i) for i in layer_indices]
+
+    for layer_idx, head_idx in tqdm(zip(layer_indices, head_indices)):
+        exp.add_back_head(layer_idx, head_idx)
+        corrs.append(deepcopy(exp.corr))
+        print(exp.count_no_edges())
+
+    return corrs
+
+# if "sixteen_heads_corrs" not in locals() and not SKIP_SIXTEEN_HEADS: # this is slow, so run once
+sixteen_heads_corrs = get_sixteen_heads_corrs()
 
 #%%
 
@@ -321,6 +372,11 @@ if "ACDC" in methods:
 
 if "SP" in methods:
     points["SP"] = get_points(sp_corrs)
+
+#%%
+
+if "16H" in methods:
+    points["16H"] = get_points(sixteen_heads_corrs)
 
 #%%
 

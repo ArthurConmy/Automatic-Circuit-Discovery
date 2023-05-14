@@ -354,31 +354,7 @@ exp.setup_model_hooks( # so we have complete control over connections
 # %%
 
 max_edges = exp.count_no_edges()
-
-# remove all connection except the MLP connections
-includes_attention = [ # substrings of hook names that imply they're relatred to attention
-    "attn",
-    "hook_q",
-    "hook_k",
-    "hook_v",
-]
-
-for receiver_name in exp.corr.edges:
-    for receiver_index in exp.corr.edges[receiver_name]:
-        for sender_name in exp.corr.edges[receiver_name][receiver_index]:
-            for receiever_index in exp.corr.edges[receiver_name][receiver_index][sender_name]:
-                related_to_attention = False
-
-                for substr in includes_attention:
-                    if substr in sender_name or substr in receiver_name:
-                        related_to_attention = True
-                        break
-
-                if not related_to_attention:
-                    continue
-
-                edge = exp.corr.edges[receiver_name][receiver_index][sender_name][receiever_index]
-                edge.present = False
+exp.remove_all_non_attention_connections() # TODO test this, refactored as a method
 
 # %%
 
@@ -394,11 +370,7 @@ for nodes_present in tqdm(range(len(sorted_indices) + 1)):
 
     # then add next node
     layer_idx, head_idx = sorted_indices[nodes_present]
-
-    for (tupl, edge) in exp.corr.all_edges().items():
-        for hook_name, hook_idx in [(tupl[0], tupl[1]), (tupl[2], tupl[3])]:
-            if hook_name.startswith(f"blocks.{layer_idx}") and len(hook_idx.hashable_tuple) >= 3 and int(hook_idx.hashable_tuple[2]) == head_idx:
-                edge.present = True
+    exp.add_back_head(layer_idx, head_idx) # TODO test this, also refactored as method
 
     wandb.log(
         {

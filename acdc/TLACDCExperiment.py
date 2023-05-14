@@ -788,3 +788,41 @@ class TLACDCExperiment:
                     self.corr.edges[current_name][current_torch_index][parent_name][parent_torch_index].present = keeping_connection
         
             assert found_at_least_one_readable_line, f"No readable lines found in the log file. Is this formatted correctly ??? {lines=}"
+        
+    def remove_all_non_attention_connections(self):
+        # remove all connection except the MLP connections
+        includes_attention = [ # substrings of hook names that imply they're relatred to attention
+            "attn",
+            "hook_q",
+            "hook_k",
+            "hook_v",
+        ]
+
+        for receiver_name in self.corr.edges:
+            for receiver_index in self.corr.edges[receiver_name]:
+                for sender_name in self.corr.edges[receiver_name][receiver_index]:
+                    for receiever_index in self.corr.edges[receiver_name][receiver_index][sender_name]:
+                        related_to_attention = False
+
+                        for substr in includes_attention:
+                            if substr in sender_name or substr in receiver_name:
+                                related_to_attention = True
+                                break
+
+                        if not related_to_attention:
+                            continue
+
+                        edge = self.corr.edges[receiver_name][receiver_index][sender_name][receiever_index]
+                        edge.present = False
+
+    def add_back_head(self, layer_idx, head_idx):
+
+        raise NotImplementedError("This is wrong do not use")
+
+        all_edges = self.corr.all_edges()
+        for (tupl, edge) in all_edges.items():
+            for hook_name, hook_idx in [(tupl[0], tupl[1]), (tupl[2], tupl[3])]:
+                if hook_name.startswith(f"blocks.{layer_idx}") and len(hook_idx.hashable_tuple) >= 3 and int(hook_idx.hashable_tuple[2]) == head_idx:
+                    assert edge.present == False or edge.edge_type == EdgeType.PLACEHOLDER, (tupl, edge, hook_name, hook_idx)
+                    edge.present = True
+                    break # don't double remove
