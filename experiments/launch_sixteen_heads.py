@@ -8,6 +8,7 @@ if get_ipython() is not None:
     get_ipython().run_line_magic('autoreload', '2')
 
 from copy import deepcopy
+from subnetwork_probing.train import correspondence_from_mask
 from typing import (
     List,
     Tuple,
@@ -51,7 +52,7 @@ import plotly.express as px
 import plotly.io as pio
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
-pio.renderers. = "colab"
+from acdc.munging_utils import heads_to_nodes_to_mask
 from acdc.hook_points import HookedRootModule, HookPoint
 from acdc.graphics import show
 from acdc.HookedTransformer import (
@@ -337,7 +338,7 @@ exp = TLACDCExperiment(
     zero_ablation=ZERO_ABLATION,
     ds=toks_int_values,
     ref_ds=toks_int_values_other,
-    metric=metric,
+    metric=lambda x: torch.tensor([-100_000.9987]), # oh grr multieleme : ( 
     second_metric=None,
     verbose=True,
     hook_verbose=False,
@@ -368,14 +369,22 @@ for nodes_present in tqdm(range(len(sorted_indices) + 1)):
     cur_edges = exp.count_no_edges()
     edges_to_metric[cur_edges] = metric_result.item()
 
-    # then add next node
+    # # then add next node
     layer_idx, head_idx = sorted_indices[nodes_present]
-    exp.add_back_head(layer_idx, head_idx) # TODO test this, also refactored as method
+    # exp.add_back_head(layer_idx, head_idx)
+    nodes_to_mask = heads_to_nodes_to_mask(sorted_indices[nodes_present:])
+
+    corr = correspondence_from_mask(
+        nodes_to_mask=nodes_to_mask,
+        model = tl_model,
+    )
+    for t, e in corr.all_edges().items():
+        exp.corr.edges[t[0]][t[1]][t[2]][t[3]].present = e.present
 
     wandb.log(
         {
             "layer_idx": layer_idx,
-            "head_idx": head_idx,
+            "head_idx": head_idx, # these are the NEXT things to be added..
             "nodes": nodes_present,
             "metric": metric_result.item(),
             "edges": cur_edges,
