@@ -39,8 +39,9 @@ def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACD
     # to the list of nodes to mask
     head_parents = collections.defaultdict(lambda: 0)
     for node in nodes_to_mask:
-        child_name = node.name.replace("_q", "_result").replace("_k", "_result").replace("_v", "_result")
-        head_parents[(child_name, node.index)] += 1
+        if node.name.endswith("_q") or node.name.endswith("_k") or node.name.endswith("_v"):
+            child_name = node.name.replace("_q", "_result").replace("_k", "_result").replace("_v", "_result")
+            head_parents[(child_name, node.index)] += 1
 
     assert all([v <= 3 for v in head_parents.values()])
 
@@ -102,17 +103,21 @@ def visualize_mask(model: HookedTransformer) -> tuple[int, list[TLACDCInterpNode
                 node_name = f"blocks.{layer_index}.attn.hook_{q_k_v}"
                 node_name_with_index = f"{node_name}[{head_index}]"
                 node_name_list.append(node_name_with_index)
-                node = TLACDCInterpNode(node_name, TorchIndex((None, None, head_index)), EdgeType.ADDITION)
+                node = TLACDCInterpNode(node_name, TorchIndex((None, None, head_index)),
+                                        incoming_edge_type=EdgeType.ADDITION)
 
                 mask_scores_for_names.append(mask_sample)
                 if mask_sample < 0.5:
                     nodes_to_mask.append(node)
 
         # MLP
-        node_name = f"blocks.{layer_index}.hook_mlp_out"
-        node_name_list.append(node_name)
-        node = TLACDCInterpNode(node_name, TorchIndex([None]), EdgeType.PLACEHOLDER)
-        total_nodes += 1
+        for node_name, edge_type in [
+            (f"blocks.{layer_index}.hook_mlp_out", EdgeType.PLACEHOLDER),
+            (f"blocks.{layer_index}.hook_resid_mid", EdgeType.ADDITION),
+        ]:
+            node_name_list.append(node_name)
+            node = TLACDCInterpNode(node_name, TorchIndex([None]), incoming_edge_type=edge_type)
+            total_nodes += 1
 
         mask_sample = layer.mlp.hook_post.sample_mask().cpu().item()
         mask_scores_for_names.append(mask_sample)
