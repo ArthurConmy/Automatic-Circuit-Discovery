@@ -6,6 +6,7 @@ if IPython.get_ipython() is not None:
 from typing import Literal, List, Tuple, Dict, Any, Optional, Union, Callable, TypeVar, Iterable, Set
 from acdc import HookedTransformer, HookedTransformerConfig
 import warnings
+from collections import OrderedDict
 import einops
 import torch
 import numpy as np
@@ -289,3 +290,55 @@ def get_tracr_data(tl_model, task: Literal["reverse", "proportion"]):
         metric = partial(l2_metric, base_model_vals = base_model_vals)
 
     return data_tens, patch_data_tens, metric
+
+def get_tracr_proportion_edges():
+    return OrderedDict([(('blocks.1.hook_resid_post',
+               (None,),
+               'blocks.1.attn.hook_result',
+               (None, None, 0)),
+              True),
+             (('blocks.1.attn.hook_result',
+               (None, None, 0),
+               'blocks.1.attn.hook_q',
+               (None, None, 0)),
+              True),
+             (('blocks.1.attn.hook_result',
+               (None, None, 0),
+               'blocks.1.attn.hook_k',
+               (None, None, 0)),
+              True),
+             (('blocks.1.attn.hook_result',
+               (None, None, 0),
+               'blocks.1.attn.hook_v',
+               (None, None, 0)),
+              True),
+             (('blocks.1.attn.hook_k',
+               (None, None, 0),
+               'blocks.1.hook_k_input',
+               (None, None, 0)),
+              True),
+             (('blocks.1.attn.hook_v',
+               (None, None, 0),
+               'blocks.1.hook_v_input',
+               (None, None, 0)),
+              True),
+             (('blocks.1.hook_k_input',
+               (None, None, 0),
+               'blocks.0.hook_resid_pre',
+               (None,)),
+              True),
+             (('blocks.1.hook_v_input',
+               (None, None, 0),
+               'blocks.0.hook_mlp_out',
+               (None,)),
+              True),
+             (('blocks.0.hook_mlp_out',
+               (None,),
+               'blocks.0.hook_resid_mid',
+               (None,)),
+              True),
+             (('blocks.0.hook_resid_mid',
+               (None,),
+               'blocks.0.hook_resid_pre',
+               (None,)),
+              True)])

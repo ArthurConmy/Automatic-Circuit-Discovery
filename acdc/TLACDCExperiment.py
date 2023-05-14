@@ -707,10 +707,9 @@ class TLACDCExperiment:
         old_corr = self.corr
         self.corr = TLACDCCorrespondence.setup_from_model(self.model)
 
-    def save_subgraph(self, fpath: str) -> None:
-        """Saves the subgraph as a Dictionary of all the edges, so it can be reloaded"""
+    def save_subgraph(self, fpath: Optional[str]=None, return_it=False) -> None:
+        """Saves the subgraph as a Dictionary of all the edges, so it can be reloaded (or return that)"""
 
-        assert fpath.endswith(".pth")
         ret = OrderedDict()
         for tupl, edge in self.corr.all_edges().items():
             receiver_name, receiver_torch_index, sender_name, sender_torch_index = tupl
@@ -718,7 +717,13 @@ class TLACDCExperiment:
             ret[
                 (receiver_name, receiver_index, sender_name, sender_index)
             ] = edge.present
-        torch.save(ret, fpath)
+
+        if fpath is not None:
+            assert fpath.endswith(".pth")
+            torch.save(ret, fpath)
+
+        if return_it:
+            return ret
 
     def load_subgraph(self, subgraph: Subgraph):
 

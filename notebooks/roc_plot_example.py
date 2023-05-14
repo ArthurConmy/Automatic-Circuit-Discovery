@@ -83,7 +83,7 @@ from acdc.hook_points import HookedRootModule, HookPoint
 from acdc.HookedTransformer import (
     HookedTransformer,
 )
-from acdc.tracr.utils import get_tracr_data, get_tracr_model_input_and_tl_model
+from acdc.tracr.utils import get_tracr_data, get_tracr_model_input_and_tl_model, get_tracr_proportion_edges
 from acdc.docstring.utils import get_all_docstring_things, get_docstring_model, get_docstring_subgraph_true_edges
 from acdc.acdc_utils import (
     make_nd_dict,
@@ -128,7 +128,7 @@ torch.autograd.set_grad_enabled(False)
 #%% [markdown]
 
 parser = argparse.ArgumentParser(description="Used to control ROC plot scripts (for standardisation with other files...)")
-parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr (WIPs except docstring!!!)')
+parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr (WIPs)')
 parser.add_argument("--mode", type=str, required=True, choices=["edges", "nodes"], help="Choose a mode from the available options: edges, nodes", default="edges") # TODO implement nodes
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
 parser.add_argument("--skip-sixteen-heads", action="store_true", help="Skip the 16 heads stuff TODO")
@@ -136,7 +136,7 @@ parser.add_argument("--testing", action="store_true", help="Use testing data ins
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("--task docstring --testing".split())
+    args = parser.parse_args("--task tracr-proportion --testing".split())
 else:
     args = parser.parse_args()
 
@@ -149,6 +149,7 @@ TESTING = True if args.testing else False
 
 #%% [markdown]
 # Setup
+# substantial copy paste from main.py, with some new configs, directories...
 
 if TASK == "docstring":
     num_examples = 50
@@ -177,6 +178,26 @@ if TASK == "docstring":
 
     SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
     SIXTEEN_HEADS_RUN_NAME = "mrzpsjtw"
+
+elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
+    
+    tracr_task = TASK.split("-")[-1] # "reverse"
+    assert tracr_task == "proportion" # yet to implemenet reverse
+
+    # this implementation doesn't ablate the position embeddings (which the plots in the paper do do), so results are different. See the rust_circuit implemntation if this need be checked
+    # also there's no splitting by neuron yet TODO
+    
+    create_model_input, tl_model = get_tracr_model_input_and_tl_model(task=tracr_task)
+    toks_int_values, toks_int_values_other, metric = get_tracr_data(tl_model, task=tracr_task)
+
+    if task == "proportion":
+        get_true_edges = get_tracr_proportion_edges
+
+    # # for propotion, 
+    # tl_model(toks_int_values[:1])[0, :, 0] 
+    # is the proportion at each space (including irrelevant first position
+
+
 
 else:
     raise NotImplementedError("TODO " + TASK)
