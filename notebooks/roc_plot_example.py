@@ -368,7 +368,8 @@ def get_sixteen_heads_corrs(
     for layer_idx, head_idx in tqdm(zip(layer_indices, head_indices)):
         # exp.add_back_head(layer_idx, head_idx)
         for letter in "qkv":
-            nodes_to_mask_dict.pop(f"blocks.{layer_idx}.attn.hook_{letter}[COL, COL, {head_idx}]")
+            for extra in ["", "_input"]:
+                nodes_to_mask_dict.pop(f"blocks.{layer_idx}.attn.hook_{letter}{extra}[COL, COL, {head_idx}]")
         nodes_to_mask_dict.pop(f"blocks.{layer_idx}.attn.hook_result[COL, COL, {head_idx}]")
 
         corr = correspondence_from_mask(
