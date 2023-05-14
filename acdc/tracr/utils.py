@@ -258,8 +258,8 @@ def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: st
         patch_data_tens = data_tens[patch_data_indices]
         base_model_logprobs = F.log_softmax(tl_model(data_tens), dim=-1)
 
-        if metric_name == "kl_divergence":
-            metric = partial(kl_divergence, base_model_logprobs=base_model_logprobs, mask_repeat_candidates=None)
+        if metric_name == "kl_div":
+            metric = partial(kl_divergence, base_model_logprobs=base_model_logprobs, mask_repeat_candidates=None, last_seq_element_only=False)
         else:
             raise ValueError(f"Metric {metric_name} not recognized")
 
@@ -307,22 +307,19 @@ def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: st
             test_outputs = tl_model(test_data)
 
         def l2_metric( # this is for proportion... it's unclear how to format this tbh sad
-            dataset: Dataset,
+            logits: torch.Tensor,
             model_out: torch.Tensor,
         ):
             # [1:, 0] shit
 
-            proc = model_out[:, 1:, 0]
-            for tens in [proc, base_model_vals]:    
-                assert 0<=tens.min()<=tens.max()<=1, (tens.min(), tens.max())
-            
-            return ((proc - base_model_vals)**2).mean().item()
+            proc = logits[:, 1:, 0]
+            return ((proc - model_out)**2).mean()
 
         if metric_name == "l2":
             metric = partial(l2_metric, model_out=validation_outputs[:, 1:, 0])
 
         elif metric_name == "kl_div":
-            metric = partial(kl_divergence, base_model_logprobs=F.log_softmax(validation_outputs),
+            metric = partial(kl_divergence, base_model_logprobs=F.log_softmax(validation_outputs, dim=-1),
                              mask_repeat_candidates=None, last_seq_element_only=False)
         else:
             raise ValueError(f"unknown metric {metric_name}")
@@ -331,7 +328,7 @@ def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: st
             "l2": partial(l2_metric, model_out=test_outputs[:, 1:, 0]),
             "kl_div": partial(
                 kl_divergence,
-                base_model_logprobs=F.log_softmax(test_outputs),
+                base_model_logprobs=F.log_softmax(test_outputs, dim=-1),
                 mask_repeat_candidates=None,
                 last_seq_element_only=False,
             ),

@@ -42,12 +42,13 @@ def get_all_ioi_things(num_examples, device, metric_name):
     seq_len = ioi_dataset.toks.shape[1]
     assert seq_len == 16, f"Well, I thought ABBA #1 was 16 not {seq_len} tokens long..."
 
-    default_data = ioi_dataset.toks.long()[:num_examples*2, : seq_len - 1]
-    patch_data = abc_dataset.toks.long()[:num_examples*2, : seq_len - 1]
+    default_data = ioi_dataset.toks.long()[:num_examples*2, : seq_len - 1].to(device)
+    patch_data = abc_dataset.toks.long()[:num_examples*2, : seq_len - 1].to(device)
     labels = ioi_dataset.toks.long()[:num_examples*2, seq_len-1]
-    wrong_labels = torch.as_tensor(ioi_dataset.s_tokenIDs[:num_examples*2], dtype=torch.long)
+    wrong_labels = torch.as_tensor(ioi_dataset.s_tokenIDs[:num_examples*2], dtype=torch.long, device=device)
 
     assert torch.equal(labels, torch.as_tensor(ioi_dataset.io_tokenIDs, dtype=torch.long))
+    labels = labels.to(device)
 
     validation_data = default_data[:num_examples, :]
     validation_patch_data = patch_data[:num_examples, :]

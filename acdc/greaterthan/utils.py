@@ -90,13 +90,13 @@ def greaterthan_metric_reference(logits, tokens):
 def greaterthan_metric(logits, tokens):
     probs = F.softmax(logits[:, -1], dim=-1)
     csum = torch.cumsum(probs[:, TOKENS_TENSOR], dim=-1)
-    yearend = INV_TOKENS_TENSOR[tokens[:, 7]]
+    yearend = INV_TOKENS_TENSOR[tokens[:, 7]].to(logits.device)
 
     # At or after: positive term
     range = torch.arange(len(yearend))
     positive = csum[:, -1]
     # Before: negative term
-    negative = torch.where(yearend == 0, torch.zeros(()), csum[range, yearend-1])
+    negative = torch.where(yearend == 0, torch.zeros((), device=csum.device), csum[range, yearend-1])
     return - (positive - 2*negative).mean()
 
 
@@ -144,7 +144,7 @@ def get_all_greaterthan_things(num_examples, metric_name, device="cuda"):
         base_test_logprobs = base_logprobs[num_examples:]
 
     if metric_name == "greaterthan":
-        validation_metric = partial(greaterthan_metric, tokens=validation_data)
+        validation_metric = partial(greaterthan_metric, tokens=validation_data.cpu())
     elif metric_name == "kl_div":
         validation_metric = partial(
             kl_divergence,
@@ -156,7 +156,7 @@ def get_all_greaterthan_things(num_examples, metric_name, device="cuda"):
         raise ValueError(f"Unknown metric {metric_name}")
 
     test_metrics = {
-        "greaterthan": partial(greaterthan_metric, tokens=test_data),
+        "greaterthan": partial(greaterthan_metric, tokens=test_data.cpu()),
         "kl_div": partial(
             kl_divergence,
             base_model_logprobs=base_test_logprobs,

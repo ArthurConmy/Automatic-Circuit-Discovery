@@ -64,7 +64,7 @@ from acdc.graphics import show
 from acdc.HookedTransformer import (
     HookedTransformer,
 )
-from acdc.tracr.utils import get_all_tracr_things, get_tracr_data, get_tracr_model_input_and_tl_model
+from acdc.tracr.utils import get_all_tracr_things, get_tracr_model_input_and_tl_model
 from acdc.docstring.utils import get_all_docstring_things
 from acdc.acdc_utils import (
     make_nd_dict,
