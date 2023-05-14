@@ -14,7 +14,9 @@ cd Automatic-Circuit-Discovery
 pip install -e .
 ```
 
-You may need to install DeepMind's `tracr` if you're dealing with that and you may also need do this
+You may need to install DeepMind's `tracr` if you're dealing with that (e.g <a href="https://github.com/deepmind/tracr/commit/e75ecdaec12bf2d831a60e54d4270e8fa31fb537">this commit</a>). This seems to be bugged on Windows. 
+
+You may also need do this
 
 ```bash
 sudo apt-get update && sudo apt-get install ffmpeg libsm6 libxext6
