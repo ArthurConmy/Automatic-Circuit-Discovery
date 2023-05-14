@@ -125,7 +125,7 @@ def process_nan(tens, reverse=False):
     return tens
 
     
-def heads_to_nodes_to_mask(heads: List[Tuple[int, int]]):
+def heads_to_nodes_to_mask(heads: List[Tuple[int, int]], return_dict=False):
     nodes_to_mask_strings = [
         f"blocks.{layer_idx}{'.attn' if not inputting else ''}.hook_{letter}{'_input' if inputting else ''}[COL, COL, {head_idx}]"
         # for layer_idx in range(model.cfg.n_layers)
@@ -139,4 +139,8 @@ def heads_to_nodes_to_mask(heads: List[Tuple[int, int]]):
         for layer_idx, head_idx in heads
     ])
 
-    return [parse_interpnode(s) for s in nodes_to_mask_strings]
+    if return_dict:
+        return {s: parse_interpnode(s) for s in nodes_to_mask_strings}
+
+    else:
+        return [parse_interpnode(s) for s in nodes_to_mask_strings]

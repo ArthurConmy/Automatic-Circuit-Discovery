@@ -130,7 +130,7 @@ torch.autograd.set_grad_enabled(False)
 
 parser = argparse.ArgumentParser(description="Used to control ROC plot scripts (for standardisation with other files...)")
 parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr (WIPs except docstring!!!)')
-parser.add_argument("--mode", type=str, required=True, choices=["edges", "nodes"], help="Choose a mode from the available options: edges, nodes", default="edges") # TODO implement nodes
+parser.add_argument("--mode", type=str, required=False, choices=["edges", "nodes"], help="Choose a mode from the available options: edges, nodes", default="edges") # TODO implement nodes
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
 parser.add_argument("--skip-sixteen-heads", action="store_true", help="Skip the 16 heads stuff TODO")
 parser.add_argument("--testing", action="store_true", help="Use testing data instead of validation data")
@@ -352,10 +352,10 @@ def get_sixteen_heads_corrs(
     head_indices = [int(i) for i in head_indices]
     layer_indices = [int(i) for i in layer_indices]
 
-    nodes_to_mask_strings = heads_to_nodes_to_mask(
-        heads = [(layer_idx, head_idx) for layer_idx in range(tl_model.cfg.n_layers) for head_idx in range(tl_model.cfg.n_heads)],
+    nodes_to_mask_dict = heads_to_nodes_to_mask(
+        heads = [(layer_idx, head_idx) for layer_idx in range(tl_model.cfg.n_layers) for head_idx in range(tl_model.cfg.n_heads)], return_dict=True
     )
-    nodes_to_mask_dict = {s: parse_interpnode(s) for s in nodes_to_mask_strings}
+    print(nodes_to_mask_dict)
     corr2 = correspondence_from_mask(
         model = model,
         nodes_to_mask=list(nodes_to_mask_dict.values()),
@@ -368,8 +368,7 @@ def get_sixteen_heads_corrs(
     for layer_idx, head_idx in tqdm(zip(layer_indices, head_indices)):
         # exp.add_back_head(layer_idx, head_idx)
         for letter in "qkv":
-            for extra in ["", "_input"]:
-                nodes_to_mask_dict.pop(f"blocks.{layer_idx}.attn.hook_{letter}{extra}[COL, COL, {head_idx}]")
+            nodes_to_mask_dict.pop(f"blocks.{layer_idx}.attn.hook_{letter}[COL, COL, {head_idx}]") # weirdly we don't have the q_input; just outputs of things....
         nodes_to_mask_dict.pop(f"blocks.{layer_idx}.attn.hook_result[COL, COL, {head_idx}]")
 
         corr = correspondence_from_mask(
