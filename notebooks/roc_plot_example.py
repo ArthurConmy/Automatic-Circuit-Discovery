@@ -63,7 +63,7 @@ import os
 import torch
 import huggingface_hub
 import graphviz
-from enum import Enum
+from enum import Enum``
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim

@@ -103,7 +103,7 @@ torch.autograd.set_grad_enabled(False)
 #%%
 
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
-parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr (WIPs)')
+parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr (WIPs)')
 parser.add_argument('--threshold', type=float, required=True, help='Value for THRESHOLD')
 parser.add_argument('--first-cache-cpu', type=bool, required=False, default=True, help='Value for FIRST_CACHE_CPU')
 parser.add_argument('--second-cache-cpu', type=bool, required=False, default=True, help='Value for SECOND_CACHE_CPU')
@@ -129,7 +129,7 @@ parser.add_argument('--single-step', action='store_true', help='Use single step,
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
     # args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
     # args = parser.parse_args("--threshold 0.001 --using-wandb".split())
-    args = parser.parse_args("--task docstring --using-wandb --threshold 0.005 --wandb-project-name acdc --indices-mode reverse --first-cache-cpu False --second-cache-cpu False".split())
+    args = parser.parse_args("--task tracr-proportion --using-wandb --threshold 0.005 --wandb-project-name acdc --indices-mode reverse --first-cache-cpu False --second-cache-cpu False --wandb-mode offline".split())
 else:
     args = parser.parse_args()
 
@@ -154,7 +154,7 @@ DEVICE = args.device
 RESET_NETWORK = args.reset_network
 SINGLE_STEP = True if args.single_step else False
 
-#%% [markdown]
+#%%
 # Setup
 
 second_metric = None # some tasks only have one metric
@@ -165,11 +165,19 @@ if TASK == "ioi":
     tl_model = get_gpt2_small(device=DEVICE)
     toks_int_values, toks_int_values_other, metric = get_ioi_data(tl_model, num_examples)
 elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
+    
     tracr_task = TASK.split("-")[-1] # "reverse"
+    
     # this implementation doesn't ablate the position embeddings (which the plots in the paper do do), so results are different. See the rust_circuit implemntation if this need be checked
     # also there's no splitting by neuron yet TODO
-    _, tl_model = get_tracr_model_input_and_tl_model(task=TASK)
-    toks_int_values, toks_int_values_other, metric = get_tracr_data(tl_model, task=TASK)
+    
+    create_model_input, tl_model = get_tracr_model_input_and_tl_model(task=tracr_task)
+    toks_int_values, toks_int_values_other, metric = get_tracr_data(tl_model, task=tracr_task)
+
+    # # for propotion, 
+    # tl_model(toks_int_values[:1])[0, :, 0] 
+    # is the proportion at each space (including irrelevant first position
+
 elif TASK == "induction":
     num_examples = 50
     seq_len = 300
