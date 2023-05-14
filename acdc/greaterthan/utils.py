@@ -45,12 +45,6 @@ NOUNS = [
     "voyage", "warfare", "work",
 ]
 
-#%% 
-
-model = get_gpt2_small(device="cpu")
-_TOKENIZER = model.tokenizer
-del model
-
 # %%
 class GreaterThanConstants:
     YEARS: list[str]
