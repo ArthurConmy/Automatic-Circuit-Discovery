@@ -141,7 +141,7 @@ class MaskedHookPoint(HookPoint):
             # indices = list(range(len(x)))
             # np.random.shuffle(indices)
             # x = x[indices]
-            self.cache = x.cpu()
+            self.cache = x.cpu().detach()
             return x
         else:
             import einops

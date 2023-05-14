@@ -62,8 +62,9 @@ def get_all_ioi_things(num_examples, device, metric_name, kl_return_one_element=
     test_wrong_labels = wrong_labels[num_examples:]
 
 
-    base_model_logits = tl_model(default_data)[:, -1, :]
-    base_model_logprobs = F.log_softmax(base_model_logits, dim=-1)
+    with torch.no_grad():
+        base_model_logits = tl_model(default_data)[:, -1, :]
+        base_model_logprobs = F.log_softmax(base_model_logits, dim=-1)
 
     base_validation_logprobs = base_model_logprobs[:num_examples, :]
     base_test_logprobs = base_model_logprobs[num_examples:, :]

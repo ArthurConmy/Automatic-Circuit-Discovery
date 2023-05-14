@@ -104,7 +104,7 @@ def main(testing: bool, use_kubernetes: bool):
                             f"--wandb-name=agarriga-sp-{len(commands):03d}",
                             "--wandb-project=induction-sp-replicate",
                             "--wandb-entity=remix_school-of-rock",
-                            "--wandb-group=complete-spreadsheet"
+                            "--wandb-group=complete-spreadsheet-3",
                             f"--device=cuda",
                             f"--epochs={1 if testing else 10000}",
                             f"--zero-ablation={zero_ablation}",
@@ -124,8 +124,8 @@ def main(testing: bool, use_kubernetes: bool):
         name="complete-spreadsheet",
         job=None
         if not use_kubernetes
-        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.2.18", cpu=2, gpu=1),
+        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.2.20", cpu=2, gpu=1),
     )
 
 if __name__ == "__main__":
-    main(testing=True, use_kubernetes=True)
+    main(testing=False, use_kubernetes=True)
