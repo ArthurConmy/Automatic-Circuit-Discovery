@@ -129,7 +129,7 @@ parser.add_argument('--single-step', action='store_true', help='Use single step,
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
     # args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
     # args = parser.parse_args("--threshold 0.001 --using-wandb".split())
-    args = parser.parse_args("--task tracr-proportion --using-wandb --threshold 0.005 --wandb-project-name acdc --indices-mode reverse --first-cache-cpu False --second-cache-cpu False".split())
+    args = parser.parse_args("--task tracr-reverse --using-wandb --threshold 0.005 --wandb-project-name acdc --indices-mode reverse --first-cache-cpu False --second-cache-cpu False".split())
 else:
     args = parser.parse_args()
 
@@ -173,6 +173,9 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     
     create_model_input, tl_model = get_tracr_model_input_and_tl_model(task=tracr_task)
     toks_int_values, toks_int_values_other, metric = get_tracr_data(tl_model, task=tracr_task)
+
+    if tracr_task == "proportion":
+        use_pos_embed = True
 
     # # for propotion, 
     # tl_model(toks_int_values[:1])[0, :, 0] 

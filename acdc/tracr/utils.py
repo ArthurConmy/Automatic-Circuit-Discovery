@@ -266,7 +266,14 @@ def get_tracr_data(tl_model, task: Literal["reverse", "proportion"], return_one_
             base_model_vals: torch.Tensor,
             return_one_element: bool = True,
         ):
-            pass
+            ret = (model_out[:, 1:] - base_model_vals[:, 1:]).pow(2).sum(dim=-1)
+            if return_one_element:
+                return ret.mean()
+            else:
+                return ret
+
+        model_out = tl_model(data_tens)
+        metric = partial(l2_metric_for_reverse, base_model_vals=model_out, return_one_element=return_one_element)
 
     elif task == "proportion":
         batch_size = 50
