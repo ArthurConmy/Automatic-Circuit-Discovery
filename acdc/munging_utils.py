@@ -9,12 +9,15 @@ import warnings
 def parse_interpnode(s: str, verbose=False) -> TLACDCInterpNode:
     try:
         name, idx = s.split("[")
-        idx = int(idx[-2])
-        return TLACDCInterpNode(name, TorchIndex([None, None, idx]), EdgeType.ADDITION)
+        try:
+            idx = int(idx[-2])
+        except:
+            idx = None
+        return TLACDCInterpNode(name, TorchIndex([None, None, idx]) if idx is not None else TorchIndex([None]), EdgeType.ADDITION)
+
     except Exception as e:
-        if verbose:
-            print("Couldn't parse a node...", s, "and", str(e))
-        return
+        print("Couldn't parse a node...", s, "and", str(e))
+        raise e
 
 def get_col_from_df(df, col_name):
     return df[col_name].values
