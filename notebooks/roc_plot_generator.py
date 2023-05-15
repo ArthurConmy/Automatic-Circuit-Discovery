@@ -229,14 +229,6 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
 
 elif TASK == "induction":
     raise ValueError("There is no ground truth circuit for Induction!!!")
-    # tl_model = get_induction_model()
-    # ACDC_PROJECT_NAME = "remix_school-of-rock/acdc"
-    # ACDC_PRE_RUN_FILTER = {"group": "adria-induction-2"}
-    # ACDC_NAME_FILTER = lambda name: True
-    # SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
-    # SIXTEEN_HEADS_RUN_NAME = "y8u6ah7t"
-
-    # get_true_edges = None # duhhh!
 
 else:
     raise NotImplementedError("TODO " + TASK)
