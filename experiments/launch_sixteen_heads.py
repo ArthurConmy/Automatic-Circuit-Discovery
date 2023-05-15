@@ -109,7 +109,7 @@ parser.add_argument('--device', type=str, default="cuda")
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("--task induction --wandb-run-name induction_16_heads".split())
+    args = parser.parse_args("--task tracr-reverse --zero-ablation --wandb-run-name random_hacking_probably_tracr".split())
 else:
     args = parser.parse_args()
 
@@ -167,11 +167,12 @@ elif TASK == "docstring":
 
 elif TASK in ["tracr-proportion", "tracr-reverse"]:
     tracr_task = TASK.split("-")[-1] # "reverse"
-    assert tracr_task == "proportion" # yet to implemenet reverse
+    use_pos_embed=True
 
     # this implementation doesn't ablate the position embeddings (which the plots in the paper do do), so results are different. See the rust_circuit implemntation if this need be checked
     # also there's no splitting by neuron yet TODO
-    
+
+    # if tracr_task == "proportion":    
     create_model_input, tl_model = get_tracr_model_input_and_tl_model(task=tracr_task, sixteen_heads=True)
     toks_int_values, toks_int_values_other, metric = get_tracr_data(tl_model, task=tracr_task, return_one_element=False) 
 
@@ -183,6 +184,7 @@ elif TASK in ["tracr-proportion", "tracr-reverse"]:
     # # for propotion, 
     # tl_model(toks_int_values[:1])[0, :, 0] 
     # is the proportion at each space (including irrelevant first position
+
 
 elif TASK == "induction":
     num_sentences = 10

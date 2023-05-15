@@ -266,7 +266,7 @@ def get_tracr_data(tl_model, task: Literal["reverse", "proportion"], return_one_
             base_model_vals: torch.Tensor,
             return_one_element: bool = True,
         ):
-            ret = (model_out[:, 1:] - base_model_vals[:, 1:]).pow(2).sum(dim=-1)
+            ret = (model_out[:, 1:] - base_model_vals[:, 1:]).pow(2).sum(dim=-1).sum(dim=-1)
             if return_one_element:
                 return ret.mean()
             else:
