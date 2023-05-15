@@ -328,8 +328,9 @@ def get_sp_corrs(
             filtered_runs.append(run)
     cnt = 0
     corrs = []
-
     ret = []
+
+    verbose = True
 
     for run in tqdm(filtered_runs[:clip]):
         df = pd.DataFrame(run.scan_history())
@@ -347,7 +348,10 @@ def get_sp_corrs(
         assert len(nodes_to_mask_entries) ==1, len(nodes_to_mask_entries)
         nodes_to_mask_strings = nodes_to_mask_entries[0]
         print(nodes_to_mask_strings)
-        nodes_to_mask_dict = [parse_interpnode(s) for s in nodes_to_mask_strings]
+        nodes_to_mask_dict = [parse_interpnode(s) for s in nodes_to_mask_strings if parse_interpnode(s, verbose=verbose) is not None]
+
+        if len(nodes_to_mask_dict) != len(nodes_to_mask_strings):
+            verbose = False # ignore future errors
 
         number_of_edges_entries = get_col(df, "number_of_edges")
         assert len(number_of_edges_entries) == 1, len(number_of_edges_entries)
@@ -359,7 +363,7 @@ def get_sp_corrs(
 
         corr = correspondence_from_mask(
             model = model,
-            nodes_to_mask_dict=nodes_to_mask_dict,
+            nodes_to_mask=nodes_to_mask_dict,
         )
 
         assert corr.count_no_edges() == number_of_edges, (corr.count_no_edges(), number_of_edges)
