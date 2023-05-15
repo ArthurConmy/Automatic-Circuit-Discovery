@@ -84,7 +84,7 @@ from acdc.hook_points import HookedRootModule, HookPoint
 from acdc.HookedTransformer import (
     HookedTransformer,
 )
-from acdc.tracr.utils import get_tracr_data, get_tracr_model_input_and_tl_model, get_tracr_proportion_edges
+from acdc.tracr.utils import get_tracr_data, get_tracr_model_input_and_tl_model, get_tracr_proportion_edges, get_tracr_reverse_edges
 from acdc.docstring.utils import get_all_docstring_things, get_docstring_model, get_docstring_subgraph_true_edges
 from acdc.acdc_utils import (
     make_nd_dict,
@@ -138,7 +138,7 @@ parser.add_argument("--testing", action="store_true", help="Use testing data ins
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("--task tracr-proportion --testing".split())
+    args = parser.parse_args("--task tracr-reverse --testing".split())
 else:
     args = parser.parse_args()
 
@@ -169,6 +169,7 @@ SIXTEEN_HEADS_RUN_NAME = None
 
 second_metric=None
 points={}
+use_pos_embed = False
 
 if TASK == "docstring":
     num_examples = 50
@@ -201,32 +202,41 @@ if TASK == "docstring":
 
 elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     tracr_task = TASK.split("-")[-1] # "reverse"
-    assert tracr_task == "proportion" # yet to implemenet reverse
 
     # this implementation doesn't ablate the position embeddings (which the plots in the paper do do), so results are different. See the rust_circuit implemntation if this need be checked
     # also there's no splitting by neuron yet TODO
-    
+
+    use_pos_embed = True
+    ZERO_ABLATION = True
+
     create_model_input, tl_model = get_tracr_model_input_and_tl_model(task=tracr_task)
     toks_int_values, toks_int_values_other, metric = get_tracr_data(tl_model, task=tracr_task)
+
+    ACDC_PROJECT_NAME = None
+    ACDC_PRE_RUN_FILTER = None
+    ACDC_RUN_NAME_FILTER = lambda name: name == "not_a_real_run" # broken, see below
+    points["ACDC"] = [(0.0, 1.0)]
 
     if tracr_task == "proportion":
         get_true_edges = get_tracr_proportion_edges
 
-        ACDC_PROJECT_NAME = "remix_school-of-rock/acdc"
-        ACDC_PRE_RUN_FILTER = None
-        ACDC_RUN_NAME_FILTER = lambda name: name == "not_a_real_run" # broken, see below
-
         SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
-        SIXTEEN_HEADS_RUN_NAME = "55x0zrfn"
-        points["ACDC"] = [(0.0, 1.0)]
+        SIXTEEN_HEADS_RUN_NAME = "siurl8zp"
 
-        SP_PROJECT_NAME = "remix_school-of-rock/induction-sp-replicate"
-        SP_PRE_RUN_FILTER = {"group": "complete-spreadsheet-4"}
-        three_digit_numbers = ["320", "341", "340", "339", "338", "337", "336", "335", "334", "332"]
-        SP_RUN_NAME_FILTER = lambda name: len(name)>3 and name[-3:] in three_digit_numbers
+        # # sad, we updated the tracr stuff
+        # SP_PROJECT_NAME = "remix_school-of-rock/induction-sp-replicate"
+        # SP_PRE_RUN_FILTER = {"group": "complete-spreadsheet-4"}
+        # three_digit_numbers = ["320", "341", "340", "339", "338", "337", "336", "335", "334", "332"]
+        # SP_RUN_NAME_FILTER = lambda name: len(name)>3 and name[-3:] in three_digit_numbers
 
     if tracr_task == "reverse":
-        raise NotImplementedError("TODO")
+        get_true_edges = get_tracr_reverse_edges
+
+        SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
+        SIXTEEN_HEADS_RUN_NAME = "fccs2o7o"
+
+    else:
+        raise NotImplementedError("not a tracr task")
 
     # # for propotion, 
     # tl_model(toks_int_values[:1])[0, :, 0] 
@@ -253,8 +263,8 @@ exp = TLACDCExperiment(
     metric=metric,
     second_metric=second_metric,
     verbose=True,
+    use_pos_embed=use_pos_embed,
 )
-
 #%% [markdown]
 # Load the *canonical* circuit
 
@@ -419,6 +429,7 @@ def get_sixteen_heads_corrs(
     print(nodes_to_mask_dict)
     corr2 = correspondence_from_mask(
         model = model,
+        use_pos_embed=exp.use_pos_embed,
         nodes_to_mask=list(nodes_to_mask_dict.values()),
     )
 
@@ -434,12 +445,13 @@ def get_sixteen_heads_corrs(
 
         corr = correspondence_from_mask(
             model = model,
+            use_pos_embed = exp.use_pos_embed,
             nodes_to_mask=list(nodes_to_mask_dict.values()),
         )
 
         corrs.append(deepcopy(corr))
 
-    return corrs
+    return corrs # TODO add back in
 
 if "sixteen_heads_corrs" not in locals() and not SKIP_SIXTEEN_HEADS: # this is slow, so run once
     sixteen_heads_corrs = get_sixteen_heads_corrs()
