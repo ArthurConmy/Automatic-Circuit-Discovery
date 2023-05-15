@@ -264,7 +264,7 @@ def get_tracr_data(tl_model, task: Literal["reverse", "proportion"], return_one_
         def l2_metric_for_reverse(
             model_out: torch.Tensor,
             base_model_vals: torch.Tensor,
-            return_one_element,
+            return_one_element: bool = True,
         ):
             pass
 
