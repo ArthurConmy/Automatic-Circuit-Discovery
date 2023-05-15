@@ -138,7 +138,7 @@ parser.add_argument("--testing", action="store_true", help="Use testing data ins
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("--task induction --testing".split())
+    args = parser.parse_args("--task tracr-proportion --testing".split())
 else:
     args = parser.parse_args()
 
@@ -220,6 +220,11 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
         SIXTEEN_HEADS_RUN_NAME = "55x0zrfn"
         points["ACDC"] = [(0.0, 1.0)]
 
+        SP_PROJECT_NAME = "remix_school-of-rock/induction-sp-replicate"
+        SP_PRE_RUN_FILTER = {"group": "complete-spreadsheet-4"}
+        three_digit_numbers = ["320", "341", "340", "339", "338", "337", "336", "335", "334", "332"]
+        SP_RUN_NAME_FILTER = lambda name: len(name)>3 and name[-3:] in three_digit_numbers
+
     if tracr_task == "reverse":
         raise NotImplementedError("TODO")
 
@@ -269,7 +274,7 @@ canonical_circuit_subgraph_size = canonical_circuit_subgraph.count_no_edges()
 def get_acdc_runs(
     experiment,
     project_name: str = ACDC_PROJECT_NAME,
-    run_name_filter: Callable[[str], bool] = ACDC_RUN_FILTER,
+    run_name_filter: Callable[[str], bool] = ACDC_RUN_NAME_FILTER,
     clip = None,
 ):
     if clip is None:
@@ -334,7 +339,7 @@ def get_sp_corrs(
         entry = mask_scores_entries[-1]
 
         try:
-            nodes_to_mask_entries = get_col(df, "nodes_to_mask_dict")
+            nodes_to_mask_entries = get_col(df, "nodes_to_mask") # ???
         except Exception as e:
             print(e, "... was an error")
             continue        
