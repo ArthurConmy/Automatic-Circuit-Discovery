@@ -303,7 +303,7 @@ def get_sp_corrs(
 
         corr = correspondence_from_mask(
             model = model,
-            nodes_to_mask_dict=nodes_to_mask_dict,
+            nodes_to_mask=nodes_to_mask_dict,
         )
 
         assert corr.count_no_edges() == number_of_edges, (corr.count_no_edges(), number_of_edges)
