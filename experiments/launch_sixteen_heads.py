@@ -1,6 +1,7 @@
 #%%
 
 """Currently a notebook so that I can develop the 16 Heads tests fast"""
+"""WARNING: currently only considers attention heads. Should probably adapt to considering all MLPs too"""
 
 from IPython import get_ipython
 if get_ipython() is not None:

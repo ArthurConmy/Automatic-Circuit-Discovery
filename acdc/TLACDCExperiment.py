@@ -768,7 +768,7 @@ class TLACDCExperiment:
 
             # load the subgraph
             with open(fpath, "r") as f:
-                log_text = f.read()
+                log_text = f.read()  
 
             lines = log_text.split("\n")
 

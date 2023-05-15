@@ -132,25 +132,42 @@ parser = argparse.ArgumentParser(description="Used to control ROC plot scripts (
 parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr (WIPs)')
 parser.add_argument("--mode", type=str, required=False, choices=["edges", "nodes"], help="Choose a mode from the available options: edges, nodes", default="edges") # TODO implement nodes
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
-parser.add_argument("--skip-sixteen-heads", action="store_true", help="Skip the 16 heads stuff TODO")
+parser.add_argument("--skip-sixteen-heads", action="store_true", help="Skip the 16 heads stuff")
+parser.add_argument("--skip-sp", action="store_true", help="Skip the SP stuff")
 parser.add_argument("--testing", action="store_true", help="Use testing data instead of validation data")
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("--task tracr-proportion --testing".split())
+    args = parser.parse_args("--task tracr-proportion --testing --skip-sp".split())
 else:
     args = parser.parse_args()
 
 TASK = args.task
 ZERO_ABLATION = True if args.zero_ablation else False
 SKIP_ACDC=False
-SKIP_SP = False
+SKIP_SP = True if args.skip_sp else False
 SKIP_SIXTEEN_HEADS = True if args.skip_sixteen_heads else False
 TESTING = True if args.testing else False
+# defaults
+ACDC_PROJECT_NAME = None
+ACDC_RUN_FILTER = None
+
+# # for SP # filters are more annoying since some things are nested in groups
+SP_PROJECT_NAME = None
+SP_PRE_RUN_FILTER = None
+SP_RUN_NAME_FILTER = None
+
+# # for 16 heads # sixteen heads is just one run
+SIXTEEN_HEADS_PROJECT_NAME = None
+SIXTEEN_HEADS_RUN_NAME = None
+
 
 #%% [markdown]
 # Setup
 # substantial copy paste from main.py, with some new configs, directories...
+
+second_metric=None
+points={}
 
 if TASK == "docstring":
     num_examples = 50
@@ -193,6 +210,13 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
 
     if tracr_task == "proportion":
         get_true_edges = get_tracr_proportion_edges
+
+        ACDC_PROJECT_NAME = "remix_school-of-rock/acdc"
+        ACDC_RUN_FILTER = lambda name: name == "not_a_real_run" # broken, see below
+
+        SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
+        SIXTEEN_HEADS_RUN_NAME = "55x0zrfn"
+        points["ACDC"] = [(0.0, 1.0)]
 
     # # for propotion, 
     # tl_model(toks_int_values[:1])[0, :, 0] 
@@ -403,8 +427,6 @@ if "sixteen_heads_corrs" not in locals() and not SKIP_SIXTEEN_HEADS: # this is s
     sixteen_heads_corrs = get_sixteen_heads_corrs()
 
 #%%
-
-points = {}
 methods = []
 
 if not SKIP_ACDC: methods.append("ACDC") 
@@ -430,17 +452,20 @@ def get_points(corrs):
 #%%
 
 if "ACDC" in methods:
-    points["ACDC"] = get_points(acdc_corrs)
+    if "ACDC" not in points: points["ACDC"] = []
+    points["ACDC"].extend(get_points(acdc_corrs))
 
 #%%
 
 if "SP" in methods:
-    points["SP"] = get_points(sp_corrs)
+    if "SP" not in points: points["SP"] = []
+    points["SP"].extend(get_points(sp_corrs))
 
 #%%
 
 if "16H" in methods:
-    points["16H"] = get_points(sixteen_heads_corrs)
+    if "16H" not in points: points["16H"] = []
+    points["16H"] .extend(get_points(sixteen_heads_corrs))
 
 #%%
 
