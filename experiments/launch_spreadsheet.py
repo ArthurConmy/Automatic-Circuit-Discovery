@@ -1,4 +1,4 @@
-from experiments.launcher import KubernetesJob, launch
+from experiments.launcher import KubernetesJob, WandbIdentifier, launch
 import numpy as np
 import random
 from typing import List
@@ -21,6 +21,11 @@ def main(testing: bool, use_kubernetes: bool):
 
     seed = 486887094
     random.seed(seed)
+
+    wandb_identifier = WandbIdentifier(
+        run_name="agarriga-acdc-spreadsheet-{i:05d}",
+        group_name="acdc-spreadsheet2",
+        project="acdc")
 
     commands: List[List[str]] = []
     for reset_network in [0, 1]:
@@ -104,8 +109,9 @@ def main(testing: bool, use_kubernetes: bool):
                             f"--task={task}",
                             f"--threshold={threshold:.5f}",
                             "--using-wandb",
-                            f"--wandb-run-name=agarriga-acdc-spreadsheet-{len(commands):05d}",
-                            "--wandb-group-name=acdc-spreadsheet",
+                            f"--wandb-run-name={wandb_identifier.run_name.format(i=len(commands))}",
+                            f"--wandb-group-name={wandb_identifier.group_name}",
+                            f"--wandb-project-name={wandb_identifier.project}",
                             f"--device=cuda",
                             f"--reset-network={reset_network}",
                             f"--seed={random.randint(0, 2**32 - 1)}",
@@ -126,8 +132,10 @@ def main(testing: bool, use_kubernetes: bool):
         job=None
         if not use_kubernetes
         else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.2.24", cpu=CPU, gpu=1),
+        check_wandb=wandb_identifier,
+        ids_for_worker=range(0, 100),
     )
 
 
 if __name__ == "__main__":
-    main(testing=True, use_kubernetes=False)
+    main(testing=False, use_kubernetes=False)
