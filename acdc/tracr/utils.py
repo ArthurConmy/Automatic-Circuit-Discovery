@@ -253,12 +253,22 @@ def get_tracr_data(tl_model, task: Literal["reverse", "proportion"], return_one_
         n = len(data_tens)
         data_tens = data_tens.long()
         patch_data_indices = get_perm(n)
+
         warnings.warn("Test that this only considers the relevant part of the sequence...")
+
         patch_data_tens = data_tens[patch_data_indices]
-        base_model_logprobs = F.log_softmax(tl_model(data_tens), dim=-1)
-        metric = partial(kl_divergence, base_model_logprobs=base_model_logprobs, mask_repeat_candidates=None, return_one_element=return_one_element)
-        
-    if task == "proportion":
+
+        # base_model_logprobs = F.log_softmax(tl_model(data_tens), dim=-1)
+        # metric = partial(kl_divergence, base_model_logprobs=base_model_logprobs, mask_repeat_candidates=None, return_one_element=return_one_element)
+
+        def l2_metric_for_reverse(
+            model_out: torch.Tensor,
+            base_model_vals: torch.Tensor,
+            return_one_element,
+        ):
+            pass
+
+    elif task == "proportion":
         batch_size = 50
         seq_len = 4
         def to_tens(s):
@@ -297,6 +307,9 @@ def get_tracr_data(tl_model, task: Literal["reverse", "proportion"], return_one_
             return answer
 
         metric = partial(l2_metric, base_model_vals = base_model_vals, return_one_element=return_one_element)
+
+    else: 
+        raise ValueError(task)
 
     return data_tens, patch_data_tens, metric
 
