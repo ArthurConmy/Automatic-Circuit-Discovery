@@ -74,7 +74,7 @@ def main(testing: bool, use_kubernetes: bool):
                             regularization_params = base_regularization_params
                         elif metric == "logit_diff":
                             # Typical metric value range: -0.31 -- -0.01
-                            regularization_params = 10 ** np.linspace(-5, 1, 21)
+                            regularization_params = 10 ** np.linspace(-4, 2, 21)
                         else:
                             raise ValueError("Unknown metric")
                     elif task == "induction":
@@ -104,8 +104,8 @@ def main(testing: bool, use_kubernetes: bool):
                             f"--wandb-name=agarriga-sp-{len(commands):03d}",
                             "--wandb-project=induction-sp-replicate",
                             "--wandb-entity=remix_school-of-rock",
-                            "--wandb-group=complete-spreadsheet-3",
-                            f"--device=cuda",
+                            "--wandb-group=complete-spreadsheet-4",
+                            f"--device=cpu",
                             f"--epochs={1 if testing else 10000}",
                             f"--zero-ablation={zero_ablation}",
                             f"--reset-subject={reset_network}",
@@ -124,8 +124,8 @@ def main(testing: bool, use_kubernetes: bool):
         name="complete-spreadsheet",
         job=None
         if not use_kubernetes
-        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.2.20", cpu=2, gpu=1),
+        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.2.24", cpu=4, gpu=0),
     )
 
 if __name__ == "__main__":
-    main(testing=False, use_kubernetes=True)
+    main(testing=True, use_kubernetes=False)
