@@ -84,7 +84,6 @@ from acdc.acdc_utils import (
 )
 from acdc.ioi.utils import (
     get_all_ioi_things,
-    get_ioi_data,
     get_gpt2_small,
 )
 from acdc.induction.utils import (
@@ -106,7 +105,7 @@ torch.autograd.set_grad_enabled(False)
 #%%
 
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
-parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr (WIPs)')
+parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr (WIPs)')
 parser.add_argument('--threshold', type=float, required=True, help='Value for THRESHOLD')
 parser.add_argument('--first-cache-cpu', type=bool, required=False, default=True, help='Value for FIRST_CACHE_CPU')
 parser.add_argument('--second-cache-cpu', type=bool, required=False, default=True, help='Value for SECOND_CACHE_CPU')
@@ -191,11 +190,11 @@ else:
 
 
 validation_metric = things.validation_metric
-def metric(x):
-    return validation_metric(x).item()
 
 toks_int_values = things.validation_data
 toks_int_values_other = things.validation_patch_data
+
+tl_model = things.tl_model
 
 if RESET_NETWORK:
     reset_network(TASK, DEVICE, tl_model)
@@ -231,7 +230,7 @@ exp = TLACDCExperiment(
     zero_ablation=ZERO_ABLATION,
     ds=toks_int_values,
     ref_ds=toks_int_values_other,
-    metric=metric,
+    metric=validation_metric,
     second_metric=second_metric,
     verbose=True,
     indices_mode=INDICES_MODE,
@@ -254,7 +253,7 @@ exp = TLACDCExperiment(
 
 for i in range(args.max_num_epochs):
 
-    exp.step() # TODO why aren't we while looping to completion ???
+    exp.step(testing=False) # TODO why aren't we while looping to completion ???
 
     show(
         exp.corr,
@@ -267,18 +266,25 @@ for i in range(args.max_num_epochs):
     if i==0:
         exp.save_edges("edges.pkl")
 
-    if TASK in ["docstring", "induction"]:
-        with torch.no_grad():
-            test_metric_values = {}
-            for k, fn in test_metric_fns.items():
-                test_metric_values["test_"+k] = fn(exp.model(test_metric_data))
-        if USING_WANDB:
-            wandb.log(test_metric_values)
-
     if exp.current_node is None or SINGLE_STEP:
         break
 
-exp.save_edges("another_final_edges.pkl") 
+exp.save_edges("another_final_edges.pkl")
+
+
+# Save test dataset
+
+with torch.no_grad():
+    exp.ref_ds = things.test_patch_data
+    exp.model.reset_hooks()
+    exp.setup_second_cache()  # Use patch test data for corruption
+
+    test_metric_values = {}
+    for k, fn in things.test_metrics.items():
+        test_metric_values["test_"+k] = fn(exp.model(things.test_data)).item()
+if USING_WANDB:
+    wandb.log(test_metric_values)
+
 
 if USING_WANDB:
     edges_fname = f"edges.pth"

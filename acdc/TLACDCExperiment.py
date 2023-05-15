@@ -444,7 +444,7 @@ class TLACDCExperiment:
         return True
 
 
-    def step(self, early_stop=False):
+    def step(self, early_stop=False, testing=False):
         if self.current_node is None:
             return
 
@@ -559,6 +559,8 @@ class TLACDCExperiment:
                     )
 
             self.update_cur_metric()
+            if testing:
+                break
 
         # TODO find an efficient way to do this...
         # if added_receiver_hook and not is_this_node_used:
