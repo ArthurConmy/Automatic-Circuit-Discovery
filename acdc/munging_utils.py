@@ -153,3 +153,4 @@ def heads_to_nodes_to_mask(heads: List[Tuple[int, int]], return_dict=False):
 
     else:
         return [parse_interpnode(s) for s in nodes_to_mask_strings]
+

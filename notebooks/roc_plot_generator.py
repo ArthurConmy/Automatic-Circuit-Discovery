@@ -16,11 +16,11 @@
 # # for SP # filters are more annoying since some things are nested in groups
 # SP_PROJECT_NAME
 # SP_PRE_RUN_FILTER 
-# SP_RUN_NAME_FILTER
+# SP_RUN_FILTER
 
 # # for 16 heads # sixteen heads is just one run
 # SIXTEEN_HEADS_PROJECT_NAME
-# SIXTEEN_HEADS_RUN_NAME
+# SIXTEEN_HEADS_RUN
 
 import IPython
 
@@ -106,7 +106,8 @@ from acdc.acdc_utils import (
 )
 from acdc.ioi.utils import (
     get_ioi_data,
-    get_ioi_gpt2_small,
+    get_ioi_true_edges,
+    get_gpt2_small,
 )
 from acdc.induction.utils import (
     get_all_induction_things,
@@ -138,7 +139,7 @@ parser.add_argument("--testing", action="store_true", help="Use testing data ins
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("--task tracr-reverse --testing".split())
+    args = parser.parse_args("--task ioi --testing".split())
 else:
     args = parser.parse_args()
 
@@ -157,11 +158,19 @@ ACDC_NAME_FILTER = None
 # # for SP # filters are more annoying since some things are nested in groups
 SP_PROJECT_NAME = None
 SP_PRE_RUN_FILTER = None
-SP_RUN_NAME_FILTER = None
+SP_RUN_FILTER = None
 
 # # for 16 heads # sixteen heads is just one run
 SIXTEEN_HEADS_PROJECT_NAME = None
-SIXTEEN_HEADS_RUN_NAME = None
+SIXTEEN_HEADS_RUN = None
+
+def task_filter(run, task):
+    try:
+        assert json.loads(run.json_config)["task"]["value"] == task
+    except Exception as e: 
+        print("errorre", e)
+        return False
+    return True
 
 #%% [markdown]
 # Setup
@@ -184,10 +193,11 @@ if TASK == "docstring":
 
     ACDC_PROJECT_NAME = "remix_school-of-rock/acdc"
     ACDC_PRE_RUN_FILTER = None
-    ACDC_RUN_NAME_FILTER = lambda name: name.startswith("agarriga-docstring")
+    ACDC_RUN_FILTER = lambda run: run.name.startswith("agarriga-docstring")
 
     SP_PROJECT_NAME = "remix_school-of-rock/induction-sp-replicate"
-    def sp_run_filter(name):
+    def sp_run_filter(run): # name):
+        name = run.name
         if not name.startswith("agarriga-sp-"): return False
         try: 
             int(name.split("-")[-1])
@@ -195,10 +205,10 @@ if TASK == "docstring":
             return False
         return 0 <= int(name.split("-")[-1]) <= 319
     SP_PRE_RUN_FILTER = {"group": "docstring3"} # used for the api.run(filter=...)
-    SP_RUN_NAME_FILTER = lambda name: sp_run_filter(name)
+    SP_RUN_FILTER = lambda run: sp_run_filter(run)
 
     SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
-    SIXTEEN_HEADS_RUN_NAME = "mrzpsjtw"
+    SIXTEEN_HEADS_RUN = "mrzpsjtw"
 
 elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     tracr_task = TASK.split("-")[-1] # "reverse"
@@ -214,26 +224,26 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
 
     ACDC_PROJECT_NAME = None
     ACDC_PRE_RUN_FILTER = None
-    ACDC_RUN_NAME_FILTER = lambda name: name == "not_a_real_run" # broken, see below
+    ACDC_RUN_FILTER = lambda name: name == "not_a_real_run" # broken, see below
     points["ACDC"] = [(0.0, 1.0)]
 
     if tracr_task == "proportion":
         get_true_edges = get_tracr_proportion_edges
 
         SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
-        SIXTEEN_HEADS_RUN_NAME = "siurl8zp"
+        SIXTEEN_HEADS_RUN = "siurl8zp"
 
         # # sad, we updated the tracr stuff
         # SP_PROJECT_NAME = "remix_school-of-rock/induction-sp-replicate"
         # SP_PRE_RUN_FILTER = {"group": "complete-spreadsheet-4"}
         # three_digit_numbers = ["320", "341", "340", "339", "338", "337", "336", "335", "334", "332"]
-        # SP_RUN_NAME_FILTER = lambda name: len(name)>3 and name[-3:] in three_digit_numbers
+        # SP_RUN_FILTER = lambda name: len(name)>3 and name[-3:] in three_digit_numbers
 
     if tracr_task == "reverse":
         get_true_edges = get_tracr_reverse_edges
 
         SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
-        SIXTEEN_HEADS_RUN_NAME = "fccs2o7o"
+        SIXTEEN_HEADS_RUN = "fccs2o7o"
 
     else:
         raise NotImplementedError("not a tracr task")
@@ -242,6 +252,25 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     # tl_model(toks_int_values[:1])[0, :, 0] 
     # is the proportion at each space (including irrelevant first position
 
+elif TASK == "ioi":
+    num_examples = 100
+    tl_model = get_gpt2_small(device="cuda")
+    toks_int_values, toks_int_values_other, metric = get_ioi_data(tl_model, num_examples)
+
+    ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_ioi_sweep"
+
+    ACDC_RUN_FILTER = partial(task_filter, task="ioi")
+    ACDC_PRE_RUN_FILTER = None
+
+    SP_PROJECT_NAME = "remix_school-of-rock/induction-sp-replicate"
+    SP_PRE_RUN_FILTER = {"group": "complete-spreadsheet-4"}
+    SP_RUN_FILTER = lambda name: True # name.startswith("agarriga-ioi")
+
+    SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
+    SIXTEEN_HEADS_RUN = "29ctjial"
+
+    get_true_edges = partial(get_ioi_true_edges, model=tl_model)
+    
 elif TASK == "induction":
     raise ValueError("There is no ground truth circuit for Induction!!!")
 
@@ -284,9 +313,12 @@ canonical_circuit_subgraph_size = canonical_circuit_subgraph.count_no_edges()
 def get_acdc_runs(
     experiment,
     project_name: str = ACDC_PROJECT_NAME,
-    run_name_filter: Callable[[str], bool] = ACDC_RUN_NAME_FILTER,
+    run_filter: Callable[[Any], bool] = ACDC_RUN_FILTER,
     clip = None,
 ):
+    if project_name is None:
+        return []
+
     if clip is None:
         clip = 100_000 # so we don't clip anything
 
@@ -294,7 +326,7 @@ def get_acdc_runs(
     runs = api.runs(project_name)
     filtered_runs = []
     for run in tqdm(runs[:clip]):
-        if run_name_filter(run.name):
+        if run_filter(run):
             filtered_runs.append(run)
     cnt = 0
     corrs = []
@@ -321,9 +353,12 @@ def get_sp_corrs(
     model = tl_model,
     project_name: str = SP_PROJECT_NAME,
     pre_run_filter: Dict = SP_PRE_RUN_FILTER,
-    run_name_filter: Callable[[str], bool] = SP_RUN_NAME_FILTER,
+    run_filter: Callable[[Any], bool] = SP_RUN_FILTER,
     clip = None,
 ):
+    if project_name is None:
+        return []
+
     if clip is None:
         clip = 100_000
 
@@ -334,7 +369,7 @@ def get_sp_corrs(
     )
     filtered_runs = []
     for run in tqdm(runs):
-        if run_name_filter(run.name):
+        if run_filter(run):
             filtered_runs.append(run)
     cnt = 0
     corrs = []
@@ -389,16 +424,16 @@ if "sp_corrs" not in locals() and not SKIP_SP: # this is slow, so run once
 def get_sixteen_heads_corrs(
     experiment = exp,
     project_name = SIXTEEN_HEADS_PROJECT_NAME,
-    run_name = SIXTEEN_HEADS_RUN_NAME,
+    run_name = SIXTEEN_HEADS_RUN,
     model= tl_model,
 ):
 # experiment = exp
 # project_name = SIXTEEN_HEADS_PROJECT_NAME
-# run_name = SIXTEEN_HEADS_RUN_NAME
+# run_name = SIXTEEN_HEADS_RUN
 # model = tl_model
 # if True:
     api = wandb.Api()
-    run=api.run(SIXTEEN_HEADS_PROJECT_NAME + "/" + SIXTEEN_HEADS_RUN_NAME) # sorry fomratting..
+    run=api.run(SIXTEEN_HEADS_PROJECT_NAME + "/" + SIXTEEN_HEADS_RUN) # sorry fomratting..
     df = pd.DataFrame(run.scan_history()) 
 
     # start with everything involved except attention
@@ -538,3 +573,62 @@ fig = get_roc_figure(list(points.values()), list(points.keys()))
 fig.show()
 
 # %%
+
+from collections import OrderedDict
+from acdc.acdc_utils import Edge, TorchIndex, EdgeType
+from acdc.TLACDCInterpNode import TLACDCInterpNode
+import warnings
+from functools import partial
+from copy import deepcopy
+import torch.nn.functional as F
+from typing import List
+import click
+from subnetwork_probing.train import correspondence_from_mask
+import IPython
+from acdc.acdc_utils import kl_divergence
+import torch
+from acdc.ioi.ioi_dataset import IOIDataset  # NOTE: we now import this LOCALLY so it is deterministic
+from tqdm import tqdm
+import wandb
+from acdc.HookedTransformer import HookedTransformer
+
+def get_gpt2_small(device="cuda", sixteen_heads=False):
+    tl_model = HookedTransformer.from_pretrained("gpt2", use_global_cache=True, sixteen_heads=sixteen_heads)
+    tl_model = tl_model.to(device)
+    tl_model.set_use_attn_result(True)
+    if not sixteen_heads: # fight the OOM!
+        tl_model.set_use_split_qkv_input(True)
+    return tl_model
+
+def get_ioi_gpt2_small(device="cuda", sixteen_heads=False):
+    """For backwards compat"""
+    return get_gpt2_small(device=device, sixteen_heads=sixteen_heads) # TODO continue adding sixteen_heads...
+
+def get_ioi_data(tl_model, N, kl_return_one_element=True):
+    ioi_dataset = IOIDataset(
+        prompt_type="ABBA",
+        N=N,
+        nb_templates=1,
+        seed = 0,
+    )
+
+    abc_dataset = (
+        ioi_dataset.gen_flipped_prompts(("IO", "RAND"), seed=1)
+        .gen_flipped_prompts(("S", "RAND"), seed=2)
+        .gen_flipped_prompts(("S1", "RAND"), seed=3)
+    )
+
+    seq_len = ioi_dataset.toks.shape[1]
+    assert seq_len == 16, f"Well, I thought ABBA #1 was 16 not {seq_len} tokens long..."
+
+    default_data = ioi_dataset.toks.long()[:N, : seq_len - 1]
+    patch_data = abc_dataset.toks.long()[:N, : seq_len - 1]
+
+    base_model_logits = tl_model(default_data)
+    base_model_logprobs = F.log_softmax(base_model_logits, dim=-1)
+    base_model_logprobs = base_model_logprobs[:, -1]
+
+    metric = partial(kl_divergence, base_model_logprobs=base_model_logprobs, last_seq_element_only=True, return_one_element=kl_return_one_element)
+    return default_data, patch_data, metric
+
+#%%

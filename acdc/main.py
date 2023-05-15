@@ -164,6 +164,7 @@ if TASK == "ioi":
     num_examples = 100
     tl_model = get_gpt2_small(device=DEVICE)
     toks_int_values, toks_int_values_other, metric = get_ioi_data(tl_model, num_examples)
+
 elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     
     tracr_task = TASK.split("-")[-1] # "reverse"
@@ -212,6 +213,7 @@ elif TASK == "greaterthan":
     tl_model, toks_int_values, prompts, metric = get_all_greaterthan_things(num_examples=num_examples, device=DEVICE)
     toks_int_values_other = toks_int_values.clone()
     toks_int_values_other[:, 7] = 486 # replace with 01
+
 else:
     raise ValueError(f"Unknown task {TASK}")
 
