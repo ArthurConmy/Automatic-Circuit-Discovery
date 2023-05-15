@@ -138,7 +138,7 @@ parser.add_argument("--testing", action="store_true", help="Use testing data ins
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("--task tracr-proportion --testing --skip-sp".split())
+    args = parser.parse_args("--task induction --testing".split())
 else:
     args = parser.parse_args()
 
@@ -148,9 +148,11 @@ SKIP_ACDC=False
 SKIP_SP = True if args.skip_sp else False
 SKIP_SIXTEEN_HEADS = True if args.skip_sixteen_heads else False
 TESTING = True if args.testing else False
+
 # defaults
 ACDC_PROJECT_NAME = None
-ACDC_RUN_FILTER = None
+ACDC_PRE_RUN_FILTER = None
+ACDC_NAME_FILTER = None
 
 # # for SP # filters are more annoying since some things are nested in groups
 SP_PROJECT_NAME = None
@@ -160,7 +162,6 @@ SP_RUN_NAME_FILTER = None
 # # for 16 heads # sixteen heads is just one run
 SIXTEEN_HEADS_PROJECT_NAME = None
 SIXTEEN_HEADS_RUN_NAME = None
-
 
 #%% [markdown]
 # Setup
@@ -181,7 +182,8 @@ if TASK == "docstring":
     get_true_edges = get_docstring_subgraph_true_edges
 
     ACDC_PROJECT_NAME = "remix_school-of-rock/acdc"
-    ACDC_RUN_FILTER = lambda name: name.startswith("agarriga-docstring")
+    ACDC_PRE_RUN_FILTER = None
+    ACDC_RUN_NAME_FILTER = lambda name: name.startswith("agarriga-docstring")
 
     SP_PROJECT_NAME = "remix_school-of-rock/induction-sp-replicate"
     def sp_run_filter(name):
@@ -198,7 +200,6 @@ if TASK == "docstring":
     SIXTEEN_HEADS_RUN_NAME = "mrzpsjtw"
 
 elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
-    
     tracr_task = TASK.split("-")[-1] # "reverse"
     assert tracr_task == "proportion" # yet to implemenet reverse
 
@@ -212,15 +213,30 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
         get_true_edges = get_tracr_proportion_edges
 
         ACDC_PROJECT_NAME = "remix_school-of-rock/acdc"
-        ACDC_RUN_FILTER = lambda name: name == "not_a_real_run" # broken, see below
+        ACDC_PRE_RUN_FILTER = None
+        ACDC_RUN_NAME_FILTER = lambda name: name == "not_a_real_run" # broken, see below
 
         SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
         SIXTEEN_HEADS_RUN_NAME = "55x0zrfn"
         points["ACDC"] = [(0.0, 1.0)]
 
+    if tracr_task == "reverse":
+        raise NotImplementedError("TODO")
+
     # # for propotion, 
     # tl_model(toks_int_values[:1])[0, :, 0] 
     # is the proportion at each space (including irrelevant first position
+
+elif TASK == "induction":
+    raise ValueError("There is no ground truth circuit for Induction!!!")
+    # tl_model = get_induction_model()
+    # ACDC_PROJECT_NAME = "remix_school-of-rock/acdc"
+    # ACDC_PRE_RUN_FILTER = {"group": "adria-induction-2"}
+    # ACDC_NAME_FILTER = lambda name: True
+    # SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
+    # SIXTEEN_HEADS_RUN_NAME = "y8u6ah7t"
+
+    # get_true_edges = None # duhhh!
 
 else:
     raise NotImplementedError("TODO " + TASK)
