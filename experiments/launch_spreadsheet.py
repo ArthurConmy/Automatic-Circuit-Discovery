@@ -14,16 +14,12 @@ METRICS_FOR_TASK = {
     "greaterthan": ["kl_div", "greaterthan"],
 }
 
+CPU = 4
 
 def main(testing: bool, use_kubernetes: bool):
-    base_regularization_params = np.concatenate(
-        [
-            10 ** np.linspace(-2, 0, 11),
-            np.linspace(1, 10, 10)[1:],
-            np.linspace(10, 250, 13)[1:],
-        ]
-    )
-    seed = 1507014021
+    base_thresholds = 10 ** np.linspace(-2, 1, 21)
+
+    seed = 486887094
     random.seed(seed)
 
     commands: List[List[str]] = []
@@ -31,9 +27,19 @@ def main(testing: bool, use_kubernetes: bool):
         for zero_ablation in [0, 1]:
             for task in TASKS:
                 for metric in METRICS_FOR_TASK[task]:
+                    # Skip tasks that we've already run
+                    if reset_network == 0 and metric == "kl_div":
+                        if task != "tracr":
+                            continue
+
+                    if task == "induction":
+                        continue
+
+
+
                     if task.startswith("tracr"):
                         # Typical metric value range: 0.0-0.1
-                        regularization_params = 10 ** np.linspace(-3, 0, 11)
+                        thresholds = 10 ** np.linspace(-3, -1, 11)
 
                         if task == "tracr-reverse":
                             num_examples = 6
@@ -47,10 +53,10 @@ def main(testing: bool, use_kubernetes: bool):
                     elif task == "greaterthan":
                         if metric == "kl_div":
                             # Typical metric value range: 0.0-20
-                            regularization_params = base_regularization_params
+                            thresholds = base_thresholds
                         elif metric == "greaterthan":
                             # Typical metric value range: -1.0 - 0.0
-                            regularization_params = 10 ** np.linspace(-4, 2, 21)
+                            thresholds = 10 ** np.linspace(-4, 0, 21)
                         else:
                             raise ValueError("Unknown metric")
                         num_examples = 100
@@ -59,10 +65,10 @@ def main(testing: bool, use_kubernetes: bool):
                         seq_len = 41
                         if metric == "kl_div":
                             # Typical metric value range: 0.0-10.0
-                            regularization_params = base_regularization_params
+                            thresholds = base_thresholds
                         elif metric == "docstring_metric":
                             # Typical metric value range: -1.0 - 0.0
-                            regularization_params = 10 ** np.linspace(-4, 2, 21)
+                            thresholds = 10 ** np.linspace(-4, 0, 21)
                         else:
                             raise ValueError("Unknown metric")
                         num_examples = 50
@@ -71,10 +77,10 @@ def main(testing: bool, use_kubernetes: bool):
                         seq_len = -1
                         if metric == "kl_div":
                             # Typical metric value range: 0.0-12.0
-                            regularization_params = base_regularization_params
+                            thresholds = base_thresholds
                         elif metric == "logit_diff":
                             # Typical metric value range: -0.31 -- -0.01
-                            regularization_params = 10 ** np.linspace(-4, 2, 21)
+                            thresholds = 10 ** np.linspace(-4, 0, 21)
                         else:
                             raise ValueError("Unknown metric")
                     elif task == "induction":
@@ -82,46 +88,46 @@ def main(testing: bool, use_kubernetes: bool):
                         num_examples  = 50
                         if metric == "kl_div":
                             # Typical metric value range: 0.0-16.0
-                            regularization_params = base_regularization_params
+                            thresholds = base_thresholds
                         elif metric == "nll":
                             # Typical metric value range: 0.0-16.0
-                            regularization_params = base_regularization_params
+                            thresholds = base_thresholds
                         else:
                             raise ValueError("Unknown metric")
                     else:
                         raise ValueError("Unknown task")
 
-                    for lambda_reg in [0.01] if testing else regularization_params:
+                    for threshold in [1.0] if testing else thresholds:
                         command = [
                             "python",
-                            "subnetwork_probing/train.py",
+                            "acdc/main.py",
                             f"--task={task}",
-                            f"--lambda-reg={lambda_reg:.3f}",
-                            f"--wandb-name=agarriga-sp-{len(commands):05d}{'-optional' if task in ['induction', 'docstring'] else ''}",
-                            "--wandb-project=induction-sp-replicate",
-                            "--wandb-entity=remix_school-of-rock",
-                            "--wandb-group=complete-spreadsheet-4",
-                            f"--device=cpu",
-                            f"--epochs={1 if testing else 10000}",
-                            f"--zero-ablation={zero_ablation}",
-                            f"--reset-subject={reset_network}",
+                            f"--threshold={threshold:.5f}",
+                            "--using-wandb",
+                            f"--wandb-run-name=agarriga-acdc-spreadsheet-{len(commands):05d}",
+                            "--wandb-group-name=acdc-spreadsheet",
+                            f"--device=cuda",
+                            f"--reset-network={reset_network}",
                             f"--seed={random.randint(0, 2**32 - 1)}",
-                            f"--loss-type={metric}",
-                            f"--num-examples={6 if testing else num_examples}",
-                            f"--seq-len={seq_len}",
-                            f"--n-loss-average-runs={1 if testing else 20}",
-                            "--wandb-dir=/training/sp",  # If it doesn't exist wandb will use /tmp
-                            "--wandb-mode=online",
+                            f"--metric={metric}",
+                            f"--torch-num-threads={CPU}",
+                            "--wandb-dir=/training/acdc",  # If it doesn't exist wandb will use /tmp
+                            f"--wandb-mode={'offline' if testing else 'online'}",
+                            f"--max-num-epochs={1 if testing else 100_000}",
                         ]
+                        if zero_ablation:
+                            command.append("--zero-ablation")
+
                         commands.append(command)
 
     launch(
         commands,
-        name="complete-spreadsheet",
+        name="acdc-spreadsheet",
         job=None
         if not use_kubernetes
-        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.2.24", cpu=4, gpu=0),
+        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.2.24", cpu=CPU, gpu=1),
     )
+
 
 if __name__ == "__main__":
     main(testing=True, use_kubernetes=False)

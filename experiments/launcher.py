@@ -14,6 +14,8 @@ class KubernetesJob:
 def launch(commands: List[List[str]], name: str, job: Optional[KubernetesJob] = None):
     to_wait: List[Tuple[str, subprocess.Popen, TextIO, TextIO]] = []
 
+    assert len(commands) <= 100_000, "Too many commands for 5 digits"
+
     for i, command in enumerate(commands):
         command_str = shlex.join(command)
         print("Launching", command_str)
@@ -33,7 +35,7 @@ def launch(commands: List[List[str]], name: str, job: Optional[KubernetesJob] = 
                     "ctl",
                     "job",
                     "run",
-                    f"--name=agarriga-{name}-{i:03d}",
+                    f"--name=agarriga-{name}-{i:05d}",
                     "--shared-host-dir-slow-tolerant",
                     f"--container={job.container}",
                     f"--cpu={job.cpu}",
