@@ -22,6 +22,7 @@ from acdc.acdc_utils import EdgeType, TorchIndex
 from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from acdc.TLACDCInterpNode import TLACDCInterpNode
 from acdc.induction.utils import AllInductionThings, get_all_induction_things, get_mask_repeat_candidates
+from acdc.tracr.utils import get_all_tracr_things
 from tqdm import tqdm
 from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformer import HookedTransformer
 from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformerConfig import HookedTransformerConfig
@@ -444,6 +445,12 @@ if __name__ == "__main__":
             metric_name=args.loss_type,
             correct_incorrect_wandb=True,
         )
+    elif args.task.startswith("tracr"):
+        tracr_task = args.task.split("-")[1]
+        all_task_things = get_all_tracr_things(
+            task = tracr_task,
+        )
+
     else:
         raise ValueError(f"Unknown task {args.task}")
 

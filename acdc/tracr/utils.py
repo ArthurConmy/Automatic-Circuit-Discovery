@@ -227,6 +227,9 @@ def get_tracr_model_input_and_tl_model(task: Literal["reverse", "proportion"], r
     else:
         return create_model_input, tl_model
 
+def get_all_tracr_things():
+    pass
+
 # get some random permutation with no fixed points
 def get_perm(n, no_fp = True):
     if no_fp:
@@ -289,7 +292,7 @@ def get_tracr_data(tl_model, task: Literal["reverse", "proportion"], return_one_
             answer = ((proc - base_model_vals)**2).sum(dim=-1) # collapse the L2
 
             if return_one_element: 
-                answer = answer.item()
+                answer = answer.mean()
 
             return answer
 
