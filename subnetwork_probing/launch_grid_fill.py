@@ -3,7 +3,7 @@ import numpy as np
 import random
 from typing import List
 
-TASKS = ["ioi", "tracr-reverse", "tracr-proportion", "induction", "docstring", "greaterthan"]
+TASKS = ["ioi", "tracr-reverse", "tracr-proportion", "greaterthan", "induction", "docstring"]
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
@@ -91,17 +91,13 @@ def main(testing: bool, use_kubernetes: bool):
                     else:
                         raise ValueError("Unknown task")
 
-                    if not testing and task in ["induction", "docstring"]:
-                        continue
-
-
                     for lambda_reg in [0.01] if testing else regularization_params:
                         command = [
                             "python",
                             "subnetwork_probing/train.py",
                             f"--task={task}",
                             f"--lambda-reg={lambda_reg:.3f}",
-                            f"--wandb-name=agarriga-sp-{len(commands):03d}",
+                            f"--wandb-name=agarriga-sp-{len(commands):03d}{'-optional' if task in ['induction', 'docstring'] else ''}",
                             "--wandb-project=induction-sp-replicate",
                             "--wandb-entity=remix_school-of-rock",
                             "--wandb-group=complete-spreadsheet-4",
