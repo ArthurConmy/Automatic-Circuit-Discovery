@@ -82,6 +82,7 @@ from acdc.ioi.utils import (
     get_gpt2_small,
 )
 from acdc.induction.utils import (
+    one_item_per_batch,
     get_all_induction_things,
     get_model,
     get_validation_data,
@@ -184,7 +185,24 @@ elif TASK in ["tracr-proportion", "tracr-reverse"]:
     # is the proportion at each space (including irrelevant first position
 
 elif TASK == "induction":
-    raise NotImplementedError("Induction has same sentences with multiple places we take loss / KL divergence; fiddlier implementation")
+    num_examples = 50
+    seq_len = 300
+    # TODO initialize the `tl_model` with the right model
+    induction_things = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric="kl_div") # TODO also implement NLL
+    tl_model, toks_int_values, toks_int_values_other = induction_things.tl_model, induction_things.validation_data, induction_things.validation_patch_data
+
+    validation_metric = induction_things.validation_metric
+    metric = lambda x: validation_metric(x)
+
+    test_metric_fns = {args.metric: induction_things.test_metric}
+    test_metric_data = induction_things.test_data
+
+    toks_int_values, toks_int_values_other, end_positions_tensor, metric = one_item_per_batch(
+        toks_int_values=None,
+        toks_int_values_other=None,
+        mask_rep=None, 
+        base_model_logprobs=None,
+    )
 
 # note to self: turn of split_qkv for less OOM
 
