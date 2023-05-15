@@ -296,7 +296,7 @@ def extract_info(string):
     parent_list = None
     if parent_list_str:
         parent_list_items = parent_list_str.split(", ")
-        parent_list = [ast.literal_eval(item if item != "COL" else "None") for item in parent_list_items]
+        parent_list = [ast.literal_eval(item if item not in ["COL", ":"] else "None") for item in parent_list_items]
 
     # Extract current node info
     current_match = re.search(current_pattern, string)
@@ -305,7 +305,7 @@ def extract_info(string):
     current_list = None
     if current_list_str:
         current_list_items = current_list_str.split(", ")
-        current_list = [ast.literal_eval(item if item != "COL" else "None") for item in current_list_items]
+        current_list = [ast.literal_eval(item if item not in ["COL", ":"] else "None") for item in current_list_items]
 
     return parent_name, parent_list, current_name, current_list
 

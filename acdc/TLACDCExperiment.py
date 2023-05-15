@@ -67,6 +67,7 @@ class TLACDCExperiment:
         indices_mode: Literal["normal", "reverse", "shuffle"] = "reverse", # we get best performance with reverse I think
         names_mode: Literal["normal", "reverse", "shuffle"] = "normal",
         wandb_config: Optional[Namespace] = None,
+        early_exit: bool = False,
     ):
         """Initialize the ACDC experiment"""
 
@@ -94,6 +95,9 @@ class TLACDCExperiment:
             skip_edges = "no"
 
         self.corr = TLACDCCorrespondence.setup_from_model(self.model, use_pos_embed=use_pos_embed)
+
+        if early_exit: 
+            return
             
         self.reverse_topologically_sort_corr()
         self.current_node = self.corr.first_node()
@@ -763,7 +767,10 @@ class TLACDCExperiment:
 
         # file.download() in a temp dir
         with tempfile.TemporaryDirectory() as tmpdirname:
-            file.download(tmpdirname)
+            try:
+                file.download(tmpdirname)
+            except Exception as e:
+                raise ValueError("Probably, this doesn't have an output.log file??")
             fpath = os.path.join(tmpdirname, "output.log")
 
             # load the subgraph

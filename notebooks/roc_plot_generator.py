@@ -264,7 +264,7 @@ elif TASK == "ioi":
 
     SP_PROJECT_NAME = "remix_school-of-rock/induction-sp-replicate"
     SP_PRE_RUN_FILTER = {"group": "complete-spreadsheet-4"}
-    SP_RUN_FILTER = lambda name: True # name.startswith("agarriga-ioi")
+    SP_RUN_FILTER = partial(task_filter, task="ioi")
 
     SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
     SIXTEEN_HEADS_RUN = "29ctjial"
@@ -285,6 +285,7 @@ tl_model.reset_hooks()
 exp = TLACDCExperiment(
     model=tl_model,
     threshold=100_000,
+    early_exit=True,
     using_wandb=False,
     zero_ablation=False,
     ds=toks_int_values,
@@ -305,7 +306,7 @@ exp.load_subgraph(d)
 canonical_circuit_subgraph = deepcopy(exp.corr)
 canonical_circuit_subgraph_size = canonical_circuit_subgraph.count_no_edges()
 
-#%% [markdown]
+#%%
 # <h2> Arthur plays about with loading in graphs </h2>
 # <h3> Not relevant for doing ACDC runs </h3>
 # <p> Get Adria's docstring runs! </p>
@@ -337,7 +338,7 @@ def get_acdc_runs(
             experiment.load_from_wandb_run(*args, run_id)
             corrs.append(deepcopy(exp.corr))
         except Exception as e:
-            print(e)
+            print(run.id, "and errorr", e)
             cnt+=1
             continue
     return corrs
