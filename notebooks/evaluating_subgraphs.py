@@ -23,9 +23,11 @@ num_examples = 40
 seq_len = 300
 
 # load in a tl_model and grab some data
-tl_model, toks_int_values, toks_int_values_other, metric, mask_rep = get_all_induction_things(
-    num_examples=num_examples, seq_len=seq_len, device="cuda", randomize_data=False, return_mask_rep=True,
+all_induction_things = get_all_induction_things(
+    num_examples=num_examples, seq_len=seq_len, device="cuda",
 )
+
+tl_model, toks_int_values, toks_int_values_other, metric, mask_rep = all_induction_things.tl_model, all_induction_things.validation_data, all_induction_things.validation_patch_data, all_induction_things.validation_metric, all_induction_things.validation_mask
 
 # You should read the get_model function from that file to see what the Redwood model is : ) 
 
@@ -135,3 +137,5 @@ print("Loss without the induction head direct connections:", get_loss(experiment
 # Forthcoming tutorials: 
 # 1. on the abstractions used to be able to edit connections (The `TorchIndex`s)
 # 2. see acdc/main.py for how to run ACDC experiments; try python acdc/main.py --help
+
+# %%
