@@ -18,12 +18,14 @@ def launch(commands: List[List[str]], name: str, job: Optional[KubernetesJob] = 
         command_str = shlex.join(command)
         print("Launching", command_str)
         if job is None:
-            base_path = Path(f"/tmp/{name}")
-            base_path.mkdir(parents=True, exist_ok=True)
-            stdout = open(base_path / f"stdout_{i:03d}.txt", "w")
-            stderr = open(base_path / f"stderr_{i:03d}.txt", "w")
-            out = subprocess.Popen(command, stdout=stdout, stderr=stderr)
-            to_wait.append((command_str, out, stdout, stderr))
+            out = subprocess.call(command)
+            assert out == 0
+            # base_path = Path(f"/tmp/{name}")
+            # base_path.mkdir(parents=True, exist_ok=True)
+            # stdout = open(base_path / f"stdout_{i:03d}.txt", "w")
+            # stderr = open(base_path / f"stderr_{i:03d}.txt", "w")
+            # out = subprocess.Popen(command, stdout=stdout, stderr=stderr)
+            # to_wait.append((command_str, out, stdout, stderr))
         else:
             subprocess.run(
                 [

@@ -110,8 +110,8 @@ def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric
     test_patch_data = shuffle_tensor(test_data, seed=data_seed).contiguous()
 
     with torch.no_grad():
-        base_val_logprobs = F.log_softmax(tl_model(validation_data), dim=-1)
-        base_test_logprobs = F.log_softmax(tl_model(test_data), dim=-1)
+        base_val_logprobs = F.log_softmax(tl_model(validation_data), dim=-1).detach()
+        base_test_logprobs = F.log_softmax(tl_model(test_data), dim=-1).detach()
 
     if metric == "kl_div":
         validation_metric = partial(
