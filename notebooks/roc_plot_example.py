@@ -465,7 +465,7 @@ if "SP" in methods:
 
 if "16H" in methods:
     if "16H" not in points: points["16H"] = []
-    points["16H"] .extend(get_points(sixteen_heads_corrs))
+    points["16H"].extend(get_points(sixteen_heads_corrs))
 
 #%%
 
