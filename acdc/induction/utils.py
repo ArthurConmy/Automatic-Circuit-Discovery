@@ -32,7 +32,7 @@ from acdc.acdc_utils import (
 from acdc import HookedTransformer
 from acdc.acdc_utils import kl_divergence, negative_log_probs
 
-def get_model(sixteen_heads=False):
+def get_induction_model(sixteen_heads=False, device="cuda"):
     tl_model = HookedTransformer.from_pretrained(
         "redwood_attn_2l",  # load Redwood's model
         use_global_cache=True,  # use the global cache: this is needed for ACDC to work
@@ -40,11 +40,13 @@ def get_model(sixteen_heads=False):
         center_unembed=False,
         fold_ln=False,
         sixteen_heads=sixteen_heads,
+        device=device,
     )
 
     # standard ACDC options
     tl_model.set_use_attn_result(True)
-    tl_model.set_use_split_qkv_input(True) 
+    if not sixteen_heads:
+        tl_model.set_use_split_qkv_input(True) 
     return tl_model
 
 def get_validation_data(num_examples=None, seq_len=None, device=None):
@@ -91,6 +93,7 @@ class AllInductionThings:
     validation_labels: torch.Tensor
     validation_mask: torch.Tensor
     validation_patch_data: torch.Tensor
+    validation_logprobs: torch.Tensor
     test_metric: Any
     test_data: torch.Tensor
     test_labels: torch.Tensor
@@ -99,7 +102,7 @@ class AllInductionThings:
 
 
 def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric="kl_div", sixteen_heads=False, return_one_element=True):
-    tl_model = get_model(sixteen_heads=sixteen_heads)
+    tl_model = get_induction_model(sixteen_heads=sixteen_heads)
     tl_model.to(device)
 
     validation_data_orig = get_validation_data(device=device)
@@ -174,6 +177,7 @@ def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric
         validation_labels=validation_labels,
         validation_mask=validation_mask,
         validation_patch_data=validation_patch_data,
+        validation_logprobs=base_val_logprobs,
         test_metric=test_metric,
         test_data=test_data,
         test_labels=test_labels,
@@ -182,7 +186,7 @@ def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric
     )
 
 
-def one_item_per_batch(toks_int_values, toks_int_values_other, mask_rep, base_model_logprobs, kl_take_mean=True):
+def one_item_per_batch(toks_int_values, toks_int_values_other, mask_rep, base_model_logprobs, kl_take_mean=True, sixteen_heads=False):
     """Returns each instance of induction as its own batch idx"""
 
     end_positions = []
@@ -190,7 +194,7 @@ def one_item_per_batch(toks_int_values, toks_int_values_other, mask_rep, base_mo
     new_tensors = []
 
     toks_int_values_other_batch_list = []
-    new_base_model_probs_list = []
+    new_base_model_logprobs_list = []
 
     for i in range(batch_size):
         for j in range(seq_len - 1): # -1 because we don't know what follows the last token so can't calculate losses
@@ -204,7 +208,7 @@ def one_item_per_batch(toks_int_values, toks_int_values_other, mask_rep, base_mo
     return_tensor = torch.stack(new_tensors).to(toks_int_values.device).clone()
     end_positions_tensor = torch.tensor(end_positions).long()
 
-    new_base_model_logprobs = torch.stack(new_base_model_probs_list)[torch.arange(len(end_positions_tensor)), end_positions_tensor].to(toks_int_values.device).clone()
+    new_base_model_logprobs = torch.stack(new_base_model_logprobs_list)[torch.arange(len(end_positions_tensor)), end_positions_tensor].to(toks_int_values.device).clone()
     metric = partial(
         kl_divergence, 
         base_model_logprobs=new_base_model_logprobs, 

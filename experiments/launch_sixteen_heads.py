@@ -84,7 +84,7 @@ from acdc.ioi.utils import (
 from acdc.induction.utils import (
     one_item_per_batch,
     get_all_induction_things,
-    get_model,
+    get_induction_model,
     get_validation_data,
     get_good_induction_candidates,
     get_mask_repeat_candidates,
@@ -109,7 +109,7 @@ parser.add_argument('--device', type=str, default="cuda")
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("--task tracr-proportion --wandb-run-name docstring_sixteen_heads".split())
+    args = parser.parse_args("--task induction --wandb-run-name induction_16_heads".split())
 else:
     args = parser.parse_args()
 
@@ -185,24 +185,29 @@ elif TASK in ["tracr-proportion", "tracr-reverse"]:
     # is the proportion at each space (including irrelevant first position
 
 elif TASK == "induction":
-    num_examples = 50
+    num_sentences = 10
     seq_len = 300
     # TODO initialize the `tl_model` with the right model
-    induction_things = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric="kl_div") # TODO also implement NLL
+    induction_things = get_all_induction_things(num_examples=num_sentences, seq_len=seq_len, device=DEVICE, metric="kl_div", sixteen_heads=True) 
+    # TODO also implement NLL
     tl_model, toks_int_values, toks_int_values_other = induction_things.tl_model, induction_things.validation_data, induction_things.validation_patch_data
-
     validation_metric = induction_things.validation_metric
     metric = lambda x: validation_metric(x)
 
-    test_metric_fns = {args.metric: induction_things.test_metric}
-    test_metric_data = induction_things.test_data
+    # no test_metric_fns for now
 
+    test_metric_data = induction_things.test_data
     toks_int_values, toks_int_values_other, end_positions_tensor, metric = one_item_per_batch(
-        toks_int_values=None,
-        toks_int_values_other=None,
-        mask_rep=None, 
-        base_model_logprobs=None,
+        toks_int_values=toks_int_values,
+        toks_int_values_other=toks_int_values_other,
+        mask_rep=induction_things.validation_mask, 
+        base_model_logprobs=induction_things.validation_logprobs,
+        sixteen_heads=True,
     )
+
+    num_examples = len(toks_int_values)
+
+    model_getter = get_induction_model
 
 # note to self: turn of split_qkv for less OOM
 
