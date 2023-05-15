@@ -26,6 +26,10 @@ def launch(commands: List[List[str]], name: str, job: Optional[KubernetesJob] = 
 
     print(f"Launching {len(commands)} jobs")
     for i, command in enumerate(commands):
+        if i not in ids_for_worker:
+            print(f"Skipping {name} because it's not my turn, {i} not in {ids_for_worker}")
+            continue
+
         command_str = shlex.join(command)
 
         if check_wandb is not None:
@@ -39,10 +43,6 @@ def launch(commands: List[List[str]], name: str, job: Optional[KubernetesJob] = 
             if name in existing_names:
                 print(f"Run {name} already exists, skipping")
                 continue
-
-        if i not in ids_for_worker:
-            print(f"Skipping {name} because it's not my turn, {i} not in {ids_for_worker}")
-            continue
 
         print("Launching", name, command_str)
         if job is None:
