@@ -28,6 +28,7 @@ import wandb
 import IPython
 import torch
 from pathlib import Path
+import gc
 from tqdm import tqdm
 import random
 from functools import partial
@@ -98,6 +99,7 @@ from acdc.graphics import (
     build_colorscheme,
     show,
 )
+from acdc.utils import reset_network
 import argparse
 torch.autograd.set_grad_enabled(False)
 
@@ -196,16 +198,9 @@ toks_int_values = things.validation_data
 toks_int_values_other = things.validation_patch_data
 
 if RESET_NETWORK:
-    raise NotImplementedError("TODO")
-    base_dir = Path(__file__).parent.parent / "subnetwork-probing/" / "data" / "induction"
-    reset_state_dict = torch.load(base_dir / "random_model.pt")
-    for layer_i in range(2):
-        for qkv in ["q", "k", "v"]:
-            # Delete subnetwork probing masks
-            del reset_state_dict[f"blocks.{layer_i}.attn.hook_{qkv}.mask_scores"]
-
-    tl_model.load_state_dict(reset_state_dict, strict=True)
-    del reset_state_dict
+    reset_network(TASK, DEVICE, tl_model)
+    gc.collect()
+    torch.cuda.empty_cache()
 
 #%%
 

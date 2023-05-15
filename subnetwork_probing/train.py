@@ -12,6 +12,7 @@ import collections
 from acdc.greaterthan.utils import get_all_greaterthan_things
 from acdc.ioi.utils import get_all_ioi_things
 import huggingface_hub
+import gc
 
 import networkx as nx
 import numpy as np
@@ -22,6 +23,7 @@ import torch.nn.functional as F
 import subnetwork_probing.transformer_lens.transformer_lens.utils as utils
 from acdc.tracr.utils import get_all_tracr_things
 from acdc.acdc_utils import EdgeType, TorchIndex
+from acdc.utils import reset_network
 from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from acdc.TLACDCInterpNode import TLACDCInterpNode
 from acdc.induction.utils import get_all_induction_things, get_mask_repeat_candidates
@@ -200,20 +202,9 @@ def train_induction(
 
     print("Reset subject:", args.reset_subject)
     if args.reset_subject:
-        filename = {
-            "ioi": "ioi_reset_heads_neurons.pt",
-            "tracr-reverse": "tracr_reverse_reset_heads_neurons.pt",
-            "tracr-proportion": "tracr_proportion_reset_heads_neurons.pt",
-            "induction": "induction_reset_heads_neurons.pt",
-            "docstring": "docstring_reset_heads_neurons.pt",
-            "greaterthan": "greaterthan_reset_heads_neurons.pt",
-        }[args.task]
-        random_model_file = huggingface_hub.hf_hub_download(
-            repo_id="agaralon/acdc_reset_models", filename=filename,
-        )
-        reset_state_dict = torch.load(random_model_file, map_location=args.device)
-        induction_model.load_state_dict(reset_state_dict, strict=False)
-        del reset_state_dict
+        reset_network(args.task, args.device, induction_model)
+        gc.collect()
+        torch.cuda.empty_cache()
         induction_model.freeze_weights()
 
         reset_logits = do_random_resample_caching(induction_model, all_task_things.validation_data)
