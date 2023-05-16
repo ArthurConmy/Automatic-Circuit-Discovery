@@ -66,7 +66,7 @@ for task_idx, (row, col) in enumerate(rows_and_cols):
                 name=methodof,
                 mode="lines",
                 line=dict(shape="hv", color=colors[methodof]),
-                showlegend = (row, col) == rows_and_cols[-1],
+                showlegend = (row, col) == rows_and_cols[-2],
             ),
             row=row, 
             col=col,

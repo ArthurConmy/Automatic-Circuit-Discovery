@@ -31,6 +31,8 @@ if IPython.get_ipython() is not None:
 from copy import deepcopy
 from subnetwork_probing.train import correspondence_from_mask
 from acdc.acdc_utils import false_positive_rate, false_negative_rate, true_positive_stat
+from acdc.greaterthan.utils import get_all_greaterthan_things
+
 import pandas as pd
 from typing import (
     List,
@@ -139,7 +141,7 @@ parser.add_argument("--testing", action="store_true", help="Use testing data ins
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("--task tracr-proportion --testing".split())
+    args = parser.parse_args("--task ioi --skip-sixteen-heads --skip-sp".split())
 else:
     args = parser.parse_args()
 
@@ -258,10 +260,14 @@ elif TASK == "ioi":
     tl_model = get_gpt2_small(device="cuda")
     toks_int_values, toks_int_values_other, metric = get_ioi_data(tl_model, num_examples)
 
-    ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_ioi_sweep"
+    # # old stuff
+    # ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_ioi_sweep"
+    # ACDC_RUN_FILTER = None
+    # ACDC_PRE_RUN_FILTER = None
 
+    ACDC_PROJECT_NAME = "remix_school-of-rock/acdc"
     ACDC_RUN_FILTER = partial(task_filter, task="ioi")
-    ACDC_PRE_RUN_FILTER = None
+    ACDC_PRE_RUN_FILTER = {"group": "acdc-spreadsheet-2"}
 
     SP_PROJECT_NAME = "remix_school-of-rock/induction-sp-replicate"
     SP_PRE_RUN_FILTER = {"group": "complete-spreadsheet-4"}
@@ -277,7 +283,19 @@ elif TASK == "greaterthan":
     SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
     SIXTEEN_HEADS_RUN = "zcxh8rbm"
 
-    raise NotImplementedError("TODO")
+    ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_greaterthan_sweep"
+    ACDC_PRE_RUN_FILTER = None
+    ACDC_RUN_FILTER = None
+
+    SP_PROJECT_NAME = "remix_school-of-rock/induction-sp-replicate"
+    SP_PRE_RUN_FILTER = {"group": "complete-spreadsheet-4"}
+    SP_RUN_FILTER = partial(task_filter, task="ioi", verbose=False)
+
+
+    num_examples = 100
+    tl_model, toks_int_values, prompts, metric = get_all_greaterthan_things(num_examples=num_examples, device="cuda")
+    toks_int_values_other = toks_int_values.clone()
+    toks_int_values_other[:, 7] = 486 # replace with 01
 
 elif TASK == "induction":
     raise ValueError("There is no ground truth circuit for Induction!!!")
@@ -335,7 +353,7 @@ def get_acdc_runs(
     runs = api.runs(project_name)
     filtered_runs = []
     for run in tqdm(runs[:clip]):
-        if run_filter(run):
+        if run_filter is None or run_filter(run):
             filtered_runs.append(run)
     cnt = 0
     corrs = []
@@ -378,7 +396,7 @@ def get_sp_corrs(
     )
     filtered_runs = []
     for run in tqdm(runs):
-        if run_filter(run):
+        if run_filter is None or run_filter(run):
             filtered_runs.append(run)
     cnt = 0
     corrs = []

@@ -1,5 +1,20 @@
-#%%
-
+from collections import OrderedDict
+from acdc.acdc_utils import Edge, TorchIndex, EdgeType
+from acdc.TLACDCInterpNode import TLACDCInterpNode
+import warnings
+from functools import partial
+from copy import deepcopy
+import torch.nn.functional as F
+from typing import List
+import click
+from subnetwork_probing.train import correspondence_from_mask
+import IPython
+from acdc.acdc_utils import kl_divergence
+import torch
+from acdc.ioi.ioi_dataset import IOIDataset  # NOTE: we now import this LOCALLY so it is deterministic
+from tqdm import tqdm
+import wandb
+from acdc.HookedTransformer import HookedTransformer
 import warnings
 from functools import partial
 from transformers import AutoTokenizer
@@ -111,3 +126,7 @@ def get_all_greaterthan_things(num_examples, device="cuda", sixteen_heads=False,
     model = get_gpt2_small(device=device, sixteen_heads=sixteen_heads)
     data, prompts = get_year_data(num_examples, model)
     return model, data, prompts, partial(greaterthan_metric, tokens=data, return_one_element=return_one_element)
+
+def get_greaterthan_true_edges(model):
+    nodes_to_mask = []
+    raise NotImplementedError("TODO")
