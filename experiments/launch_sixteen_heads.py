@@ -157,7 +157,7 @@ for module in model.modules():
 def replace_masked_hook_points(model):
     for n, c in model.named_children():
         if isinstance(c, MaskedHookPoint):
-            setattr(model, n, SimpleMaskedHookPoint(mask_shape=c.mask_scores.shape, name=c.name, is_mlp=c.is_mlp))
+            setattr(model, n, SimpleMaskedHookPoint(mask_shape=c.mask_scores.shape, name=c.name, is_mlp=c.is_mlp).to(args.device))
         else:
             replace_masked_hook_points(c)
 replace_masked_hook_points(model)
@@ -170,16 +170,21 @@ with torch.no_grad():
             p.fill_(1)
 
 # Check that the model's outputs are the same
-torch.testing.assert_allclose(
-    model(things.validation_data),
-    _acdc_model(things.validation_data),
-    atol=1e-3,
-    rtol=1e-2,
-)
+expected = _acdc_model(things.validation_data).cpu()
 del _acdc_model
 things.tl_model = None
 gc.collect()
 torch.cuda.empty_cache()
+
+actual = model(things.validation_data).cpu()
+gc.collect()
+torch.cuda.empty_cache()
+
+torch.testing.assert_allclose(
+    actual, expected,
+    atol=1e-3,
+    rtol=1e-2,
+)
 
 
 # %%
@@ -248,7 +253,7 @@ wandb.log({"nodes_names_indices": serializable_nodes_names_indices})
 # %%
 
 def test_metrics(logits, score):
-    d = {"test_"+k: fn(logits).item() for k, fn in things.test_metrics.items()}
+    d = {"test_"+k: fn(logits).mean().item() for k, fn in things.test_metrics.items()}
     d["score"] = score
     return d
 

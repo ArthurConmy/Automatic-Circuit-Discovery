@@ -273,7 +273,7 @@ class MatchNLLMetric:
             return_one_element=self.return_one_element,
         )
 
-def logit_diff_metric(logits, correct_labels, wrong_labels, return_one_element: bool=False) -> torch.Tensor:
+def logit_diff_metric(logits, correct_labels, wrong_labels, return_one_element: bool=True) -> torch.Tensor:
     range = torch.arange(len(logits))
     correct_logits = logits[range, -1, correct_labels]
     incorrect_logits = logits[range, -1, wrong_labels]
@@ -285,7 +285,7 @@ def logit_diff_metric(logits, correct_labels, wrong_labels, return_one_element: 
     else:
         return -(correct_logits - incorrect_logits).view(-1)
 
-def frac_correct_metric(logits, correct_labels, wrong_labels, return_one_element: bool=False) -> torch.Tensor:
+def frac_correct_metric(logits, correct_labels, wrong_labels, return_one_element: bool=True) -> torch.Tensor:
     range = torch.arange(len(logits))
     correct_logits = logits[range, -1, correct_labels]
     incorrect_logits = logits[range, -1, wrong_labels]
