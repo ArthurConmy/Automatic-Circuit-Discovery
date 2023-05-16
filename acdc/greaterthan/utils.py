@@ -107,7 +107,7 @@ def greaterthan_metric_reference(logits, tokens):
             ans -= probs[i, constants.TOKENS[year_pref]]
     return - float(ans / len(probs))
 
-def greaterthan_metric(logits, tokens):
+def greaterthan_metric(logits, tokens, return_one_element: bool=True):
     constants = GreaterThanConstants.get(logits.device)
 
     probs = F.softmax(logits[:, -1], dim=-1)
@@ -119,7 +119,10 @@ def greaterthan_metric(logits, tokens):
     positive = csum[:, -1]
     # Before: negative term
     negative = torch.where(yearend == 0, torch.zeros((), device=csum.device), csum[range, yearend-1])
-    return - (positive - 2*negative).mean()
+    if return_one_element:
+        return - (positive - 2*negative).mean()
+    else:
+        return - (positive - 2*negative)
 
 
 def get_year_data(num_examples, model):

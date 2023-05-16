@@ -270,7 +270,7 @@ def log_metrics_to_wandb(
     list_of_timesteps = [i + 1 for i in range(experiment.metrics_to_plot["acdc_step"])]
     if experiment.metrics_to_plot["acdc_step"] > 1:
         if result is not None:
-            for y_name in ["results", "times_diff"]:
+            for y_name in []: # "results", "times_diff"]:  # Do not push these to wandb to avoid rate limiting
                 do_plotly_plot_and_log(
                     experiment,
                     x=list_of_timesteps,

@@ -88,7 +88,6 @@ from acdc.ioi.utils import (
 )
 from acdc.induction.utils import (
     get_all_induction_things,
-    get_induction_model,
     get_validation_data,
     get_good_induction_candidates,
     get_mask_repeat_candidates,

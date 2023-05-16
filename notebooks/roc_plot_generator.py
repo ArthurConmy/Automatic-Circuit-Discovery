@@ -84,7 +84,7 @@ from acdc.hook_points import HookedRootModule, HookPoint
 from acdc.HookedTransformer import (
     HookedTransformer,
 )
-from acdc.tracr.utils import get_tracr_model_input_and_tl_model, get_tracr_proportion_edges, get_tracr_reverse_edges
+from acdc.tracr.utils import get_tracr_model_input_and_tl_model, get_tracr_proportion_edges, get_tracr_reverse_edges, get_all_tracr_things
 from acdc.docstring.utils import get_all_docstring_things, get_docstring_model, get_docstring_subgraph_true_edges
 from acdc.acdc_utils import (
     make_nd_dict,
@@ -118,12 +118,15 @@ from acdc.graphics import (
     build_colorscheme,
     show,
 )
+from acdc.ioi.utils import (
+    get_all_ioi_things,
+    get_gpt2_small,
+)
 import argparse
+from acdc.greaterthan.utils import get_all_greaterthan_things
 
 from notebooks.emacs_plotly_render import set_plotly_renderer
-set_plotly_renderer("emacs")
-
-
+# set_plotly_renderer("emacs")
 
 
 def get_col(df, col): # dumb util
@@ -149,6 +152,8 @@ else:
     args = parser.parse_args()
 
 TASK = args.task
+METRIC = "kl_div"
+DEVICE = "cpu"
 ZERO_ABLATION = True if args.zero_ablation else False
 SKIP_ACDC=False
 SKIP_SP = True if args.skip_sp else False
@@ -156,17 +161,17 @@ SKIP_SIXTEEN_HEADS = True if args.skip_sixteen_heads else False
 TESTING = True if args.testing else False
 
 # defaults
-ACDC_PROJECT_NAME = None
+ACDC_PROJECT_NAME = "remix_school-of-rock/acdc"
 ACDC_PRE_RUN_FILTER = None
 ACDC_NAME_FILTER = None
 
 # # for SP # filters are more annoying since some things are nested in groups
-SP_PROJECT_NAME = None
-SP_PRE_RUN_FILTER = None
-SP_RUN_FILTER = None
+SP_PROJECT_NAME = "remix_school-of-rock/induction-sp-replicate"
+SP_PRE_RUN_FILTER = {}
+SP_RUN_FILTER = lambda _: True
 
 # # for 16 heads # sixteen heads is just one run
-SIXTEEN_HEADS_PROJECT_NAME = None
+SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
 SIXTEEN_HEADS_RUN = None
 
 def task_filter(run, task, verbose = True):
@@ -182,19 +187,12 @@ def task_filter(run, task, verbose = True):
 # Setup
 # substantial copy paste from main.py, with some new configs, directories...
 
-second_metric=None
-points={}
-use_pos_embed = False
-
 if TASK == "docstring":
     num_examples = 50
     seq_len = 41
-    all_docstring_things = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device="cuda", metric_name="kl_div", correct_incorrect_wandb=False)
-    toks_int_values = all_docstring_things.validation_data
-    toks_int_values_other = all_docstring_things.validation_patch_data
-    tl_model = all_docstring_things.tl_model
-    metric = all_docstring_things.validation_metric
-    second_metric = None
+    things = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE,
+                                                metric_name=METRIC, correct_incorrect_wandb=False)
+
     get_true_edges = get_docstring_subgraph_true_edges
 
     ACDC_PROJECT_NAME = "remix_school-of-rock/acdc"
@@ -205,7 +203,7 @@ if TASK == "docstring":
     def sp_run_filter(run): # name):
         name = run.name
         if not name.startswith("agarriga-sp-"): return False
-        try: 
+        try:
             int(name.split("-")[-1])
         except:
             return False
@@ -225,8 +223,6 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     use_pos_embed = True
     ZERO_ABLATION = True
 
-    create_model_input, tl_model = get_tracr_model_input_and_tl_model(task=tracr_task)
-    toks_int_values, toks_int_values_other, metric = get_tracr_data(tl_model, task=tracr_task)
 
     ACDC_PROJECT_NAME = None
     ACDC_PRE_RUN_FILTER = None
@@ -235,6 +231,7 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
 
     if tracr_task == "proportion":
         get_true_edges = get_tracr_proportion_edges
+        num_examples = 50
 
         SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
         SIXTEEN_HEADS_RUN = "siurl8zp"
@@ -247,6 +244,7 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
 
     elif tracr_task == "reverse":
         get_true_edges = get_tracr_reverse_edges
+        num_examples = 6
 
         SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
         SIXTEEN_HEADS_RUN = "fccs2o7o"
@@ -254,14 +252,15 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     else:
         raise NotImplementedError("not a tracr task")
 
+    things = get_all_tracr_things(task=tracr_task, metric_name=METRIC, num_examples=num_examples, device=DEVICE)
+
     # # for propotion, 
     # tl_model(toks_int_values[:1])[0, :, 0] 
     # is the proportion at each space (including irrelevant first position
 
 elif TASK == "ioi":
     num_examples = 100
-    tl_model = get_gpt2_small(device="cuda")
-    toks_int_values, toks_int_values_other, metric = get_ioi_data(tl_model, num_examples)
+    things = get_all_ioi_things(num_examples=num_examples, device=DEVICE, metric_name=args.metric)
 
     ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_ioi_sweep"
 
@@ -275,9 +274,11 @@ elif TASK == "ioi":
     SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
     SIXTEEN_HEADS_RUN = "yjreihd0"
 
-    get_true_edges = partial(get_ioi_true_edges, model=tl_model)
+    get_true_edges = partial(get_ioi_true_edges, model=things.tl_model)
     
 elif TASK == "greaterthan":
+    num_examples = 100
+    things = get_all_greaterthan_things(num_examples=num_examples, metric_name=args.metric, device=DEVICE)
 
     SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
     SIXTEEN_HEADS_RUN = "zcxh8rbm"
@@ -293,18 +294,18 @@ else:
 #%% [markdown]
 # Setup the experiment for wrapping functionality nicely
 
-tl_model.global_cache.clear()
-tl_model.reset_hooks()
+things.tl_model.global_cache.clear()
+things.tl_model.reset_hooks()
 exp = TLACDCExperiment(
-    model=tl_model,
+    model=things.tl_model,
     threshold=100_000,
     early_exit=True,
     using_wandb=False,
     zero_ablation=False,
-    ds=toks_int_values,
-    ref_ds=toks_int_values_other,
-    metric=metric,
-    second_metric=second_metric,
+    ds=things.validation_data,
+    ref_ds=things.validation_patch_data,
+    metric=things.validation_metric,
+    second_metric=None,
     verbose=True,
     use_pos_embed=use_pos_embed,
 )
@@ -364,7 +365,7 @@ if "acdc_corrs" not in locals() and not SKIP_ACDC: # this is slow, so run once
 # Do SP stuff
 def get_sp_corrs(
     experiment, 
-    model = tl_model,
+    model = things.tl_model,
     project_name: str = SP_PROJECT_NAME,
     pre_run_filter: Dict = SP_PRE_RUN_FILTER,
     run_filter: Callable[[Any], bool] = SP_RUN_FILTER,
@@ -441,7 +442,7 @@ def get_sixteen_heads_corrs(
     experiment = exp,
     project_name = SIXTEEN_HEADS_PROJECT_NAME,
     run_name = SIXTEEN_HEADS_RUN,
-    model= tl_model,
+    model= things.tl_model,
 ):
 # experiment = exp
 # project_name = SIXTEEN_HEADS_PROJECT_NAME
