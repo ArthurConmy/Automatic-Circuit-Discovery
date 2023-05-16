@@ -384,8 +384,15 @@ def get_sp_corrs(
     run_filter: Callable[[Any], bool] = SP_RUN_FILTER,
     clip = None,
 ):
-    if project_name is None:
-        return []
+# experiment = exp
+# model = tl_model
+# project_name = SP_PROJECT_NAME
+# pre_run_filter = SP_PRE_RUN_FILTER
+# run_filter = SP_RUN_FILTER
+# clip = None
+# if True:
+    # if project_name is None:
+    #     return []
 
     if clip is None:
         clip = 100_000
@@ -399,6 +406,7 @@ def get_sp_corrs(
     for run in tqdm(runs):
         if run_filter is None or run_filter(run):
             filtered_runs.append(run)
+
     cnt = 0
     corrs = []
     ret = []
@@ -406,31 +414,31 @@ def get_sp_corrs(
     verbose = True
 
     for run in tqdm(filtered_runs[:clip]):
-        df = pd.DataFrame(run.scan_history())
-
-        mask_scores_entries = get_col(df, "mask_scores")
+        # Instead of scanning the whole history, directly access the mask_scores metric
+        mask_scores_entries = run.history(keys=["mask_scores"], pandas=False)
         assert len(mask_scores_entries) > 0
         entry = mask_scores_entries[-1]
 
-        try:
-            nodes_to_mask_entries = get_col(df, "nodes_to_mask") # ???
-        except Exception as e:
-            print(e, "... was an error")
-            continue        
+        # try:
+        #     nodes_to_mask_entries = get_col(df, "nodes_to_mask") # ???
+        # except Exception as e:
+        #     print(e, "... was an error")
+        #     continue        
 
+        nodes_to_mask_entries = run.history(keys=["nodes_to_mask"], pandas=False)
         assert len(nodes_to_mask_entries) ==1, len(nodes_to_mask_entries)
-        nodes_to_mask_strings = nodes_to_mask_entries[0]
+        nodes_to_mask_strings = nodes_to_mask_entries[0]["nodes_to_mask"]
         print(nodes_to_mask_strings)
         nodes_to_mask_dict = [parse_interpnode(s) for s in nodes_to_mask_strings if parse_interpnode(s, verbose=verbose) is not None]
 
         if len(nodes_to_mask_dict) != len(nodes_to_mask_strings):
             verbose = False # ignore future errors
 
-        number_of_edges_entries = get_col(df, "number_of_edges")
+        number_of_edges_entries = run.history(keys=["number_of_edges"], pandas=False) # get_col(df, "number_of_edges")
         assert len(number_of_edges_entries) == 1, len(number_of_edges_entries)
         number_of_edges = number_of_edges_entries[0]
 
-        kl_divs = get_col(df, "test_kl_div")
+        kl_divs = run.history(keys=["test_kl_div"], pandas=False) # get_col(df, "test_kl_div")
         assert len(kl_divs) == 1, len(kl_divs)
         kl_div = kl_divs[0]
 

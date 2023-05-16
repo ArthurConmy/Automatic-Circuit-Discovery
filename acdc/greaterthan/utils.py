@@ -201,7 +201,6 @@ def get_greaterthan_true_edges(model):
                     continue
                 for ii, jj in tuple_to_hooks(i1, j1, outp=True):
                     for iii, jjj in tuple_to_hooks(i2, j2, outp=False): # oh god I am so sorry poor code reade
-                        print(iii, jjj, ii, jj)
                         corr.edges[iii][jjj][ii][jj].present = True
 
     ret =  OrderedDict({(t[0], t[1].hashable_tuple, t[2], t[3].hashable_tuple): e.present for t, e in corr.all_edges().items() if e.present})
