@@ -165,12 +165,18 @@ def kl_divergence(
     last_seq_element_only: bool = True,
     base_model_probs_last_seq_element_only: bool = False,
     return_one_element: bool = True,
+    end_positions: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
     # Note: we want base_model_probs_last_seq_element_only to remain False by default, because when the Docstring
     # circuit uses this, it already takes the last position before passing it in.
 
+    if last_seq_element_only and end_positions is not None:
+        raise ValueError("Can't have both of these true...")
+
     if last_seq_element_only:
         logits = logits[:, -1, :]
+    if end_positions is not None:
+        logits = logits[torch.arange(len(logits)), end_positions]
 
     if base_model_probs_last_seq_element_only:
         base_model_logprobs = base_model_logprobs[:, -1, :]
@@ -180,17 +186,15 @@ def kl_divergence(
 
     if mask_repeat_candidates is not None:
         assert kl_div.shape == mask_repeat_candidates.shape, (kl_div.shape, mask_repeat_candidates.shape)
-        denom = mask_repeat_candidates.long().sum()
-        kl_div = kl_div * mask_repeat_candidates
-        if return_one_element:
-            answer = kl_div.sum() / denom
-        else:
-            answer = kl_div
+        answer = kl_div[mask_repeat_candidates]
+    elif not last_seq_element_only:
+        assert kl_div.ndim == 2, kl_div.shape
+        answer = kl_div.view(-1)
     else:
-        if return_one_element:
-            answer = kl_div.mean()
-        else:
-            answer = kl_div
+        answer = kl_div
+
+    if return_one_element:
+        return answer.mean()
 
     return answer
 
@@ -219,15 +223,15 @@ def negative_log_probs(
             nll_all.shape,
             mask_repeat_candidates.shape,
         )
-        denom = mask_repeat_candidates.long().sum()
-        nll_all = nll_all * mask_repeat_candidates
-        answer = nll_all
-        if return_one_element:
-            answer = nll_all.sum() / denom
-
+        answer = nll_all[mask_repeat_candidates]
+    elif not last_seq_element_only:
+        assert nll_all.ndim == 2, nll_all.shape
+        answer = nll_all.view(-1)
     else:
-        if return_one_element:
-            answer = nll_all.mean()
+        answer = nll_all
+
+    if return_one_element:
+        return answer.mean()
 
     return answer
 
@@ -269,6 +273,33 @@ class MatchNLLMetric:
             return_one_element=self.return_one_element,
         )
 
+def logit_diff_metric(logits, correct_labels, wrong_labels, return_one_element: bool=True) -> torch.Tensor:
+    range = torch.arange(len(logits))
+    correct_logits = logits[range, -1, correct_labels]
+    incorrect_logits = logits[range, -1, wrong_labels]
+
+    # Note: negative sign so we minimize
+    # TODO de-duplicate with docstring/utils.py `raw_docstring_metric`
+    if return_one_element:
+        return -(correct_logits.mean() - incorrect_logits.mean())
+    else:
+        return -(correct_logits - incorrect_logits).view(-1)
+
+def frac_correct_metric(logits, correct_labels, wrong_labels, return_one_element: bool=True) -> torch.Tensor:
+    range = torch.arange(len(logits))
+    correct_logits = logits[range, -1, correct_labels]
+    incorrect_logits = logits[range, -1, wrong_labels]
+
+    # Neg so we maximize correct
+    if return_one_element:
+        return -(correct_logits > incorrect_logits).float().mean()
+    else:
+        return -(correct_logits > incorrect_logits).float().view(-1)
+
+
+
+
+
 # ----------------------------------
 # Random helpers for scraping
 # ----------------------------------
@@ -290,7 +321,7 @@ def extract_info(string):
     parent_list = None
     if parent_list_str:
         parent_list_items = parent_list_str.split(", ")
-        parent_list = [ast.literal_eval(item if item != "COL" else "None") for item in parent_list_items]
+        parent_list = [ast.literal_eval(item if item not in ["COL", ":"] else "None") for item in parent_list_items]
 
     # Extract current node info
     current_match = re.search(current_pattern, string)
@@ -299,7 +330,7 @@ def extract_info(string):
     current_list = None
     if current_list_str:
         current_list_items = current_list_str.split(", ")
-        current_list = [ast.literal_eval(item if item != "COL" else "None") for item in current_list_items]
+        current_list = [ast.literal_eval(item if item not in ["COL", ":"] else "None") for item in current_list_items]
 
     return parent_name, parent_list, current_name, current_list
 

@@ -4,9 +4,9 @@ import numpy as np
 from typing import List, Tuple
 from acdc.TLACDCInterpNode import TLACDCInterpNode
 from acdc.acdc_utils import TorchIndex, EdgeType
+import warnings
 
 def parse_interpnode(s: str) -> TLACDCInterpNode:
-
     try:
         name, idx = s.split("[")
         try:
@@ -158,3 +158,4 @@ def heads_to_nodes_to_mask(heads: List[Tuple[int, int]], return_dict=False):
 
     else:
         return [parse_interpnode(s) for s in nodes_to_mask_strings]
+

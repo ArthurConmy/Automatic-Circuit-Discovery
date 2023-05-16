@@ -9,19 +9,24 @@ from functools import partial
 from pathlib import Path
 from typing import Dict, List, Tuple
 import collections
+from acdc.greaterthan.utils import get_all_greaterthan_things
+from acdc.ioi.utils import get_all_ioi_things
 import huggingface_hub
+import gc
 
 import networkx as nx
 import numpy as np
-from acdc.docstring.utils import AllDocstringThings, get_all_docstring_things
+from acdc.docstring.utils import AllDataThings, get_all_docstring_things
 import pandas as pd
 import torch
 import torch.nn.functional as F
 import subnetwork_probing.transformer_lens.transformer_lens.utils as utils
+from acdc.tracr.utils import get_all_tracr_things
 from acdc.acdc_utils import EdgeType, TorchIndex
+from acdc.utils import reset_network
 from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from acdc.TLACDCInterpNode import TLACDCInterpNode
-from acdc.induction.utils import AllInductionThings, get_all_induction_things, get_mask_repeat_candidates
+from acdc.induction.utils import get_all_induction_things, get_mask_repeat_candidates
 from tqdm import tqdm
 from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformer import HookedTransformer
 from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformerConfig import HookedTransformerConfig
@@ -30,26 +35,29 @@ from subnetwork_probing.transformer_lens.transformer_lens.ioi_dataset import IOI
 import wandb
 
 
-def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACDCInterpNode], newv = False) -> TLACDCCorrespondence:
-    corr = TLACDCCorrespondence.setup_from_model(model)
+def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACDCInterpNode], use_pos_embed: bool = False, newv = False) -> TLACDCCorrespondence:
+    corr = TLACDCCorrespondence.setup_from_model(model, use_pos_embed=use_pos_embed)
+
+    additional_nodes_to_mask = []
 
     # If all of {qkv} is masked, also add its head child
     # to the list of nodes to mask
     head_parents = collections.defaultdict(lambda: 0)
     for node in nodes_to_mask:
-        if "_q" not in node.name and "_k" not in node.name and "_v" not in node.name:
-            continue
-        child_name = node.name.replace("_q", "_result").replace("_k", "_result").replace("_v", "_result")
-        head_parents[(child_name, node.index)] += 1
+        if node.name.endswith("_q") or node.name.endswith("_k") or node.name.endswith("_v"):
+            child_name = node.name.replace("_q", "_result").replace("_k", "_result").replace("_v", "_result")
+            head_parents[(child_name, node.index)] += 1
 
-    assert all([v <= 3 + 3*int(newv) for v in head_parents.values()])
+            # Forgot to add these in earlier versions of Subnetwork Probing, and so the edge counts were inflated
+            additional_nodes_to_mask.append(TLACDCInterpNode(child_name + "_input", node.index, EdgeType.ADDITION))
+
+    assert all([v <= 3 for v in head_parents.values()])
 
     for (child_name, child_index), count in head_parents.items():
-        if count == 3 + 3*int(newv):
+        if count == 3:
             nodes_to_mask.append(TLACDCInterpNode(child_name, child_index, EdgeType.ADDITION))
 
-    # TODO maybe check that all interpnodes were found?
-    for node in nodes_to_mask:
+    for node in nodes_to_mask + additional_nodes_to_mask:
         # Mark edges where this is child as not present
         rest2 = corr.edges[node.name][node.index]
         for rest3 in rest2.values():
@@ -103,13 +111,28 @@ def visualize_mask(model: HookedTransformer) -> tuple[int, list[TLACDCInterpNode
                 node_name = f"blocks.{layer_index}.attn.hook_{q_k_v}"
                 node_name_with_index = f"{node_name}[{head_index}]"
                 node_name_list.append(node_name_with_index)
-                node = TLACDCInterpNode(node_name, TorchIndex((None, None, head_index)), EdgeType.ADDITION)
+                node = TLACDCInterpNode(node_name, TorchIndex((None, None, head_index)),
+                                        incoming_edge_type=EdgeType.ADDITION)
 
                 mask_scores_for_names.append(mask_sample)
                 if mask_sample < 0.5:
                     nodes_to_mask.append(node)
 
-    assert len(mask_scores_for_names) == 3 * number_of_heads * number_of_layers
+        # MLP
+        for node_name, edge_type in [
+            (f"blocks.{layer_index}.hook_mlp_out", EdgeType.PLACEHOLDER),
+            (f"blocks.{layer_index}.hook_resid_mid", EdgeType.ADDITION),
+        ]:
+            node_name_list.append(node_name)
+            node = TLACDCInterpNode(node_name, TorchIndex([None]), incoming_edge_type=edge_type)
+            total_nodes += 1
+
+        mask_sample = layer.hook_mlp_out.sample_mask().cpu().item()
+        mask_scores_for_names.append(mask_sample)
+        if mask_sample < 0.5:
+            nodes_to_mask.append(node)
+
+    # assert len(mask_scores_for_names) == 3 * number_of_heads * number_of_layers
     log_plotly_bar_chart(x=node_name_list, y=mask_scores_for_names)
     node_count = total_nodes - len(nodes_to_mask)
     return node_count, nodes_to_mask
@@ -142,6 +165,7 @@ def do_random_resample_caching(
         layer.attn.hook_q.is_caching = True
         layer.attn.hook_k.is_caching = True
         layer.attn.hook_v.is_caching = True
+        layer.hook_mlp_out.is_caching = True
 
     with torch.no_grad():
         outs = model(train_data)
@@ -150,6 +174,7 @@ def do_random_resample_caching(
         layer.attn.hook_q.is_caching = False
         layer.attn.hook_k.is_caching = False
         layer.attn.hook_v.is_caching = False
+        layer.hook_mlp_out.is_caching = False
 
     return outs
 
@@ -158,10 +183,11 @@ def do_zero_caching(model: HookedTransformer) -> None:
         layer.attn.hook_q.cache = None
         layer.attn.hook_k.cache = None
         layer.attn.hook_v.cache = None
+        layer.hook_mlp_out.cache = None
 
 
 def train_induction(
-    args, induction_model: HookedTransformer, all_task_things: AllInductionThings | AllDocstringThings,
+    args, induction_model: HookedTransformer, all_task_things: AllDataThings,
 ):
     epochs = args.epochs
     lambda_reg = args.lambda_reg
@@ -177,28 +203,19 @@ def train_induction(
         dir=args.wandb_dir,
         mode=args.wandb_mode,
     )
-
-    if isinstance(all_task_things, AllInductionThings):
-        test_metric_fns = {args.loss_type: all_task_things.test_metric}
-    else:
-        test_metric_fns = all_task_things.test_metrics
-
+    test_metric_fns = all_task_things.test_metrics
 
     print("Reset subject:", args.reset_subject)
     if args.reset_subject:
-        assert isinstance(all_task_things, AllInductionThings)
-        random_model_file = huggingface_hub.hf_hub_download(
-            repo_id="agaralon/acdc_reset_models", filename="induction_random_model.pt"
-        )
-        reset_state_dict = torch.load(random_model_file, map_location=args.device)
-        induction_model.load_state_dict(reset_state_dict)
-        del reset_state_dict
+        reset_network(args.task, args.device, induction_model)
+        gc.collect()
+        torch.cuda.empty_cache()
         induction_model.freeze_weights()
 
         reset_logits = do_random_resample_caching(induction_model, all_task_things.validation_data)
         print("Reset validation metric: ", all_task_things.validation_metric(reset_logits))
         reset_logits = do_random_resample_caching(induction_model, all_task_things.test_data)
-        print("Reset test metric: ", all_task_things.test_metric(reset_logits))
+        print("Reset test metric: ", {k: v(reset_logits).item() for k, v in all_task_things.test_metrics.items()})
 
     # one parameter per thing that is masked
     mask_params = [
@@ -429,12 +446,26 @@ def get_transformer_config():
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    if args.task == "induction":
+    if args.task == "ioi":
+        all_task_things = get_all_ioi_things(
+            num_examples=args.num_examples,
+            device=torch.device(args.device),
+            metric_name=args.loss_type,
+        )
+    elif args.task == "induction":
         all_task_things = get_all_induction_things(
             args.num_examples,
             args.seq_len,
             device=torch.device(args.device),
             metric=args.loss_type,
+        )
+    elif args.task == "tracr-reverse":
+        all_task_things = get_all_tracr_things(
+            task="reverse", metric_name=args.loss_type, num_examples=args.num_examples, device=torch.device(args.device)
+        )
+    elif args.task == "tracr-proportion":
+        all_task_things = get_all_tracr_things(
+            task="proportion", metric_name=args.loss_type, num_examples=args.num_examples, device=torch.device(args.device)
         )
     elif args.task == "docstring":
         all_task_things = get_all_docstring_things(
@@ -443,6 +474,12 @@ if __name__ == "__main__":
             device=torch.device(args.device),
             metric_name=args.loss_type,
             correct_incorrect_wandb=True,
+        )
+    elif args.task == "greaterthan":
+        all_task_things = get_all_greaterthan_things(
+            num_examples=args.num_examples,
+            metric_name=args.loss_type,
+            device=args.device,
         )
     else:
         raise ValueError(f"Unknown task {args.task}")

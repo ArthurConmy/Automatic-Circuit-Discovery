@@ -37,17 +37,17 @@ from acdc.acdc_utils import kl_divergence
 
 
 @dataclasses.dataclass(frozen=False)
-class AllDocstringThings:
+class AllDataThings:
     tl_model: HookedTransformer
     validation_metric: Callable[[torch.Tensor], torch.Tensor]
     validation_data: torch.Tensor
-    validation_labels: torch.Tensor
-    validation_mask: NoneType
+    validation_labels: Optional[torch.Tensor]
+    validation_mask: Optional[torch.Tensor]
     validation_patch_data: torch.Tensor
     test_metrics: dict[str, Any]
     test_data: torch.Tensor
-    test_labels: torch.Tensor
-    test_mask: NoneType
+    test_labels: Optional[torch.Tensor]
+    test_mask: Optional[torch.Tensor]
     test_patch_data: torch.Tensor
 
 def get_docstring_model(device="cuda", sixteen_heads=False):
@@ -71,7 +71,7 @@ def get_all_docstring_things(
     correct_incorrect_wandb=True,
     sixteen_heads=False,
     return_one_element=True,
-) -> AllDocstringThings:
+) -> AllDataThings:
     tl_model = get_docstring_model(device=device, sixteen_heads=sixteen_heads)
 
     docstring_ind_prompt_kwargs = dict(
@@ -228,7 +228,7 @@ def get_all_docstring_things(
         ),
     }
 
-    return AllDocstringThings(
+    return AllDataThings(
         tl_model=tl_model,
         validation_metric=validation_metric,
         validation_data=validation_data,

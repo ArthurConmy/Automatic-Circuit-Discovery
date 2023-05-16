@@ -621,3 +621,18 @@ def get_dataset(dataset_name: str, **kwargs) -> Dataset:
     else:
         raise ValueError(f"Dataset {dataset_name} not supported")
     return dataset
+
+
+# %%
+def reset_network(task: str, device, model: torch.nn.Module) -> None:
+    filename = {
+        "ioi": "ioi_reset_heads_neurons.pt",
+        "tracr-reverse": "tracr_reverse_reset_heads_neurons.pt",
+        "tracr-proportion": "tracr_proportion_reset_heads_neurons.pt",
+        "induction": "induction_reset_heads_neurons.pt",
+        "docstring": "docstring_reset_heads_neurons.pt",
+        "greaterthan": "greaterthan_reset_heads_neurons.pt",
+    }[task]
+    random_model_file = hf_hub_download(repo_id="agaralon/acdc_reset_models", filename=filename)
+    reset_state_dict = torch.load(random_model_file, map_location=device)
+    model.load_state_dict(reset_state_dict, strict=False)

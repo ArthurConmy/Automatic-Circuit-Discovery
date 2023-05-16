@@ -95,7 +95,9 @@ class GlobalCache: # this dict stores the activations from the forward pass
         # move all the parameters
         for cache in caches: # mutable means this works..
             for name in cache:
-                cache[name] = cache[name].to(device)
+                cache_keys = list(cache.keys())
+                for k in cache_keys:
+                    cache[k].to(device) #  = cache[name].to(device)
 
         return self
 
@@ -217,8 +219,12 @@ class HookedTransformer(HookedRootModule):
     def setup_sixteen_heads(self):
         for layer_idx in range(self.cfg.n_layers):
             self.hook_dict[f"blocks.{layer_idx}.attn.hook_result"].add_xi_parameter(shape = [1, 1, self.cfg.n_heads, 1])
-
             self.hook_dict[f"blocks.{layer_idx}.hook_mlp_out"].add_xi_parameter(shape = [])
+
+    def xis_to_device(self, device):
+        for hook_point in self.hook_dict.values():
+            if "xi" in dir(hook_point):
+                hook_point.xi.to(device)
 
     def check_and_add_hook(self, hook_point, hook_point_name, hook, dir="fwd", is_permanent=False, prepend=False) -> None:
         if hook_point_name.endswith("attn.hook_result"):
@@ -686,6 +692,12 @@ class HookedTransformer(HookedRootModule):
         
         if self.global_cache is not None:
             self.global_cache.to(device_or_dtype)
+
+        if self.cfg.sixteen_heads: 
+            if "hook_dict" in dir(self): # some lazy init is brutal
+                self.xis_to_device(device_or_dtype)
+            else:
+                warnings.warn("Warning: sixteen_heads is set to True, but the model has not been initialized yet. This will be fixed in a future version.")
 
         return nn.Module.to(self, device_or_dtype)
 

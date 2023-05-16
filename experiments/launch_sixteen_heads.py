@@ -2,394 +2,298 @@
 
 """Currently a notebook so that I can develop the 16 Heads tests fast"""
 
+import math
 from IPython import get_ipython
+
 if get_ipython() is not None:
     get_ipython().run_line_magic('load_ext', 'autoreload')
     get_ipython().run_line_magic('autoreload', '2')
 
+import argparse
+import gc
 from copy import deepcopy
-from subnetwork_probing.train import correspondence_from_mask
-from typing import (
-    List,
-    Tuple,
-    Dict,
-    Any,
-    Optional,
-    Union,
-    Callable,
-    TypeVar,
-    Iterable,
-    Set,
-)
-import pickle
+
+import torch
 import wandb
-import IPython
-import torch
-from pathlib import Path
-from tqdm import tqdm
-import random
-from functools import partial
-import json
-import pathlib
-import warnings
-import time
-import networkx as nx
-import os
-import torch
-import huggingface_hub
-import graphviz
-from enum import Enum
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-import numpy as np
-import einops
-from tqdm import tqdm
-import yaml
-from transformers import AutoModelForCausalLM, AutoConfig, AutoTokenizer
-import matplotlib.pyplot as plt
-import plotly.express as px
-import plotly.io as pio
-from plotly.subplots import make_subplots
-import plotly.graph_objects as go
-from acdc.munging_utils import heads_to_nodes_to_mask
-from acdc.hook_points import HookedRootModule, HookPoint
-from acdc.graphics import show
-from acdc.HookedTransformer import (
-    HookedTransformer,
-)
-from acdc.tracr.utils import get_tracr_data, get_tracr_model_input_and_tl_model
-from acdc.docstring.utils import get_all_docstring_things, get_docstring_model, get_docstring_subgraph_true_edges
+import tqdm
+
+from acdc import HookedTransformer, TLACDCCorrespondence, TLACDCInterpNode
 from acdc.acdc_utils import (
-    make_nd_dict,
-    shuffle_tensor,
-    cleanup,
-    ct,
-    TorchIndex,
     Edge,
     EdgeType,
-)  # these introduce several important classes !!!
-from acdc.TLACDCCorrespondence import TLACDCCorrespondence
-from acdc.TLACDCInterpNode import TLACDCInterpNode
-from acdc.TLACDCExperiment import TLACDCExperiment
-from collections import defaultdict, deque, OrderedDict
-from acdc.acdc_utils import (
+    TorchIndex,
+    cleanup,
+    ct,
     kl_divergence,
+    make_nd_dict,
+    shuffle_tensor,
 )
-from acdc.ioi.utils import (
-    get_ioi_data,
-    get_gpt2_small,
-)
+from acdc.utils import reset_network
+from acdc.docstring.utils import get_all_docstring_things
+from acdc.greaterthan.utils import get_all_greaterthan_things
 from acdc.induction.utils import (
     get_all_induction_things,
-    get_model,
-    get_validation_data,
     get_good_induction_candidates,
     get_mask_repeat_candidates,
+    get_validation_data,
 )
-from acdc.greaterthan.utils import get_all_greaterthan_things
-from acdc.graphics import (
-    build_colorscheme,
-    show,
-)
-import argparse
+from acdc.ioi.utils import get_all_ioi_things
+from acdc.munging_utils import heads_to_nodes_to_mask
+from acdc.TLACDCExperiment import TLACDCExperiment
+from acdc.TLACDCInterpNode import TLACDCInterpNode
+from acdc.tracr.utils import get_all_tracr_things
+from subnetwork_probing.train import correspondence_from_mask
+from notebooks.emacs_plotly_render import set_plotly_renderer
+
+from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformer import HookedTransformer as SPHookedTransformer
+from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformerConfig import HookedTransformerConfig as SPHookedTransformerConfig
+from subnetwork_probing.train import do_random_resample_caching, do_zero_caching
+from subnetwork_probing.transformer_lens.transformer_lens.hook_points import MaskedHookPoint
+
+set_plotly_renderer("emacs")
 
 #%%
 
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
-parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr (no guarentee I implement all...)')
+parser.add_argument('--task', type=str, required=True, help='Choose a task from the available options: ioi, docstring, induction, tracr (no guarentee I implement all...)')
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
-parser.add_argument('--wandb-entity-name', type=str, required=False, default="remix_school-of-rock", help='Value for WANDB_ENTITY_NAME')
-parser.add_argument('--wandb-group-name', type=str, required=False, default="default", help='Value for WANDB_GROUP_NAME')
-parser.add_argument('--wandb-project-name', type=str, required=False, default="acdc", help='Value for WANDB_PROJECT_NAME')
+parser.add_argument('--wandb-entity', type=str, required=False, default="remix_school-of-rock", help='Value for WANDB_ENTITY_NAME')
+parser.add_argument('--wandb-group', type=str, required=False, default="default", help='Value for WANDB_GROUP_NAME')
+parser.add_argument('--wandb-project', type=str, required=False, default="acdc", help='Value for WANDB_PROJECT_NAME')
 parser.add_argument('--wandb-run-name', type=str, required=False, default=None, help='Value for WANDB_RUN_NAME')
+parser.add_argument("--wandb-dir", type=str, default="/tmp/wandb")
+parser.add_argument("--wandb-mode", type=str, default="online")
 parser.add_argument('--device', type=str, default="cuda")
+parser.add_argument('--reset-network', type=int, default=0, help="Whether to reset the network we're operating on before running interp on it")
+parser.add_argument('--metric', type=str, default="kl_div", help="Which metric to use for the experiment")
+parser.add_argument('--seed', type=int, default=1234)
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("--task docstring --wandb-run-name docstring_sixteen_heads".split())
+    args = parser.parse_args([
+        "--task=tracr-proportion",
+        "--wandb-mode=offline",
+        "--wandb-dir=/tmp/wandb",
+        "--wandb-entity=remix_school-of-rock",
+        "--wandb-group=default",
+        "--wandb-project=acdc",
+        "--wandb-run-name=notebook-testing",
+        "--device=cpu",
+        "--reset-network=0",
+        "--metric=kl_div",
+    ])
 else:
     args = parser.parse_args()
 
+
+wandb.init(
+    name=args.wandb_run_name,
+    project=args.wandb_project,
+    entity=args.wandb_entity,
+    group=args.wandb_group,
+    config=args,
+    dir=args.wandb_dir,
+    mode=args.wandb_mode,
+)
+
 #%%
-
-TASK = args.task
-ZERO_ABLATION = True if args.zero_ablation else False
-WANDB_ENTITY_NAME = args.wandb_entity_name
-WANDB_PROJECT_NAME = args.wandb_project_name
-WANDB_RUN_NAME = args.wandb_run_name
-WANDB_GROUP_NAME = args.wandb_group_name
-DEVICE = args.device
-DO_CHECKING_RECALC = False # testing only
-
-#%%
-
-"""Mostly copied from acdc/main.py"""
-
-if TASK == "ioi":
-    num_examples = 100 
-    tl_model = get_gpt2_small(device=DEVICE, sixteen_heads=True)
-    toks_int_values, toks_int_values_other, metric = get_ioi_data(tl_model, num_examples, kl_return_one_element=False)
-    assert len(toks_int_values) == len(toks_int_values_other) == num_examples, (len(toks_int_values), len(toks_int_values_other), num_examples)
-    seq_len = toks_int_values.shape[1]
-    model_getter = get_gpt2_small
-
-if TASK == "greaterthan":
+if args.task == "ioi":
     num_examples = 100
-    tl_model, toks_int_values, prompts, metric = get_all_greaterthan_things(num_examples=num_examples, device=DEVICE, sixteen_heads=True, return_one_element=False)
-    toks_int_values_other = toks_int_values.clone()
-    toks_int_values_other[:, 7] = 486 # replace with 01
-    seq_len = toks_int_values.shape[1]
-    model_getter = get_gpt2_small
+    things = get_all_ioi_things(num_examples=num_examples, device=args.device, metric_name=args.metric)
+elif args.task == "tracr-reverse":
+    num_examples = 6
+    things = get_all_tracr_things(task="reverse", metric_name=args.metric, num_examples=num_examples, device=args.device)
+elif args.task == "tracr-proportion":
+    num_examples = 50
+    things = get_all_tracr_things(task="proportion", metric_name=args.metric, num_examples=num_examples, device=args.device)
+elif args.task == "induction":
+    num_examples = 5
+    seq_len = 300
+    # TODO initialize the `tl_model` with the right model
+    things = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=args.device, metric=args.metric)
 
-elif TASK == "docstring":
+elif args.task == "docstring":
     num_examples = 50
     seq_len = 41
-    docstring_things = get_all_docstring_things(
-        num_examples=num_examples, 
-        seq_len=seq_len,
-        device=DEVICE,
-        metric_name="kl_div", 
-        correct_incorrect_wandb=True,
-        sixteen_heads=True,
-        return_one_element=False,
-    )
-    tl_model, toks_int_values, toks_int_values_other = docstring_things.tl_model, docstring_things.validation_data, docstring_things.validation_patch_data
-
-    metric = docstring_things.validation_metric # we take this as metric, because it splits
-
-    test_metric_fns = docstring_things.test_metrics
-    test_metric_data = docstring_things.test_data
-
-    model_getter = get_docstring_model
-
-elif TASK == "induction":
-    raise NotImplementedError("Induction has same sentences with multiple places we take loss / KL divergence; fiddlier implementation")
-
-# note to self: turn of split_qkv for less OOM
-
+    things = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=args.device,
+                                                metric_name=args.metric, correct_incorrect_wandb=True)
+elif args.task == "greaterthan":
+    num_examples = 100
+    things = get_all_greaterthan_things(num_examples=num_examples, metric_name=args.metric, device=args.device)
 else:
-    raise NotImplementedError("TODO")
+    raise ValueError(f"Unknown task {args.task}")
 
-# %%
+# %% load the model into a Subnetwork-Probing model.
+# We don't use the sixteen_heads=True argument any more, because we want to keep qkv separated.
 
-assert not tl_model.global_cache.sixteen_heads_config.forward_pass_enabled
 
+kwargs = dict(**things.tl_model.cfg.__dict__)
+del kwargs["use_split_qkv_input"]
+del kwargs["use_global_cache"]
+
+cfg = SPHookedTransformerConfig(**kwargs)
+model = SPHookedTransformer(cfg, is_masked=True)
+_acdc_model = things.tl_model
+model.load_state_dict(_acdc_model.state_dict(), strict=False)
+model = model.to(args.device)
+
+if args.reset_network:
+    assert False, "seems not to work"
+    with torch.no_grad():
+        reset_network(args.task, args.device, model)
+        reset_network(args.task, args.device, _acdc_model)
+        gc.collect()
+        torch.cuda.empty_cache()
+
+
+class SimpleMaskedHookPoint(MaskedHookPoint):
+    def sample_mask(self, *args, **kwargs):
+        # Directly return the scores instead of passing them through a sigmoid
+        return self.mask_scores
+
+for module in model.modules():
+    if isinstance(module, MaskedHookPoint):
+        module.__class__ = SimpleMaskedHookPoint
+
+def replace_masked_hook_points(model):
+    for n, c in model.named_children():
+        if isinstance(c, MaskedHookPoint):
+            setattr(model, n, SimpleMaskedHookPoint(mask_shape=c.mask_scores.shape, name=c.name, is_mlp=c.is_mlp).to(args.device))
+        else:
+            replace_masked_hook_points(c)
 with torch.no_grad():
-    _, corrupted_cache = tl_model.run_with_cache(
-        toks_int_values_other,
-    )
-corrupted_cache.to("cpu")
-tl_model.zero_grad()
-tl_model.global_cache.second_cache = corrupted_cache
+    replace_masked_hook_points(model)
+model.freeze_weights()
 
-#%%
-# [markdown]
-# <h1>Try a demo backwards pass of the model</h1>
+# Set the masks to 1, so nothing is masked
+with torch.no_grad():
+    for n, p in model.named_parameters():
+        if n.endswith("mask_scores"):
+            p.fill_(1)
 
-tl_model.global_cache.sixteen_heads_config.forward_pass_enabled = True
-clean_cache = tl_model.add_caching_hooks(
-    # toks_int_values,
-    incl_bwd=True,
-)
-clean_logits = tl_model(toks_int_values)
-metric_result = metric(clean_logits)
-assert list(metric_result.shape) == [num_examples], metric_result.shape
-metric_result = metric_result.sum() / len(metric_result)
-metric_result.backward(retain_graph=True)
-
-#%%
-
-keys = []
-for layer_idx in range(tl_model.cfg.n_layers):
-    for head_idx in range(tl_model.cfg.n_heads):
-        keys.append((layer_idx, head_idx))
-
-results = {
-    (layer_idx, head_idx): torch.zeros(size=(num_examples,))
-    for layer_idx, head_idx in keys
-}
-
-# %%
-
-kls = {
-    (layer_idx, head_idx): torch.zeros(size=(num_examples,))
-    for layer_idx, head_idx in results.keys()
-}
-
-from tqdm import tqdm
-
-for i in tqdm(range(num_examples)):
-    tl_model.zero_grad()
-    tl_model.reset_hooks()
-    clean_cache = tl_model.add_caching_hooks(names_filter=lambda name: "hook_result" in name, incl_bwd=True)
-    clean_logits = tl_model(toks_int_values)
-    kl_result = metric(clean_logits)[i]
-    kl_result.backward(retain_graph=True)
-
-    for layer_idx in range(tl_model.cfg.n_layers):
-        fwd_hook_name = f"blocks.{layer_idx}.attn.hook_result"
-
-        for head_idx in range(tl_model.cfg.n_heads):
-            g = (
-                tl_model.hook_dict[fwd_hook_name]
-                .xi.grad[0, 0, head_idx, 0]
-                .norm()
-                .item()
-            )
-            kls[(layer_idx, head_idx)][i] = g
-
-    tl_model.zero_grad()
-    tl_model.reset_hooks()
-    del clean_cache
-    del clean_logits
-    import gc; gc.collect()
+# Check that the model's outputs are the same
+with torch.no_grad():
+    expected = _acdc_model(things.validation_data).cpu()
+    del _acdc_model
+    things.tl_model = None
+    gc.collect()
     torch.cuda.empty_cache()
 
-for k in kls:
-    kls[k].to("cpu")
+    actual = model(things.validation_data).cpu()
+    gc.collect()
+    torch.cuda.empty_cache()
 
-#%%
+    torch.testing.assert_allclose(
+        actual, expected,
+        atol=1e-3,
+        rtol=1e-2,
+    )
 
-if DO_CHECKING_RECALC:
-    for i in tqdm(range(num_examples)):
-        tl_model.zero_grad()
-        tl_model.reset_hooks()
-
-        clean_cache = tl_model.add_caching_hooks(incl_bwd=True)
-        clean_logits = tl_model(toks_int_values)
-        kl_result = metric(clean_logits)[i]
-        kl_result.backward(retain_graph=True)
-
-        for layer_idx in range(tl_model.cfg.n_layers):
-            fwd_hook_name = f"blocks.{layer_idx}.attn.hook_result"
-            bwd_hook_name = f"blocks.{layer_idx}.attn.hook_result_grad"
-
-            cur_results = torch.abs( # TODO implement abs and not abs???
-                torch.einsum(
-                    "bshd,bshd->bh",
-                    clean_cache[bwd_hook_name], # gradient
-                    clean_cache[fwd_hook_name]- (0.0 if ZERO_ABLATION else corrupted_cache[fwd_hook_name].to(DEVICE)),
-                )
-            )
-
-            for head_idx in range(tl_model.cfg.n_heads):
-                results_entry = cur_results[i, head_idx].item()
-                results[(layer_idx, head_idx)][i] = results_entry
-
-        del clean_cache
-        del clean_logits
-        tl_model.reset_hooks()
-        tl_model.zero_grad()
-        torch.cuda.empty_cache()
-        import gc; gc.collect()
-
-    for k in results:
-        results[k].to("cpu")
-
-    for k in results:
-        print(k, results[k].norm().item(), kls[k].norm().item())  # should all be close!!!
-        if k[1] == None: continue
-        assert torch.allclose(results[k], kls[k]) # oh lol we forgot the MLPs ... and then later I remove these as I don't think HISP is using them
-
-#%%
-
-kl_dict = deepcopy(kls)
-scores_list = torch.zeros(size=(tl_model.cfg.n_layers, tl_model.cfg.n_heads))
-mask_list = []
-for layer_idx in range(tl_model.cfg.n_layers):
-    for head_idx in range(tl_model.cfg.n_heads):
-        score = kl_dict[(layer_idx, head_idx)].sum()
-        scores_list[layer_idx, head_idx] = score
-
-# normalize by L2 of the layers
-l2_norms = scores_list.norm(dim=1).unsqueeze(-1)
-scores_list = scores_list / l2_norms
-
-all_heads = []
-for layer_idx in range(tl_model.cfg.n_layers):
-    for head_idx in range(tl_model.cfg.n_heads):
-        all_heads.append((layer_idx, head_idx))
-
-# sort both lists by scores
-sorted_indices = sorted(all_heads, key=lambda x: scores_list[x], reverse=True)
-
-#%%
-
-# reload in a TLModel that is more memory hungry 
-# but does not use backwards pass things
-
-del tl_model
-tl_model = model_getter(device=DEVICE, sixteen_heads=False)
-
-#%%
-
-with open(__file__, "r") as f:
-    notes = f.read()
-exp = TLACDCExperiment(
-    model=tl_model,
-    threshold=100_000,
-    using_wandb=True, # for now
-    wandb_entity_name=WANDB_ENTITY_NAME,
-    wandb_project_name=WANDB_PROJECT_NAME,
-    wandb_run_name=WANDB_RUN_NAME,
-    wandb_group_name=WANDB_GROUP_NAME,
-    wandb_notes=notes,
-    zero_ablation=ZERO_ABLATION,
-    ds=toks_int_values,
-    ref_ds=toks_int_values_other,
-    metric=lambda x: torch.tensor([-100_000.9987]), # oh grr multieleme : ( 
-    second_metric=None,
-    verbose=True,
-    hook_verbose=False,
-    add_sender_hooks=True,
-    add_receiver_hooks=False,
-    remove_redundant=False,
-)
-exp.setup_model_hooks( # so we have complete control over connections
-    add_sender_hooks=True,
-    add_receiver_hooks=True,
-    doing_acdc_runs=False,
-)
 
 # %%
 
-max_edges = exp.count_no_edges()
-exp.remove_all_non_attention_connections() # TODO test this, refactored as a method
+prune_scores = {n: torch.zeros_like(c.mask_scores) for n, c in model.named_modules() if isinstance(c, SimpleMaskedHookPoint)}
+
+if model.cfg.d_mlp == -1:
+    # Attention-only model
+    for k in list(prune_scores.keys()):
+        if "mlp" in k:
+            del prune_scores[k]
+
+per_example_metric = things.validation_metric(model(things.validation_data), return_one_element=False)
+assert per_example_metric.ndim == 1
+
+for i in tqdm.trange(len(per_example_metric)):
+    # Calculate the loss for a single example and do a backwards pass to all the mask_scores
+    model.zero_grad()
+    per_example_metric[i].backward(retain_graph=True)
+
+    for n, c in model.named_modules():
+        if isinstance(c, SimpleMaskedHookPoint):
+            if c.mask_scores.grad is not None:
+                prune_scores[n] += c.mask_scores.grad.abs().detach()
+
+#%%
+
+nodes_names_indices = []
+for layer_i in range(model.cfg.n_layers):
+    keys = [
+        f"blocks.{layer_i}.attn.hook_{qkv}" for qkv in ["q", "k", "v"]
+    ] + [f"blocks.{layer_i}.hook_mlp_out"]
+    keys = [k for k in keys if k in prune_scores]
+
+    layer_vector = torch.cat([prune_scores[k].flatten() for k in keys])
+    norm = layer_vector.norm()
+
+    # normalize by L2 of the layers
+    for k in keys:
+        prune_scores[k] /= norm
+
+    for qkv in ["q", "k", "v"]:
+        for head_i in range(model.cfg.n_heads):
+            name = f"blocks.{layer_i}.attn.hook_{qkv}"
+            nodes = [TLACDCInterpNode(name, TorchIndex((None, None, head_i)), incoming_edge_type=EdgeType.ADDITION),
+                     TLACDCInterpNode(f"blocks.{layer_i}.hook_{qkv}_input", TorchIndex((None, None, head_i)), incoming_edge_type=EdgeType.PLACEHOLDER)
+                     ]
+            nodes_names_indices.append((nodes, name, head_i))
+
+    if model.cfg.d_mlp != -1:
+        name = f"blocks.{layer_i}.hook_mlp_out"
+        mlp_nodes = [
+            TLACDCInterpNode(name, TorchIndex([None]), incoming_edge_type=EdgeType.PLACEHOLDER),
+            TLACDCInterpNode(f"blocks.{layer_i}.hook_resid_mid", TorchIndex([None]), incoming_edge_type=EdgeType.ADDITION),
+        ]
+        nodes_names_indices.append((mlp_nodes, name, slice(None)))
+
+
+# sort by scores
+nodes_names_indices.sort(key=lambda x: prune_scores[x[1]][x[2]].item(), reverse=True)
+
+# %%
+serializable_nodes_names_indices = [(list(map(str, nodes)), name, repr(idx), prune_scores[name][idx].item()) for nodes, name, idx in nodes_names_indices]
+wandb.log({"nodes_names_indices": serializable_nodes_names_indices})
 
 # %%
 
-edges_to_metric = {}
+def test_metrics(logits, score):
+    d = {"test_"+k: fn(logits).mean().item() for k, fn in things.test_metrics.items()}
+    d["score"] = score
+    return d
 
-for nodes_present in tqdm(range(len(sorted_indices) + 1)):
+# Log metrics without ablating anything
+logits = do_random_resample_caching(model, things.test_data)
+wandb.log(test_metrics(logits, math.inf))
 
-    # measure performance
-    clean_logits = tl_model(toks_int_values)
-    metric_result = metric(clean_logits).mean()
-    cur_edges = exp.count_no_edges()
-    edges_to_metric[cur_edges] = metric_result.item()
+# %%
 
-    # # then add next node
-    layer_idx, head_idx = sorted_indices[nodes_present]
-    # exp.add_back_head(layer_idx, head_idx)
-    nodes_to_mask = heads_to_nodes_to_mask(sorted_indices[nodes_present:])
+do_random_resample_caching(model, things.test_patch_data)
+if args.zero_ablation:
+    do_zero_caching(model)
 
-    corr = correspondence_from_mask(
-        nodes_to_mask=nodes_to_mask,
-        model = tl_model,
-    )
-    for t, e in corr.all_edges().items():
-        exp.corr.edges[t[0]][t[1]][t[2]][t[3]].present = e.present
+nodes_to_mask = []
+for nodes, hook_name, idx in tqdm.tqdm(nodes_names_indices):
+    nodes_to_mask += nodes
+    corr = correspondence_from_mask(model, nodes_to_mask, use_pos_embed=False, newv=False)
+    for e in corr.all_edges().values():
+        e.effect_size = 1.0
 
-    wandb.log(
-        {
-            "layer_idx": layer_idx,
-            "head_idx": head_idx, # these are the NEXT things to be added..
-            "nodes": nodes_present,
-            "metric": metric_result.item(),
-            "edges": cur_edges,
-        }
-    )
+    score = prune_scores[hook_name][idx].item()
+
+    # Delete this module
+    done = False
+    for n, c in model.named_modules():
+        if n == hook_name:
+            assert not done, f"Found {hook_name}[{idx}]twice"
+            with torch.no_grad():
+                c.mask_scores[idx] = 0
+            done = True
+    assert done, f"Could not find {hook_name}[{idx}]"
+
+    to_log_dict = test_metrics(model(things.test_data), score)
+    to_log_dict["number_of_edges"] = corr.count_no_edges()
+
+    print(to_log_dict)
+    wandb.log(to_log_dict)
 
 # %%
 

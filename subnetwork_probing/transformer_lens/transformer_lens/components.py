@@ -609,7 +609,7 @@ class MLP(nn.Module):
         # self.hook_pre = MaskedHookPoint(
         #     mask_shape=(self.cfg.d_mlp, 1), is_mlp=True
         # )  # TODO: get Arthur to check this
-        self.hook_post = HookPoint()  # [batch, pos, d_mlp]
+        self.hook_post = HookPoint()
 
         if self.cfg.act_fn == "relu":
             self.act_fn = F.relu
@@ -693,7 +693,10 @@ class TransformerBlock(nn.Module):
             self.mlp = MLP(cfg)
 
         self.hook_attn_out = HookPoint()  # [batch, pos, d_model]
-        self.hook_mlp_out = HookPoint()  # [batch, pos, d_model]
+        if is_masked:
+            self.hook_mlp_out = MaskedHookPoint(mask_shape=(1,), is_mlp=True, name=f"mlp_{block_index}")  # [batch, pos, d_mlp]
+        else:
+            self.hook_mlp_out = HookPoint()  # [batch, pos, d_model]
         self.hook_resid_pre = HookPoint()  # [batch, pos, d_model]
         if not self.cfg.attn_only and not self.cfg.parallel_attn_mlp:
             self.hook_resid_mid = HookPoint()  # [batch, pos, d_model]
