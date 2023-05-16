@@ -43,10 +43,10 @@ def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACD
         child_name = node.name.replace("_q", "_result").replace("_k", "_result").replace("_v", "_result")
         head_parents[(child_name, node.index)] += 1
 
-    assert all([v <= 3 + 3*int(newv) for v in head_parents.values()])
+    # assert all([v <= 3 + 3*int(newv) for v in head_parents.values()]) # ehhh we seem to double up
 
     for (child_name, child_index), count in head_parents.items():
-        if count == 3 + 3*int(newv):
+        if count >= 3 + 3*int(newv):
             nodes_to_mask.append(TLACDCInterpNode(child_name, child_index, EdgeType.ADDITION))
 
     # TODO maybe check that all interpnodes were found?

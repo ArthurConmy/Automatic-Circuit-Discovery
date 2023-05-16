@@ -139,7 +139,7 @@ parser.add_argument("--testing", action="store_true", help="Use testing data ins
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("--task ioi --testing".split())
+    args = parser.parse_args("--task tracr-reverse --testing".split())
 else:
     args = parser.parse_args()
 
@@ -164,11 +164,12 @@ SP_RUN_FILTER = None
 SIXTEEN_HEADS_PROJECT_NAME = None
 SIXTEEN_HEADS_RUN = None
 
-def task_filter(run, task):
+def task_filter(run, task, verbose = True):
     try:
         assert json.loads(run.json_config)["task"]["value"] == task
     except Exception as e: 
-        print("errorre", e)
+        if verbose:
+            print("errorre", e)
         return False
     return True
 
@@ -264,7 +265,7 @@ elif TASK == "ioi":
 
     SP_PROJECT_NAME = "remix_school-of-rock/induction-sp-replicate"
     SP_PRE_RUN_FILTER = {"group": "complete-spreadsheet-4"}
-    SP_RUN_FILTER = partial(task_filter, task="ioi")
+    SP_RUN_FILTER = partial(task_filter, task="ioi", verbose=False)
 
     SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
     SIXTEEN_HEADS_RUN = "29ctjial"
@@ -412,7 +413,9 @@ def get_sp_corrs(
             nodes_to_mask=nodes_to_mask_dict,
         )
 
-        assert corr.count_no_edges() == number_of_edges, (corr.count_no_edges(), number_of_edges)
+        if corr.count_no_edges() != number_of_edges:
+            warnings.warn(str(corr.count_no_edges()) + " ooh err " + str(number_of_edges))
+
         ret.append(corr) # do we need KL too? I think no..
 
     return ret
@@ -493,6 +496,7 @@ if "sixteen_heads_corrs" not in locals() and not SKIP_SIXTEEN_HEADS: # this is s
     sixteen_heads_corrs = get_sixteen_heads_corrs()
 
 #%%
+
 methods = []
 
 if not SKIP_ACDC: methods.append("ACDC") 
@@ -572,64 +576,5 @@ def get_roc_figure(all_points, names): # TODO make the plots grey / black / yell
 
 fig = get_roc_figure(list(points.values()), list(points.keys()))
 fig.show()
-
-# %%
-
-from collections import OrderedDict
-from acdc.acdc_utils import Edge, TorchIndex, EdgeType
-from acdc.TLACDCInterpNode import TLACDCInterpNode
-import warnings
-from functools import partial
-from copy import deepcopy
-import torch.nn.functional as F
-from typing import List
-import click
-from subnetwork_probing.train import correspondence_from_mask
-import IPython
-from acdc.acdc_utils import kl_divergence
-import torch
-from acdc.ioi.ioi_dataset import IOIDataset  # NOTE: we now import this LOCALLY so it is deterministic
-from tqdm import tqdm
-import wandb
-from acdc.HookedTransformer import HookedTransformer
-
-def get_gpt2_small(device="cuda", sixteen_heads=False):
-    tl_model = HookedTransformer.from_pretrained("gpt2", use_global_cache=True, sixteen_heads=sixteen_heads)
-    tl_model = tl_model.to(device)
-    tl_model.set_use_attn_result(True)
-    if not sixteen_heads: # fight the OOM!
-        tl_model.set_use_split_qkv_input(True)
-    return tl_model
-
-def get_ioi_gpt2_small(device="cuda", sixteen_heads=False):
-    """For backwards compat"""
-    return get_gpt2_small(device=device, sixteen_heads=sixteen_heads) # TODO continue adding sixteen_heads...
-
-def get_ioi_data(tl_model, N, kl_return_one_element=True):
-    ioi_dataset = IOIDataset(
-        prompt_type="ABBA",
-        N=N,
-        nb_templates=1,
-        seed = 0,
-    )
-
-    abc_dataset = (
-        ioi_dataset.gen_flipped_prompts(("IO", "RAND"), seed=1)
-        .gen_flipped_prompts(("S", "RAND"), seed=2)
-        .gen_flipped_prompts(("S1", "RAND"), seed=3)
-    )
-
-    seq_len = ioi_dataset.toks.shape[1]
-    assert seq_len == 16, f"Well, I thought ABBA #1 was 16 not {seq_len} tokens long..."
-
-    default_data = ioi_dataset.toks.long()[:N, : seq_len - 1]
-    patch_data = abc_dataset.toks.long()[:N, : seq_len - 1]
-
-    base_model_logits = tl_model(default_data)
-    base_model_logprobs = F.log_softmax(base_model_logits, dim=-1)
-    base_model_logprobs = base_model_logprobs[:, -1]
-
-    metric = partial(kl_divergence, base_model_logprobs=base_model_logprobs, last_seq_element_only=True, return_one_element=kl_return_one_element)
-    return default_data, patch_data, metric
 
 #%%

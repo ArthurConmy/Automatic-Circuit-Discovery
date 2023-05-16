@@ -108,8 +108,8 @@ parser.add_argument('--wandb-run-name', type=str, required=False, default=None, 
 parser.add_argument('--device', type=str, default="cuda")
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
-if get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("--task tracr-reverse --zero-ablation --wandb-run-name random_hacking_probably_tracr".split())
+if True or get_ipython() is not None: # heheh get around this failing in notebooks
+    args = parser.parse_args("--task ioi --wandb-run-name ioi_sixteen".split())
 else:
     args = parser.parse_args()
 
@@ -136,7 +136,7 @@ if TASK == "ioi":
     seq_len = toks_int_values.shape[1]
     model_getter = get_gpt2_small
 
-if TASK == "greaterthan":
+elif TASK == "greaterthan":
     num_examples = 100
     tl_model, toks_int_values, prompts, metric = get_all_greaterthan_things(num_examples=num_examples, device=DEVICE, sixteen_heads=True, return_one_element=False)
     toks_int_values_other = toks_int_values.clone()
@@ -388,6 +388,7 @@ exp = TLACDCExperiment(
     verbose=True,
     hook_verbose=False,
     add_sender_hooks=True,
+    second_cache_cpu=False,
     add_receiver_hooks=False,
     remove_redundant=False,
 )
