@@ -109,7 +109,7 @@ def launch(commands: List[List[str]], name: str, job: Optional[KubernetesJob] = 
                     "ctl",
                     "job",
                     "run",
-                    f"--name=agarriga-{name}-{i:05d}",
+                    f"--name=agarriga-{name}",
                     "--shared-host-dir-slow-tolerant",
                     f"--container={job.container}",
                     f"--cpu={job.cpu}",
