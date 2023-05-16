@@ -107,10 +107,10 @@ for task_idx, (row, col) in enumerate(rows_and_cols):
             )
             fig.add_annotation(text="More correct",
                   xref="x", yref="y",
-                  x=0.85, y=0.85, showarrow=False, font=dict(size=7), row=row, col=col)
+                  x=0.85, y=0.85, showarrow=False, font=dict(size=12), row=row, col=col)
             fig.add_annotation(text="Better",
                   xref="x", yref="y",
-                  x=0.55, y=0.55, showarrow=False, font=dict(size=7), row=row, col=col)
+                  x=0.55, y=0.55, showarrow=False, font=dict(size=12), row=row, col=col)
 
             fig.update_yaxes(visible=True, row=row, col=col, tickangle=-45) # ???
 
