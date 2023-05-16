@@ -71,7 +71,7 @@ parser.add_argument('--seed', type=int, default=1234)
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if get_ipython() is not None: # heheh get around this failing in notebooks
     args = parser.parse_args([
-        "--task=induction",
+        "--task=tracr-proportion",
         "--wandb-mode=offline",
         "--wandb-dir=/tmp/wandb",
         "--wandb-entity=remix_school-of-rock",
@@ -224,15 +224,18 @@ for layer_i in range(model.cfg.n_layers):
     for qkv in ["q", "k", "v"]:
         for head_i in range(model.cfg.n_heads):
             name = f"blocks.{layer_i}.attn.hook_{qkv}"
-            nodes = [TLACDCInterpNode(name, TorchIndex((None, None, head_i)), incoming_edge_type=EdgeType.ADDITION)]
+            nodes = [TLACDCInterpNode(name, TorchIndex((None, None, head_i)), incoming_edge_type=EdgeType.ADDITION),
+                     TLACDCInterpNode(f"blocks.{layer_i}.hook_{qkv}_input", TorchIndex((None, None, head_i)), incoming_edge_type=EdgeType.PLACEHOLDER)
+                     ]
             nodes_names_indices.append((nodes, name, head_i))
 
     if model.cfg.d_mlp != -1:
+        name = f"blocks.{layer_i}.hook_mlp_out"
         mlp_nodes = [
-            TLACDCInterpNode(f"blocks.{layer_i}.hook_mlp_out", TorchIndex([None]), incoming_edge_type=EdgeType.PLACEHOLDER),
+            TLACDCInterpNode(name, TorchIndex([None]), incoming_edge_type=EdgeType.PLACEHOLDER),
             TLACDCInterpNode(f"blocks.{layer_i}.hook_resid_mid", TorchIndex([None]), incoming_edge_type=EdgeType.ADDITION),
         ]
-        nodes_names_indices.append((mlp_nodes, f"blocks.{layer_i}.hook_mlp_out", slice(None)))
+        nodes_names_indices.append((mlp_nodes, name, slice(None)))
 
 
 # sort by scores
@@ -263,6 +266,8 @@ nodes_to_mask = []
 for nodes, hook_name, idx in tqdm.tqdm(nodes_names_indices):
     nodes_to_mask += nodes
     corr = correspondence_from_mask(model, nodes_to_mask, use_pos_embed=False, newv=False)
+    for e in corr.all_edges().values():
+        e.effect_size = 1.0
 
     score = prune_scores[hook_name][idx].item()
 
