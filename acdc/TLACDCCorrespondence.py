@@ -2,13 +2,13 @@ from acdc.TLACDCInterpNode import TLACDCInterpNode
 from collections import OrderedDict
 from acdc.acdc_utils import TorchIndex, Edge, EdgeType, OrderedDefaultdict, make_nd_dict
 from typing import List, Dict, Optional, Tuple, Union, Set, Callable, TypeVar, Iterable, Any
-from collections import defaultdict
+
 
 class TLACDCCorrespondence:
     """Stores the full computational graph, similar to ACDCCorrespondence from the rust_circuit code"""
         
     def __init__(self):
-        self.graph: OrderedDict[str, OrderedDict[TorchIndex, TLACDCInterpNode]] = defaultdict(OrderedDict) # TODO rename "nodes?"
+        self.graph: OrderedDict[str, OrderedDict[TorchIndex, TLACDCInterpNode]] = OrderedDefaultdict(OrderedDict) # TODO rename "nodes?"
         self.edges: OrderedDict[str, OrderedDict[TorchIndex, OrderedDict[str, OrderedDict[TorchIndex, Optional[Edge]]]]] = make_nd_dict(end_type=None, n=4)
 
     def first_node(self):

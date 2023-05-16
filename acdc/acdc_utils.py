@@ -9,7 +9,6 @@ from enum import Enum
 from typing import Any, Literal, Dict, Tuple, Union, List, Optional, Callable, TypeVar, Generic, Iterable, Set, Type, cast, Sequence, Mapping, overload
 import torch
 import time
-from collections import defaultdict
 import torch.nn.functional as F
 from acdc.HookedTransformer import HookedTransformer
 from collections import OrderedDict
@@ -151,10 +150,10 @@ def make_nd_dict(end_type, n = 3) -> Any:
         raise NotImplementedError("Only implemented for 3/4")
         
     if n == 3:
-        return defaultdict(lambda: defaultdict(lambda: defaultdict(end_type)))
+        return OrderedDefaultdict(lambda: defaultdict(lambda: defaultdict(end_type)))
 
     if n == 4:
-        return defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(end_type))))
+        return OrderedDefaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(end_type))))
 
 def ct():
     return time.ctime().replace(" ", "_").replace(":", "_").replace("__", "_")
@@ -166,18 +165,12 @@ def kl_divergence(
     last_seq_element_only: bool = True,
     base_model_probs_last_seq_element_only: bool = False,
     return_one_element: bool = True,
-    end_positions: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
     # Note: we want base_model_probs_last_seq_element_only to remain False by default, because when the Docstring
     # circuit uses this, it already takes the last position before passing it in.
 
-    if last_seq_element_only and end_positions is not None:
-        raise ValueError("Can't have both of these true...")
-
     if last_seq_element_only:
         logits = logits[:, -1, :]
-    if end_positions is not None:
-        logits = logits[torch.arange(len(logits)), end_positions]
 
     if base_model_probs_last_seq_element_only:
         base_model_logprobs = base_model_logprobs[:, -1, :]
@@ -297,7 +290,7 @@ def extract_info(string):
     parent_list = None
     if parent_list_str:
         parent_list_items = parent_list_str.split(", ")
-        parent_list = [ast.literal_eval(item if item not in ["COL", ":"] else "None") for item in parent_list_items]
+        parent_list = [ast.literal_eval(item if item != "COL" else "None") for item in parent_list_items]
 
     # Extract current node info
     current_match = re.search(current_pattern, string)
@@ -306,7 +299,7 @@ def extract_info(string):
     current_list = None
     if current_list_str:
         current_list_items = current_list_str.split(", ")
-        current_list = [ast.literal_eval(item if item not in ["COL", ":"] else "None") for item in current_list_items]
+        current_list = [ast.literal_eval(item if item != "COL" else "None") for item in current_list_items]
 
     return parent_name, parent_list, current_name, current_list
 
