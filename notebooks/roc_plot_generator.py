@@ -139,7 +139,7 @@ parser.add_argument("--testing", action="store_true", help="Use testing data ins
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("--task tracr-reverse --testing".split())
+    args = parser.parse_args("--task ioi --testing".split())
 else:
     args = parser.parse_args()
 
@@ -268,10 +268,17 @@ elif TASK == "ioi":
     SP_RUN_FILTER = partial(task_filter, task="ioi", verbose=False)
 
     SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
-    SIXTEEN_HEADS_RUN = "29ctjial"
+    SIXTEEN_HEADS_RUN = "yjreihd0"
 
     get_true_edges = partial(get_ioi_true_edges, model=tl_model)
     
+elif TASK == "greaterthan":
+
+    SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
+    SIXTEEN_HEADS_RUN = "zcxh8rbm"
+
+    raise NotImplementedError("TODO")
+
 elif TASK == "induction":
     raise ValueError("There is no ground truth circuit for Induction!!!")
 
