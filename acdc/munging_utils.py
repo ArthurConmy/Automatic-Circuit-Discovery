@@ -16,8 +16,10 @@ def parse_interpnode(s: str) -> TLACDCInterpNode:
                 idx = int(idx[-2])
             except:
                 idx = None
+        return TLACDCInterpNode(name, TorchIndex([None, None, idx]) if idx is not None else TorchIndex([None]), EdgeType.ADDITION)
 
     except Exception as e: 
+        print(s, e)
         raise e
 
     return TLACDCInterpNode(name, TorchIndex([None, None, idx]), EdgeType.ADDITION)
