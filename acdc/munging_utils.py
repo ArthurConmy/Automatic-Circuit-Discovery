@@ -6,8 +6,20 @@ from acdc.TLACDCInterpNode import TLACDCInterpNode
 from acdc.acdc_utils import TorchIndex, EdgeType
 
 def parse_interpnode(s: str) -> TLACDCInterpNode:
-    name, idx = s.split("[")
-    idx = int(idx[-2])
+
+    try:
+        name, idx = s.split("[")
+        try:
+            idx = int(idx[-3:-1])
+        except:
+            try: 
+                idx = int(idx[-2])
+            except:
+                idx = None
+
+    except Exception as e: 
+        raise e
+
     return TLACDCInterpNode(name, TorchIndex([None, None, idx]), EdgeType.ADDITION)
 
 def get_col_from_df(df, col_name):
