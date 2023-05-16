@@ -229,17 +229,15 @@ def get_tracr_model_input_and_tl_model(task: Literal["reverse", "proportion"], d
     else:
         return create_model_input, tl_model
 
-def get_all_tracr_things():
-    pass
-
 # get some random permutation with no fixed points
-def get_perm(n, no_fp = True):
+def get_perm(n, no_fp=True):
     if no_fp:
-        assert n>1
+        assert n > 1
     perm = torch.randperm(n)
     while (perm == torch.arange(n)).any().item():
         perm = torch.randperm(n)
     return perm
+
 
 def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: str, num_examples: int, device):
     _, tl_model = get_tracr_model_input_and_tl_model(task=task, device=device)
@@ -252,8 +250,9 @@ def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: st
         if num_examples != batch_size:
             raise ValueError("num_examples must be equal to batch_size for reverse task")
 
-        vals=[0,1,2]
+        vals = [0, 1, 2]
         import itertools
+
         for perm_idx, perm in enumerate(itertools.permutations(vals)):
             data_tens[perm_idx] = torch.tensor([3, perm[0], perm[1], perm[2]])
 
@@ -264,7 +263,12 @@ def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: st
         base_model_logprobs = F.log_softmax(tl_model(data_tens), dim=-1)
 
         if metric_name == "kl_div":
-            metric = partial(kl_divergence, base_model_logprobs=base_model_logprobs, mask_repeat_candidates=None, last_seq_element_only=False)
+            metric = partial(
+                kl_divergence,
+                base_model_logprobs=base_model_logprobs,
+                mask_repeat_candidates=None,
+                last_seq_element_only=False,
+            )
         else:
             raise ValueError(f"Metric {metric_name} not recognized")
 
@@ -282,17 +286,19 @@ def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: st
             test_patch_data=patch_data_tens,
         )
 
-        
     if task == "proportion":
         seq_len = 4
+
         def to_tens(s):
             assert isinstance(s, str) or isinstance(s, list) or isinstance(s, tuple)
-            assert len(s)==seq_len
+            assert len(s) == seq_len
             assert all([c in ["w", "x", "y", "z"] for c in s]), s
-            return torch.tensor([ord(c)-ord("w") for c in s]).int()
-        data_tens = torch.zeros((num_examples*2, seq_len), dtype=torch.long, device=device)
+            return torch.tensor([ord(c) - ord("w") for c in s]).int()
+
+        data_tens = torch.zeros((num_examples * 2, seq_len), dtype=torch.long, device=device)
         alphabet = "wxyz"
         import itertools
+
         all_things = list(itertools.product(alphabet, repeat=seq_len))
         rand_perm1 = torch.randperm(len(all_things))
         for i in range(len(data_tens)):
@@ -311,7 +317,7 @@ def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: st
             validation_outputs = tl_model(validation_data)
             test_outputs = tl_model(test_data)
 
-        def l2_metric( # this is for proportion... it's unclear how to format this tbh sad
+        def l2_metric(  # this is for proportion... it's unclear how to format this tbh sad
             logits: torch.Tensor,
             model_out: torch.Tensor,
             return_one_element: bool = True,
@@ -319,16 +325,20 @@ def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: st
             # output 0 contains the proportion of the token "x" (== 3)
             proc = logits[:, 1:, 0]
             if return_one_element:
-                return ((proc - model_out)**2).mean()
+                return ((proc - model_out) ** 2).mean()
             else:
-                return ((proc - model_out)**2).flatten()
+                return ((proc - model_out) ** 2).flatten()
 
         if metric_name == "l2":
             metric = partial(l2_metric, model_out=validation_outputs[:, 1:, 0])
 
         elif metric_name == "kl_div":
-            metric = partial(kl_divergence, base_model_logprobs=F.log_softmax(validation_outputs, dim=-1),
-                             mask_repeat_candidates=None, last_seq_element_only=False)
+            metric = partial(
+                kl_divergence,
+                base_model_logprobs=F.log_softmax(validation_outputs, dim=-1),
+                mask_repeat_candidates=None,
+                last_seq_element_only=False,
+            )
         else:
             raise ValueError(f"unknown metric {metric_name}")
 
@@ -356,3 +366,57 @@ def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: st
             test_patch_data=test_patch_data,
         )
     raise ValueError(f"unknown task {task}")
+
+
+def get_tracr_proportion_edges():
+    # generated from acdc/main.py commit 3a3770bb7
+
+    return OrderedDict(
+        [
+            (("blocks.1.hook_resid_post", (None,), "blocks.1.attn.hook_result", (None, None, 0)), True),
+            (("blocks.1.attn.hook_result", (None, None, 0), "blocks.1.attn.hook_q", (None, None, 0)), True),
+            (("blocks.1.attn.hook_result", (None, None, 0), "blocks.1.attn.hook_k", (None, None, 0)), True),
+            (("blocks.1.attn.hook_result", (None, None, 0), "blocks.1.attn.hook_v", (None, None, 0)), True),
+            (("blocks.1.attn.hook_q", (None, None, 0), "blocks.1.hook_q_input", (None, None, 0)), True),
+            (("blocks.1.attn.hook_k", (None, None, 0), "blocks.1.hook_k_input", (None, None, 0)), True),
+            (("blocks.1.attn.hook_v", (None, None, 0), "blocks.1.hook_v_input", (None, None, 0)), True),
+            (("blocks.1.hook_q_input", (None, None, 0), "hook_embed", (None,)), True),
+            (("blocks.1.hook_q_input", (None, None, 0), "hook_pos_embed", (None,)), True),
+            (("blocks.1.hook_k_input", (None, None, 0), "hook_embed", (None,)), True),
+            (("blocks.1.hook_k_input", (None, None, 0), "hook_pos_embed", (None,)), True),
+            (("blocks.1.hook_v_input", (None, None, 0), "blocks.0.hook_mlp_out", (None,)), True),
+            (("blocks.0.hook_mlp_out", (None,), "blocks.0.hook_resid_mid", (None,)), True),
+            (("blocks.0.hook_resid_mid", (None,), "hook_embed", (None,)), True),
+        ]
+    )
+
+
+def get_tracr_reverse_edges():
+    return OrderedDict(
+        [
+            (("blocks.3.hook_resid_post", (None,), "blocks.3.attn.hook_result", (None, None, 0)), True),
+            (("blocks.3.attn.hook_result", (None, None, 0), "blocks.3.attn.hook_q", (None, None, 0)), True),
+            (("blocks.3.attn.hook_result", (None, None, 0), "blocks.3.attn.hook_k", (None, None, 0)), True),
+            (("blocks.3.attn.hook_result", (None, None, 0), "blocks.3.attn.hook_v", (None, None, 0)), True),
+            (("blocks.3.attn.hook_q", (None, None, 0), "blocks.3.hook_q_input", (None, None, 0)), True),
+            (("blocks.3.attn.hook_k", (None, None, 0), "blocks.3.hook_k_input", (None, None, 0)), True),
+            (("blocks.3.attn.hook_v", (None, None, 0), "blocks.3.hook_v_input", (None, None, 0)), True),
+            (("blocks.3.hook_q_input", (None, None, 0), "blocks.2.hook_mlp_out", (None,)), True),
+            (("blocks.3.hook_k_input", (None, None, 0), "hook_pos_embed", (None,)), True),
+            (("blocks.3.hook_v_input", (None, None, 0), "hook_embed", (None,)), True),
+            (("blocks.2.hook_mlp_out", (None,), "blocks.2.hook_resid_mid", (None,)), True),
+            (("blocks.2.hook_resid_mid", (None,), "blocks.1.hook_mlp_out", (None,)), True),
+            (("blocks.1.hook_mlp_out", (None,), "blocks.1.hook_resid_mid", (None,)), True),
+            (("blocks.1.hook_resid_mid", (None,), "blocks.0.hook_mlp_out", (None,)), True),
+            (("blocks.1.hook_resid_mid", (None,), "hook_embed", (None,)), True),
+            (("blocks.1.hook_resid_mid", (None,), "hook_pos_embed", (None,)), True),
+            (("blocks.0.hook_mlp_out", (None,), "blocks.0.hook_resid_mid", (None,)), True),
+            (("blocks.0.hook_resid_mid", (None,), "blocks.0.attn.hook_result", (None, None, 0)), True),
+            (("blocks.0.hook_resid_mid", (None,), "hook_embed", (None,)), True),
+            (("blocks.0.attn.hook_result", (None, None, 0), "blocks.0.attn.hook_q", (None, None, 0)), True),
+            (("blocks.0.attn.hook_result", (None, None, 0), "blocks.0.attn.hook_k", (None, None, 0)), True),
+            (("blocks.0.attn.hook_result", (None, None, 0), "blocks.0.attn.hook_v", (None, None, 0)), True),
+            (("blocks.0.attn.hook_v", (None, None, 0), "blocks.0.hook_v_input", (None, None, 0)), True),
+            (("blocks.0.hook_v_input", (None, None, 0), "hook_embed", (None,)), True),
+        ]
+    )

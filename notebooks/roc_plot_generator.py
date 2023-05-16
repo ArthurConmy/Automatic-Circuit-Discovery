@@ -84,7 +84,7 @@ from acdc.hook_points import HookedRootModule, HookPoint
 from acdc.HookedTransformer import (
     HookedTransformer,
 )
-from acdc.tracr.utils import get_tracr_data, get_tracr_model_input_and_tl_model, get_tracr_proportion_edges, get_tracr_reverse_edges
+from acdc.tracr.utils import get_tracr_model_input_and_tl_model, get_tracr_proportion_edges, get_tracr_reverse_edges
 from acdc.docstring.utils import get_all_docstring_things, get_docstring_model, get_docstring_subgraph_true_edges
 from acdc.acdc_utils import (
     make_nd_dict,
@@ -105,13 +105,11 @@ from acdc.acdc_utils import (
     kl_divergence,
 )
 from acdc.ioi.utils import (
-    get_ioi_data,
     get_ioi_true_edges,
     get_gpt2_small,
 )
 from acdc.induction.utils import (
     get_all_induction_things,
-    get_induction_model,
     get_validation_data,
     get_good_induction_candidates,
     get_mask_repeat_candidates,
@@ -121,6 +119,13 @@ from acdc.graphics import (
     show,
 )
 import argparse
+
+from notebooks.emacs_plotly_render import set_plotly_renderer
+set_plotly_renderer("emacs")
+
+
+
+
 def get_col(df, col): # dumb util
     non_null_entries = list(df.loc[df[col].notnull(), col])
     return non_null_entries 
@@ -167,7 +172,7 @@ SIXTEEN_HEADS_RUN = None
 def task_filter(run, task, verbose = True):
     try:
         assert json.loads(run.json_config)["task"]["value"] == task
-    except Exception as e: 
+    except Exception as e:
         if verbose:
             print("errorre", e)
         return False

@@ -41,7 +41,7 @@ def main():
                         f"--seed={random.randint(0, 2**32 - 1)}",
                         f"--metric={metric}",
                         "--wandb-dir=/training/16heads",  # If it doesn't exist wandb will use /tmp
-                        f"--wandb-mode=offline",
+                        f"--wandb-mode=online",
                     ]
                     if zero_ablation:
                         command.append("--zero-ablation")
