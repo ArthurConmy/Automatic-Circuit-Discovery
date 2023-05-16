@@ -137,6 +137,7 @@ class HookedTransformerConfig:
     use_local_attn: bool = False
     original_architecture: Optional[str] = None
     from_checkpoint: bool = False
+    sixteen_heads: bool = False
     checkpoint_index: Optional[int] = None
     checkpoint_label_type: Optional[str] = None
     checkpoint_value: Optional[int] = None

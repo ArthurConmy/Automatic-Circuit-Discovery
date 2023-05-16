@@ -46,6 +46,7 @@ def main(testing: bool):
                         "--wandb-dir=/training/sp-induction",  # If it doesn't exist wandb will use /tmp
                         f"--wandb-mode={'offline' if testing else 'online'}",
                     ]
+                    print(" \\\n".join(command))
                     commands.append(command)
 
     launch(
@@ -58,4 +59,4 @@ def main(testing: bool):
 
 
 if __name__ == "__main__":
-    main(testing=False)
+    main(testing=True)

@@ -28,6 +28,7 @@ import wandb
 import IPython
 import torch
 from pathlib import Path
+import gc
 from tqdm import tqdm
 import random
 from functools import partial
@@ -61,7 +62,7 @@ from acdc.graphics import show
 from acdc.HookedTransformer import (
     HookedTransformer,
 )
-from acdc.tracr.utils import get_tracr_data, get_tracr_model_input_and_tl_model
+from acdc.tracr.utils import get_all_tracr_things, get_tracr_model_input_and_tl_model
 from acdc.docstring.utils import get_all_docstring_things
 from acdc.acdc_utils import (
     make_nd_dict,
@@ -82,12 +83,11 @@ from acdc.acdc_utils import (
     kl_divergence,
 )
 from acdc.ioi.utils import (
-    get_ioi_data,
+    get_all_ioi_things,
     get_gpt2_small,
 )
 from acdc.induction.utils import (
     get_all_induction_things,
-    get_model,
     get_validation_data,
     get_good_induction_candidates,
     get_mask_repeat_candidates,
@@ -97,13 +97,14 @@ from acdc.graphics import (
     build_colorscheme,
     show,
 )
+from acdc.utils import reset_network
 import argparse
 torch.autograd.set_grad_enabled(False)
 
 #%%
 
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
-parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr (WIPs)')
+parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr (WIPs)')
 parser.add_argument('--threshold', type=float, required=True, help='Value for THRESHOLD')
 parser.add_argument('--first-cache-cpu', type=bool, required=False, default=True, help='Value for FIRST_CACHE_CPU')
 parser.add_argument('--second-cache-cpu', type=bool, required=False, default=True, help='Value for SECOND_CACHE_CPU')
@@ -129,7 +130,7 @@ parser.add_argument('--single-step', action='store_true', help='Use single step,
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
     # args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
     # args = parser.parse_args("--threshold 0.001 --using-wandb".split())
-    args = parser.parse_args("--task docstring --using-wandb --threshold 0.005 --wandb-project-name acdc --indices-mode reverse --first-cache-cpu False --second-cache-cpu False".split())
+    args = parser.parse_args("--task tracr-proportion --zero-ablation --using-wandb --threshold 0.005 --wandb-project-name acdc --indices-mode reverse --first-cache-cpu False --second-cache-cpu False".split())
 else:
     args = parser.parse_args()
 
@@ -154,7 +155,7 @@ DEVICE = args.device
 RESET_NETWORK = args.reset_network
 SINGLE_STEP = True if args.single_step else False
 
-#%% [markdown]
+#%%
 # Setup
 
 second_metric = None # some tasks only have one metric
@@ -162,59 +163,42 @@ use_pos_embed = False
 
 if TASK == "ioi":
     num_examples = 100
-    tl_model = get_gpt2_small(device=DEVICE)
-    toks_int_values, toks_int_values_other, metric = get_ioi_data(tl_model, num_examples)
-elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
-    tracr_task = TASK.split("-")[-1] # "reverse"
-    # this implementation doesn't ablate the position embeddings (which the plots in the paper do do), so results are different. See the rust_circuit implemntation if this need be checked
-    # also there's no splitting by neuron yet TODO
-    _, tl_model = get_tracr_model_input_and_tl_model(task=TASK)
-    toks_int_values, toks_int_values_other, metric = get_tracr_data(tl_model, task=TASK)
+    things = get_all_ioi_things(num_examples=num_examples, device=DEVICE, metric_name=args.metric)
+elif TASK == "tracr-reverse":
+    num_examples = 6
+    things = get_all_tracr_things(task="reverse", metric_name=args.metric, num_examples=num_examples, device=DEVICE)
+elif TASK == "tracr-proportion":
+    num_examples = 50
+    things = get_all_tracr_things(task="proportion", metric_name=args.metric, num_examples=num_examples, device=DEVICE)
 elif TASK == "induction":
     num_examples = 50
     seq_len = 300
     # TODO initialize the `tl_model` with the right model
-    induction_things = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric=args.metric)
-    tl_model, toks_int_values, toks_int_values_other = induction_things.tl_model, induction_things.validation_data, induction_things.validation_patch_data
-
-    validation_metric = induction_things.validation_metric
-    metric = lambda x: validation_metric(x)
-
-    test_metric_fns = {args.metric: induction_things.test_metric}
-    test_metric_data = induction_things.test_data
+    things = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric=args.metric)
 
 elif TASK == "docstring":
     num_examples = 50
     seq_len = 41
-    docstring_things = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE,
+    things = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE,
                                                 metric_name=args.metric, correct_incorrect_wandb=True)
-
-    tl_model, toks_int_values, toks_int_values_other = docstring_things.tl_model, docstring_things.validation_data, docstring_things.validation_patch_data
-
-    validation_metric = docstring_things.validation_metric
-    metric = lambda x: validation_metric(x)
-
-    test_metric_fns = docstring_things.test_metrics
-    test_metric_data = docstring_things.test_data
-
 elif TASK == "greaterthan":
     num_examples = 100
-    tl_model, toks_int_values, prompts, metric = get_all_greaterthan_things(num_examples=num_examples, device=DEVICE)
-    toks_int_values_other = toks_int_values.clone()
-    toks_int_values_other[:, 7] = 486 # replace with 01
+    things = get_all_greaterthan_things(num_examples=num_examples, metric_name=args.metric, device=DEVICE)
 else:
     raise ValueError(f"Unknown task {TASK}")
 
-if RESET_NETWORK:
-    base_dir = Path(__file__).parent.parent / "subnetwork-probing/" / "data" / "induction"
-    reset_state_dict = torch.load(base_dir / "random_model.pt")
-    for layer_i in range(2):
-        for qkv in ["q", "k", "v"]:
-            # Delete subnetwork probing masks
-            del reset_state_dict[f"blocks.{layer_i}.attn.hook_{qkv}.mask_scores"]
 
-    tl_model.load_state_dict(reset_state_dict, strict=True)
-    del reset_state_dict
+validation_metric = things.validation_metric
+
+toks_int_values = things.validation_data
+toks_int_values_other = things.validation_patch_data
+
+tl_model = things.tl_model
+
+if RESET_NETWORK:
+    reset_network(TASK, DEVICE, tl_model)
+    gc.collect()
+    torch.cuda.empty_cache()
 
 #%%
 
@@ -245,7 +229,7 @@ exp = TLACDCExperiment(
     zero_ablation=ZERO_ABLATION,
     ds=toks_int_values,
     ref_ds=toks_int_values_other,
-    metric=metric,
+    metric=validation_metric,
     second_metric=second_metric,
     verbose=True,
     indices_mode=INDICES_MODE,
@@ -268,7 +252,7 @@ exp = TLACDCExperiment(
 
 for i in range(args.max_num_epochs):
 
-    exp.step() # TODO why aren't we while looping to completion ???
+    exp.step(testing=False) # TODO why aren't we while looping to completion ???
 
     show(
         exp.corr,
@@ -281,18 +265,13 @@ for i in range(args.max_num_epochs):
     if i==0:
         exp.save_edges("edges.pkl")
 
-    if TASK in ["docstring", "induction"]:
-        with torch.no_grad():
-            test_metric_values = {}
-            for k, fn in test_metric_fns.items():
-                test_metric_values["test_"+k] = fn(exp.model(test_metric_data))
-        if USING_WANDB:
-            wandb.log(test_metric_values)
-
     if exp.current_node is None or SINGLE_STEP:
         break
 
-exp.save_edges("another_final_edges.pkl") 
+exp.save_edges("another_final_edges.pkl")
+
+
+# TODO evaluate on test data set
 
 if USING_WANDB:
     edges_fname = f"edges.pth"
@@ -304,3 +283,8 @@ if USING_WANDB:
     wandb.finish()
 
 #%%
+
+exp.save_subgraph(
+    return_it=True,
+)
+# %%

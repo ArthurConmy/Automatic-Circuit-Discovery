@@ -1,4 +1,5 @@
 import IPython
+from acdc.docstring.utils import AllDataThings
 if IPython.get_ipython() is not None:
     IPython.get_ipython().magic('load_ext autoreload')
     IPython.get_ipython().magic('autoreload 2')
@@ -6,6 +7,7 @@ if IPython.get_ipython() is not None:
 from typing import Literal, List, Tuple, Dict, Any, Optional, Union, Callable, TypeVar, Iterable, Set
 from acdc import HookedTransformer, HookedTransformerConfig
 import warnings
+from collections import OrderedDict
 import einops
 import torch
 import numpy as np
@@ -17,7 +19,7 @@ import torch.nn.functional as F
 
 bos = "BOS"
 
-def get_tracr_model_input_and_tl_model(task: Literal["reverse", "proportion"], return_im = False, sixteen_heads=False):
+def get_tracr_model_input_and_tl_model(task: Literal["reverse", "proportion"], device, return_im = False, sixteen_heads=False):
     """
     This function adapts Neel's TransformerLens porting of tracr
     """
@@ -91,6 +93,7 @@ def get_tracr_model_input_and_tl_model(task: Literal["reverse", "proportion"], r
         sixteen_heads=sixteen_heads,
         use_attn_result=True,
         use_split_qkv_input=True,
+        device=device,
     )
     tl_model = HookedTransformer(cfg)
     # Extract the state dict, and do some reshaping so that everything has a n_heads dimension
@@ -168,7 +171,7 @@ def get_tracr_model_input_and_tl_model(task: Literal["reverse", "proportion"], r
     INPUT_ENCODER = model.input_encoder
     OUTPUT_ENCODER = model.output_encoder
 
-    def create_model_input(input, input_encoder=INPUT_ENCODER, device="cuda"):
+    def create_model_input(input, input_encoder=INPUT_ENCODER, device=device):
         encoding = input_encoder.encode(input)
         return torch.tensor(encoding).unsqueeze(dim=0).to(device)
 
@@ -196,7 +199,6 @@ def get_tracr_model_input_and_tl_model(task: Literal["reverse", "proportion"], r
 
         input_tokens_tensor = create_model_input(input)
         logits = tl_model(input_tokens_tensor)
-
         # decoded_output = decode_model_output(logits)
         # print("TransformerLens Replicated Decoding:", decoded_output)
 
@@ -228,65 +230,193 @@ def get_tracr_model_input_and_tl_model(task: Literal["reverse", "proportion"], r
         return create_model_input, tl_model
 
 # get some random permutation with no fixed points
-def get_perm(n, no_fp = True):
+def get_perm(n, no_fp=True):
     if no_fp:
-        assert n>1
+        assert n > 1
     perm = torch.randperm(n)
     while (perm == torch.arange(n)).any().item():
         perm = torch.randperm(n)
     return perm
 
-def get_tracr_data(tl_model, task: Literal["reverse", "proportion"]):
+
+def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: str, num_examples: int, device):
+    _, tl_model = get_tracr_model_input_and_tl_model(task=task, device=device)
+
     if task == "reverse":
         batch_size = 6
         seq_len = 4
-        data_tens = torch.zeros((batch_size, seq_len)).int()
+        data_tens = torch.zeros((batch_size, seq_len), device=device, dtype=torch.long)
 
-        vals=[0,1,2]
+        if num_examples != batch_size:
+            raise ValueError("num_examples must be equal to batch_size for reverse task")
+
+        vals = [0, 1, 2]
         import itertools
+
         for perm_idx, perm in enumerate(itertools.permutations(vals)):
             data_tens[perm_idx] = torch.tensor([3, perm[0], perm[1], perm[2]])
 
-        n = len(data_tens)
-        data_tens = data_tens.long()
-        patch_data_indices = get_perm(n)
+        patch_data_indices = get_perm(len(data_tens))
         warnings.warn("Test that this only considers the relevant part of the sequence...")
+
         patch_data_tens = data_tens[patch_data_indices]
         base_model_logprobs = F.log_softmax(tl_model(data_tens), dim=-1)
-        metric = partial(kl_divergence, base_model_logprobs=base_model_logprobs, mask_repeat_candidates=None)
-        
+
+        if metric_name == "kl_div":
+            metric = partial(
+                kl_divergence,
+                base_model_logprobs=base_model_logprobs,
+                mask_repeat_candidates=None,
+                last_seq_element_only=False,
+            )
+        else:
+            raise ValueError(f"Metric {metric_name} not recognized")
+
+        return AllDataThings(
+            tl_model,
+            validation_metric=metric,
+            validation_data=data_tens,
+            validation_labels=None,
+            validation_mask=None,
+            validation_patch_data=patch_data_tens,
+            test_metrics={"kl_div": metric},
+            test_data=data_tens,
+            test_labels=None,
+            test_mask=None,
+            test_patch_data=patch_data_tens,
+        )
+
     if task == "proportion":
-        batch_size = 50
         seq_len = 4
+
         def to_tens(s):
             assert isinstance(s, str) or isinstance(s, list) or isinstance(s, tuple)
-            assert len(s)==seq_len
+            assert len(s) == seq_len
             assert all([c in ["w", "x", "y", "z"] for c in s]), s
-            return torch.tensor([ord(c)-ord("w") for c in s]).int()
-        data_tens = torch.zeros((batch_size, seq_len)).int()
+            return torch.tensor([ord(c) - ord("w") for c in s]).int()
+
+        data_tens = torch.zeros((num_examples * 2, seq_len), dtype=torch.long, device=device)
         alphabet = "wxyz"
         import itertools
+
         all_things = list(itertools.product(alphabet, repeat=seq_len))
         rand_perm1 = torch.randperm(len(all_things))
-        for i in range(batch_size):
+        for i in range(len(data_tens)):
             data_tens[i] = to_tens(all_things[rand_perm1[i]])
-        data_tens = data_tens.long()
-        rand_perm2 = torch.randperm(batch_size)
-        patch_data_tens = data_tens[rand_perm2]
-        base_model_vals = tl_model(data_tens)[:, 1:, 0]
 
-        def l2_metric( # this is for proportion... it's unclear how to format this tbh sad
-            dataset,
+        rand_perm2 = torch.randperm(num_examples)
+        validation_patch_data = data_tens[rand_perm2]
+
+        rand_perm3 = torch.randperm(num_examples)
+        test_patch_data = data_tens[rand_perm3 + num_examples]
+
+        validation_data = data_tens[:num_examples]
+        test_data = data_tens[num_examples:]
+
+        with torch.no_grad():
+            validation_outputs = tl_model(validation_data)
+            test_outputs = tl_model(test_data)
+
+        def l2_metric(  # this is for proportion... it's unclear how to format this tbh sad
+            logits: torch.Tensor,
             model_out: torch.Tensor,
+            return_one_element: bool = True,
         ):
-            # [1:, 0] shit
+            # output 0 contains the proportion of the token "x" (== 3)
+            proc = logits[:, 1:, 0]
+            if return_one_element:
+                return ((proc - model_out) ** 2).mean()
+            else:
+                return ((proc - model_out) ** 2).flatten()
 
-            proc = model_out[:, 1:, 0]
-            for tens in [proc, base_model_vals]:    
-                assert 0<=tens.min()<=tens.max()<=1, (tens.min(), tens.max())
-            
-            return ((proc - base_model_vals)**2).mean()
+        if metric_name == "l2":
+            metric = partial(l2_metric, model_out=validation_outputs[:, 1:, 0])
 
-        metric = partial(l2_metric, model_out = base_model_vals)
+        elif metric_name == "kl_div":
+            metric = partial(
+                kl_divergence,
+                base_model_logprobs=F.log_softmax(validation_outputs, dim=-1),
+                mask_repeat_candidates=None,
+                last_seq_element_only=False,
+            )
+        else:
+            raise ValueError(f"unknown metric {metric_name}")
 
-    return data_tens, patch_data_tens, metric
+        test_metrics = {
+            "l2": partial(l2_metric, model_out=test_outputs[:, 1:, 0]),
+            "kl_div": partial(
+                kl_divergence,
+                base_model_logprobs=F.log_softmax(test_outputs, dim=-1),
+                mask_repeat_candidates=None,
+                last_seq_element_only=False,
+            ),
+        }
+
+        return AllDataThings(
+            tl_model=tl_model,
+            validation_metric=metric,
+            validation_data=validation_data,
+            validation_labels=None,
+            validation_mask=None,
+            validation_patch_data=validation_patch_data,
+            test_metrics=test_metrics,
+            test_data=test_data,
+            test_labels=None,
+            test_mask=None,
+            test_patch_data=test_patch_data,
+        )
+    raise ValueError(f"unknown task {task}")
+
+
+def get_tracr_proportion_edges():
+    # generated from acdc/main.py commit 3a3770bb7
+
+    return OrderedDict(
+        [
+            (("blocks.1.hook_resid_post", (None,), "blocks.1.attn.hook_result", (None, None, 0)), True),
+            (("blocks.1.attn.hook_result", (None, None, 0), "blocks.1.attn.hook_q", (None, None, 0)), True),
+            (("blocks.1.attn.hook_result", (None, None, 0), "blocks.1.attn.hook_k", (None, None, 0)), True),
+            (("blocks.1.attn.hook_result", (None, None, 0), "blocks.1.attn.hook_v", (None, None, 0)), True),
+            (("blocks.1.attn.hook_q", (None, None, 0), "blocks.1.hook_q_input", (None, None, 0)), True),
+            (("blocks.1.attn.hook_k", (None, None, 0), "blocks.1.hook_k_input", (None, None, 0)), True),
+            (("blocks.1.attn.hook_v", (None, None, 0), "blocks.1.hook_v_input", (None, None, 0)), True),
+            (("blocks.1.hook_q_input", (None, None, 0), "hook_embed", (None,)), True),
+            (("blocks.1.hook_q_input", (None, None, 0), "hook_pos_embed", (None,)), True),
+            (("blocks.1.hook_k_input", (None, None, 0), "hook_embed", (None,)), True),
+            (("blocks.1.hook_k_input", (None, None, 0), "hook_pos_embed", (None,)), True),
+            (("blocks.1.hook_v_input", (None, None, 0), "blocks.0.hook_mlp_out", (None,)), True),
+            (("blocks.0.hook_mlp_out", (None,), "blocks.0.hook_resid_mid", (None,)), True),
+            (("blocks.0.hook_resid_mid", (None,), "hook_embed", (None,)), True),
+        ]
+    )
+
+
+def get_tracr_reverse_edges():
+    return OrderedDict(
+        [
+            (("blocks.3.hook_resid_post", (None,), "blocks.3.attn.hook_result", (None, None, 0)), True),
+            (("blocks.3.attn.hook_result", (None, None, 0), "blocks.3.attn.hook_q", (None, None, 0)), True),
+            (("blocks.3.attn.hook_result", (None, None, 0), "blocks.3.attn.hook_k", (None, None, 0)), True),
+            (("blocks.3.attn.hook_result", (None, None, 0), "blocks.3.attn.hook_v", (None, None, 0)), True),
+            (("blocks.3.attn.hook_q", (None, None, 0), "blocks.3.hook_q_input", (None, None, 0)), True),
+            (("blocks.3.attn.hook_k", (None, None, 0), "blocks.3.hook_k_input", (None, None, 0)), True),
+            (("blocks.3.attn.hook_v", (None, None, 0), "blocks.3.hook_v_input", (None, None, 0)), True),
+            (("blocks.3.hook_q_input", (None, None, 0), "blocks.2.hook_mlp_out", (None,)), True),
+            (("blocks.3.hook_k_input", (None, None, 0), "hook_pos_embed", (None,)), True),
+            (("blocks.3.hook_v_input", (None, None, 0), "hook_embed", (None,)), True),
+            (("blocks.2.hook_mlp_out", (None,), "blocks.2.hook_resid_mid", (None,)), True),
+            (("blocks.2.hook_resid_mid", (None,), "blocks.1.hook_mlp_out", (None,)), True),
+            (("blocks.1.hook_mlp_out", (None,), "blocks.1.hook_resid_mid", (None,)), True),
+            (("blocks.1.hook_resid_mid", (None,), "blocks.0.hook_mlp_out", (None,)), True),
+            (("blocks.1.hook_resid_mid", (None,), "hook_embed", (None,)), True),
+            (("blocks.1.hook_resid_mid", (None,), "hook_pos_embed", (None,)), True),
+            (("blocks.0.hook_mlp_out", (None,), "blocks.0.hook_resid_mid", (None,)), True),
+            (("blocks.0.hook_resid_mid", (None,), "blocks.0.attn.hook_result", (None, None, 0)), True),
+            (("blocks.0.hook_resid_mid", (None,), "hook_embed", (None,)), True),
+            (("blocks.0.attn.hook_result", (None, None, 0), "blocks.0.attn.hook_q", (None, None, 0)), True),
+            (("blocks.0.attn.hook_result", (None, None, 0), "blocks.0.attn.hook_k", (None, None, 0)), True),
+            (("blocks.0.attn.hook_result", (None, None, 0), "blocks.0.attn.hook_v", (None, None, 0)), True),
+            (("blocks.0.attn.hook_v", (None, None, 0), "blocks.0.hook_v_input", (None, None, 0)), True),
+            (("blocks.0.hook_v_input", (None, None, 0), "hook_embed", (None,)), True),
+        ]
+    )

@@ -67,6 +67,7 @@ class TLACDCExperiment:
         indices_mode: Literal["normal", "reverse", "shuffle"] = "reverse", # we get best performance with reverse I think
         names_mode: Literal["normal", "reverse", "shuffle"] = "normal",
         wandb_config: Optional[Namespace] = None,
+        early_exit: bool = False,
     ):
         """Initialize the ACDC experiment"""
 
@@ -94,6 +95,9 @@ class TLACDCExperiment:
             skip_edges = "no"
 
         self.corr = TLACDCCorrespondence.setup_from_model(self.model, use_pos_embed=use_pos_embed)
+
+        if early_exit: 
+            return
             
         self.reverse_topologically_sort_corr()
         self.current_node = self.corr.first_node()
@@ -444,7 +448,7 @@ class TLACDCExperiment:
         return True
 
 
-    def step(self, early_stop=False):
+    def step(self, early_stop=False, testing=False):
         if self.current_node is None:
             return
 
@@ -559,6 +563,8 @@ class TLACDCExperiment:
                     )
 
             self.update_cur_metric()
+            if testing:
+                break
 
         # TODO find an efficient way to do this...
         # if added_receiver_hook and not is_this_node_used:
@@ -707,10 +713,9 @@ class TLACDCExperiment:
         old_corr = self.corr
         self.corr = TLACDCCorrespondence.setup_from_model(self.model)
 
-    def save_subgraph(self, fpath: str) -> None:
-        """Saves the subgraph as a Dictionary of all the edges, so it can be reloaded"""
+    def save_subgraph(self, fpath: Optional[str]=None, return_it=False) -> None:
+        """Saves the subgraph as a Dictionary of all the edges, so it can be reloaded (or return that)"""
 
-        assert fpath.endswith(".pth")
         ret = OrderedDict()
         for tupl, edge in self.corr.all_edges().items():
             receiver_name, receiver_torch_index, sender_name, sender_torch_index = tupl
@@ -718,7 +723,13 @@ class TLACDCExperiment:
             ret[
                 (receiver_name, receiver_index, sender_name, sender_index)
             ] = edge.present
-        torch.save(ret, fpath)
+
+        if fpath is not None:
+            assert fpath.endswith(".pth")
+            torch.save(ret, fpath)
+
+        if return_it:
+            return ret
 
     def load_subgraph(self, subgraph: Subgraph):
 
@@ -758,12 +769,15 @@ class TLACDCExperiment:
 
         # file.download() in a temp dir
         with tempfile.TemporaryDirectory() as tmpdirname:
-            file.download(tmpdirname)
+            try:
+                file.download(tmpdirname)
+            except Exception as e:
+                raise ValueError("Probably, this doesn't have an output.log file??")
             fpath = os.path.join(tmpdirname, "output.log")
 
             # load the subgraph
             with open(fpath, "r") as f:
-                log_text = f.read()
+                log_text = f.read()  
 
             lines = log_text.split("\n")
 
