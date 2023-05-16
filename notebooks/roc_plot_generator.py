@@ -459,17 +459,17 @@ if "sp_corrs" not in locals() and not SKIP_SP: # this is slow, so run once
 
 #%%
 
-def get_sixteen_heads_corrs(
-    experiment = exp,
-    project_name = SIXTEEN_HEADS_PROJECT_NAME,
-    run_name = SIXTEEN_HEADS_RUN,
-    model= tl_model,
-):
-# experiment = exp
-# project_name = SIXTEEN_HEADS_PROJECT_NAME
-# run_name = SIXTEEN_HEADS_RUN
-# model = tl_model
-# if True:
+# def get_sixteen_heads_corrs(
+#     experiment = exp,
+#     project_name = SIXTEEN_HEADS_PROJECT_NAME,
+#     run_name = SIXTEEN_HEADS_RUN,
+#     model= tl_model,
+# ):
+experiment = exp
+project_name = SIXTEEN_HEADS_PROJECT_NAME
+run_name = SIXTEEN_HEADS_RUN
+model = tl_model
+if True:
     api = wandb.Api()
     run=api.run(SIXTEEN_HEADS_PROJECT_NAME + "/" + SIXTEEN_HEADS_RUN) # sorry fomratting..
     df = pd.DataFrame(run.scan_history()) 
@@ -478,6 +478,9 @@ def get_sixteen_heads_corrs(
     for t, e in experiment.corr.all_edges().items():
         e.present = True
     experiment.remove_all_non_attention_connections()
+
+    # assert experiment.corr.edges[t[0]][t[1]][t[2]][t[3]].present
+
     corrs = [deepcopy(experiment.corr)]
     print(experiment.count_no_edges())
 
@@ -500,6 +503,7 @@ def get_sixteen_heads_corrs(
         heads = [(layer_idx, head_idx) for layer_idx in range(tl_model.cfg.n_layers) for head_idx in range(tl_model.cfg.n_heads)], return_dict=True
     )
     print(nodes_to_mask_dict)
+
     corr2 = correspondence_from_mask(
         model = model,
         use_pos_embed=exp.use_pos_embed,
@@ -508,7 +512,7 @@ def get_sixteen_heads_corrs(
 
     assert set(corr2.all_edges().keys()) == set(experiment.corr.all_edges().keys())
     for t, e in corr2.all_edges().items():
-        assert experiment.corr.edges[t[0]][t[1]][t[2]][t[3]].present == e.present, (t, e.present, experiment.corr.edges[t[0]][t[1]][t[2]][t[3]].present)
+        assert experiment.corr.edges[t[0]][t[1]][t[2]][t[3]].present == e.present, (t, e.present, experiment.corr.edges[t[0]][t[1]][t[2]][t[3]].present) # WTF? How would this be True? Attention onlies???
 
     for layer_idx, head_idx in tqdm(zip(layer_indices, head_indices)):
         # exp.add_back_head(layer_idx, head_idx)
@@ -524,7 +528,7 @@ def get_sixteen_heads_corrs(
 
         corrs.append(deepcopy(corr))
 
-    return corrs # TODO add back in
+    # return corrs # TODO add back in
 
 if "sixteen_heads_corrs" not in locals() and not SKIP_SIXTEEN_HEADS: # this is slow, so run once
     sixteen_heads_corrs = get_sixteen_heads_corrs()
