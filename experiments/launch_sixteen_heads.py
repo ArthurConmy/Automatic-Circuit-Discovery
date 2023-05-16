@@ -97,7 +97,6 @@ wandb.init(
 )
 
 #%%
-
 if args.task == "ioi":
     num_examples = 100
     things = get_all_ioi_things(num_examples=num_examples, device=args.device, metric_name=args.metric)
@@ -139,10 +138,12 @@ model.load_state_dict(_acdc_model.state_dict(), strict=False)
 model = model.to(args.device)
 
 if args.reset_network:
-    reset_network(args.task, args.device, model)
-    reset_network(args.task, args.device, _acdc_model)
-    gc.collect()
-    torch.cuda.empty_cache()
+    assert False, "seems not to work"
+    with torch.no_grad():
+        reset_network(args.task, args.device, model)
+        reset_network(args.task, args.device, _acdc_model)
+        gc.collect()
+        torch.cuda.empty_cache()
 
 
 class SimpleMaskedHookPoint(MaskedHookPoint):
@@ -160,7 +161,8 @@ def replace_masked_hook_points(model):
             setattr(model, n, SimpleMaskedHookPoint(mask_shape=c.mask_scores.shape, name=c.name, is_mlp=c.is_mlp).to(args.device))
         else:
             replace_masked_hook_points(c)
-replace_masked_hook_points(model)
+with torch.no_grad():
+    replace_masked_hook_points(model)
 model.freeze_weights()
 
 # Set the masks to 1, so nothing is masked
@@ -170,21 +172,22 @@ with torch.no_grad():
             p.fill_(1)
 
 # Check that the model's outputs are the same
-expected = _acdc_model(things.validation_data).cpu()
-del _acdc_model
-things.tl_model = None
-gc.collect()
-torch.cuda.empty_cache()
+with torch.no_grad():
+    expected = _acdc_model(things.validation_data).cpu()
+    del _acdc_model
+    things.tl_model = None
+    gc.collect()
+    torch.cuda.empty_cache()
 
-actual = model(things.validation_data).cpu()
-gc.collect()
-torch.cuda.empty_cache()
+    actual = model(things.validation_data).cpu()
+    gc.collect()
+    torch.cuda.empty_cache()
 
-torch.testing.assert_allclose(
-    actual, expected,
-    atol=1e-3,
-    rtol=1e-2,
-)
+    torch.testing.assert_allclose(
+        actual, expected,
+        atol=1e-3,
+        rtol=1e-2,
+    )
 
 
 # %%
@@ -208,7 +211,7 @@ for i in tqdm.trange(len(per_example_metric)):
     for n, c in model.named_modules():
         if isinstance(c, SimpleMaskedHookPoint):
             if c.mask_scores.grad is not None:
-                prune_scores[n] += c.mask_scores.grad.abs()
+                prune_scores[n] += c.mask_scores.grad.abs().detach()
 
 #%%
 

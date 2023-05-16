@@ -38,6 +38,8 @@ import wandb
 def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACDCInterpNode], use_pos_embed: bool = False, newv = False) -> TLACDCCorrespondence:
     corr = TLACDCCorrespondence.setup_from_model(model, use_pos_embed=use_pos_embed)
 
+    additional_nodes_to_mask = []
+
     # If all of {qkv} is masked, also add its head child
     # to the list of nodes to mask
     head_parents = collections.defaultdict(lambda: 0)
@@ -46,13 +48,16 @@ def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACD
             child_name = node.name.replace("_q", "_result").replace("_k", "_result").replace("_v", "_result")
             head_parents[(child_name, node.index)] += 1
 
+            # Forgot to add these in earlier versions of Subnetwork Probing, and so the edge counts were inflated
+            additional_nodes_to_mask.append(TLACDCInterpNode(child_name + "_input", node.index, EdgeType.ADDITION))
+
     assert all([v <= 3 for v in head_parents.values()])
 
     for (child_name, child_index), count in head_parents.items():
         if count == 3:
             nodes_to_mask.append(TLACDCInterpNode(child_name, child_index, EdgeType.ADDITION))
 
-    for node in nodes_to_mask:
+    for node in nodes_to_mask + additional_nodes_to_mask:
         # Mark edges where this is child as not present
         rest2 = corr.edges[node.name][node.index]
         for rest3 in rest2.values():

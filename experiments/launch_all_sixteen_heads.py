@@ -25,7 +25,7 @@ def main():
         project="acdc")
 
     commands: List[List[str]] = []
-    for reset_network in [0, 1]:
+    for reset_network in [0]:
         for zero_ablation in [0, 1]:
             for task in TASKS:
                 for metric in METRICS_FOR_TASK[task]:
