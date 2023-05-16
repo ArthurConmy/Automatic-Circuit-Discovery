@@ -31,7 +31,7 @@ if IPython.get_ipython() is not None:
 from copy import deepcopy
 from subnetwork_probing.train import correspondence_from_mask
 from acdc.acdc_utils import false_positive_rate, false_negative_rate, true_positive_stat
-from acdc.greaterthan.utils import get_all_greaterthan_things
+from acdc.greaterthan.utils import get_all_greaterthan_things, get_greaterthan_true_edges
 
 import pandas as pd
 from typing import (
@@ -141,7 +141,7 @@ parser.add_argument("--testing", action="store_true", help="Use testing data ins
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("--task ioi --skip-sixteen-heads --skip-sp".split())
+    args = parser.parse_args("--task greaterthan".split())
 else:
     args = parser.parse_args()
 
@@ -296,6 +296,7 @@ elif TASK == "greaterthan":
     tl_model, toks_int_values, prompts, metric = get_all_greaterthan_things(num_examples=num_examples, device="cuda")
     toks_int_values_other = toks_int_values.clone()
     toks_int_values_other[:, 7] = 486 # replace with 01
+    get_true_edges = partial(get_greaterthan_true_edges, model=tl_model)
 
 elif TASK == "induction":
     raise ValueError("There is no ground truth circuit for Induction!!!")
