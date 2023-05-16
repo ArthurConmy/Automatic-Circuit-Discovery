@@ -88,7 +88,7 @@ from acdc.ioi.utils import (
 )
 from acdc.induction.utils import (
     get_all_induction_things,
-    get_model,
+    get_induction_model,
     get_validation_data,
     get_good_induction_candidates,
     get_mask_repeat_candidates,
@@ -131,7 +131,7 @@ parser.add_argument('--single-step', action='store_true', help='Use single step,
 if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
     # args = parser.parse_args("--threshold 1.733333 --zero-ablation".split())
     # args = parser.parse_args("--threshold 0.001 --using-wandb".split())
-    args = parser.parse_args("--task docstring --using-wandb --threshold 0.005 --wandb-project-name acdc --indices-mode reverse --first-cache-cpu False --second-cache-cpu False".split())
+    args = parser.parse_args("--task tracr-proportion --zero-ablation --using-wandb --threshold 0.005 --wandb-project-name acdc --indices-mode reverse --first-cache-cpu False --second-cache-cpu False".split())
 else:
     args = parser.parse_args()
 
@@ -156,7 +156,7 @@ DEVICE = args.device
 RESET_NETWORK = args.reset_network
 SINGLE_STEP = True if args.single_step else False
 
-#%% [markdown]
+#%%
 # Setup
 
 second_metric = None # some tasks only have one metric
@@ -296,3 +296,8 @@ if USING_WANDB:
     wandb.finish()
 
 #%%
+
+exp.save_subgraph(
+    return_it=True,
+)
+# %%

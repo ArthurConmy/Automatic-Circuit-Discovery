@@ -1,6 +1,7 @@
 #%%
 
 """Currently a notebook so that I can develop the 16 Heads tests fast"""
+"""WARNING: currently only considers attention heads. Should probably adapt to considering all MLPs too"""
 
 from IPython import get_ipython
 if get_ipython() is not None:
@@ -81,8 +82,9 @@ from acdc.ioi.utils import (
     get_gpt2_small,
 )
 from acdc.induction.utils import (
+    one_item_per_batch,
     get_all_induction_things,
-    get_model,
+    get_induction_model,
     get_validation_data,
     get_good_induction_candidates,
     get_mask_repeat_candidates,
@@ -97,7 +99,7 @@ import argparse
 #%%
 
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
-parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr (no guarentee I implement all...)')
+parser.add_argument('--task', type=str, required=True, help='Choose a task from the available options: ioi, docstring, induction, tracr (no guarentee I implement all...)')
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
 parser.add_argument('--wandb-entity-name', type=str, required=False, default="remix_school-of-rock", help='Value for WANDB_ENTITY_NAME')
 parser.add_argument('--wandb-group-name', type=str, required=False, default="default", help='Value for WANDB_GROUP_NAME')
@@ -106,8 +108,8 @@ parser.add_argument('--wandb-run-name', type=str, required=False, default=None, 
 parser.add_argument('--device', type=str, default="cuda")
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
-if get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("--task docstring --wandb-run-name docstring_sixteen_heads".split())
+if True or get_ipython() is not None: # heheh get around this failing in notebooks
+    args = parser.parse_args("--task ioi --wandb-run-name ioi_sixteen".split())
 else:
     args = parser.parse_args()
 
@@ -134,7 +136,7 @@ if TASK == "ioi":
     seq_len = toks_int_values.shape[1]
     model_getter = get_gpt2_small
 
-if TASK == "greaterthan":
+elif TASK == "greaterthan":
     num_examples = 100
     tl_model, toks_int_values, prompts, metric = get_all_greaterthan_things(num_examples=num_examples, device=DEVICE, sixteen_heads=True, return_one_element=False)
     toks_int_values_other = toks_int_values.clone()
@@ -163,8 +165,51 @@ elif TASK == "docstring":
 
     model_getter = get_docstring_model
 
+elif TASK in ["tracr-proportion", "tracr-reverse"]:
+    tracr_task = TASK.split("-")[-1] # "reverse"
+    use_pos_embed=True
+
+    # this implementation doesn't ablate the position embeddings (which the plots in the paper do do), so results are different. See the rust_circuit implemntation if this need be checked
+    # also there's no splitting by neuron yet TODO
+
+    # if tracr_task == "proportion":    
+    create_model_input, tl_model = get_tracr_model_input_and_tl_model(task=tracr_task, sixteen_heads=True)
+    toks_int_values, toks_int_values_other, metric = get_tracr_data(tl_model, task=tracr_task, return_one_element=False) 
+
+    num_examples = len(toks_int_values)
+    tl_model.to(DEVICE)
+
+    model_getter = lambda device, sixteen_heads: get_tracr_model_input_and_tl_model(task=tracr_task, sixteen_heads=sixteen_heads)[1].to(device)
+
+    # # for propotion, 
+    # tl_model(toks_int_values[:1])[0, :, 0] 
+    # is the proportion at each space (including irrelevant first position
+
+
 elif TASK == "induction":
-    raise NotImplementedError("Induction has same sentences with multiple places we take loss / KL divergence; fiddlier implementation")
+    num_sentences = 10
+    seq_len = 300
+    # TODO initialize the `tl_model` with the right model
+    induction_things = get_all_induction_things(num_examples=num_sentences, seq_len=seq_len, device=DEVICE, metric="kl_div", sixteen_heads=True) 
+    # TODO also implement NLL
+    tl_model, toks_int_values, toks_int_values_other = induction_things.tl_model, induction_things.validation_data, induction_things.validation_patch_data
+    validation_metric = induction_things.validation_metric
+    metric = lambda x: validation_metric(x)
+
+    # no test_metric_fns for now
+
+    test_metric_data = induction_things.test_data
+    toks_int_values, toks_int_values_other, end_positions_tensor, metric = one_item_per_batch(
+        toks_int_values=toks_int_values,
+        toks_int_values_other=toks_int_values_other,
+        mask_rep=induction_things.validation_mask, 
+        base_model_logprobs=induction_things.validation_logprobs,
+        sixteen_heads=True,
+    )
+
+    num_examples = len(toks_int_values)
+
+    model_getter = get_induction_model
 
 # note to self: turn of split_qkv for less OOM
 
@@ -343,6 +388,7 @@ exp = TLACDCExperiment(
     verbose=True,
     hook_verbose=False,
     add_sender_hooks=True,
+    second_cache_cpu=False,
     add_receiver_hooks=False,
     remove_redundant=False,
 )

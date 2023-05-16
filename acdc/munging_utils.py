@@ -4,11 +4,20 @@ import numpy as np
 from typing import List, Tuple
 from acdc.TLACDCInterpNode import TLACDCInterpNode
 from acdc.acdc_utils import TorchIndex, EdgeType
+import warnings
 
-def parse_interpnode(s: str) -> TLACDCInterpNode:
-    name, idx = s.split("[")
-    idx = int(idx[-2])
-    return TLACDCInterpNode(name, TorchIndex([None, None, idx]), EdgeType.ADDITION)
+def parse_interpnode(s: str, verbose=False) -> TLACDCInterpNode:
+    try:
+        name, idx = s.split("[")
+        try:
+            idx = int(idx[-2])
+        except:
+            idx = None
+        return TLACDCInterpNode(name, TorchIndex([None, None, idx]) if idx is not None else TorchIndex([None]), EdgeType.ADDITION)
+
+    except Exception as e:
+        print("Couldn't parse a node...", s, "and", str(e))
+        raise e
 
 def get_col_from_df(df, col_name):
     return df[col_name].values
@@ -144,3 +153,4 @@ def heads_to_nodes_to_mask(heads: List[Tuple[int, int]], return_dict=False):
 
     else:
         return [parse_interpnode(s) for s in nodes_to_mask_strings]
+

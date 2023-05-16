@@ -7,6 +7,7 @@ if IPython.get_ipython() is not None:
 from typing import Literal, List, Tuple, Dict, Any, Optional, Union, Callable, TypeVar, Iterable, Set
 from acdc import HookedTransformer, HookedTransformerConfig
 import warnings
+from collections import OrderedDict
 import einops
 import torch
 import numpy as np
@@ -198,7 +199,6 @@ def get_tracr_model_input_and_tl_model(task: Literal["reverse", "proportion"], d
 
         input_tokens_tensor = create_model_input(input)
         logits = tl_model(input_tokens_tensor)
-
         # decoded_output = decode_model_output(logits)
         # print("TransformerLens Replicated Decoding:", decoded_output)
 
@@ -229,6 +229,9 @@ def get_tracr_model_input_and_tl_model(task: Literal["reverse", "proportion"], d
     else:
         return create_model_input, tl_model
 
+def get_all_tracr_things():
+    pass
+
 # get some random permutation with no fixed points
 def get_perm(n, no_fp = True):
     if no_fp:
@@ -240,7 +243,6 @@ def get_perm(n, no_fp = True):
 
 def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: str, num_examples: int, device):
     _, tl_model = get_tracr_model_input_and_tl_model(task=task, device=device)
-    tl_model = tl_model.to(device)
 
     if task == "reverse":
         batch_size = 6
@@ -257,6 +259,7 @@ def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: st
 
         patch_data_indices = get_perm(len(data_tens))
         warnings.warn("Test that this only considers the relevant part of the sequence...")
+
         patch_data_tens = data_tens[patch_data_indices]
         base_model_logprobs = F.log_softmax(tl_model(data_tens), dim=-1)
 
@@ -311,6 +314,8 @@ def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: st
         def l2_metric( # this is for proportion... it's unclear how to format this tbh sad
             logits: torch.Tensor,
             model_out: torch.Tensor,
+            base_model_vals: torch.Tensor,
+            return_one_element: bool = True,
         ):
             # [1:, 0] shit
 

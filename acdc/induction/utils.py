@@ -42,11 +42,13 @@ def get_model(device, sixteen_heads=False):
         fold_ln=False,
         device=device,
         sixteen_heads=sixteen_heads,
+        device=device,
     )
 
     # standard ACDC options
     tl_model.set_use_attn_result(True)
-    tl_model.set_use_split_qkv_input(True) 
+    if not sixteen_heads:
+        tl_model.set_use_split_qkv_input(True) 
     return tl_model
 
 def get_validation_data(num_examples=None, seq_len=None, device=None):
@@ -167,3 +169,38 @@ def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric
         test_mask=test_mask,
         test_patch_data=test_patch_data,
     )
+
+
+def one_item_per_batch(toks_int_values, toks_int_values_other, mask_rep, base_model_logprobs, kl_take_mean=True, sixteen_heads=False):
+    """Returns each instance of induction as its own batch idx"""
+
+    end_positions = []
+    batch_size, seq_len = toks_int_values.shape
+    new_tensors = []
+
+    toks_int_values_other_batch_list = []
+    new_base_model_logprobs_list = []
+
+    for i in range(batch_size):
+        for j in range(seq_len - 1): # -1 because we don't know what follows the last token so can't calculate losses
+            if mask_rep[i, j]:
+                end_positions.append(j)
+                new_tensors.append(toks_int_values[i].cpu().clone())
+                toks_int_values_other_batch_list.append(toks_int_values_other[i].cpu().clone())
+                new_base_model_logprobs_list.append(base_model_logprobs[i].cpu().clone())
+
+    toks_int_values_other_batch = torch.stack(toks_int_values_other_batch_list).to(toks_int_values.device).clone()
+    return_tensor = torch.stack(new_tensors).to(toks_int_values.device).clone()
+    end_positions_tensor = torch.tensor(end_positions).long()
+
+    new_base_model_logprobs = torch.stack(new_base_model_logprobs_list)[torch.arange(len(end_positions_tensor)), end_positions_tensor].to(toks_int_values.device).clone()
+    metric = partial(
+        kl_divergence, 
+        base_model_logprobs=new_base_model_logprobs, 
+        end_positions=end_positions_tensor, 
+        mask_repeat_candidates=None, # !!! 
+        last_seq_element_only=False, 
+        return_one_element=False
+    )
+    
+    return return_tensor, toks_int_values_other_batch, end_positions_tensor, metric
