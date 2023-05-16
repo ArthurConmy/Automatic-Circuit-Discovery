@@ -124,9 +124,10 @@ from acdc.ioi.utils import (
 )
 import argparse
 from acdc.greaterthan.utils import get_all_greaterthan_things
+from pathlib import Path
 
 from notebooks.emacs_plotly_render import set_plotly_renderer
-# set_plotly_renderer("emacs")
+set_plotly_renderer("emacs")
 
 
 def get_col(df, col): # dumb util
@@ -141,47 +142,65 @@ parser = argparse.ArgumentParser(description="Used to control ROC plot scripts (
 parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr (WIPs)')
 parser.add_argument("--mode", type=str, required=False, choices=["edges", "nodes"], help="Choose a mode from the available options: edges, nodes", default="edges") # TODO implement nodes
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
+parser.add_argument('--metric', type=str, default="kl_div", help="Which metric to use for the experiment")
+parser.add_argument('--reset-network', type=int, default=0, help="Whether to reset the network we're operating on before running interp on it")
 parser.add_argument("--skip-sixteen-heads", action="store_true", help="Skip the 16 heads stuff")
 parser.add_argument("--skip-sp", action="store_true", help="Skip the SP stuff")
 parser.add_argument("--testing", action="store_true", help="Use testing data instead of validation data")
 
-# for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
-if IPython.get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args("--task tracr-proportion --testing".split())
+if IPython.get_ipython() is not None:
+    args = parser.parse_args("--task ioi --metric=logit_diff".split())
 else:
     args = parser.parse_args()
 
+
 TASK = args.task
-METRIC = "kl_div"
+METRIC = args.metric
 DEVICE = "cpu"
 ZERO_ABLATION = True if args.zero_ablation else False
-SKIP_ACDC=False
+RESET_NETWORK = 1 if args.reset_network else 0
+SKIP_ACDC = False
 SKIP_SP = True if args.skip_sp else False
 SKIP_SIXTEEN_HEADS = True if args.skip_sixteen_heads else False
 TESTING = True if args.testing else False
 
 # defaults
 ACDC_PROJECT_NAME = "remix_school-of-rock/acdc"
-ACDC_PRE_RUN_FILTER = None
-ACDC_NAME_FILTER = None
+ACDC_PRE_RUN_FILTER = {
+    "state": "finished",
+    "group": "acdc-spreadsheet2",
+    "config.metric": METRIC,
+    "config.zero_ablation": ZERO_ABLATION,
+    "config.reset_network": RESET_NETWORK,
+}
+ACDC_RUN_FILTER = None
 
 # # for SP # filters are more annoying since some things are nested in groups
 SP_PROJECT_NAME = "remix_school-of-rock/induction-sp-replicate"
-SP_PRE_RUN_FILTER = {}
-SP_RUN_FILTER = lambda _: True
+SP_PRE_RUN_FILTER = {
+    "state": "finished",
+    "config.loss_type": METRIC,
+    "config.zero_ablation": int(ZERO_ABLATION),
+    "config.reset_subject": RESET_NETWORK,
+}
+SP_RUN_FILTER = None
 
-# # for 16 heads # sixteen heads is just one run
+# # for 16 heads it's just one run but this way we just use the same code
 SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
-SIXTEEN_HEADS_RUN = None
+SIXTEEN_HEADS_RUN_FILTER = {
+    "state": "finished",
+    "group": "sixteen-heads",
+    "config.metric": METRIC,
+    "config.zero_ablation": ZERO_ABLATION,
+    "config.reset_network": RESET_NETWORK,
+}
+SIXTEEN_HEADS_RUN_FILTER = None
 
-def task_filter(run, task, verbose = True):
-    try:
-        assert json.loads(run.json_config)["task"]["value"] == task
-    except Exception as e:
-        if verbose:
-            print("errorre", e)
-        return False
-    return True
+USE_POS_EMBED = False
+
+
+ROOT = Path("/tmp/artifacts_for_plot")
+ROOT.mkdir(exist_ok=True)
 
 #%% [markdown]
 # Setup
@@ -192,63 +211,17 @@ if TASK == "docstring":
     seq_len = 41
     things = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE,
                                                 metric_name=METRIC, correct_incorrect_wandb=False)
-
     get_true_edges = get_docstring_subgraph_true_edges
-
-    ACDC_PROJECT_NAME = "remix_school-of-rock/acdc"
-    ACDC_PRE_RUN_FILTER = None
-    ACDC_RUN_FILTER = lambda run: run.name.startswith("agarriga-docstring")
-
-    SP_PROJECT_NAME = "remix_school-of-rock/induction-sp-replicate"
-    def sp_run_filter(run): # name):
-        name = run.name
-        if not name.startswith("agarriga-sp-"): return False
-        try:
-            int(name.split("-")[-1])
-        except:
-            return False
-        return 0 <= int(name.split("-")[-1]) <= 319
-    SP_PRE_RUN_FILTER = {"group": "docstring3"} # used for the api.run(filter=...)
-    SP_RUN_FILTER = lambda run: sp_run_filter(run)
-
-    SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
-    SIXTEEN_HEADS_RUN = "mrzpsjtw"
+    SP_PRE_RUN_FILTER["group"] = "docstring3"
 
 elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
-    tracr_task = TASK.split("-")[-1] # "reverse"
-
-    # this implementation doesn't ablate the position embeddings (which the plots in the paper do do), so results are different. See the rust_circuit implemntation if this need be checked
-    # also there's no splitting by neuron yet TODO
-
-    use_pos_embed = True
-    ZERO_ABLATION = True
-
-
-    ACDC_PROJECT_NAME = None
-    ACDC_PRE_RUN_FILTER = None
-    ACDC_RUN_FILTER = lambda name: name == "not_a_real_run" # broken, see below
-    points["ACDC"] = [(0.0, 1.0)]
-
+    tracr_task = TASK.split("-")[-1] # "reverse"/"proportion"
     if tracr_task == "proportion":
         get_true_edges = get_tracr_proportion_edges
         num_examples = 50
-
-        SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
-        SIXTEEN_HEADS_RUN = "siurl8zp"
-
-        # # sad, we updated the tracr stuff
-        # SP_PROJECT_NAME = "remix_school-of-rock/induction-sp-replicate"
-        # SP_PRE_RUN_FILTER = {"group": "complete-spreadsheet-4"}
-        # three_digit_numbers = ["320", "341", "340", "339", "338", "337", "336", "335", "334", "332"]
-        # SP_RUN_FILTER = lambda name: len(name)>3 and name[-3:] in three_digit_numbers
-
     elif tracr_task == "reverse":
         get_true_edges = get_tracr_reverse_edges
         num_examples = 6
-
-        SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
-        SIXTEEN_HEADS_RUN = "fccs2o7o"
-
     else:
         raise NotImplementedError("not a tracr task")
 
@@ -260,34 +233,16 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
 
 elif TASK == "ioi":
     num_examples = 100
-    things = get_all_ioi_things(num_examples=num_examples, device=DEVICE, metric_name=args.metric)
-
-    ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_ioi_sweep"
-
-    ACDC_RUN_FILTER = partial(task_filter, task="ioi")
-    ACDC_PRE_RUN_FILTER = None
-
-    SP_PROJECT_NAME = "remix_school-of-rock/induction-sp-replicate"
-    SP_PRE_RUN_FILTER = {"group": "complete-spreadsheet-4"}
-    SP_RUN_FILTER = partial(task_filter, task="ioi", verbose=False)
-
-    SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
-    SIXTEEN_HEADS_RUN = "yjreihd0"
-
+    things = get_all_ioi_things(num_examples=num_examples, device=DEVICE, metric_name=METRIC)
     get_true_edges = partial(get_ioi_true_edges, model=things.tl_model)
-    
+
 elif TASK == "greaterthan":
     num_examples = 100
-    things = get_all_greaterthan_things(num_examples=num_examples, metric_name=args.metric, device=DEVICE)
-
-    SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
-    SIXTEEN_HEADS_RUN = "zcxh8rbm"
-
+    things = get_all_greaterthan_things(num_examples=num_examples, metric_name=METRIC, device=DEVICE)
     raise NotImplementedError("TODO")
 
 elif TASK == "induction":
     raise ValueError("There is no ground truth circuit for Induction!!!")
-
 else:
     raise NotImplementedError("TODO " + TASK)
 
@@ -307,7 +262,7 @@ exp = TLACDCExperiment(
     metric=things.validation_metric,
     second_metric=None,
     verbose=True,
-    use_pos_embed=use_pos_embed,
+    use_pos_embed=USE_POS_EMBED,
 )
 #%% [markdown]
 # Load the *canonical* circuit
@@ -321,44 +276,68 @@ canonical_circuit_subgraph = deepcopy(exp.corr)
 canonical_circuit_subgraph_size = canonical_circuit_subgraph.count_no_edges()
 
 #%%
-# <h2> Arthur plays about with loading in graphs </h2>
-# <h3> Not relevant for doing ACDC runs </h3>
-# <p> Get Adria's docstring runs! </p>
 
 def get_acdc_runs(
     experiment,
     project_name: str = ACDC_PROJECT_NAME,
-    run_filter: Callable[[Any], bool] = ACDC_RUN_FILTER,
-    clip = None,
+    pre_run_filter: dict = ACDC_PRE_RUN_FILTER,
+    run_filter: Optional[Callable[[Any], bool]] = ACDC_RUN_FILTER,
+    clip: Optional[int] = None,
 ):
-    if project_name is None:
-        return []
-
     if clip is None:
         clip = 100_000 # so we don't clip anything
 
     api = wandb.Api()
-    runs = api.runs(project_name)
-    filtered_runs = []
-    for run in tqdm(runs[:clip]):
-        if run_filter(run):
-            filtered_runs.append(run)
-    cnt = 0
+    runs = api.runs(project_name, filters=pre_run_filter)
+    if run_filter is None:
+        filtered_runs = runs[:clip]
+    else:
+        filtered_runs = list(filter(run_filter, tqdm(runs[:clip])))
+    print(f"loading {len(filtered_runs)} runs")
+
     corrs = []
     args = project_name.split("/")
-    for run in tqdm(filtered_runs):
-        run_id = run.id
-        try:
-            experiment.load_from_wandb_run(*args, run_id)
+    for run in filtered_runs:
+        # Try to find `edges.pth`
+        edges_artifact = None
+        for art in run.logged_artifacts():
+            if "edges.pth" in art.name:
+                edges_artifact = art
+                break
+
+        if edges_artifact is None:
+            # We'll have to parse the run
+            print(f"Edges.pth not found for run {run.name}, falling back to parsing")
+            try:
+                log_text = run.file("output.log").download(root=ROOT, replace=False, exist_ok=True).read()
+                experiment.load_from_wandb_run(log_text)
+                corrs.append(deepcopy(exp.corr))
+            except wandb.CommError:
+                print(f"Loading run {run.name} with state={runs.state} config={run.config} totally failed.")
+                continue
+
+        else:
+            all_edges = exp.corr.all_edges()
+            for edge in all_edges.values():
+                edge.present = False
+
+            this_root = ROOT / edges_artifact.name
+            # Load the edges
+            for f in edges_artifact.files():
+                with f.download(root=this_root, replace=False, exist_ok=True) as fopen:
+                    # Sadly f.download opens in text mode
+                    with open(fopen.name, "rb") as fopenb:
+                        edges_pth = pickle.load(fopenb)
+
+            for t, _effect_size in edges_pth:
+                all_edges[t].present = True
+
             corrs.append(deepcopy(exp.corr))
-        except Exception as e:
-            print(run.id, "and errorr", e)
-            cnt+=1
-            continue
+        print(f"Added run with threshold={run.config['threshold']}")
     return corrs
 
-if "acdc_corrs" not in locals() and not SKIP_ACDC: # this is slow, so run once
-    acdc_corrs = get_acdc_runs(exp, clip = 100 if TESTING else None)
+if not SKIP_ACDC: # this is slow, so run once
+    acdc_corrs = get_acdc_runs(exp, clip = 1 if TESTING else None)
 
 #%%
 
@@ -532,6 +511,7 @@ def get_points(corrs):
             assert False
     return points
 
+points = {}
 #%%
 
 if "ACDC" in methods:
