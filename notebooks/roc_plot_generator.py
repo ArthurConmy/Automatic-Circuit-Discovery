@@ -400,7 +400,7 @@ def get_sp_corrs(
         entry = mask_scores_entries[-1]
 
         try:
-            nodes_to_mask_entries = get_col(df, "nodes_to_mask") # ???
+            nodes_to_mask_entries = get_col(df, "nodes_to_mask")
         except Exception as e:
             print(e, "... was an error")
             continue        
