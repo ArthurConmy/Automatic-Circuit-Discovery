@@ -149,7 +149,7 @@ parser.add_argument("--skip-sp", action="store_true", help="Skip the SP stuff")
 parser.add_argument("--testing", action="store_true", help="Use testing data instead of validation data")
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task ioi --metric=logit_diff".split())
+    args = parser.parse_args("--task ioi --metric=kl_div".split())
 else:
     args = parser.parse_args()
 
@@ -169,6 +169,7 @@ ACDC_PROJECT_NAME = "remix_school-of-rock/acdc"
 ACDC_PRE_RUN_FILTER = {
     "state": "finished",
     "group": "acdc-spreadsheet2",
+    "config.task": TASK,
     "config.metric": METRIC,
     "config.zero_ablation": ZERO_ABLATION,
     "config.reset_network": RESET_NETWORK,
@@ -179,6 +180,7 @@ ACDC_RUN_FILTER = None
 SP_PROJECT_NAME = "remix_school-of-rock/induction-sp-replicate"
 SP_PRE_RUN_FILTER = {
     "state": "finished",
+    "config.task": TASK,
     "config.loss_type": METRIC,
     "config.zero_ablation": int(ZERO_ABLATION),
     "config.reset_subject": RESET_NETWORK,
@@ -187,9 +189,10 @@ SP_RUN_FILTER = None
 
 # # for 16 heads it's just one run but this way we just use the same code
 SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
-SIXTEEN_HEADS_RUN_FILTER = {
+SIXTEEN_HEADS_PRE_RUN_FILTER = {
     "state": "finished",
     "group": "sixteen-heads",
+    "config.task": TASK,
     "config.metric": METRIC,
     "config.zero_ablation": ZERO_ABLATION,
     "config.reset_network": RESET_NETWORK,
@@ -234,6 +237,12 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
 elif TASK == "ioi":
     num_examples = 100
     things = get_all_ioi_things(num_examples=num_examples, device=DEVICE, metric_name=METRIC)
+
+    if METRIC == "kl_div":
+        ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_ioi_sweep"
+        del ACDC_PRE_RUN_FILTER["config.reset_network"]
+        ACDC_PRE_RUN_FILTER["group"] = "default"
+
     get_true_edges = partial(get_ioi_true_edges, model=things.tl_model)
 
 elif TASK == "greaterthan":
@@ -264,6 +273,9 @@ exp = TLACDCExperiment(
     verbose=True,
     use_pos_embed=USE_POS_EMBED,
 )
+
+max_subgraph_size = exp.corr.count_no_edges()
+
 #%% [markdown]
 # Load the *canonical* circuit
 
@@ -296,7 +308,6 @@ def get_acdc_runs(
     print(f"loading {len(filtered_runs)} runs")
 
     corrs = []
-    args = project_name.split("/")
     for run in filtered_runs:
         # Try to find `edges.pth`
         edges_artifact = None
@@ -332,7 +343,7 @@ def get_acdc_runs(
             for t, _effect_size in edges_pth:
                 all_edges[t].present = True
 
-            corrs.append(deepcopy(exp.corr))
+            corrs.append((deepcopy(exp.corr), run.config["threshold"]))
         print(f"Added run with threshold={run.config['threshold']}")
     return corrs
 
@@ -346,143 +357,68 @@ def get_sp_corrs(
     experiment, 
     model = things.tl_model,
     project_name: str = SP_PROJECT_NAME,
-    pre_run_filter: Dict = SP_PRE_RUN_FILTER,
-    run_filter: Callable[[Any], bool] = SP_RUN_FILTER,
-    clip = None,
+    pre_run_filter: dict = SP_PRE_RUN_FILTER,
+    run_filter: Optional[Callable[[Any], bool]] = SP_RUN_FILTER,
+    clip: Optional[int] = None,
 ):
-    if project_name is None:
-        return []
-
     if clip is None:
-        clip = 100_000
+        clip = 100_000 # so we don't clip anything
 
     api = wandb.Api()
-    runs=api.runs(
-        project_name,
-        filters=pre_run_filter,
-    )
-    filtered_runs = []
-    for run in tqdm(runs):
-        if run_filter(run):
-            filtered_runs.append(run)
-    cnt = 0
+    runs = api.runs(project_name, filters=pre_run_filter)
+    if run_filter is None:
+        filtered_runs = runs[:clip]
+    else:
+        filtered_runs = list(filter(run_filter, tqdm(runs[:clip])))
+    print(f"loading {len(filtered_runs)} runs")
+
     corrs = []
-    ret = []
-
-    verbose = True
-
-    for run in tqdm(filtered_runs[:clip]):
-        df = pd.DataFrame(run.scan_history())
-
-        mask_scores_entries = get_col(df, "mask_scores")
-        assert len(mask_scores_entries) > 0
-        entry = mask_scores_entries[-1]
-
-        try:
-            nodes_to_mask_entries = get_col(df, "nodes_to_mask")
-        except Exception as e:
-            print(e, "... was an error")
-            continue        
-
-        assert len(nodes_to_mask_entries) ==1, len(nodes_to_mask_entries)
-        nodes_to_mask_strings = nodes_to_mask_entries[0]
-        print(nodes_to_mask_strings)
-        nodes_to_mask_dict = [parse_interpnode(s) for s in nodes_to_mask_strings if parse_interpnode(s, verbose=verbose) is not None]
-
-        if len(nodes_to_mask_dict) != len(nodes_to_mask_strings):
-            verbose = False # ignore future errors
-
-        number_of_edges_entries = get_col(df, "number_of_edges")
-        assert len(number_of_edges_entries) == 1, len(number_of_edges_entries)
-        number_of_edges = number_of_edges_entries[0]
-
-        kl_divs = get_col(df, "test_kl_div")
-        assert len(kl_divs) == 1, len(kl_divs)
-        kl_div = kl_divs[0]
-
+    for run in filtered_runs:
+        nodes_to_mask_strings = run.summary["nodes_to_mask"]
+        nodes_to_mask = [parse_interpnode(s) for s in nodes_to_mask_strings]
         corr = correspondence_from_mask(
             model = model,
-            nodes_to_mask=nodes_to_mask_dict,
+            nodes_to_mask=nodes_to_mask,
         )
+        corrs.append((corr, run.config["lambda_reg"]))
+    return corrs
 
-        if corr.count_no_edges() != number_of_edges:
-            warnings.warn(str(corr.count_no_edges()) + " ooh err " + str(number_of_edges))
-
-        ret.append(corr) # do we need KL too? I think no..
-
-    return ret
-
-if "sp_corrs" not in locals() and not SKIP_SP: # this is slow, so run once
-    sp_corrs = get_sp_corrs(exp, clip = 10 if TESTING else None) # clip for testing
+if not SKIP_SP: # this is slow, so run once
+    sp_corrs = get_sp_corrs(exp, clip = 1 if TESTING else None) # clip for testing
 
 #%%
 
 def get_sixteen_heads_corrs(
     experiment = exp,
     project_name = SIXTEEN_HEADS_PROJECT_NAME,
-    run_name = SIXTEEN_HEADS_RUN,
+    pre_run_filter = SIXTEEN_HEADS_PRE_RUN_FILTER,
+    run_filter = SIXTEEN_HEADS_RUN_FILTER,
     model= things.tl_model,
 ):
-# experiment = exp
-# project_name = SIXTEEN_HEADS_PROJECT_NAME
-# run_name = SIXTEEN_HEADS_RUN
-# model = tl_model
-# if True:
     api = wandb.Api()
-    run=api.run(SIXTEEN_HEADS_PROJECT_NAME + "/" + SIXTEEN_HEADS_RUN) # sorry fomratting..
-    df = pd.DataFrame(run.scan_history()) 
-
-    # start with everything involved except attention
-    for t, e in experiment.corr.all_edges().items():
-        e.present = True
-    experiment.remove_all_non_attention_connections()
-    corrs = [deepcopy(experiment.corr)]
-    print(experiment.count_no_edges())
-
-    history = run.scan_history()
-    layer_indices = list(pd.DataFrame(history)["layer_idx"])
-    try:
-        int(layer_indices[0])
-    except:
-        pass
+    runs = api.runs(project_name, filters=pre_run_filter)
+    if run_filter is None:
+        run = runs[0]
     else:
-        raise ValueError("Expected a NAN at start, formatting different")
-    
-    layer_indices = layer_indices[1:]
-    head_indices = list(pd.DataFrame(history)["head_idx"])[1:]
-    assert len(head_indices) == len(layer_indices), (len(head_indices), len(layer_indices))
-    head_indices = [int(i) for i in head_indices]
-    layer_indices = [int(i) for i in layer_indices]
+        run = None
+        for r in runs:
+            if run_filter(r):
+                run = r
+                break
+        assert run is not None
 
-    nodes_to_mask_dict = heads_to_nodes_to_mask(
-        heads = [(layer_idx, head_idx) for layer_idx in range(tl_model.cfg.n_layers) for head_idx in range(tl_model.cfg.n_heads)], return_dict=True
-    )
-    print(nodes_to_mask_dict)
-    corr2 = correspondence_from_mask(
-        model = model,
-        use_pos_embed=exp.use_pos_embed,
-        nodes_to_mask=list(nodes_to_mask_dict.values()),
-    )
+    nodes_names_indices = run.summary["nodes_names_indices"]
+    print(nodes_names_indices)
 
-    assert set(corr2.all_edges().keys()) == set(experiment.corr.all_edges().keys())
-    for t, e in corr2.all_edges().items():
-        assert experiment.corr.edges[t[0]][t[1]][t[2]][t[3]].present == e.present, (t, e.present, experiment.corr.edges[t[0]][t[1]][t[2]][t[3]].present)
-
-    for layer_idx, head_idx in tqdm(zip(layer_indices, head_indices)):
-        # exp.add_back_head(layer_idx, head_idx)
-        for letter in "qkv":
-            nodes_to_mask_dict.pop(f"blocks.{layer_idx}.attn.hook_{letter}[COL, COL, {head_idx}]") # weirdly we don't have the q_input; just outputs of things....
-        nodes_to_mask_dict.pop(f"blocks.{layer_idx}.attn.hook_result[COL, COL, {head_idx}]")
-
-        corr = correspondence_from_mask(
-            model = model,
-            use_pos_embed = exp.use_pos_embed,
-            nodes_to_mask=list(nodes_to_mask_dict.values()),
-        )
-
-        corrs.append(deepcopy(corr))
-
-    return corrs # TODO add back in
+    corrs = []
+    nodes_to_mask = []
+    cum_score = 0.0
+    for nodes, hook_name, idx, score in tqdm(nodes_names_indices[::3]):
+        nodes_to_mask += list(map(parse_interpnode, nodes))
+        corr = correspondence_from_mask(model=model, nodes_to_mask=nodes_to_mask, use_pos_embed=exp.use_pos_embed)
+        cum_score += score
+        corrs.append((corr, cum_score))
+    return corrs
 
 if "sixteen_heads_corrs" not in locals() and not SKIP_SIXTEEN_HEADS: # this is slow, so run once
     sixteen_heads_corrs = get_sixteen_heads_corrs()
@@ -498,13 +434,16 @@ if not SKIP_SIXTEEN_HEADS: methods.append("16H")
 #%%
 
 # get points from correspondence
-def get_points(corrs):
+def get_points(corrs_and_scores):
     points = []
-    for corr in tqdm(corrs): 
+    for corr, score in tqdm(sorted(corrs_and_scores, key=lambda x: x[1])):
         circuit_size = corr.count_no_edges()
         if circuit_size == 0:
             continue
-        points.append((false_positive_rate(canonical_circuit_subgraph, corr)/circuit_size, true_positive_stat(canonical_circuit_subgraph, corr)/canonical_circuit_subgraph_size))
+        points.append((false_positive_rate(canonical_circuit_subgraph, corr)/(max_subgraph_size - canonical_circuit_subgraph_size),
+                       true_positive_stat(canonical_circuit_subgraph, corr)/canonical_circuit_subgraph_size))
+        # points.append((true_positive_stat(canonical_circuit_subgraph, corr)/circuit_size,
+        #     true_positive_stat(canonical_circuit_subgraph, corr)/canonical_circuit_subgraph_size))
         print(points[-1])
         if points[-1][0] > 1:
             print(false_positive_rate(canonical_circuit_subgraph, corr, verbose=True))
@@ -533,7 +472,9 @@ if "16H" in methods:
 #%%
 
 def discard_non_pareto_optimal(points):
-    ret = [(0.0, 0.0), (1.0, 1.0)]
+    ret = [(0.0, 0.0), *points, (1.0, 1.0)]
+    return ret
+
     for x, y in points:
         for x1, y1 in points:
             if x1 <= x and y1 >= y and (x1, y1) != (x, y):
@@ -563,7 +504,7 @@ def get_roc_figure(all_points, names): # TODO make the plots grey / black / yell
                 name=name,
             )
         )
-    roc_figure.update_xaxes(title_text="False positive rate")
+    roc_figure.update_xaxes(title_text="Precision")
     roc_figure.update_yaxes(title_text="True positive rate")
     return roc_figure
 
