@@ -80,12 +80,12 @@ for task_idx, (row, col) in enumerate(rows_and_cols):
             fig.add_annotation(
                 xref="x domain",
                 yref="y",
-                x=0.55,
+                x=0.35, # end of arrow
                 y=0.75,
                 text="",
                 axref="x domain",
                 ayref="y",
-                ax=0.75,
+                ax=0.55,
                 ay=0.55,
                 arrowhead=2,
                 row = row,
@@ -94,23 +94,40 @@ for task_idx, (row, col) in enumerate(rows_and_cols):
             fig.add_annotation(
                 xref="x domain",
                 yref="y",
-                x=0.8,
+                x=0.6, # end of arrow
                 y=0.8,
                 text="",
                 axref="x domain",
                 ayref="y",
-                ax=0.8,
+                ax=0.6,
                 ay=0.6,
                 arrowhead=2,
                 row = row,
                 col = col,
             )
-            fig.add_annotation(text="More correct",
+            fig.add_annotation(
+                xref="x domain",
+                yref="y",
+                x=0.8, # end of arrow
+                y=0.5,
+                text="",
+                axref="x domain",
+                ayref="y",
+                ax=0.6,
+                ay=0.5,
+                arrowhead=2,
+                row = row,
+                col = col,
+            )
+            fig.add_annotation(text="More circuit components recovered",
                   xref="x", yref="y",
-                  x=0.85, y=0.85, showarrow=False, font=dict(size=12), row=row, col=col)
+                  x=0.45, y=0.85, showarrow=False, font=dict(size=8), row=row, col=col)
             fig.add_annotation(text="Better",
                   xref="x", yref="y",
-                  x=0.55, y=0.55, showarrow=False, font=dict(size=12), row=row, col=col)
+                  x=0.4, y=0.6, showarrow=False, font=dict(size=12), row=row, col=col)
+            fig.add_annotation(text="More wrong components recovered",
+                  xref="x", yref="y",
+                  x=0.65, y=0.45, showarrow=False, font=dict(size=8), row=row, col=col) # TODO could add two text boxes
 
             fig.update_yaxes(visible=True, row=row, col=col, tickangle=-45) # ???
 
@@ -147,7 +164,7 @@ fig.update_layout(
 
 scale = 1.2
 
-fig.update_layout(height=350*scale, width=scale*scale*500)  # plausibly make slightly bigger
+fig.update_layout(height=350*scale, width=scale*scale*500, title=dict(text="Lol"))  # plausibly make slightly bigger
 fig.show()
 
 # %%
@@ -155,10 +172,6 @@ fig.show()
 # Stefan
 #   1 hour ago
 # Very nice plots! Small changes
-# Arrow relabel suggestons:
-# Arrow upwards: "More heads recovered" "Original circuit recovered"
-# Arrow leftwards: "Less unimportant heads" / "No unnecessary heads" or something. Definitely have arrows for both directions
-# Not sure if we need an arrow diagonally, are ROC curves common enough? I'd leave it out, clear from context
 # 1st title should be IOI, "Cicuit Recovery" should be above or somewhere else
 # [Minor] Unify xlim=ylim=[-0.01, 1.01] or so
 # :raised_hands:
