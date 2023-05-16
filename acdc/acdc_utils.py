@@ -186,17 +186,15 @@ def kl_divergence(
 
     if mask_repeat_candidates is not None:
         assert kl_div.shape == mask_repeat_candidates.shape, (kl_div.shape, mask_repeat_candidates.shape)
-        denom = mask_repeat_candidates.long().sum()
-        kl_div = kl_div * mask_repeat_candidates
-        if return_one_element:
-            answer = kl_div.sum() / denom
-        else:
-            answer = kl_div
+        answer = kl_div[mask_repeat_candidates]
+    elif not last_seq_element_only:
+        assert kl_div.ndim == 2, kl_div.shape
+        answer = kl_div.view(-1)
     else:
-        if return_one_element:
-            answer = kl_div.mean()
-        else:
-            answer = kl_div
+        answer = kl_div
+
+    if return_one_element:
+        return answer.mean()
 
     return answer
 
@@ -225,15 +223,15 @@ def negative_log_probs(
             nll_all.shape,
             mask_repeat_candidates.shape,
         )
-        denom = mask_repeat_candidates.long().sum()
-        nll_all = nll_all * mask_repeat_candidates
-        answer = nll_all
-        if return_one_element:
-            answer = nll_all.sum() / denom
-
+        answer = nll_all[mask_repeat_candidates]
+    elif not last_seq_element_only:
+        assert nll_all.ndim == 2, nll_all.shape
+        answer = nll_all.view(-1)
     else:
-        if return_one_element:
-            answer = nll_all.mean()
+        answer = nll_all
+
+    if return_one_element:
+        return answer.mean()
 
     return answer
 
@@ -275,22 +273,28 @@ class MatchNLLMetric:
             return_one_element=self.return_one_element,
         )
 
-def logit_diff_metric(logits, correct_labels, wrong_labels) -> torch.Tensor:
+def logit_diff_metric(logits, correct_labels, wrong_labels, return_one_element: bool=False) -> torch.Tensor:
     range = torch.arange(len(logits))
     correct_logits = logits[range, -1, correct_labels]
     incorrect_logits = logits[range, -1, wrong_labels]
 
     # Note: negative sign so we minimize
     # TODO de-duplicate with docstring/utils.py `raw_docstring_metric`
-    return -(correct_logits.mean() - incorrect_logits.mean())
+    if return_one_element:
+        return -(correct_logits.mean() - incorrect_logits.mean())
+    else:
+        return -(correct_logits - incorrect_logits).view(-1)
 
-def frac_correct_metric(logits, correct_labels, wrong_labels) -> torch.Tensor:
+def frac_correct_metric(logits, correct_labels, wrong_labels, return_one_element: bool=False) -> torch.Tensor:
     range = torch.arange(len(logits))
     correct_logits = logits[range, -1, correct_labels]
     incorrect_logits = logits[range, -1, wrong_labels]
 
     # Neg so we maximize correct
-    return -(correct_logits > incorrect_logits).float().mean()
+    if return_one_element:
+        return -(correct_logits > incorrect_logits).float().mean()
+    else:
+        return -(correct_logits > incorrect_logits).float().view(-1)
 
 
 

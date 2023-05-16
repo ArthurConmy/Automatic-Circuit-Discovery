@@ -171,7 +171,7 @@ def get_tracr_model_input_and_tl_model(task: Literal["reverse", "proportion"], d
     INPUT_ENCODER = model.input_encoder
     OUTPUT_ENCODER = model.output_encoder
 
-    def create_model_input(input, input_encoder=INPUT_ENCODER, device="cuda"):
+    def create_model_input(input, input_encoder=INPUT_ENCODER, device=device):
         encoding = input_encoder.encode(input)
         return torch.tensor(encoding).unsqueeze(dim=0).to(device)
 
@@ -314,13 +314,14 @@ def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: st
         def l2_metric( # this is for proportion... it's unclear how to format this tbh sad
             logits: torch.Tensor,
             model_out: torch.Tensor,
-            base_model_vals: torch.Tensor,
             return_one_element: bool = True,
         ):
-            # [1:, 0] shit
-
+            # output 0 contains the proportion of the token "x" (== 3)
             proc = logits[:, 1:, 0]
-            return ((proc - model_out)**2).mean()
+            if return_one_element:
+                return ((proc - model_out)**2).mean()
+            else:
+                return ((proc - model_out)**2).flatten()
 
         if metric_name == "l2":
             metric = partial(l2_metric, model_out=validation_outputs[:, 1:, 0])

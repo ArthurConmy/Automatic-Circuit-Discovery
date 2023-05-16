@@ -42,7 +42,6 @@ def get_model(device, sixteen_heads=False):
         fold_ln=False,
         device=device,
         sixteen_heads=sixteen_heads,
-        device=device,
     )
 
     # standard ACDC options

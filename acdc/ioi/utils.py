@@ -7,7 +7,6 @@ from copy import deepcopy
 import torch.nn.functional as F
 from typing import List
 import click
-from subnetwork_probing.train import correspondence_from_mask
 import IPython
 from acdc.acdc_utils import MatchNLLMetric, frac_correct_metric, logit_diff_metric, kl_divergence, negative_log_probs
 import torch
@@ -203,6 +202,8 @@ def get_ioi_true_edges(model):
                     TLACDCInterpNode(name=f"blocks.{layer_idx}.attn.hook_result", index = TorchIndex([None, None, head_idx]), incoming_edge_type=EdgeType.DIRECT_COMPUTATION),
                 )
 
+
+    from subnetwork_probing.train import correspondence_from_mask
     corr = correspondence_from_mask(
         nodes_to_mask=nodes_to_mask,
         model = model,
