@@ -10,9 +10,12 @@ def parse_interpnode(s: str, verbose=False) -> TLACDCInterpNode:
     try:
         name, idx = s.split("[")
         try:
-            idx = int(idx[-2])
+            idx = int(idx[-3:-1])
         except:
-            idx = None
+            try: 
+                idx = int(idx[-2])
+            except:
+                idx = None
         return TLACDCInterpNode(name, TorchIndex([None, None, idx]) if idx is not None else TorchIndex([None]), EdgeType.ADDITION)
 
     except Exception as e:

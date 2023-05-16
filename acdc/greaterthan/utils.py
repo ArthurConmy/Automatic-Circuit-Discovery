@@ -1,5 +1,19 @@
-#%%
-
+from collections import OrderedDict
+from acdc.acdc_utils import Edge, TorchIndex, EdgeType
+from acdc.TLACDCInterpNode import TLACDCInterpNode
+import warnings
+from functools import partial
+from copy import deepcopy
+import torch.nn.functional as F
+from typing import List
+import click
+import IPython
+from acdc.acdc_utils import kl_divergence
+import torch
+from acdc.ioi.ioi_dataset import IOIDataset  # NOTE: we now import this LOCALLY so it is deterministic
+from tqdm import tqdm
+import wandb
+from acdc.HookedTransformer import HookedTransformer
 import warnings
 from functools import partial
 from copy import deepcopy
@@ -204,3 +218,83 @@ def get_all_greaterthan_things(num_examples, metric_name, device="cuda"):
         test_labels=None,
         test_mask=None,
         test_patch_data=test_patch_data)
+
+def get_greaterthan_true_edges(model):
+    from subnetwork_probing.train import correspondence_from_mask
+
+    corr = correspondence_from_mask(
+        model=model,
+        nodes_to_mask = [],
+    )
+    for t, e in corr.all_edges().items():
+        e.present = False
+
+    CIRCUIT = {
+        # "input": [None], # special case input
+        "0305": [(0, 3), (0, 5)],
+        "01": [(0, 1)],
+        "MEARLY": [(0, None), (1, None), (2, None), (3, None)],
+        "AMID": [(5, 5), (6, 1), (7, 10), (8, 11), (9, 1)], 
+        "MLATE": [(8, None), (9, None), (10, None), (11, None)],
+        # output special case
+    }
+    connected_pairs = [
+        ("01", "MEARLY"),
+        ("01", "AMID"),
+        ("0305", "AMID"),
+        ("MEARLY", "AMID"),
+        ("AMID", "MLATE"),
+        # ("AMID", )
+    ]
+
+    def tuple_to_hooks(layer_idx, head_idx, outp=False):
+        if outp:
+            if head_idx is None:
+                return [(f"blocks.{layer_idx}.hook_mlp_out", TorchIndex([None]))]
+            else:
+                return [(f"blocks.{layer_idx}.attn.hook_result", TorchIndex([None, None, head_idx]))]
+
+        else:
+            if head_idx is None:
+                return [(f"blocks.{layer_idx}.hook_resid_mid", TorchIndex([None]))]
+            else:
+                ret = []
+                for letter in "qkv":
+                    ret.append((f"blocks.{layer_idx}.hook_{letter}_input", TorchIndex([None, None, head_idx])))
+                return ret
+
+    # attach input
+    for GROUP in ["0305", "01", "MEARLY"]:
+        for i, j in CIRCUIT[GROUP]:
+            inps = tuple_to_hooks(i, j, outp=False)
+
+            for hook_name, index in inps:
+                corr.edges[hook_name][index]["blocks.0.hook_resid_pre"][TorchIndex([None])].present = True
+
+    # attach output
+    for GROUP in ["AMID", "MLATE"]:
+        for i, j in CIRCUIT[GROUP]:
+            outps = tuple_to_hooks(i, j, outp=True)
+            for hook_name, index in outps:
+                corr.edges["blocks.11.hook_resid_post"][TorchIndex([None])][hook_name][index].present = True
+
+    # MLPs are interconnected
+    for GROUP in CIRCUIT.keys():
+        if CIRCUIT[GROUP][0][1] is not None: continue
+        for i1, j1 in CIRCUIT[GROUP]:
+            for i2, j2 in CIRCUIT[GROUP]:
+                if i1 >= i2: continue
+                corr.edges[f"blocks.{i2}.hook_resid_mid"][TorchIndex([None])][f"blocks.{i1}.hook_mlp_out"][TorchIndex([None])].present = True
+
+    # connected pairs  
+    for GROUP1, GROUP2 in connected_pairs:
+        for i1, j1 in CIRCUIT[GROUP1]:
+            for i2, j2 in CIRCUIT[GROUP2]:
+                if i1 >= i2 and not (i1==i2 and j1 is not None and j2 is None):
+                    continue
+                for ii, jj in tuple_to_hooks(i1, j1, outp=True):
+                    for iii, jjj in tuple_to_hooks(i2, j2, outp=False): # oh god I am so sorry poor code reade
+                        corr.edges[iii][jjj][ii][jj].present = True
+
+    ret =  OrderedDict({(t[0], t[1].hashable_tuple, t[2], t[3].hashable_tuple): e.present for t, e in corr.all_edges().items() if e.present})
+    return ret

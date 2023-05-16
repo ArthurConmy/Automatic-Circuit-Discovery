@@ -248,7 +248,7 @@ elif TASK == "ioi":
 elif TASK == "greaterthan":
     num_examples = 100
     things = get_all_greaterthan_things(num_examples=num_examples, metric_name=METRIC, device=DEVICE)
-    raise NotImplementedError("TODO")
+    get_true_edges = partial(get_greaterthan_true_edges, model=tl_model)
 
 elif TASK == "induction":
     raise ValueError("There is no ground truth circuit for Induction!!!")
