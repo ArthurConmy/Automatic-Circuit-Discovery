@@ -274,13 +274,20 @@ exp.save_edges("another_final_edges.pkl")
 # Save test dataset
 
 with torch.no_grad():
-    exp.ref_ds = things.test_patch_data
-    exp.model.reset_hooks()
-    exp.setup_second_cache()  # Use patch test data for corruption
+    save_second_cache = exp.model.global_cache.second_cache
+    save_ref_ds = exp.ref_ds
+    try:
+        exp.ref_ds = things.test_patch_data
+        exp.model.global_cache.second_cache = OrderedDict()
+        exp.setup_second_cache()  # Use patch test data for corruption
 
-    test_metric_values = {}
-    for k, fn in things.test_metrics.items():
-        test_metric_values["test_"+k] = fn(exp.model(things.test_data)).item()
+        test_metric_values = {}
+        for k, fn in things.test_metrics.items():
+            test_metric_values["test_"+k] = fn(exp.model(things.test_data)).item()
+    finally:
+        exp.model.global_cache.second_cache = save_second_cache
+        exp.ref_ds = save_ref_ds
+
 if USING_WANDB:
     wandb.log(test_metric_values)
 
