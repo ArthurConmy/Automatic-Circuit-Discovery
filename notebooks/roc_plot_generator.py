@@ -459,17 +459,17 @@ if "sp_corrs" not in locals() and not SKIP_SP: # this is slow, so run once
 
 #%%
 
-# def get_sixteen_heads_corrs(
-#     experiment = exp,
-#     project_name = SIXTEEN_HEADS_PROJECT_NAME,
-#     run_name = SIXTEEN_HEADS_RUN,
-#     model= tl_model,
-# ):
-experiment = exp
-project_name = SIXTEEN_HEADS_PROJECT_NAME
-run_name = SIXTEEN_HEADS_RUN
-model = tl_model
-if True:
+def get_sixteen_heads_corrs(
+    experiment = exp,
+    project_name = SIXTEEN_HEADS_PROJECT_NAME,
+    run_name = SIXTEEN_HEADS_RUN,
+    model= tl_model,
+):
+# experiment = exp
+# project_name = SIXTEEN_HEADS_PROJECT_NAME
+# run_name = SIXTEEN_HEADS_RUN
+# model = tl_model
+# if True:
     api = wandb.Api()
     run=api.run(SIXTEEN_HEADS_PROJECT_NAME + "/" + SIXTEEN_HEADS_RUN) # sorry fomratting..
     df = pd.DataFrame(run.scan_history()) 
@@ -528,7 +528,7 @@ if True:
 
         corrs.append(deepcopy(corr))
 
-    # return corrs # TODO add back in
+    return corrs # TODO add back in
 
 if "sixteen_heads_corrs" not in locals() and not SKIP_SIXTEEN_HEADS: # this is slow, so run once
     sixteen_heads_corrs = get_sixteen_heads_corrs()

@@ -9,6 +9,7 @@ from enum import Enum
 from typing import Any, Literal, Dict, Tuple, Union, List, Optional, Callable, TypeVar, Generic, Iterable, Set, Type, cast, Sequence, Mapping, overload
 import torch
 import time
+from collections import defaultdict
 import torch.nn.functional as F
 from acdc.HookedTransformer import HookedTransformer
 from collections import OrderedDict
@@ -150,10 +151,10 @@ def make_nd_dict(end_type, n = 3) -> Any:
         raise NotImplementedError("Only implemented for 3/4")
         
     if n == 3:
-        return OrderedDefaultdict(lambda: defaultdict(lambda: defaultdict(end_type)))
+        return defaultdict(lambda: defaultdict(lambda: defaultdict(end_type)))
 
     if n == 4:
-        return OrderedDefaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(end_type))))
+        return defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(end_type))))
 
 def ct():
     return time.ctime().replace(" ", "_").replace(":", "_").replace("__", "_")
