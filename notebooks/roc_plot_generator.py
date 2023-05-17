@@ -290,7 +290,8 @@ elif TASK == "greaterthan":
 
 
 elif TASK == "induction":
-    things = None
+    num_examples=50
+    things = get_all_induction_things(num_examples=num_examples, seq_len=300, device=DEVICE, metric=METRIC)
 
     ACDC_PRE_RUN_FILTER["group"] = "adria-induction-2"
 else:
@@ -321,7 +322,7 @@ if things is not None:
 #%% [markdown]
 # Load the *canonical* circuit
 
-if things is not None:
+if TASK != "induction":
     d = {(d[0], d[1].hashable_tuple, d[2], d[3].hashable_tuple): False for d in exp.corr.all_edges()}
     d_trues = get_true_edges()
     for k in d_trues:
@@ -495,7 +496,10 @@ def get_sp_corrs(
 
     corrs = []
     for run in filtered_runs:
-        nodes_to_mask_strings = run.summary["nodes_to_mask"]
+        try:
+            nodes_to_mask_strings = run.summary["nodes_to_mask"]
+        except KeyError:
+            continue
         nodes_to_mask = [parse_interpnode(s) for s in nodes_to_mask_strings]
         corr = correspondence_from_mask(
             model = model,
@@ -572,37 +576,45 @@ def get_points(corrs_and_scores, decreasing=True):
     for _, s in corrs_and_scores:
         keys.update(s.keys())
 
-    if things is None:
-        points = []
-        n_skipped = 0
-        for _, score in sorted(corrs_and_scores, key=lambda x: x[1]["score"], reverse=decreasing):
-            if set(score.keys()) != keys:
-                n_skipped += 1
-                continue
-            points.append(score)
-        assert n_skipped <= 2
-        return points
+    # if things is None:
+    #     points = []
+    #     n_skipped = 0
+    #     for _, score in sorted(corrs_and_scores, key=lambda x: x[1]["score"], reverse=decreasing):
+    #         if set(score.keys()) != keys:
+    #             n_skipped += 1
+    #             continue
+    #         points.append(score)
+    #     assert n_skipped <= 2
+    #     return points
 
     if decreasing:
         init_point = {k: math.inf for k in keys}
-        init_point["fpr"] = 0.0
-        init_point["tpr"] = 0.0
-        init_point["precision"] = 1.0
+        if TASK != "induction":
+            init_point["fpr"] = 0.0
+            init_point["tpr"] = 0.0
+            init_point["precision"] = 1.0
+        init_point["n_edges"] = math.nan
 
         end_point = {k: -math.inf for k in keys}
-        end_point["fpr"] = 1.0
-        end_point["tpr"] = 1.0
-        end_point["precision"] = 0.0
+        if TASK != "induction":
+            end_point["fpr"] = 1.0
+            end_point["tpr"] = 1.0
+            end_point["precision"] = 0.0
+        end_point["n_edges"] = math.nan
     else:
         init_point = {k: -math.inf for k in keys}
-        init_point["fpr"] = 1.0
-        init_point["tpr"] = 1.0
-        init_point["precision"] = 0.0
+        if TASK != "induction":
+            init_point["fpr"] = 1.0
+            init_point["tpr"] = 1.0
+            init_point["precision"] = 0.0
+        init_point["n_edges"] = math.nan
 
         end_point = {k: math.inf for k in keys}
-        end_point["fpr"] = 0.0
-        end_point["tpr"] = 0.0
-        end_point["precision"] = 1.0
+        if TASK != "induction":
+            end_point["fpr"] = 0.0
+            end_point["tpr"] = 0.0
+            end_point["precision"] = 1.0
+        end_point["n_edges"] = math.nan
 
     points = [init_point]
 
@@ -617,22 +629,26 @@ def get_points(corrs_and_scores, decreasing=True):
         circuit_size = corr.count_no_edges()
         if circuit_size == 0:
             continue
-        tp_stat = true_positive_stat(ground_truth=canonical_circuit_subgraph, recovered=corr)
-        score.update(
-            {
-                "fpr": (
-                    false_positive_rate(ground_truth=canonical_circuit_subgraph, recovered=corr)
-                    / (max_subgraph_size - canonical_circuit_subgraph_size)  # FP / (TOTAL - P) = FP / N
-                ),
-                "tpr": tp_stat / canonical_circuit_subgraph_size,  # TP / P
-                "precision": tp_stat / circuit_size,  # TP / (TP + FP) = TP / (predicted positive)
-                "n_edges": circuit_size,
-            }
-        )
+        if TASK != "induction":
+            tp_stat = true_positive_stat(ground_truth=canonical_circuit_subgraph, recovered=corr)
+            score.update(
+                {
+                    "fpr": (
+                        false_positive_rate(ground_truth=canonical_circuit_subgraph, recovered=corr)
+                        / (max_subgraph_size - canonical_circuit_subgraph_size)  # FP / (TOTAL - P) = FP / N
+                    ),
+                    "tpr": tp_stat / canonical_circuit_subgraph_size,  # TP / P
+                    "precision": tp_stat / circuit_size,  # TP / (TP + FP) = TP / (predicted positive)
+                    "n_edges": circuit_size,
+                }
+            )
+        else:
+            score.update({"n_edges": circuit_size})
         points.append(score)
     assert n_skipped <= 2
 
     points.append(end_point)
+    assert all(("n_edges" in p) for p in points)
     return points
 
 points = {}
