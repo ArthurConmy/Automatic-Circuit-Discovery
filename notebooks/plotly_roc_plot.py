@@ -56,7 +56,7 @@ alg_names = {
     "16H": "HISP",
 }
 
-task_names = {
+TASK_NAMES = {
     "ioi": "Circuit Recovery (IOI)",
     "tracr-reverse": "Tracr (Reverse)",
     "tracr-proportion": "Tracr (Proportion)",
@@ -99,6 +99,9 @@ x_names = {
 
 def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", ablation_type="random_ablation"):
     this_data = all_data[weights_type][ablation_type]
+
+    task_idxs, task_names = zip(*TASK_NAMES.items())
+
     fig = make_subplots(
         rows=2,
         cols=4,
@@ -106,7 +109,7 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
         specs=[[{"rowspan": 2, "colspan": 2}, None, {}, {}], [None, None, {}, {}]],
         print_grid=True,
         # subplot_titles=("First Subplot", "Second Subplot", "Third Subplot", "Fourth Subplot", "Fifth Subplot"),
-        subplot_titles=tuple(task_names.keys()),
+        subplot_titles=tuple(task_names),
         x_title=x_names[x_key],
         y_title=x_names[y_key],
         # title_font=dict(size=8),
@@ -122,7 +125,7 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
         (2, 4),
     ]
 
-    for task_idx, (row, col) in zip(task_names, rows_and_cols):
+    for task_idx, (row, col) in zip(task_idxs, rows_and_cols):
         for alg_idx, methodof in alg_names.items():
             metric_name = METRICS_FOR_TASK[task_idx][metric_idx]
             try:
@@ -237,11 +240,26 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
 
     scale = 1.2
 
-    fig.update_layout(height=350*scale, width=scale*scale*500, title=dict(text="Lol"))  # plausibly make slightly bigger
+    # No title,
+    fig.update_layout(height=350*scale, width=scale*scale*500)
     return fig
-fig = make_fig(1)
-fig.show()
-# fig.write_image("figures/fig2.pdf")
+
+plot_type_keys = {
+    "precision_recall": ("tpr", "precision"),
+    "roc": ("fpr", "tpr"),
+}
+
+PLOT_DIR = DATA_DIR.parent / "plots"
+PLOT_DIR.mkdir(exist_ok=True)
+
+for metric_idx in [0, 1]:
+    for ablation_type in ["random_ablation", "zero_ablation"]:
+        for plot_type in ["precision_recall", "roc"]:
+            x_key, y_key = plot_type_keys[plot_type]
+            fig = make_fig(metric_idx=metric_idx, ablation_type=ablation_type, x_key=x_key, y_key=y_key)
+
+            metric = "kl" if metric_idx == 0 else "other"
+            fig.write_image(PLOT_DIR / ("--".join([metric, ablation_type, plot_type]) + ".pdf"))
 
 # %%
 

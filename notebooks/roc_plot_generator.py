@@ -442,7 +442,7 @@ def get_acdc_runs(
     return corrs
 
 if not SKIP_ACDC: # this is slow, so run once
-    acdc_corrs = get_acdc_runs(exp, clip = 1 if TESTING else None)
+    acdc_corrs = get_acdc_runs(None if things is None else exp, clip = 1 if TESTING else None)
     assert len(acdc_corrs) > 1
     print("acdc_corrs", len(acdc_corrs))
 

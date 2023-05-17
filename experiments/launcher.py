@@ -94,15 +94,15 @@ def launch(commands: List[List[str]], name: str, job: Optional[KubernetesJob] = 
 
         print("Launching", name, command_str)
         if job is None:
-            out = subprocess.run(command)
-            assert out.returncode == 0, f"Command return={out.returncode} != 0"
+            # out = subprocess.run(command)
+            # assert out.returncode == 0, f"Command return={out.returncode} != 0"
             # Old code for async launching all jobs
-            # base_path = Path(f"/tmp/{name}")
-            # base_path.mkdir(parents=True, exist_ok=True)
-            # stdout = open(base_path / f"stdout_{i:03d}.txt", "w")
-            # stderr = open(base_path / f"stderr_{i:03d}.txt", "w")
-            # out = subprocess.Popen(command, stdout=stdout, stderr=stderr)
-            # to_wait.append((command_str, out, stdout, stderr))
+            base_path = Path(f"/tmp/{name}")
+            base_path.mkdir(parents=True, exist_ok=True)
+            stdout = open(base_path / f"stdout_{i:03d}.txt", "w")
+            stderr = open(base_path / f"stderr_{i:03d}.txt", "w")
+            out = subprocess.Popen(command, stdout=stdout, stderr=stderr)
+            to_wait.append((command_str, out, stdout, stderr))
         else:
             subprocess.run(
                 [
@@ -140,4 +140,4 @@ stdout:
 stderr:
 {stderr}
             """
-            raise RuntimeError(s)
+            print(s)
