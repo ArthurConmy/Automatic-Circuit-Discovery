@@ -369,10 +369,10 @@ def get_acdc_runs(
             print("This run n edges:", run.summary["num_edges"])
         # Try to find `edges.pth`
         edges_artifact = None
-        # for art in run.logged_artifacts():
-        #     if "edges.pth" in art.name:
-        #         edges_artifact = art
-        #         break
+        for art in run.logged_artifacts():
+            if "edges.pth" in art.name:
+                edges_artifact = art
+                break
 
         if edges_artifact is None:
             # We'll have to parse the run
