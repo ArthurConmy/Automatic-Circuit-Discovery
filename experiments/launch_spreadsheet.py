@@ -3,7 +3,7 @@ import numpy as np
 import random
 from typing import List
 
-TASKS = ["ioi", "tracr-reverse", "tracr-proportion", "greaterthan", "induction", "docstring"]
+TASKS = ["tracr-reverse", "tracr-proportion"]
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
@@ -23,8 +23,8 @@ def main(testing: bool, use_kubernetes: bool):
     random.seed(seed)
 
     wandb_identifier = WandbIdentifier(
-        run_name="agarriga-acdc-spreadsheet-{i:05d}",
-        group_name="acdc-spreadsheet2",
+        run_name="agarriga-tracr-{i:05d}",
+        group_name="acdc-tracr-neurips",
         project="acdc")
 
     commands: List[List[str]] = []
@@ -112,7 +112,7 @@ def main(testing: bool, use_kubernetes: bool):
                             f"--wandb-run-name={wandb_identifier.run_name.format(i=len(commands))}",
                             f"--wandb-group-name={wandb_identifier.group_name}",
                             f"--wandb-project-name={wandb_identifier.project}",
-                            f"--device=cuda",
+                            f"--device=cpu",
                             f"--reset-network={reset_network}",
                             f"--seed={random.randint(0, 2**32 - 1)}",
                             f"--metric={metric}",
@@ -131,11 +131,10 @@ def main(testing: bool, use_kubernetes: bool):
         name="acdc-spreadsheet",
         job=None
         if not use_kubernetes
-        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.3.2", cpu=CPU, gpu=1),
-        check_wandb=wandb_identifier,
-        ids_for_worker=range(0, 500),
+        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.5.0", cpu=CPU, gpu=0),
+        check_wandb=None,
     )
 
 
 if __name__ == "__main__":
-    main(testing=False, use_kubernetes=True)
+    main(testing=True, use_kubernetes=True)
