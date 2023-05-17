@@ -354,11 +354,14 @@ def get_stat(ground_truth, recovered, mode, verbose=False):
                 cnt += 1
                 if verbose:
                     print(tupl)
-        elif mode == "negative":
+        elif mode == "false negative":
             if not recovered_all_edges[tupl].present and edge.present:
                 cnt += 1
         elif mode == "true positive":
             if recovered_all_edges[tupl].present and edge.present:
+                cnt += 1
+        elif mode == "true negative":
+            if not recovered_all_edges[tupl].present and not edge.present:
                 cnt += 1
 
     return cnt
