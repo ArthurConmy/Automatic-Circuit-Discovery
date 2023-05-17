@@ -3,7 +3,7 @@ import numpy as np
 import random
 from typing import List
 
-TASKS = ["ioi", "tracr-reverse", "tracr-proportion", "greaterthan", "induction", "docstring"]
+TASKS = ["tracr-reverse", "tracr-proportion"]
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
@@ -100,7 +100,7 @@ def main(testing: bool, use_kubernetes: bool):
                             f"--wandb-name=agarriga-sp-{len(commands):05d}{'-optional' if task in ['induction', 'docstring'] else ''}",
                             "--wandb-project=induction-sp-replicate",
                             "--wandb-entity=remix_school-of-rock",
-                            "--wandb-group=complete-spreadsheet-4",
+                            "--wandb-group=tracr-shuffled-redo",
                             f"--device=cpu",
                             f"--epochs={1 if testing else 10000}",
                             f"--zero-ablation={zero_ablation}",
@@ -110,8 +110,8 @@ def main(testing: bool, use_kubernetes: bool):
                             f"--num-examples={6 if testing else num_examples}",
                             f"--seq-len={seq_len}",
                             f"--n-loss-average-runs={1 if testing else 20}",
-                            "--wandb-dir=/training/sp",  # If it doesn't exist wandb will use /tmp
-                            "--wandb-mode=online",
+                            "--wandb-dir=./tracr_anew",  # If it doesn't exist wandb will use /tmp
+                            "--wandb-mode=offline",
                         ]
                         commands.append(command)
 
@@ -124,4 +124,4 @@ def main(testing: bool, use_kubernetes: bool):
     )
 
 if __name__ == "__main__":
-    main(testing=True, use_kubernetes=False)
+    main(testing=False, use_kubernetes=False)
