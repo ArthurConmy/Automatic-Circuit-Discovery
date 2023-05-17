@@ -260,7 +260,8 @@ def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: st
         warnings.warn("Test that this only considers the relevant part of the sequence...")
 
         patch_data_tens = data_tens[patch_data_indices]
-        base_model_logprobs = F.log_softmax(tl_model(data_tens), dim=-1)
+        with torch.no_grad():
+            base_model_logprobs = F.log_softmax(tl_model(data_tens), dim=-1)
 
         if metric_name == "kl_div":
             metric = partial(
