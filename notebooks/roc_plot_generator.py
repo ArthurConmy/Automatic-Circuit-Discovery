@@ -249,6 +249,8 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     else:
         raise NotImplementedError("not a tracr task")
 
+    SP_PRE_RUN_FILTER["group"] = "tracr-shuffled-redo"
+
     things = get_all_tracr_things(task=tracr_task, metric_name=METRIC, num_examples=num_examples, device=DEVICE)
 
     # # for propotion, 
@@ -387,7 +389,6 @@ if not SKIP_ACDC: # this is slow, so run once
 
 # Do SP stuff
 def get_sp_corrs(
-    experiment, 
     model= None if things is None else things.tl_model,
     project_name: str = SP_PROJECT_NAME,
     pre_run_filter: dict = SP_PRE_RUN_FILTER,
@@ -418,6 +419,7 @@ def get_sp_corrs(
         corr = correspondence_from_mask(
             model = model,
             nodes_to_mask=nodes_to_mask,
+            use_pos_embed = USE_POS_EMBED,
         )
         score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
         score_d["score"] = run.config["lambda_reg"]
@@ -425,7 +427,7 @@ def get_sp_corrs(
     return corrs
 
 if not SKIP_SP: # this is slow, so run once
-    sp_corrs = get_sp_corrs(exp, clip = 1 if TESTING else None) # clip for testing
+    sp_corrs = get_sp_corrs(clip = 1 if TESTING else None) # clip for testing
     assert len(sp_corrs) > 1
     print("sp_corrs", len(sp_corrs))
 
@@ -485,10 +487,21 @@ if not SKIP_SIXTEEN_HEADS: methods.append("16H")
 
 # get points from correspondence
 def get_points(corrs_and_scores, decreasing=True):
-    if things is None:
-        return list(scores for _, scores in sorted(corrs_and_scores, key=lambda x: x[1]["score"], reverse=decreasing))
+    keys = set()
+    for _, s in corrs_and_scores:
+        keys.update(s.keys())
 
-    keys = corrs_and_scores[0][1].keys()
+    if things is None:
+        points = []
+        n_skipped = 0
+        for _, score in sorted(corrs_and_scores, key=lambda x: x[1]["score"], reverse=decreasing):
+            if set(score.keys()) != keys:
+                n_skipped += 1
+                continue
+            points.append(score)
+        assert n_skipped <= 2
+        return points
+
     if decreasing:
         init_point = {k: math.inf for k in keys}
         init_point["fpr"] = 0.0
@@ -512,7 +525,13 @@ def get_points(corrs_and_scores, decreasing=True):
 
     points = [init_point]
 
+    n_skipped = 0
+
     for corr, score in tqdm(sorted(corrs_and_scores, key=lambda x: x[1]["score"], reverse=decreasing)):
+        if set(score.keys()) != keys:
+            n_skipped += 1
+            continue
+
         circuit_size = corr.count_no_edges()
         if circuit_size == 0:
             continue
@@ -521,13 +540,15 @@ def get_points(corrs_and_scores, decreasing=True):
             {
                 "fpr": (
                     false_positive_rate(ground_truth=canonical_circuit_subgraph, recovered=corr)
-                    / (max_subgraph_size - canonical_circuit_subgraph_size)
+                    / (max_subgraph_size - canonical_circuit_subgraph_size)  # FP / (TOTAL - P) = FP / N
                 ),
-                "tpr": tp_stat / canonical_circuit_subgraph_size,
-                "precision": tp_stat / circuit_size,
+                "tpr": tp_stat / canonical_circuit_subgraph_size,  # TP / P
+                "precision": tp_stat / circuit_size,  # TP / (TP + FP) = TP / (predicted positive)
             }
         )
         points.append(score)
+    assert n_skipped <= 2
+
     points.append(end_point)
     return points
 
@@ -574,30 +595,6 @@ if OUT_FILE is None:
     fig.show()
 
 #%%
-
-alg_names = {
-    "ACDC": "ACDC",
-    "SP": "SP",
-    "16H": "HISP",
-}
-
-task_names = {
-    "ioi": "Circuit Recovery (IOI)",
-    "tracr-reverse": "Tracr (Reverse)",
-    "tracr-proportion": "Tracr (Proportion)",
-    "docstring": "Docstring",
-    "greaterthan": "Century",
-}
-
-measurement_names = {
-    "kl_div": "KL Divergence",
-    "logit_diff": "Logit difference",
-    "l2": "MSE",
-    "nll": "Negative log-likelihood",
-    "docstring_metric": "Negative log-likelihood (Docstring)",
-    "greaterthan": "p(larger) - p(smaller)",
-}
-
 
 if OUT_FILE is not None:
     assert args.alg != "none"

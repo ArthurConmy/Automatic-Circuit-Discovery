@@ -4,6 +4,7 @@ from IPython import get_ipython
 if get_ipython() is not None:
     get_ipython().magic('load_ext autoreload')
     get_ipython().magic('autoreload 2')
+    __file__ = '/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/plotly_roc_plot.py'
 
 import plotly
 import os
@@ -13,11 +14,66 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 from pathlib import Path
 
-JSON_FNAME = Path(__file__).parent.parent / "acdc" / "media" / "roc_data.json"
+from notebooks.emacs_plotly_render import set_plotly_renderer
+#set_plotly_renderer("emacs")
+
+# %%
+DATA_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / "plots_data"
+
+all_data = {}
+
+def dict_merge(dct, merge_dct):
+    """ Recursive dict merge. Inspired by :meth:``dict.update()``, instead of
+    updating only top-level keys, dict_merge recurses down into dicts nested
+    to an arbitrary depth, updating keys. The ``merge_dct`` is merged into
+    ``dct``.
+
+    Copyright 2016-2022 Paul Durivage, licensed under Apache License https://gist.github.com/angstwad/bf22d1822c38a92ec0a9
+
+    :param dct: dict onto which the merge is executed
+    :param merge_dct: dct merged into dct
+    :return: None
+    """
+    for k in merge_dct.keys():
+        if (k in dct and isinstance(dct[k], dict) and isinstance(merge_dct[k], dict)):  #noqa
+            dict_merge(dct[k], merge_dct[k])
+        else:
+            dct[k] = merge_dct[k]
+
+
+
+for fname in os.listdir(DATA_DIR):
+    if fname.endswith(".json"):
+        with open(DATA_DIR / fname, "r") as f:
+            data = json.load(f)
+        dict_merge(all_data, data)
 
 # %%
 
-tasks = ["Circuit Recovery (IOI)", "Tracr (Reverse)", "Tracr (Proportion)", "Docstring", "Greater Than"]
+alg_names = {
+    "ACDC": "ACDC",
+    "SP": "SP",
+    "16H": "HISP",
+}
+
+task_names = {
+    "ioi": "Circuit Recovery (IOI)",
+    "tracr-reverse": "Tracr (Reverse)",
+    "tracr-proportion": "Tracr (Proportion)",
+    "docstring": "Docstring",
+    "greaterthan": "Greater Than",
+}
+
+measurement_names = {
+    "kl_div": "KL Divergence",
+    "logit_diff": "Logit difference",
+    "l2": "MSE",
+    "nll": "Negative log-likelihood",
+    "docstring_metric": "Negative log-likelihood (Docstring)",
+    "greaterthan": "p(larger) - p(smaller)",
+}
+
+
 
 fig = make_subplots(
     rows=2,
@@ -26,7 +82,7 @@ fig = make_subplots(
     specs=[[{"rowspan": 2, "colspan": 2}, None, {}, {}], [None, None, {}, {}]],
     print_grid=True,
     # subplot_titles=("First Subplot", "Second Subplot", "Third Subplot", "Fourth Subplot", "Fifth Subplot"),
-    subplot_titles=tuple(tasks),
+    subplot_titles=tuple(task_names.keys()),
     x_title="False positive rate (edges)",
     y_title="True positive rate (edges)",
     # title_font=dict(size=8),
@@ -49,15 +105,15 @@ colors = {
     "HISP": "yellow",
 }
 
-all_data = None
-with open(JSON_FNAME, "r") as f:
-    all_data = json.load(f)
-    
-for task_idx, (row, col) in enumerate(rows_and_cols):
-    for idx, methodof in enumerate(methods):
-        x_data = all_data[tasks[task_idx]][methodof]["x"]
-        y_data = all_data[tasks[task_idx]][methodof]["y"]
-        print(x_data, y_data)
+this_data = all_data["trained"]["random_ablation"]
+
+for task_idx, (row, col) in zip(task_names, rows_and_cols):
+    for alg_idx, methodof in alg_names.items():
+        try:
+            x_data = this_data[task_idx]["kl_div"][alg_idx]["fpr"]
+            y_data = this_data[task_idx]["kl_div"][alg_idx]["tpr"]
+        except KeyError:
+            continue
 
         fig.add_trace(
             go.Scatter(

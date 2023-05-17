@@ -19,9 +19,12 @@ METRICS_FOR_TASK = {
 
 def main():
     commands = []
-    for alg in ["16h", "sp", "acdc"]:
-        for reset_network in [0, 1]:
+    for alg in ["acdc"]:  # ["16h", "sp", "acdc"]
+        for reset_network in [0]:
             for zero_ablation in [0, 1]:
+                if alg == "16h" and zero_ablation:
+                    continue  # TODO remove
+
                 for task in TASKS:
                     for metric in METRICS_FOR_TASK[task]:
                         command = [
