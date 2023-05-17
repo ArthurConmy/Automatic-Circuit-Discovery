@@ -159,7 +159,7 @@ SINGLE_STEP = True if args.single_step else False
 # Setup
 
 second_metric = None # some tasks only have one metric
-use_pos_embed = False
+use_pos_embed = TASK.startswith("tracr")
 
 if TASK == "ioi":
     num_examples = 100

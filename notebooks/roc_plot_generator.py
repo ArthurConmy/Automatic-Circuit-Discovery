@@ -255,7 +255,7 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
         raise NotImplementedError("not a tracr task")
 
     SP_PRE_RUN_FILTER["group"] = "tracr-shuffled-redo"
-    ACDC_PRE_RUN_FILTER["group"] = "acdc-tracr-neurips-2"
+    ACDC_PRE_RUN_FILTER["group"] = "acdc-tracr-neurips-3"
 
     things = get_all_tracr_things(task=tracr_task, metric_name=METRIC, num_examples=num_examples, device=DEVICE)
 
@@ -369,10 +369,10 @@ def get_acdc_runs(
             print("This run n edges:", run.summary["num_edges"])
         # Try to find `edges.pth`
         edges_artifact = None
-        for art in run.logged_artifacts():
-            if "edges.pth" in art.name:
-                edges_artifact = art
-                break
+        # for art in run.logged_artifacts():
+        #     if "edges.pth" in art.name:
+        #         edges_artifact = art
+        #         break
 
         if edges_artifact is None:
             # We'll have to parse the run

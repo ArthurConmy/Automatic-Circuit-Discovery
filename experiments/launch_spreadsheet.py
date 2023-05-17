@@ -3,7 +3,7 @@ import numpy as np
 import random
 from typing import List
 
-TASKS = ["ioi", "greaterthan"]
+TASKS = ["tracr-reverse", "tracr-proportion"]
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
@@ -23,24 +23,15 @@ def main(testing: bool, use_kubernetes: bool):
     random.seed(seed)
 
     wandb_identifier = WandbIdentifier(
-        run_name="agarriga-gt-ioi-{i:05d}",
-        group_name="acdc-gt-ioi-redo",
+        run_name="agarriga-tracr3-{i:05d}",
+        group_name="acdc-tracr-neurips-3",
         project="acdc")
 
     commands: List[List[str]] = []
-    for reset_network in [0]:
-        for zero_ablation in [0]:
+    for reset_network in [0, 1]:
+        for zero_ablation in [0, 1]:
             for task in TASKS:
                 for metric in METRICS_FOR_TASK[task]:
-                    # Skip tasks that we've already run
-                    if reset_network == 0 and metric == "kl_div":
-                        if task != "tracr":
-                            continue
-
-                    if task == "induction":
-                        continue
-
-
 
                     if task.startswith("tracr"):
                         # Typical metric value range: 0.0-0.1
@@ -112,7 +103,7 @@ def main(testing: bool, use_kubernetes: bool):
                             f"--wandb-run-name={wandb_identifier.run_name.format(i=len(commands))}",
                             f"--wandb-group-name={wandb_identifier.group_name}",
                             f"--wandb-project-name={wandb_identifier.project}",
-                            f"--device={'cuda' if not testing else 'cpu'}",
+                            f"--device={'cuda' if not testing else 'cpu'}" if "tracr" not in task else "--device=cpu",
                             f"--reset-network={reset_network}",
                             f"--seed={random.randint(0, 2**32 - 1)}",
                             f"--metric={metric}",
@@ -131,10 +122,10 @@ def main(testing: bool, use_kubernetes: bool):
         name="acdc-spreadsheet",
         job=None
         if not use_kubernetes
-        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.5.1", cpu=CPU, gpu=1),
+        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.5.2", cpu=CPU, gpu=0),
         check_wandb=wandb_identifier,
     )
 
 
 if __name__ == "__main__":
-    main(testing=True, use_kubernetes=False)
+    main(testing=False, use_kubernetes=True)
