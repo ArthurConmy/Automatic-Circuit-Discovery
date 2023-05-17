@@ -19,7 +19,7 @@ class WandbIdentifier:
     project: str
 
 
-def launch(commands: List[List[str]], name: str, job: Optional[KubernetesJob] = None, check_wandb: Optional[WandbIdentifier]=None, ids_for_worker=range(0, 10000000)):
+def launch(commands: List[List[str]], name: str, job: Optional[KubernetesJob] = None, check_wandb: Optional[WandbIdentifier]=None, ids_for_worker=range(0, 10000000), synchronous=True):
     to_wait: List[Tuple[str, subprocess.Popen, TextIO, TextIO]] = []
 
     assert len(commands) <= 100_000, "Too many commands for 5 digits"
@@ -94,15 +94,16 @@ def launch(commands: List[List[str]], name: str, job: Optional[KubernetesJob] = 
 
         print("Launching", name, command_str)
         if job is None:
-            # out = subprocess.run(command)
-            # assert out.returncode == 0, f"Command return={out.returncode} != 0"
-            # Old code for async launching all jobs
-            base_path = Path(f"/tmp/{name}")
-            base_path.mkdir(parents=True, exist_ok=True)
-            stdout = open(base_path / f"stdout_{i:03d}.txt", "w")
-            stderr = open(base_path / f"stderr_{i:03d}.txt", "w")
-            out = subprocess.Popen(command, stdout=stdout, stderr=stderr)
-            to_wait.append((command_str, out, stdout, stderr))
+            if synchronous:
+                out = subprocess.run(command)
+                assert out.returncode == 0, f"Command return={out.returncode} != 0"
+            else:
+                base_path = Path(f"/tmp/{name}")
+                base_path.mkdir(parents=True, exist_ok=True)
+                stdout = open(base_path / f"stdout_{i:03d}.txt", "w")
+                stderr = open(base_path / f"stderr_{i:03d}.txt", "w")
+                out = subprocess.Popen(command, stdout=stdout, stderr=stderr)
+                to_wait.append((command_str, out, stdout, stderr))
         else:
             subprocess.run(
                 [
