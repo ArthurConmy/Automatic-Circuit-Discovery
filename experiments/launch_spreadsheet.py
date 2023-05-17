@@ -3,7 +3,7 @@ import numpy as np
 import random
 from typing import List
 
-TASKS = ["tracr-reverse", "tracr-proportion"]
+TASKS = ["ioi", "greaterthan"]
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
@@ -23,13 +23,13 @@ def main(testing: bool, use_kubernetes: bool):
     random.seed(seed)
 
     wandb_identifier = WandbIdentifier(
-        run_name="agarriga-tracr-{i:05d}",
-        group_name="acdc-tracr-neurips",
+        run_name="agarriga-gt-ioi-{i:05d}",
+        group_name="acdc-gt-ioi-redo",
         project="acdc")
 
     commands: List[List[str]] = []
-    for reset_network in [0, 1]:
-        for zero_ablation in [0, 1]:
+    for reset_network in [0]:
+        for zero_ablation in [0]:
             for task in TASKS:
                 for metric in METRICS_FOR_TASK[task]:
                     # Skip tasks that we've already run
@@ -58,7 +58,7 @@ def main(testing: bool, use_kubernetes: bool):
                     elif task == "greaterthan":
                         if metric == "kl_div":
                             # Typical metric value range: 0.0-20
-                            thresholds = base_thresholds
+                            thresholds = 10 ** np.linspace(-4, 0, 21)
                         elif metric == "greaterthan":
                             # Typical metric value range: -1.0 - 0.0
                             thresholds = 10 ** np.linspace(-4, 0, 21)
@@ -82,7 +82,7 @@ def main(testing: bool, use_kubernetes: bool):
                         seq_len = -1
                         if metric == "kl_div":
                             # Typical metric value range: 0.0-12.0
-                            thresholds = base_thresholds
+                            thresholds = 10 ** np.linspace(-4, 0, 21)
                         elif metric == "logit_diff":
                             # Typical metric value range: -0.31 -- -0.01
                             thresholds = 10 ** np.linspace(-4, 0, 21)
@@ -112,7 +112,7 @@ def main(testing: bool, use_kubernetes: bool):
                             f"--wandb-run-name={wandb_identifier.run_name.format(i=len(commands))}",
                             f"--wandb-group-name={wandb_identifier.group_name}",
                             f"--wandb-project-name={wandb_identifier.project}",
-                            f"--device=cpu",
+                            f"--device={'cuda' if not testing else 'cpu'}",
                             f"--reset-network={reset_network}",
                             f"--seed={random.randint(0, 2**32 - 1)}",
                             f"--metric={metric}",
@@ -131,10 +131,10 @@ def main(testing: bool, use_kubernetes: bool):
         name="acdc-spreadsheet",
         job=None
         if not use_kubernetes
-        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.5.0", cpu=CPU, gpu=0),
-        check_wandb=None,
+        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.5.0", cpu=CPU, gpu=1),
+        check_wandb=wandb_identifier,
     )
 
 
 if __name__ == "__main__":
-    main(testing=True, use_kubernetes=True)
+    main(testing=True, use_kubernetes=False)

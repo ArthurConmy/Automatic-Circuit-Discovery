@@ -79,11 +79,11 @@ def launch(commands: List[List[str]], name: str, job: Optional[KubernetesJob] = 
         if check_wandb is not None:
             # HACK this is pretty vulnerable to duplicating work if the same run is launched in close succession,
             # it's more to be able to restart
-            api = wandb.Api()
+            # api = wandb.Api()
             name = check_wandb.run_name.format(i=i)
-            if name in existing_names:
-                print(f"Skipping {name} because it already exists")
-                continue
+            # if name in existing_names:
+            #     print(f"Skipping {name} because it already exists")
+            #     continue
 
             # runs = api.runs(path=f"remix_school-of-rock/{check_wandb.project}", filters={"group": check_wandb.group_name})
             # existing_names = existing_names.union({r.name for r in runs})
