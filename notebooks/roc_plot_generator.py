@@ -34,6 +34,7 @@ from acdc.acdc_utils import false_positive_rate, false_negative_rate, true_posit
 import pandas as pd
 import math
 import sys
+import re
 from typing import (
     List,
     Tuple,
@@ -152,7 +153,7 @@ parser.add_argument("--skip-sp", action="store_true", help="Skip the SP stuff")
 parser.add_argument("--testing", action="store_true", help="Use testing data instead of validation data")
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task greaterthan --metric=kl_div --alg=sp".split())
+    args = parser.parse_args("--task=ioi --metric=logit_diff --alg=acdc".split())
     __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
 else:
     args = parser.parse_args()
@@ -186,7 +187,7 @@ else:
 # defaults
 ACDC_PROJECT_NAME = "remix_school-of-rock/acdc"
 ACDC_PRE_RUN_FILTER = {
-    "state": "finished",
+    # Purposefully omit ``"state": "finished"``
     "group": "acdc-spreadsheet2",
     "config.task": TASK,
     "config.metric": METRIC,
@@ -340,6 +341,7 @@ def get_acdc_runs(
 
     corrs = []
     for run in filtered_runs:
+        print("This run n edges:", run.summary["num_edges_total"], run.summary["num_edges"])
         # Try to find `edges.pth`
         edges_artifact = None
         for art in run.logged_artifacts():
@@ -349,17 +351,76 @@ def get_acdc_runs(
 
         if edges_artifact is None:
             # We'll have to parse the run
-            print(f"Edges.pth not found for run {run.name}, falling back to parsing")
+            print(f"Edges.pth not found for run {run.name}, falling back to plotly")
+            corr = deepcopy(exp.corr)
+
+            # Find latest plotly file which contains the `result` for all edges
+            files = run.files(per_page=100_000)
+            regexp = re.compile(r"^media/plotly/results_([0-9]+)_[^.]+\.plotly\.json$")
+
+            latest_file = None
+            latest_fname_step = -1
+            for f in files:
+                if (m := regexp.match(f.name)):
+                    fname_step = int(m.group(1))
+                    if fname_step > latest_fname_step:
+                        latest_fname_step = fname_step
+                        latest_file = f
+
             try:
-                log_text = run.file("output.log").download(root=ROOT, replace=False, exist_ok=True).read()
-                experiment.load_from_wandb_run(log_text)
-                corrs.append(deepcopy(exp.corr))
-            except wandb.CommError:
-                print(f"Loading run {run.name} with state={runs.state} config={run.config} totally failed.")
-                continue
+                with latest_file.download(ROOT / run.name, replace=False, exist_ok=True) as f:
+                    d = json.load(f)
+
+                data = d["data"][0]
+                assert len(data["text"]) == len(data["y"])
+                threshold = run.config["threshold"]
+
+                # Mimic an ACDC run
+                for edge, result in zip(data["text"], data["y"]):
+                    parent, child = map(parse_interpnode, edge.split(" to "))
+                    current_node = child
+
+                    if result < threshold:
+                        corr.edges[child.name][child.index][parent.name][parent.index].present = False
+                        corr.remove_edge(
+                            current_node.name, current_node.index, parent.name, parent.index
+                        )
+                    else:
+                        corr.edges[child.name][child.index][parent.name][parent.index].present = True
+                print("Before copying: n_edges=", corr.count_no_edges())
+
+                corr_all_edges = corr.all_edges().items()
+
+                corr_to_copy = deepcopy(exp.corr)
+                new_all_edges = corr_to_copy.all_edges()
+                for edge in new_all_edges.values():
+                    edge.present = False
+
+                for tupl, edge in corr_all_edges:
+                    new_all_edges[tupl].present = edge.present
+
+                print("After copying: n_edges=", corr_to_copy.count_no_edges())
+
+                score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
+                score_d["score"] = run.config["threshold"]
+                corrs.append((corr_to_copy, score_d))
+
+            except wandb.CommError as e:
+                print(f"Error {e}, falling back to parsing output.log")
+                try:
+                    with run.file("output.log").download(root=ROOT / run.name, replace=False, exist_ok=True) as f:
+                        log_text = f.read()
+                    experiment.load_from_wandb_run(log_text)
+                    score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
+                    score_d["score"] = run.config["threshold"]
+                    corrs.append((deepcopy(experiment.corr), score_d))
+                except wandb.CommError:
+                    print(f"Loading run {run.name} with state={runs.state} config={run.config} totally failed.")
+                    continue
 
         else:
-            all_edges = exp.corr.all_edges()
+            corr = deepcopy(exp.corr)
+            all_edges = corr.all_edges()
             for edge in all_edges.values():
                 edge.present = False
 
@@ -376,8 +437,8 @@ def get_acdc_runs(
 
             score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
             score_d["score"] = run.config["threshold"]
-            corrs.append((deepcopy(exp.corr), score_d))
-        print(f"Added run with threshold={run.config['threshold']}")
+            corrs.append((corr, score_d))
+        print(f"Added run with threshold={run.config['threshold']}, n_edges={corrs[-1][0].count_no_edges()}")
     return corrs
 
 if not SKIP_ACDC: # this is slow, so run once
@@ -529,8 +590,9 @@ def get_points(corrs_and_scores, decreasing=True):
 
     for corr, score in tqdm(sorted(corrs_and_scores, key=lambda x: x[1]["score"], reverse=decreasing)):
         if set(score.keys()) != keys:
-            n_skipped += 1
-            continue
+            a = init_point.copy()
+            a.update(score)
+            score = a
 
         circuit_size = corr.count_no_edges()
         if circuit_size == 0:
@@ -544,6 +606,7 @@ def get_points(corrs_and_scores, decreasing=True):
                 ),
                 "tpr": tp_stat / canonical_circuit_subgraph_size,  # TP / P
                 "precision": tp_stat / circuit_size,  # TP / (TP + FP) = TP / (predicted positive)
+                "n_edges": circuit_size,
             }
         )
         points.append(score)
@@ -553,6 +616,7 @@ def get_points(corrs_and_scores, decreasing=True):
     return points
 
 points = {}
+
 #%%
 
 if "ACDC" in methods:
