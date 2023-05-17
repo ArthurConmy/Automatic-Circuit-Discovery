@@ -255,7 +255,7 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
         raise NotImplementedError("not a tracr task")
 
     SP_PRE_RUN_FILTER["group"] = "tracr-shuffled-redo"
-    ACDC_PRE_RUN_FILTER["group"] = "acdc-tracr-neurips"
+    ACDC_PRE_RUN_FILTER["group"] = "acdc-tracr-neurips-2"
 
     things = get_all_tracr_things(task=tracr_task, metric_name=METRIC, num_examples=num_examples, device=DEVICE)
 
@@ -268,9 +268,10 @@ elif TASK == "ioi":
     things = get_all_ioi_things(num_examples=num_examples, device=DEVICE, metric_name=METRIC)
 
     if METRIC == "kl_div":
-        ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_ioi_sweep"
-        del ACDC_PRE_RUN_FILTER["config.reset_network"]
-        ACDC_PRE_RUN_FILTER["group"] = "default"
+        ACDC_PRE_RUN_FILTER["group"] = "acdc-gt-ioi-redo"
+        # ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_ioi_sweep"
+        # del ACDC_PRE_RUN_FILTER["config.reset_network"]
+        # ACDC_PRE_RUN_FILTER["group"] = "default"
 
     get_true_edges = partial(get_ioi_true_edges, model=things.tl_model)
 
@@ -282,9 +283,10 @@ elif TASK == "greaterthan":
     if METRIC == "kl_div":
         if ZERO_ABLATION:
             ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_greaterthan_zero_sweep"
+            ACDC_PRE_RUN_FILTER = {}
         else:
-            ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_greaterthan_sweep"
-        ACDC_PRE_RUN_FILTER = {}
+            # ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_greaterthan_sweep"
+            ACDC_PRE_RUN_FILTER["group"] = "acdc-gt-ioi-redo"
 
 
 elif TASK == "induction":
@@ -346,7 +348,7 @@ def get_acdc_runs(
         filtered_runs = runs[:clip]
     else:
         filtered_runs = list(filter(run_filter, tqdm(runs[:clip])))
-    print(f"loading {len(filtered_runs)} runs")
+    print(f"loading {len(filtered_runs)} runs with filter {pre_run_filter} and {run_filter}")
 
     if things is None:
         return [

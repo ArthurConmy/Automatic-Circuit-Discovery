@@ -5,7 +5,8 @@ import random
 from typing import List
 
 
-TASKS = ["ioi", "tracr-reverse", "tracr-proportion", "induction", "docstring", "greaterthan"]
+# TASKS = ["ioi", "docstring", "greaterthan"]
+TASKS = ["tracr-reverse", "tracr-proportion"]
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
@@ -20,7 +21,7 @@ METRICS_FOR_TASK = {
 def main():
     commands = []
     for alg in ["acdc"]:  # ["16h", "sp", "acdc"]
-        for reset_network in [0]:
+        for reset_network in [0, 1]:
             for zero_ablation in [0, 1]:
                 if alg == "16h" and zero_ablation:
                     continue  # TODO remove
@@ -39,7 +40,7 @@ def main():
                             command.append("--zero-ablation")
                         commands.append(command)
 
-    launch(commands, name="plots", job=None)
+    launch(commands, name="plots", job=None, synchronous=False)
 
 
 if __name__ == "__main__":
