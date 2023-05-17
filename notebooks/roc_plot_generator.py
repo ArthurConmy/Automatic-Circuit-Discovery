@@ -47,6 +47,7 @@ from typing import (
     Iterable,
     Set,
 )
+import requests
 from acdc.munging_utils import parse_interpnode
 import pickle
 import wandb
@@ -237,6 +238,9 @@ if TASK == "docstring":
     get_true_edges = get_docstring_subgraph_true_edges
     SP_PRE_RUN_FILTER["group"] = "docstring3"
 
+    if METRIC == "kl_div":
+        ACDC_PRE_RUN_FILTER["group"] = "adria-docstring3"
+
 elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     USE_POS_EMBED = True
 
@@ -251,6 +255,7 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
         raise NotImplementedError("not a tracr task")
 
     SP_PRE_RUN_FILTER["group"] = "tracr-shuffled-redo"
+    ACDC_PRE_RUN_FILTER["group"] = "acdc-tracr-neurips"
 
     things = get_all_tracr_things(task=tracr_task, metric_name=METRIC, num_examples=num_examples, device=DEVICE)
 
@@ -274,8 +279,18 @@ elif TASK == "greaterthan":
     things = get_all_greaterthan_things(num_examples=num_examples, metric_name=METRIC, device=DEVICE)
     get_true_edges = partial(get_greaterthan_true_edges, model=things.tl_model)
 
+    if METRIC == "kl_div":
+        if ZERO_ABLATION:
+            ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_greaterthan_zero_sweep"
+        else:
+            ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_greaterthan_sweep"
+        ACDC_PRE_RUN_FILTER = {}
+
+
 elif TASK == "induction":
     things = None
+
+    ACDC_PRE_RUN_FILTER["group"] = "adria-induction-2"
 else:
     raise NotImplementedError("TODO " + TASK)
 
@@ -341,7 +356,15 @@ def get_acdc_runs(
 
     corrs = []
     for run in filtered_runs:
-        print("This run n edges:", run.summary["num_edges_total"], run.summary["num_edges"])
+        score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
+        try:
+            score_d["score"] = run.config["threshold"]
+        except KeyError:
+            score_d["score"] = float(run.name)
+        threshold = score_d["score"]
+
+        if "num_edges" in run.summary:
+            print("This run n edges:", run.summary["num_edges"])
         # Try to find `edges.pth`
         edges_artifact = None
         for art in run.logged_artifacts():
@@ -368,12 +391,13 @@ def get_acdc_runs(
                         latest_file = f
 
             try:
+                if latest_file is None:
+                    raise wandb.CommError("a")
                 with latest_file.download(ROOT / run.name, replace=False, exist_ok=True) as f:
                     d = json.load(f)
 
                 data = d["data"][0]
                 assert len(data["text"]) == len(data["y"])
-                threshold = run.config["threshold"]
 
                 # Mimic an ACDC run
                 for edge, result in zip(data["text"], data["y"]):
@@ -401,21 +425,17 @@ def get_acdc_runs(
 
                 print("After copying: n_edges=", corr_to_copy.count_no_edges())
 
-                score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
-                score_d["score"] = run.config["threshold"]
                 corrs.append((corr_to_copy, score_d))
 
-            except wandb.CommError as e:
+            except (wandb.CommError, requests.exceptions.HTTPError) as e:
                 print(f"Error {e}, falling back to parsing output.log")
                 try:
                     with run.file("output.log").download(root=ROOT / run.name, replace=False, exist_ok=True) as f:
                         log_text = f.read()
                     experiment.load_from_wandb_run(log_text)
-                    score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
-                    score_d["score"] = run.config["threshold"]
                     corrs.append((deepcopy(experiment.corr), score_d))
-                except wandb.CommError:
-                    print(f"Loading run {run.name} with state={runs.state} config={run.config} totally failed.")
+                except Exception:
+                    print(f"Loading run {run.name} with state={run.state} config={run.config} totally failed.")
                     continue
 
         else:
@@ -435,10 +455,8 @@ def get_acdc_runs(
             for t, _effect_size in edges_pth:
                 all_edges[t].present = True
 
-            score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
-            score_d["score"] = run.config["threshold"]
             corrs.append((corr, score_d))
-        print(f"Added run with threshold={run.config['threshold']}, n_edges={corrs[-1][0].count_no_edges()}")
+        print(f"Added run with threshold={score_d['score']}, n_edges={corrs[-1][0].count_no_edges()}")
     return corrs
 
 if not SKIP_ACDC: # this is slow, so run once
