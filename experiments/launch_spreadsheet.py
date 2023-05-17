@@ -131,7 +131,7 @@ def main(testing: bool, use_kubernetes: bool):
         name="acdc-spreadsheet",
         job=None
         if not use_kubernetes
-        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.5.0", cpu=CPU, gpu=1),
+        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.5.1", cpu=CPU, gpu=1),
         check_wandb=wandb_identifier,
     )
 
