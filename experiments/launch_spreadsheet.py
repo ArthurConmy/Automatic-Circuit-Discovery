@@ -3,7 +3,7 @@ import numpy as np
 import random
 from typing import List
 
-TASKS = ["tracr-reverse", "tracr-proportion"]
+TASKS = ["ioi", "greaterthan", "induction", "docstring"]
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
@@ -16,19 +16,20 @@ METRICS_FOR_TASK = {
 
 CPU = 4
 
-def main(testing: bool, use_kubernetes: bool):
-    base_thresholds = 10 ** np.linspace(-2, 1, 21)
+def main(testing: bool, use_kubernetes: bool, reset_networks: bool):
+    NUM_SPACINGS = 5 if reset_networks else 21
+    base_thresholds = 10 ** np.linspace(-4, 0, 21)
 
     seed = 486887094
     random.seed(seed)
 
     wandb_identifier = WandbIdentifier(
         run_name="agarriga-tracr3-{i:05d}",
-        group_name="acdc-tracr-neurips-3",
+        group_name="reset-networks-neurips",
         project="acdc")
 
     commands: List[List[str]] = []
-    for reset_network in [0, 1]:
+    for reset_network in [int(reset_networks)]:
         for zero_ablation in [0, 1]:
             for task in TASKS:
                 for metric in METRICS_FOR_TASK[task]:
@@ -49,10 +50,10 @@ def main(testing: bool, use_kubernetes: bool):
                     elif task == "greaterthan":
                         if metric == "kl_div":
                             # Typical metric value range: 0.0-20
-                            thresholds = 10 ** np.linspace(-4, 0, 21)
+                            thresholds = 10 ** np.linspace(-4, 0, NUM_SPACINGS)
                         elif metric == "greaterthan":
                             # Typical metric value range: -1.0 - 0.0
-                            thresholds = 10 ** np.linspace(-4, 0, 21)
+                            thresholds = 10 ** np.linspace(-4, 0, NUM_SPACINGS)
                         else:
                             raise ValueError("Unknown metric")
                         num_examples = 100
@@ -73,10 +74,10 @@ def main(testing: bool, use_kubernetes: bool):
                         seq_len = -1
                         if metric == "kl_div":
                             # Typical metric value range: 0.0-12.0
-                            thresholds = 10 ** np.linspace(-4, 0, 21)
+                            thresholds = 10 ** np.linspace(-4, 0, NUM_SPACINGS)
                         elif metric == "logit_diff":
                             # Typical metric value range: -0.31 -- -0.01
-                            thresholds = 10 ** np.linspace(-4, 0, 21)
+                            thresholds = 10 ** np.linspace(-4, 0, NUM_SPACINGS)
                         else:
                             raise ValueError("Unknown metric")
                     elif task == "induction":
@@ -110,7 +111,7 @@ def main(testing: bool, use_kubernetes: bool):
                             f"--torch-num-threads={CPU}",
                             "--wandb-dir=/training/acdc",  # If it doesn't exist wandb will use /tmp
                             f"--wandb-mode={'offline' if testing else 'online'}",
-                            f"--max-num-epochs={1 if testing else 100_000}",
+                            f"--max-num-epochs={1 if testing else 40_000}",
                         ]
                         if zero_ablation:
                             command.append("--zero-ablation")
@@ -122,10 +123,10 @@ def main(testing: bool, use_kubernetes: bool):
         name="acdc-spreadsheet",
         job=None
         if not use_kubernetes
-        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.5.2", cpu=CPU, gpu=0),
+        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=CPU, gpu=1),
         check_wandb=wandb_identifier,
     )
 
 
 if __name__ == "__main__":
-    main(testing=False, use_kubernetes=True)
+    main(testing=False, use_kubernetes=True, reset_networks=True)

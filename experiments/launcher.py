@@ -19,7 +19,7 @@ class WandbIdentifier:
     project: str
 
 
-def launch(commands: List[List[str]], name: str, job: Optional[KubernetesJob] = None, check_wandb: Optional[WandbIdentifier]=None, ids_for_worker=range(0, 10000000), synchronous=True):
+def launch(commands: List[List[str]], name: str, job: Optional[KubernetesJob] = None, check_wandb: Optional[WandbIdentifier]=None, ids_for_worker=range(0, 10000000), synchronous=True, just_print_commands=False):
     to_wait: List[Tuple[str, subprocess.Popen, TextIO, TextIO]] = []
 
     assert len(commands) <= 100_000, "Too many commands for 5 digits"
@@ -50,6 +50,9 @@ def launch(commands: List[List[str]], name: str, job: Optional[KubernetesJob] = 
             #     continue
 
         print("Launching", name, command_str)
+        if just_print_commands:
+            continue
+
         if job is None:
             if synchronous:
                 out = subprocess.run(command)
