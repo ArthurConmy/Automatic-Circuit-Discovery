@@ -13,8 +13,9 @@ METRICS_FOR_TASK = {
 }
 
 
-def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool):
-    base_regularization_params = np.concatenate(
+def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool, reset_networks: bool):
+    NUM_SPACINGS = 5 if reset_networks else 21
+    expensive_base_regularization_params = np.concatenate(
         [
             10 ** np.linspace(-2, 0, 11),
             np.linspace(1, 10, 10)[1:],
@@ -22,9 +23,14 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool):
         ]
     )
 
+    if reset_networks:
+        base_regularization_params = 10 ** np.linspace(-2, 1.5, NUM_SPACINGS)
+    else:
+        base_regularization_params = expensive_base_regularization_params
+
     wandb_identifier = WandbIdentifier(
         run_name=f"{name}-{{i:05d}}",
-        group_name="reset-networks2",
+        group_name="reset-networks3",
         project="induction-sp-replicate")
 
 
@@ -32,7 +38,7 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool):
     random.seed(seed)
 
     commands: List[List[str]] = []
-    for reset_network in [1]:
+    for reset_network in [int(reset_networks)]:
         for zero_ablation in [0, 1]:
             for task in TASKS:
                 for metric in METRICS_FOR_TASK[task]:
@@ -55,7 +61,7 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool):
                             regularization_params = base_regularization_params
                         elif metric == "greaterthan":
                             # Typical metric value range: -1.0 - 0.0
-                            regularization_params = 10 ** np.linspace(-4, 2, 21)
+                            regularization_params = 10 ** np.linspace(-4, 2, NUM_SPACINGS)
                         else:
                             raise ValueError("Unknown metric")
                         num_examples = 100
@@ -64,7 +70,7 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool):
                         seq_len = 41
                         if metric == "kl_div":
                             # Typical metric value range: 0.0-10.0
-                            regularization_params = base_regularization_params
+                            regularization_params = expensive_base_regularization_params
                         elif metric == "docstring_metric":
                             # Typical metric value range: -1.0 - 0.0
                             regularization_params = 10 ** np.linspace(-4, 2, 21)
@@ -79,7 +85,7 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool):
                             regularization_params = base_regularization_params
                         elif metric == "logit_diff":
                             # Typical metric value range: -0.31 -- -0.01
-                            regularization_params = 10 ** np.linspace(-4, 2, 21)
+                            regularization_params = 10 ** np.linspace(-4, 2, NUM_SPACINGS)
                         else:
                             raise ValueError("Unknown metric")
                     elif task == "induction":
@@ -87,10 +93,10 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool):
                         num_examples  = 50
                         if metric == "kl_div":
                             # Typical metric value range: 0.0-16.0
-                            regularization_params = base_regularization_params
+                            regularization_params = expensive_base_regularization_params
                         elif metric == "nll":
                             # Typical metric value range: 0.0-16.0
-                            regularization_params = base_regularization_params
+                            regularization_params = expensive_base_regularization_params
                         else:
                             raise ValueError("Unknown metric")
                     else:
@@ -126,6 +132,7 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool):
         job=job,
         synchronous=True,
         check_wandb=wandb_identifier,
+        just_print_commands=False,
     )
 
 if __name__ == "__main__":
@@ -133,11 +140,13 @@ if __name__ == "__main__":
         ["ioi", "greaterthan", "induction", "docstring"],
         KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=2, gpu=1),
         "sp-gpu",
-        testing=True,
+        testing=False,
+        reset_networks=True,
     )
     main(
         ["tracr-reverse", "tracr-proportion"],
         KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=4, gpu=0),
         "sp-tracr",
-        testing=True,
+        testing=False,
+        reset_networks=True,
     )

@@ -65,7 +65,7 @@ def launch(commands: List[List[str]], name: str, job: Optional[KubernetesJob] = 
                 out = subprocess.Popen(command, stdout=stdout, stderr=stderr)
                 to_wait.append((command_str, out, stdout, stderr))
         else:
-            if "cuda" in command:
+            if "cuda" in command_str:
                 assert job.gpu > 0
             else:
                 assert job.gpu == 0

@@ -125,6 +125,7 @@ def main(testing: bool, use_kubernetes: bool, reset_networks: bool):
         if not use_kubernetes
         else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=CPU, gpu=1),
         check_wandb=wandb_identifier,
+        just_print_commands=False,
     )
 
 

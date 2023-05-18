@@ -53,7 +53,7 @@ def main(TASKS: list[str], job: KubernetesJob, name: str):
                     commands.append(command)
 
 
-    launch(commands, name=wandb_identifier.run_name, job=job, check_wandb=wandb_identifier)
+    launch(commands, name=wandb_identifier.run_name, job=job, check_wandb=wandb_identifier, just_print_commands=False)
 
 
 if __name__ == "__main__":
