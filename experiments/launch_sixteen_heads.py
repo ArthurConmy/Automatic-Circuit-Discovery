@@ -138,7 +138,6 @@ model.load_state_dict(_acdc_model.state_dict(), strict=False)
 model = model.to(args.device)
 
 if args.reset_network:
-    assert False, "seems not to work"
     with torch.no_grad():
         reset_network(args.task, args.device, model)
         reset_network(args.task, args.device, _acdc_model)

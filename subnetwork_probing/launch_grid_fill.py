@@ -1,9 +1,7 @@
-from experiments.launcher import KubernetesJob, launch
+from experiments.launcher import KubernetesJob, WandbIdentifier, launch
 import numpy as np
 import random
 from typing import List
-
-TASKS = ["tracr-reverse", "tracr-proportion"]
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
@@ -15,7 +13,7 @@ METRICS_FOR_TASK = {
 }
 
 
-def main(testing: bool, use_kubernetes: bool):
+def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool):
     base_regularization_params = np.concatenate(
         [
             10 ** np.linspace(-2, 0, 11),
@@ -23,11 +21,18 @@ def main(testing: bool, use_kubernetes: bool):
             np.linspace(10, 250, 13)[1:],
         ]
     )
+
+    wandb_identifier = WandbIdentifier(
+        run_name=f"{name}-{{i:05d}}",
+        group_name="reset-networks2",
+        project="induction-sp-replicate")
+
+
     seed = 1507014021
     random.seed(seed)
 
     commands: List[List[str]] = []
-    for reset_network in [0, 1]:
+    for reset_network in [1]:
         for zero_ablation in [0, 1]:
             for task in TASKS:
                 for metric in METRICS_FOR_TASK[task]:
@@ -101,7 +106,7 @@ def main(testing: bool, use_kubernetes: bool):
                             "--wandb-project=induction-sp-replicate",
                             "--wandb-entity=remix_school-of-rock",
                             "--wandb-group=tracr-shuffled-redo",
-                            f"--device=cpu",
+                            f"--device={'cpu' if testing or not job.gpu else 'cuda'}",
                             f"--epochs={1 if testing else 10000}",
                             f"--zero-ablation={zero_ablation}",
                             f"--reset-subject={reset_network}",
@@ -111,17 +116,28 @@ def main(testing: bool, use_kubernetes: bool):
                             f"--seq-len={seq_len}",
                             f"--n-loss-average-runs={1 if testing else 20}",
                             "--wandb-dir=./tracr_anew",  # If it doesn't exist wandb will use /tmp
-                            "--wandb-mode=offline",
+                            f"--wandb-mode={'offline' if testing else 'online'}",
                         ]
                         commands.append(command)
 
     launch(
         commands,
         name="complete-spreadsheet",
-        job=None
-        if not use_kubernetes
-        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.2.24", cpu=4, gpu=0),
+        job=job,
+        synchronous=True,
+        check_wandb=wandb_identifier,
     )
 
 if __name__ == "__main__":
-    main(testing=False, use_kubernetes=False)
+    main(
+        ["ioi", "greaterthan", "induction", "docstring"],
+        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=2, gpu=1),
+        "sp-gpu",
+        testing=True,
+    )
+    main(
+        ["tracr-reverse", "tracr-proportion"],
+        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=4, gpu=0),
+        "sp-tracr",
+        testing=True,
+    )
