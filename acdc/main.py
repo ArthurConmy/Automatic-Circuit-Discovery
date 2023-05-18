@@ -238,10 +238,11 @@ for i in range(100_000):
 
 exp.save_edges("another_final_edges.pkl") 
 if USING_WANDB:
-    edges_fname = f"edges.pth"
-    exp.save_edges(edges_fname)
-    artifact = wandb.Artifact(edges_fname, type='dataset')
-    artifact.add_file(edges_fname)
+    for edges_fname in ["edges.pth", f"edges_{THRESHOLD}.pth"]: # edges_fname = f"edges.pth"
+        exp.save_edges(edges_fname)
+        artifact = wandb.Artifact(edges_fname, type='dataset')
+        artifact.add_file(edges_fname)
+        
     wandb.log_artifact(artifact)
     os.remove(edges_fname)
     wandb.finish()
