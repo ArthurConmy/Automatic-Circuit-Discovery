@@ -64,7 +64,7 @@ for century in range(11, 18):
     YEARS_BY_CENTURY[century] = all_success[1:-1]
 
 TOKENS = {
-    i: model.tokenizer.encode(f"{'0' if i<=9 else ''}{i}")[0] for i in range(0, 100)
+    i: torch.tensor(model.tokenizer.encode(f"{'0' if i<=9 else ''}{i}")).long().item() for i in range(1, 100) # I hope!
 }
 INV_TOKENS = {v: k for k, v in TOKENS.items()}
 
@@ -73,7 +73,7 @@ def greaterthan_metric(logits, tokens):
     ans = 0.0
     for i in range(len(probs)):
         yearend = INV_TOKENS[tokens[i][7].item()]
-        for year_suff in range(yearend, 100):
+        for year_suff in range(yearend+1, 99):
             ans += probs[i, TOKENS[year_suff]]
         for year_pref in range(0, yearend):
             ans -= probs[i, TOKENS[year_pref]]
