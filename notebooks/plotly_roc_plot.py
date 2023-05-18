@@ -10,9 +10,13 @@ import plotly
 import os
 import json
 import wandb
+import time
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 from pathlib import Path
+import plotly.express as px
+import sklearn.metrics
+import pandas as pd
 
 from notebooks.emacs_plotly_render import set_plotly_renderer
 #set_plotly_renderer("emacs")
@@ -47,6 +51,13 @@ for fname in os.listdir(DATA_DIR):
         with open(DATA_DIR / fname, "r") as f:
             data = json.load(f)
         dict_merge(all_data, data)
+
+# %% Prevent mathjax
+fig=px.scatter(x=[0, 1, 2, 3, 4], y=[0, 1, 4, 9, 16])
+fig.write_image("/tmp/discard.pdf", format="pdf")
+# time.sleep(1)
+
+
 
 # %%
 
@@ -91,11 +102,29 @@ colors = {
     "HISP": "yellow",
 }
 
+symbol = {
+    "ACDC": "circle",
+    "SP": "x",
+    "HISP": "diamond",
+}
+
+
 x_names = {
     "fpr": "False positive rate (edges)",
     "tpr": "True positive rate (edges)",
     "precision": "Precision (edges)",
 }
+
+def discard_non_pareto_optimal(points):
+    ret = []
+    for x, y in points:
+        for x1, y1 in points:
+            if x1 < x and y1 > y and (x1, y1) != (x, y):
+                break
+        else:
+            ret.append((x, y))
+    return list(sorted(ret))
+
 
 def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", ablation_type="random_ablation"):
     this_data = all_data[weights_type][ablation_type]
@@ -125,6 +154,8 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
         (2, 4),
     ]
 
+    df = pd.DataFrame()
+
     for task_idx, (row, col) in zip(task_idxs, rows_and_cols):
         for alg_idx, methodof in alg_names.items():
             metric_name = METRICS_FOR_TASK[task_idx][metric_idx]
@@ -132,16 +163,59 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
                 x_data = this_data[task_idx][metric_name][alg_idx][x_key]
                 y_data = this_data[task_idx][metric_name][alg_idx][y_key]
             except KeyError:
-                continue
+                x_data = []
+                y_data = []
 
+            points = list(zip(x_data, y_data))
+            pareto_optimal = discard_non_pareto_optimal(points)
+            others = [p for p in points if p not in pareto_optimal]
+
+            if len(pareto_optimal):
+                x_data, y_data = zip(*pareto_optimal)
+                if plot_type == "roc":
+                    auc = sklearn.metrics.auc(x_data, y_data)
+
+                    df = df.append({
+                        "task": task_idx,
+                        "method": methodof,
+                        "auc": auc,
+                        "metric": metric_name,
+                        "weights_type": weights_type,
+                        "ablation_type": ablation_type,
+                    }, ignore_index=True)
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=x_data,
+                        y=y_data,
+                        name=methodof,
+                        mode="lines",
+                        line=dict(shape="hv", color=colors[methodof]),
+                        showlegend = False,
+                    ),
+                    row=row,
+                    col=col,
+                )
+
+            if others:
+                x_data, y_data = zip(*others)
+            else:
+                x_data, y_data = [None], [None]
+            
             fig.add_trace(
                 go.Scatter(
                     x=x_data,
                     y=y_data,
                     name=methodof,
-                    mode="lines",
+                    mode="markers",
                     line=dict(shape="hv", color=colors[methodof]),
                     showlegend = (row, col) == rows_and_cols[-2],
+                    marker=dict(
+                        size=7,
+                        color=colors[methodof],
+                        symbol=symbol[methodof],
+                    ),
+
                 ),
                 row=row,
                 col=col,
@@ -152,17 +226,17 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
             )
 
             # I don't think we should add the arrows, just describe what's better in the caption.
-            if False and (row, col) == rows_and_cols[0]:
+            if (row, col) == rows_and_cols[0]:
                 fig.add_annotation(
                     xref="x domain",
                     yref="y",
                     x=0.35, # end of arrow
-                    y=0.75,
+                    y=0.65,
                     text="",
                     axref="x domain",
                     ayref="y",
                     ax=0.55,
-                    ay=0.55,
+                    ay=0.45,
                     arrowhead=2,
                     row = row,
                     col = col,
@@ -171,21 +245,7 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
                     xref="x domain",
                     yref="y",
                     x=0.6, # end of arrow
-                    y=0.8,
-                    text="",
-                    axref="x domain",
-                    ayref="y",
-                    ax=0.6,
-                    ay=0.6,
-                    arrowhead=2,
-                    row = row,
-                    col = col,
-                )
-                fig.add_annotation(
-                    xref="x domain",
-                    yref="y",
-                    x=0.8, # end of arrow
-                    y=0.5,
+                    y=0.7,
                     text="",
                     axref="x domain",
                     ayref="y",
@@ -195,17 +255,32 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
                     row = row,
                     col = col,
                 )
-                fig.add_annotation(text="More circuit components recovered",
+                fig.add_annotation(
+                    xref="x domain",
+                    yref="y",
+                    x=0.8, # end of arrow
+                    y=0.4,
+                    text="",
+                    axref="x domain",
+                    ayref="y",
+                    ax=0.6,
+                    ay=0.4,
+                    arrowhead=2,
+                    row = row,
+                    col = col,
+                )
+                fig.add_annotation(text="More true components recovered",
                     xref="x", yref="y",
-                    x=0.45, y=0.85, showarrow=False, font=dict(size=8), row=row, col=col)
+                    x=0.55, y=0.75, showarrow=False, font=dict(size=8), row=row, col=col)
                 fig.add_annotation(text="Better",
                     xref="x", yref="y",
-                    x=0.4, y=0.6, showarrow=False, font=dict(size=12), row=row, col=col)
+                    x=0.4, y=0.5, showarrow=False, font=dict(size=12), row=row, col=col)
                 fig.add_annotation(text="More wrong components recovered",
                     xref="x", yref="y",
-                    x=0.65, y=0.45, showarrow=False, font=dict(size=8), row=row, col=col) # TODO could add two text boxes
+                    x=0.65, y=0.35, showarrow=False, font=dict(size=8), row=row, col=col) # TODO could add two text boxes
 
-                fig.update_yaxes(visible=True, row=row, col=col, tickangle=-45) # ???
+                fig.update_yaxes(visible=True, row=row, col=col, tickangle=-90, dtick=0.25, range=[-0.05, 1.05]) # ???
+                fig.update_xaxes(dtick=0.25, range=[-0.05, 1.05])
 
                 # # add label to x axis
                 # fig.update_xaxes(title_text="False positive rate", row=row, col=col)
@@ -217,8 +292,8 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
 
             else:
                 # If the subplot is not the large plot, hide its axes
-                fig.update_xaxes(visible=True, row=row, col=col, dtick=1)
-                fig.update_yaxes(visible=True, row=row, col=col, tickangle=-45, dtick=1) # ???
+                fig.update_xaxes(visible=True, row=row, col=col, tickvals=[0, 0.25, 0.5, 0.75, 1.], ticktext=["0", "", "0.5", "", "1"], range=[-0.05, 1.05])
+                fig.update_yaxes(visible=True, row=row, col=col, tickangle=-90, dtick=0.25, tickvals=[0, 0.25, 0.5, 0.75, 1.], ticktext=["0", "", "0.5", "", "1"], range=[-0.05, 1.05]) # ???
 
                 # smaller title font
                 fig.update_layout(title_font=dict(size=10)) # , row=row, col=col)
@@ -232,8 +307,9 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
             yanchor="top",
             y=1,
             xanchor="right",
-            x=1.2,
+            x=1.12,
             font=dict(size=8),
+            bgcolor="rgba(0,0,0,0)",  # Set the background color to transparent
         ),
         title_font=dict(size=4),
     )
@@ -241,8 +317,10 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
     scale = 1.2
 
     # No title,
-    fig.update_layout(height=350*scale, width=scale*scale*500)
-    return fig
+    fig.update_layout(height=250*scale, width=scale*scale*500,
+                      margin=dict(l=55, r=70, t=20, b=50)
+                      )
+    return fig, df
 
 plot_type_keys = {
     "precision_recall": ("tpr", "precision"),
@@ -252,15 +330,18 @@ plot_type_keys = {
 PLOT_DIR = DATA_DIR.parent / "plots"
 PLOT_DIR.mkdir(exist_ok=True)
 
+all_dfs = []
 for metric_idx in [0, 1]:
     for ablation_type in ["random_ablation", "zero_ablation"]:
         for plot_type in ["precision_recall", "roc"]:
             x_key, y_key = plot_type_keys[plot_type]
-            fig = make_fig(metric_idx=metric_idx, ablation_type=ablation_type, x_key=x_key, y_key=y_key)
+            fig, df = make_fig(metric_idx=metric_idx, ablation_type=ablation_type, x_key=x_key, y_key=y_key)
+            all_dfs.append(df)
 
             metric = "kl" if metric_idx == 0 else "other"
             fig.write_image(PLOT_DIR / ("--".join([metric, ablation_type, plot_type]) + ".pdf"))
 
+pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
 # %%
 
 # Stefan
