@@ -3,8 +3,6 @@ import numpy as np
 import random
 from typing import List
 
-TASKS = ["ioi", "greaterthan", "induction", "docstring"]
-
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
     "tracr-reverse": ["kl_div"],
@@ -16,7 +14,7 @@ METRICS_FOR_TASK = {
 
 CPU = 4
 
-def main(testing: bool, use_kubernetes: bool, reset_networks: bool):
+def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_kubernetes: bool, reset_networks: bool):
     NUM_SPACINGS = 5 if reset_networks else 21
     base_thresholds = 10 ** np.linspace(-4, 0, 21)
 
@@ -24,8 +22,8 @@ def main(testing: bool, use_kubernetes: bool, reset_networks: bool):
     random.seed(seed)
 
     wandb_identifier = WandbIdentifier(
-        run_name="agarriga-tracr3-{i:05d}",
-        group_name="reset-networks-neurips",
+        run_name=run_name,
+        group_name=group_name,
         project="acdc")
 
     commands: List[List[str]] = []
@@ -130,4 +128,19 @@ def main(testing: bool, use_kubernetes: bool, reset_networks: bool):
 
 
 if __name__ == "__main__":
-    main(testing=False, use_kubernetes=True, reset_networks=True)
+    main(
+        ["ioi", "greaterthan", "induction", "docstring"],
+        "reset-networks-neurips",
+        "agarriga-tracr3-{i:05d}",
+        testing=False,
+        use_kubernetes=True,
+        reset_networks=True,
+    )
+    main(
+        ["induction"],
+        "adria-induction-3",
+        "agarriga-induction-{i:05d}",
+        testing=False,
+        use_kubernetes=True,
+        reset_networks=False,
+    )
