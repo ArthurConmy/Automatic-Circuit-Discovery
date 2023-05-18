@@ -75,7 +75,7 @@ def greaterthan_metric(logits, tokens):
         yearend = INV_TOKENS[tokens[i][7].item()]
         for year_suff in range(yearend+1, 99):
             ans += probs[i, TOKENS[year_suff]]
-        for year_pref in range(0, yearend):
+        for year_pref in range(2, yearend):
             ans -= probs[i, TOKENS[year_pref]]
     return - float(ans / len(probs))
 
