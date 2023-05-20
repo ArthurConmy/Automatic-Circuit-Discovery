@@ -1,3 +1,4 @@
+import sys
 import wandb
 from functools import partial
 from copy import deepcopy
@@ -25,24 +26,11 @@ def shuffle_tensor(tens, seed=42):
     torch.random.manual_seed(seed)
     return tens[torch.randperm(tens.shape[0])]
 
-class OrderedDefaultdict(collections.OrderedDict):
-    """ A defaultdict with OrderedDict as its base class. 
-    Thanks to https://stackoverflow.com/a/6190500/1090562"""
-
-    def __init__(self, default_factory=None, *args, **kwargs):
-        if not (default_factory is None or callable(default_factory)):
-            raise TypeError('first argument must be callable or None')
-        super(OrderedDefaultdict, self).__init__(*args, **kwargs)
-        self.default_factory = default_factory  # called by __missing__()
-
-    def __missing__(self, key):
-        if self.default_factory is None:
-            raise KeyError(key,)
-        self[key] = value = self.default_factory()
-        return value
-
-    def __repr__(self):  # Optional.
-        return '%s(%r, %r)' % (self.__class__.__name__, self.default_factory, self.items())
+class OrderedDefaultdict(defaultdict):
+    def __init__(self, *args, **kwargs):
+        if sys.version_info < (3,7):
+            raise Exception("You need Python >= 3.7 so dict is ordered by default")
+        super().__init__(*args, **kwargs)
 
 class EdgeType(Enum):
     """TODO Arthur explain this more clearly and use GPT-4 for clarity/coherence. Ping Arthur if you want a better explanation and this isn't done!!!
