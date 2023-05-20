@@ -370,7 +370,10 @@ def filter_nodes(nodes: List[Tuple[str, TorchIndex]]):
     # combine MLP things
     for node in nodes:
         if "resid_mid" in node[0]:
-            all_nodes.add((f"blocks.{node[0].split()[1]}.hook_mlp_out", node[1])) # assume that we're not doing any neuron or positional stuff
+            try:
+                all_nodes.add((f"blocks.{node[0].split()[1]}.hook_mlp_out", node[1])) # assume that we're not doing any neuron or positional stuff
+            except:
+                a = 1
             all_nodes.remove(node)
         for letter in "qkv":
             hook_name = f"hook_{letter}_input"

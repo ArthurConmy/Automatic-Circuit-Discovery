@@ -155,7 +155,8 @@ parser.add_argument("--testing", action="store_true", help="Use testing data ins
 
 if IPython.get_ipython() is not None:
     # args = parser.parse_args("--task=ioi --metric=logit_diff --alg=acdc".split())
-    args = parser.parse_args("--task=docstring --reset-network=0 --metric=kl_div --alg=acdc --mode=nodes".split())
+    # args = parser.parse_args("--task=docstring --reset-network=0 --metric=kl_div --alg=acdc --mode=nodes".split())
+    args = parser.parse_args("--task=ioi --reset-network=0 --metric=kl_div --alg=acdc --mode=nodes --zero-ablation".split())
     # __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
 else:
     args = parser.parse_args()
@@ -268,7 +269,15 @@ elif TASK == "ioi":
     things = get_all_ioi_things(num_examples=num_examples, device=DEVICE, metric_name=METRIC)
 
     if METRIC == "kl_div":
-        ACDC_PRE_RUN_FILTER["group"] = "acdc-gt-ioi-redo"
+        if ZERO_ABLATION:
+            ACDC_RUN_FILTER = lambda run: "zero" in run.name and run.state == "finished"
+            ACDC_PRE_RUN_FILTER = {}
+            ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_ioi_sweep"
+
+        else:
+    
+            ACDC_PRE_RUN_FILTER["group"] = "acdc-gt-ioi-redo"
+
         # ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_ioi_sweep"
         # del ACDC_PRE_RUN_FILTER["config.reset_network"]
         # ACDC_PRE_RUN_FILTER["group"] = "default"
@@ -457,8 +466,12 @@ def get_acdc_runs(
                     with open(fopen.name, "rb") as fopenb:
                         edges_pth = pickle.load(fopenb)
 
+            print(len(all_edges), "is a length")
             for t, _effect_size in edges_pth:
-                all_edges[t].present = True
+                try:
+                    all_edges[t].present = True
+                except: 
+                    warnings.warn(f"We couldn't deal with {t=}, probably it's an excess edge")
 
             corrs.append((corr, score_d))
         print(f"Added run with threshold={score_d['score']}, n_edges={corrs[-1][0].count_no_edges()}")
