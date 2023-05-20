@@ -4,7 +4,8 @@ from IPython import get_ipython
 if get_ipython() is not None:
     get_ipython().magic('load_ext autoreload')
     get_ipython().magic('autoreload 2')
-    __file__ = '/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/plotly_roc_plot.py'
+    if "mnt/ssd-0" not in __file__:
+        __file__ = '/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/plotly_roc_plot.py'
 
 import plotly
 import os
@@ -22,7 +23,9 @@ from notebooks.emacs_plotly_render import set_plotly_renderer
 #set_plotly_renderer("emacs")
 
 # %%
+
 DATA_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / "plots_data"
+DO_PARETO = False
 
 all_data = {}
 
@@ -53,6 +56,7 @@ for fname in os.listdir(DATA_DIR):
         dict_merge(all_data, data)
 
 # %% Prevent mathjax
+
 fig=px.scatter(x=[0, 1, 2, 3, 4], y=[0, 1, 4, 9, 16])
 fig.write_image("/tmp/discard.pdf", format="pdf")
 # time.sleep(1)
@@ -168,7 +172,7 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
             pareto_optimal = discard_non_pareto_optimal(points)
             others = [p for p in points if p not in pareto_optimal]
 
-            if len(pareto_optimal):
+            if len(pareto_optimal) and DO_PARETO:
                 x_data, y_data = zip(*pareto_optimal)
                 if plot_type == "roc":
                     auc = sklearn.metrics.auc(x_data, y_data)
@@ -320,6 +324,8 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
                       )
     return fig, df
 
+#%%
+
 plot_type_keys = {
     "precision_recall": ("tpr", "precision"),
     "roc": ("fpr", "tpr"),
@@ -340,6 +346,7 @@ for metric_idx in [0, 1]:
             fig.write_image(PLOT_DIR / ("--".join([metric, ablation_type, plot_type]) + ".pdf"))
 
 pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
+
 # %%
 
 # Stefan
