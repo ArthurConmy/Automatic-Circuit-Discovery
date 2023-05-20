@@ -350,11 +350,11 @@ def get_present_nodes(graph, meta=False):
     present_nodes = set()
     all_nodes = set()
 
-    for t, e in all_nodes:
+    for t, e in graph.all_edges().items():
         all_nodes.add((t[0], t[1]))
         all_nodes.add((t[2], t[3]))
 
-        if e.present and not e.edge_type == EdgeType.PLACEHOLDER:
+        if e.present and e.edge_type != EdgeType.PLACEHOLDER:
             present_nodes.add((t[0], t[1]))
 
     ret = [list(present_nodes)]
@@ -365,7 +365,6 @@ def get_present_nodes(graph, meta=False):
 def filter_nodes(nodes: List[Tuple[str, TorchIndex]]):
 
     # assume that this is alread
-    a=1
     all_nodes = set(nodes) # ???
 
     # combine MLP things
@@ -384,10 +383,10 @@ def filter_nodes(nodes: List[Tuple[str, TorchIndex]]):
 def get_node_stat(ground_truth, recovered, mode, verbose=False, meta=False):
 
     assert mode in ["true positive", "false positive", "false negative"]
-    assert set(ground_truth.all_edges().keys()) == set(recovered.all_edges().keys()), "There is a mismatch between the keys we're comparing here"
+    assert set(ground_truth.all_edges().keys()) == set(recovered.all_edges().keys()), "There is a mismatch between the keys we're cmparing here"
 
     ground_truth_all_nodes, length_all_nodes = get_present_nodes(ground_truth, meta=True)
-    recovered_all_nodes = get_present_nodes(recovered)
+    recovered_all_nodes = get_present_nodes(recovered)[0]
 
     # filter
     ground_truth_all_nodes = filter_nodes(ground_truth_all_nodes)
@@ -418,7 +417,8 @@ def get_node_stat(ground_truth, recovered, mode, verbose=False, meta=False):
     ret = [cnt]
     if meta:
         ret.extend([len(ground_truth_all_nodes), len(recovered_all_nodes), length_all_nodes])
-    return tuple(ret)
+        return tuple(ret)
+    return ret[0]
 
 def get_edge_stat(ground_truth, recovered, mode, verbose=False, return_stat=True):
     assert mode in ["true positive", "false positive", "false negative"]

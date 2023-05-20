@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 from experiments.launcher import KubernetesJob, launch
+import subprocess
 import numpy as np
 import random
 from typing import List
 
 MODE = "nodes" # or "edges"
-
 TASKS = ["ioi", "docstring", "greaterthan"]
-# TASKS = ["tracr-reverse", "tracr-proportion"]
+
+ADRIA_MODE = False
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
@@ -42,8 +43,13 @@ def main():
                             command.append("--zero-ablation")
                         commands.append(command)
 
-    launch(commands, name="plots", job=None, synchronous=False)
+    if ADRIA_MODE:
+        launch(commands, name="plots", job=None, synchronous=False)
 
+    else: # don't do all the things async...
+        for command in commands:
+            print(" ".join(command))
+            subprocess.run(command, check=True)
 
 if __name__ == "__main__":
     main()

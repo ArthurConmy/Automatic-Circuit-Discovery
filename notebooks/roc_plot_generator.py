@@ -155,14 +155,14 @@ parser.add_argument("--testing", action="store_true", help="Use testing data ins
 
 if IPython.get_ipython() is not None:
     # args = parser.parse_args("--task=ioi --metric=logit_diff --alg=acdc".split())
-    args = parser.parse_args("--task=ioi --reset-network=0 --metric=kl_div --alg=acdc --mode=nodes".split())
+    args = parser.parse_args("--task=docstring --reset-network=0 --metric=kl_div --alg=acdc --mode=nodes".split())
     # __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
 else:
     args = parser.parse_args()
 
 
 TASK = args.task
-METRIC = args.metric
+METRIC = args.metric # spreadsheet 2 number 120 looks good... rip it's gt
 DEVICE = "cpu"
 ZERO_ABLATION = True if args.zero_ablation else False
 RESET_NETWORK = 1 if args.reset_network else 0
@@ -340,6 +340,7 @@ def get_acdc_runs(
     pre_run_filter: dict = ACDC_PRE_RUN_FILTER,
     run_filter: Optional[Callable[[Any], bool]] = ACDC_RUN_FILTER,
     clip: Optional[int] = None,
+    maxruns=1_000_000,
 ):
     if clip is None:
         clip = 100_000 # so we don't clip anything
@@ -461,10 +462,11 @@ def get_acdc_runs(
 
             corrs.append((corr, score_d))
         print(f"Added run with threshold={score_d['score']}, n_edges={corrs[-1][0].count_no_edges()}")
+        if len(corrs)>maxruns: break
     return corrs
 
 if not SKIP_ACDC: # this is slow, so run once
-    acdc_corrs = get_acdc_runs(None if things is None else exp, clip = 1 if TESTING else None)
+    acdc_corrs = get_acdc_runs(None if things is None else exp, clip = 1 if TESTING else None, maxruns=100000)
     assert len(acdc_corrs) > 1
     print("acdc_corrs", len(acdc_corrs))
 
@@ -648,14 +650,24 @@ def get_points(corrs_and_scores, decreasing=True):
             if MODE == "nodes":
                 _, len_ground_truth_all_nodes, len_recovered_all_nodes, max_subgraph_size = get_node_stat(ground_truth=canonical_circuit_subgraph, recovered=corr, mode="true positive", meta=True)
 
+                updater = {
+                    "fpr": false_positive_stat(ground_truth=canonical_circuit_subgraph, recovered=corr, mode="nodes"),
+                    "tpr": true_positive_stat(ground_truth=canonical_circuit_subgraph, recovered=corr, mode="nodes"),
+                    "precision": -69.0,
+                    "n_edges": len_recovered_all_nodes, # well not edges but ygm
+                }
+
+                if (max_subgraph_size-len_ground_truth_all_nodes) == 0: # grumble
+                    updater["fpr"] = 0.0
+                else:
+                    updater["fpr"] /= (max_subgraph_size-len_ground_truth_all_nodes)
+                if len_ground_truth_all_nodes == 0:
+                    updater["tpr"] = 0.0
+                else:
+                    updater["tpr"] /= len_ground_truth_all_nodes
+
                 score.update(
-                    {
-                        "fpr": (
-                            false_positive_stat(ground_truth=canonical_circuit_subgraph, recovered=corr, mode="nodes") / (max_subgraph_size-len_ground_truth_all_nodes)
-                        ),
-                        "tpr": tp_stat / len_ground_truth_all_nodes,
-                    }
-                    # TODO others
+                    updater, # TODO others
                 )
 
         else:
@@ -735,3 +747,5 @@ if OUT_FILE is not None:
 
     with open(OUT_FILE, "w") as f:
         json.dump(out_dict, f, indent=2)
+
+# %%
