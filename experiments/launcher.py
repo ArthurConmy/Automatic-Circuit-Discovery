@@ -11,6 +11,16 @@ class KubernetesJob:
     container: str
     cpu: int
     gpu: int
+    mount_training: bool=False
+
+    def mount_training_options(self) -> list[str]:
+        if not self.mount_training:
+            return []
+        return [
+            "--volume-mount=/training",
+            "--volume-name=agarriga-models-training",
+        ]
+
 
 @dataclasses.dataclass(frozen=True)
 class WandbIdentifier:
@@ -87,6 +97,7 @@ def launch(commands: List[List[str]], name: str, job: Optional[KubernetesJob] = 
                     "--working-dir=/Automatic-Circuit-Discovery",
                     "--shared-host-dir=/home/agarriga/.cache/huggingface",
                     "--shared-host-dir-mount=/root/.cache/huggingface",
+                    *job.mount_training_options(),
                 ],
                 check=True,
             )

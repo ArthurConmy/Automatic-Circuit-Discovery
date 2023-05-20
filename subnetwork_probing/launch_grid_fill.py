@@ -121,8 +121,8 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool, reset_n
                             f"--num-examples={6 if testing else num_examples}",
                             f"--seq-len={seq_len}",
                             f"--n-loss-average-runs={1 if testing else 20}",
-                            "--wandb-dir=./tracr_anew",  # If it doesn't exist wandb will use /tmp
-                            f"--wandb-mode={'offline' if testing else 'online'}",
+                            "--wandb-dir=/training/tracr_anew",  # If it doesn't exist wandb will use /tmp
+                            f"--wandb-mode=offline",
                         ]
                         commands.append(command)
 
@@ -136,16 +136,16 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool, reset_n
     )
 
 if __name__ == "__main__":
-    main(
-        ["ioi", "greaterthan", "induction", "docstring"],
-        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=2, gpu=1),
-        "sp-gpu",
-        testing=False,
-        reset_networks=True,
-    )
+    # main(
+    #     ["ioi", "greaterthan", "induction", "docstring"],
+    #     KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=2, gpu=1),
+    #     "sp-gpu",
+    #     testing=False,
+    #     reset_networks=True,
+    # )
     main(
         ["tracr-reverse", "tracr-proportion"],
-        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=4, gpu=0),
+        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=4, gpu=0, mount_training=True),
         "sp-tracr",
         testing=False,
         reset_networks=True,
