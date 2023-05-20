@@ -1,3 +1,4 @@
+import sys
 import wandb
 from functools import partial
 from copy import deepcopy
@@ -25,24 +26,30 @@ def shuffle_tensor(tens, seed=42):
     torch.random.manual_seed(seed)
     return tens[torch.randperm(tens.shape[0])]
 
-class OrderedDefaultdict(collections.OrderedDict):
+# class OrderedDefaultdict(collections.OrderedDict):
+class OrderedDefaultdict(defaultdict):
     """ A defaultdict with OrderedDict as its base class. 
     Thanks to https://stackoverflow.com/a/6190500/1090562"""
 
-    def __init__(self, default_factory=None, *args, **kwargs):
-        if not (default_factory is None or callable(default_factory)):
-            raise TypeError('first argument must be callable or None')
-        super(OrderedDefaultdict, self).__init__(*args, **kwargs)
-        self.default_factory = default_factory  # called by __missing__()
+    def __init__(self, *args, **kwargs):
+        # if not (default_factory is None or callable(default_factory)):
+        #     raise TypeError('first argument must be callable or None')
+        # super(OrderedDefaultdict, self).__init__(*args, **kwargs)
 
-    def __missing__(self, key):
-        if self.default_factory is None:
-            raise KeyError(key,)
-        self[key] = value = self.default_factory()
-        return value
+        if sys.version_info < (3,7):
+            raise Exception("You need Python >= 3.7 so dict is ordered by default")
 
-    def __repr__(self):  # Optional.
-        return '%s(%r, %r)' % (self.__class__.__name__, self.default_factory, self.items())
+        super().__init__(*args, **kwargs)
+        
+        # self.default_factory = default_factory  # called by __missing__()
+    # def __missing__(self, key):
+    #     if self.default_factory is None:
+    #         raise KeyError(key,)
+    #     self[key] = value = self.default_factory()
+    #     return value
+
+    # def __repr__(self):  # Optional.
+    #     return '%s(%r, %r)' % (self.__class__.__name__, self.default_factory, self.items())
 
 class EdgeType(Enum):
     """TODO Arthur explain this more clearly and use GPT-4 for clarity/coherence. Ping Arthur if you want a better explanation and this isn't done!!!
@@ -338,7 +345,82 @@ if __name__ == "__main__":
 # Precision and recall etc metrics
 # ----------------------------------
 
-def get_stat(ground_truth, recovered, mode, verbose=False):
+def get_present_nodes(graph, meta=False):
+    nodes: Set[Tuple[str, TorchIndex]] = set()
+    present_nodes = set()
+    all_nodes = set()
+
+    for t, e in all_nodes:
+        all_nodes.add((t[0], t[1]))
+        all_nodes.add((t[2], t[3]))
+
+        if e.present and not e.edge_type == EdgeType.PLACEHOLDER:
+            present_nodes.add((t[0], t[1]))
+
+    ret = [list(present_nodes)]
+    if meta:
+        ret.append(len(all_nodes))
+    return tuple(ret)
+
+def filter_nodes(nodes: List[Tuple[str, TorchIndex]]):
+
+    # assume that this is alread
+    a=1
+    all_nodes = set(nodes) # ???
+
+    # combine MLP things
+    for node in nodes:
+        if "resid_mid" in node[0]:
+            all_nodes.add((f"blocks.{node[0].split()[1]}.hook_mlp_out", node[1])) # assume that we're not doing any neuron or positional stuff
+            all_nodes.remove(node)
+        for letter in "qkv":
+            hook_name = f"hook_{letter}_input"
+            if hook_name in node[0]:
+                all_nodes.add((node[0].replace(hook_name, f"hook_{letter}"), node[1]))
+                all_nodes.remove(node)
+    
+    return list(all_nodes)
+
+def get_node_stat(ground_truth, recovered, mode, verbose=False, meta=False):
+
+    assert mode in ["true positive", "false positive", "false negative"]
+    assert set(ground_truth.all_edges().keys()) == set(recovered.all_edges().keys()), "There is a mismatch between the keys we're comparing here"
+
+    ground_truth_all_nodes, length_all_nodes = get_present_nodes(ground_truth, meta=True)
+    recovered_all_nodes = get_present_nodes(recovered)
+
+    # filter
+    ground_truth_all_nodes = filter_nodes(ground_truth_all_nodes)
+    recovered_all_nodes = filter_nodes(recovered_all_nodes)
+
+    all_nodes = set(ground_truth_all_nodes + recovered_all_nodes)
+
+    cnt = 0
+    for node in all_nodes:
+        if mode == "true positive":
+            if node in ground_truth_all_nodes and node in recovered_all_nodes:
+                cnt += 1
+                if verbose:
+                    print(node)
+
+        elif mode == "false positive":
+            if node not in ground_truth_all_nodes and node in recovered_all_nodes:
+                cnt += 1
+                if verbose:
+                    print(node)
+
+        elif mode == "false negative":
+            if node in ground_truth_all_nodes and node not in recovered_all_nodes:
+                cnt += 1
+                if verbose:
+                    print(node)
+
+    ret = [cnt]
+    if meta:
+        ret.extend([len(ground_truth_all_nodes), len(recovered_all_nodes), length_all_nodes])
+    return tuple(ret)
+
+def get_edge_stat(ground_truth, recovered, mode, verbose=False, return_stat=True):
     assert mode in ["true positive", "false positive", "false negative"]
     assert set(ground_truth.all_edges().keys()) == set(recovered.all_edges().keys()), "There is a mismatch between the keys we're comparing here"
 
@@ -346,9 +428,18 @@ def get_stat(ground_truth, recovered, mode, verbose=False):
     recovered_all_edges = recovered.all_edges()
 
     cnt = 0
+    tot_ground_truth = 0
+    tot_recovered = 0
+
     for tupl, edge in ground_truth_all_edges.items():
         if edge.edge_type == EdgeType.PLACEHOLDER:
             continue
+
+        if recovered_all_edges[tupl].present:
+            tot_recovered += 1
+        if edge.present:
+            tot_ground_truth += 1
+
         if mode == "false positive": 
             if recovered_all_edges[tupl].present and not edge.present:
                 cnt += 1
@@ -366,11 +457,26 @@ def get_stat(ground_truth, recovered, mode, verbose=False):
 
     return cnt
 
-def false_positive_rate(ground_truth, recovered, verbose=False):
-    return get_stat(ground_truth, recovered, mode="false positive", verbose=verbose)
+def false_positive_stat(ground_truth, recovered, verbose=False, mode="edge"):
+    if "edge" in mode: # TODO replace rest
+        return get_edge_stat(ground_truth, recovered, mode="false positive", verbose=verbose)
+    if "node" in mode:
+        return get_node_stat(ground_truth, recovered, mode="false positive", verbose=verbose)
+    else:
+        raise ValueError(f"Unrecognized mode: {mode}")
 
-def false_negative_rate(ground_truth, recovered, verbose=False):
-    return get_stat(ground_truth, recovered, mode="false negative", verbose=verbose)
+def false_negative_stat(ground_truth, recovered, verbose=False, mode="edge"):
+    if "edge" in mode:
+        return get_edge_stat(ground_truth, recovered, mode="false negative", verbose=verbose)
+    if "node" in mode:
+        return get_node_stat(ground_truth, recovered, mode="false negative", verbose=verbose)
+    else:
+        raise ValueError(f"Unrecognized mode: {mode}")
 
-def true_positive_stat(ground_truth, recovered, verbose=False):
-    return get_stat(ground_truth, recovered, mode="true positive", verbose=verbose)
+def true_positive_stat(ground_truth, recovered, verbose=False, mode="edge"):
+    if "edge" in mode:
+        return get_edge_stat(ground_truth, recovered, mode="true positive", verbose=verbose)
+    if "node" in mode:
+        return get_node_stat(ground_truth, recovered, mode="true positive", verbose=verbose)
+    else:
+        raise ValueError(f"Unrecognized mode: {mode}")

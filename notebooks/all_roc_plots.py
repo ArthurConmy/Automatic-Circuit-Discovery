@@ -4,9 +4,10 @@ import numpy as np
 import random
 from typing import List
 
+MODE = "nodes" # or "edges"
 
-# TASKS = ["ioi", "docstring", "greaterthan"]
-TASKS = ["tracr-reverse", "tracr-proportion"]
+TASKS = ["ioi", "docstring", "greaterthan"]
+# TASKS = ["tracr-reverse", "tracr-proportion"]
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
@@ -35,6 +36,7 @@ def main():
                             f"--reset-network={reset_network}",
                             f"--metric={metric}",
                             f"--alg={alg}",
+                            f"--mode={MODE}",
                         ]
                         if zero_ablation:
                             command.append("--zero-ablation")

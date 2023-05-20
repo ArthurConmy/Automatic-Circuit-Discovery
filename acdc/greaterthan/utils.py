@@ -109,6 +109,8 @@ class GreaterThanConstants:
         self.INV_TOKENS_TENSOR = INV_TOKENS_TENSOR
 
 def greaterthan_metric_reference(logits, tokens):
+    raise NotImplementedError("Fix error!!!")
+
     constants = GreaterThanConstants.get(logits.device)
 
     probs = F.softmax(logits[:, -1], dim=-1) # last elem???
@@ -122,6 +124,7 @@ def greaterthan_metric_reference(logits, tokens):
     return - float(ans / len(probs))
 
 def greaterthan_metric(logits, tokens, return_one_element: bool=True):
+    raise NotImplementedError("Fix constants!!!")
     constants = GreaterThanConstants.get(logits.device)
 
     probs = F.softmax(logits[:, -1], dim=-1)

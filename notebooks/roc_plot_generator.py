@@ -30,7 +30,7 @@ if IPython.get_ipython() is not None:
 
 from copy import deepcopy
 from subnetwork_probing.train import correspondence_from_mask
-from acdc.acdc_utils import false_positive_rate, false_negative_rate, true_positive_stat
+from acdc.acdc_utils import false_positive_stat, false_negative_stat, true_positive_stat, get_node_stat
 import pandas as pd
 import math
 import sys
@@ -154,13 +154,11 @@ parser.add_argument("--skip-sp", action="store_true", help="Skip the SP stuff")
 parser.add_argument("--testing", action="store_true", help="Use testing data instead of validation data")
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task=ioi --metric=logit_diff --alg=acdc".split())
-    __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
+    # args = parser.parse_args("--task=ioi --metric=logit_diff --alg=acdc".split())
+    args = parser.parse_args("--task=ioi --reset-network=0 --metric=kl_div --alg=acdc --mode=nodes".split())
+    # __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
 else:
     args = parser.parse_args()
-
-if not args.mode == "edges":
-    raise NotImplementedError("Only edges mode is implemented for now")
 
 
 TASK = args.task
@@ -172,12 +170,14 @@ SKIP_ACDC = False
 SKIP_SP = True if args.skip_sp else False
 SKIP_SIXTEEN_HEADS = True if args.skip_sixteen_heads else False
 TESTING = True if args.testing else False
+MODE = args.mode
 
 if args.alg != "none":
     SKIP_ACDC = False if args.alg == "acdc" else True
     SKIP_SP = False if args.alg == "sp" else True
     SKIP_SIXTEEN_HEADS = False if args.alg == "16h" else True
-    OUT_FILE = Path(__file__).resolve().parent.parent / "acdc" / "media" / "plots_data" / f"{args.alg}-{args.task}-{args.metric}-{args.zero_ablation}-{args.reset_network}.json"
+    # make a new 
+    OUT_FILE = Path(__file__).resolve().parent.parent / "acdc" / "media" / "arthur_plots_data" / f"{args.alg}-{args.task}-{args.metric}-{args.zero_ablation}-{args.reset_network}.json"
 
     if OUT_FILE.exists():
         print("File already exists, skipping")
@@ -329,7 +329,8 @@ if TASK != "induction":
         d[k] = True
     exp.load_subgraph(d)
     canonical_circuit_subgraph = deepcopy(exp.corr)
-    canonical_circuit_subgraph_size = canonical_circuit_subgraph.count_no_edges()
+    if MODE=="edges":
+        canonical_circuit_subgraph_size = canonical_circuit_subgraph.count_no_edges() # we do things differently for nodes
 
 #%%
 
@@ -358,7 +359,7 @@ def get_acdc_runs(
         ]
 
     corrs = []
-    for run in filtered_runs:
+    for run in tqdm(filtered_runs):
         score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
         try:
             score_d["score"] = run.config["threshold"]
@@ -631,17 +632,32 @@ def get_points(corrs_and_scores, decreasing=True):
             continue
         if TASK != "induction":
             tp_stat = true_positive_stat(ground_truth=canonical_circuit_subgraph, recovered=corr)
-            score.update(
-                {
-                    "fpr": (
-                        false_positive_rate(ground_truth=canonical_circuit_subgraph, recovered=corr)
-                        / (max_subgraph_size - canonical_circuit_subgraph_size)  # FP / (TOTAL - P) = FP / N
-                    ),
-                    "tpr": tp_stat / canonical_circuit_subgraph_size,  # TP / P
-                    "precision": tp_stat / circuit_size,  # TP / (TP + FP) = TP / (predicted positive)
-                    "n_edges": circuit_size,
-                }
-            )
+            if MODE == "edges":
+                score.update(
+                    {
+                        "fpr": (
+                            false_positive_stat(ground_truth=canonical_circuit_subgraph, recovered=corr)
+                            / (max_subgraph_size - canonical_circuit_subgraph_size)  # FP / (TOTAL - P) = FP / N
+                        ),
+                        "tpr": tp_stat / canonical_circuit_subgraph_size,  # TP / P
+                        "precision": tp_stat / circuit_size,  # TP / (TP + FP) = TP / (predicted positive)
+                        "n_edges": circuit_size,
+                    }
+                )
+
+            if MODE == "nodes":
+                _, len_ground_truth_all_nodes, len_recovered_all_nodes, max_subgraph_size = get_node_stat(ground_truth=canonical_circuit_subgraph, recovered=corr, mode="true positive", meta=True)
+
+                score.update(
+                    {
+                        "fpr": (
+                            false_positive_stat(ground_truth=canonical_circuit_subgraph, recovered=corr, mode="nodes") / (max_subgraph_size-len_ground_truth_all_nodes)
+                        ),
+                        "tpr": tp_stat / len_ground_truth_all_nodes,
+                    }
+                    # TODO others
+                )
+
         else:
             score.update({"n_edges": circuit_size})
         points.append(score)
