@@ -1,0 +1,982 @@
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+sixteen_heads_corrs 444
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+sixteen_heads_corrs 444
+Loaded pretrained model attn-only-4l into HookedTransformer
+Moving model to device:  cpu
+25
+Editing all edges...
+Done!
+sixteen_heads_corrs 100
+Loaded pretrained model attn-only-4l into HookedTransformer
+Moving model to device:  cpu
+25
+Editing all edges...
+Done!
+sixteen_heads_corrs 100
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+sixteen_heads_corrs 444
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+sixteen_heads_corrs 444
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+sixteen_heads_corrs 444
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+sixteen_heads_corrs 444
+Loaded pretrained model attn-only-4l into HookedTransformer
+Moving model to device:  cpu
+25
+Editing all edges...
+Done!
+sixteen_heads_corrs 100
+Loaded pretrained model attn-only-4l into HookedTransformer
+Moving model to device:  cpu
+25
+Editing all edges...
+Done!
+sixteen_heads_corrs 100
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+sixteen_heads_corrs 444
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+sixteen_heads_corrs 444
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+loading 32 runs
+sp_corrs 32
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+loading 21 runs
+sp_corrs 21
+Loaded pretrained model attn-only-4l into HookedTransformer
+Moving model to device:  cpu
+25
+Editing all edges...
+Done!
+loading 32 runs
+sp_corrs 32
+Loaded pretrained model attn-only-4l into HookedTransformer
+Moving model to device:  cpu
+25
+Editing all edges...
+Done!
+loading 32 runs
+sp_corrs 32
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+loading 32 runs
+sp_corrs 32
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+loading 22 runs
+sp_corrs 22
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+loading 34 runs
+sp_corrs 34
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+loading 21 runs
+sp_corrs 21
+Loaded pretrained model attn-only-4l into HookedTransformer
+Moving model to device:  cpu
+25
+Editing all edges...
+Done!
+loading 32 runs
+sp_corrs 32
+Loaded pretrained model attn-only-4l into HookedTransformer
+Moving model to device:  cpu
+25
+Editing all edges...
+Done!
+loading 32 runs
+sp_corrs 32
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+loading 32 runs
+sp_corrs 32
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+loading 21 runs
+sp_corrs 21
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+loading 5 runs
+sp_corrs 5
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+loading 5 runs
+sp_corrs 5
+Loaded pretrained model attn-only-4l into HookedTransformer
+Moving model to device:  cpu
+25
+Editing all edges...
+Done!
+loading 0 runs
+Loaded pretrained model attn-only-4l into HookedTransformer
+Moving model to device:  cpu
+25
+Editing all edges...
+Done!
+loading 0 runs
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+loading 5 runs
+sp_corrs 5
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+loading 5 runs
+sp_corrs 5
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+loading 5 runs
+sp_corrs 5
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+loading 5 runs
+sp_corrs 5
+Loaded pretrained model attn-only-4l into HookedTransformer
+Moving model to device:  cpu
+25
+Editing all edges...
+Done!
+loading 0 runs
+Loaded pretrained model attn-only-4l into HookedTransformer
+Moving model to device:  cpu
+25
+Editing all edges...
+Done!
+loading 0 runs
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+loading 4 runs
+sp_corrs 4
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+loading 5 runs
+sp_corrs 5
+File already exists, skipping
+File already exists, skipping
+File already exists, skipping
+File already exists, skipping
+File already exists, skipping
+File already exists, skipping
+File already exists, skipping
+File already exists, skipping
+File already exists, skipping
+File already exists, skipping
+File already exists, skipping
+File already exists, skipping
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+loading 0 runs with filter {'group': 'acdc-gt-ioi-redo', 'config.task': 'ioi', 'config.metric': 'kl_div', 'config.zero_ablation': False, 'config.reset_network': 1} and None
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+loading 22 runs with filter {'group': 'acdc-spreadsheet2', 'config.task': 'ioi', 'config.metric': 'logit_diff', 'config.zero_ablation': False, 'config.reset_network': 1} and None
+This run n edges: 22325
+Edges.pth not found for run agarriga-acdc-spreadsheet-00173, falling back to plotly
+Before copying: n_edges= 5930
+After copying: n_edges= 5930
+Added run with threshold=0.00063, n_edges=5930
+This run n edges: 3
+33367 is a length
+Added run with threshold=0.02512, n_edges=3
+This run n edges: 0
+33367 is a length
+Added run with threshold=1, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.63096, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.39811, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.25119, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.15849, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.1, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.0631, n_edges=0
+This run n edges: 1
+33367 is a length
+Added run with threshold=0.03981, n_edges=1
+This run n edges: 8
+33367 is a length
+Added run with threshold=0.01585, n_edges=8
+This run n edges: 24
+33367 is a length
+Added run with threshold=0.01, n_edges=24
+This run n edges: 61
+33367 is a length
+Added run with threshold=0.00631, n_edges=61
+This run n edges: 144
+33367 is a length
+Added run with threshold=0.00398, n_edges=144
+This run n edges: 368
+33367 is a length
+Added run with threshold=0.00251, n_edges=368
+This run n edges: 16569
+Edges.pth not found for run agarriga-acdc-spreadsheet-00174, falling back to plotly
+Before copying: n_edges= 5352
+After copying: n_edges= 5352
+Added run with threshold=0.001, n_edges=5352
+This run n edges: 27435
+Edges.pth not found for run agarriga-acdc-spreadsheet-00173, falling back to plotly
+Before copying: n_edges= 6186
+After copying: n_edges= 6186
+Added run with threshold=0.00063, n_edges=6186
+This run n edges: 22733
+Edges.pth not found for run agarriga-acdc-spreadsheet-00172, falling back to plotly
+Before copying: n_edges= 6127
+After copying: n_edges= 6127
+Added run with threshold=0.0004, n_edges=6127
+This run n edges: 27023
+Edges.pth not found for run agarriga-acdc-spreadsheet-00171, falling back to plotly
+Before copying: n_edges= 6610
+After copying: n_edges= 6610
+Added run with threshold=0.00025, n_edges=6610
+This run n edges: 25408
+Edges.pth not found for run agarriga-acdc-spreadsheet-00170, falling back to plotly
+Before copying: n_edges= 6742
+After copying: n_edges= 6742
+Added run with threshold=0.00016, n_edges=6742
+This run n edges: 26704
+Edges.pth not found for run agarriga-acdc-spreadsheet-00169, falling back to plotly
+Before copying: n_edges= 7127
+After copying: n_edges= 7127
+Added run with threshold=0.0001, n_edges=7127
+This run n edges: 745
+33367 is a length
+Added run with threshold=0.00158, n_edges=745
+acdc_corrs 22
+Loaded pretrained model attn-only-4l into HookedTransformer
+Moving model to device:  cpu
+25
+Editing all edges...
+Done!
+loading 0 runs with filter {'group': 'adria-docstring3', 'config.task': 'docstring', 'config.metric': 'kl_div', 'config.zero_ablation': False, 'config.reset_network': 1} and None
+Loaded pretrained model attn-only-4l into HookedTransformer
+Moving model to device:  cpu
+25
+Editing all edges...
+Done!
+loading 31 runs with filter {'group': 'acdc-spreadsheet2', 'config.task': 'docstring', 'config.metric': 'docstring_metric', 'config.zero_ablation': False, 'config.reset_network': 1} and None
+This run n edges: 0
+1473 is a length
+Added run with threshold=0.03981, n_edges=0
+This run n edges: 0
+1473 is a length
+Added run with threshold=0.02512, n_edges=0
+This run n edges: 1
+1473 is a length
+Added run with threshold=0.01585, n_edges=1
+This run n edges: 1
+1473 is a length
+Added run with threshold=0.01, n_edges=1
+This run n edges: 8
+1473 is a length
+Added run with threshold=0.00631, n_edges=8
+This run n edges: 23
+1473 is a length
+Added run with threshold=0.00398, n_edges=23
+This run n edges: 37
+1473 is a length
+Added run with threshold=0.00251, n_edges=37
+This run n edges: 52
+1473 is a length
+Added run with threshold=0.00158, n_edges=52
+This run n edges: 97
+1473 is a length
+Added run with threshold=0.001, n_edges=97
+This run n edges: 161
+1473 is a length
+Added run with threshold=0.00063, n_edges=161
+This run n edges: 0
+1473 is a length
+Added run with threshold=0.03981, n_edges=0
+This run n edges: 0
+1473 is a length
+Added run with threshold=0.02512, n_edges=0
+This run n edges: 1
+1473 is a length
+Added run with threshold=0.01585, n_edges=1
+This run n edges: 1
+1473 is a length
+Added run with threshold=0.01, n_edges=1
+This run n edges: 8
+1473 is a length
+Added run with threshold=0.00631, n_edges=8
+This run n edges: 23
+1473 is a length
+Added run with threshold=0.00398, n_edges=23
+This run n edges: 37
+1473 is a length
+Added run with threshold=0.00251, n_edges=37
+This run n edges: 52
+1473 is a length
+Added run with threshold=0.00158, n_edges=52
+This run n edges: 97
+1473 is a length
+Added run with threshold=0.001, n_edges=97
+This run n edges: 161
+1473 is a length
+Added run with threshold=0.00063, n_edges=161
+This run n edges: 256
+1473 is a length
+Added run with threshold=0.0004, n_edges=256
+This run n edges: 312
+1473 is a length
+Added run with threshold=0.00025, n_edges=312
+This run n edges: 363
+1473 is a length
+Added run with threshold=0.00016, n_edges=363
+This run n edges: 403
+1473 is a length
+Added run with threshold=0.0001, n_edges=403
+This run n edges: 0
+1473 is a length
+Added run with threshold=1, n_edges=81
+This run n edges: 0
+1473 is a length
+Added run with threshold=0.63096, n_edges=81
+This run n edges: 0
+1473 is a length
+Added run with threshold=0.39811, n_edges=81
+This run n edges: 0
+1473 is a length
+Added run with threshold=0.25119, n_edges=81
+This run n edges: 0
+1473 is a length
+Added run with threshold=0.15849, n_edges=81
+This run n edges: 0
+1473 is a length
+Added run with threshold=0.1, n_edges=81
+This run n edges: 0
+1473 is a length
+Added run with threshold=0.0631, n_edges=81
+acdc_corrs 31
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+loading 0 runs with filter {'group': 'acdc-gt-ioi-redo', 'config.task': 'greaterthan', 'config.metric': 'kl_div', 'config.zero_ablation': False, 'config.reset_network': 1} and None
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+loading 31 runs with filter {'group': 'acdc-spreadsheet2', 'config.task': 'greaterthan', 'config.metric': 'greaterthan', 'config.zero_ablation': False, 'config.reset_network': 1} and None
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.39811, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=1, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.63096, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.25119, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.15849, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.1, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.0631, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.03981, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.02512, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.01585, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.001, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.00063, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.0004, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.00025, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.00016, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.0001, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=1, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.63096, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.39811, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.25119, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.15849, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.1, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.0631, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.03981, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.02512, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.01585, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.01, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.00631, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.00398, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.00251, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.00158, n_edges=0
+acdc_corrs 31
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+loading 8 runs with filter {} and <function <lambda> at 0x7f30e05203a0>
+This run n edges: 1
+33367 is a length
+Added run with threshold=2.511886431509577, n_edges=1
+This run n edges: 537
+33367 is a length
+Added run with threshold=0.15848931924611143, n_edges=537
+This run n edges: 1
+33367 is a length
+Added run with threshold=2.154434690031882, n_edges=1
+This run n edges: 201
+33367 is a length
+Added run with threshold=0.46415888336127725, n_edges=201
+This run n edges: 30
+33367 is a length
+Added run with threshold=1.7782794100389228, n_edges=30
+This run n edges: 47
+33367 is a length
+Added run with threshold=1.389495494373136, n_edges=47
+This run n edges: 308
+33367 is a length
+Added run with threshold=0.31622776601683794, n_edges=308
+This run n edges: 94
+33367 is a length
+Added run with threshold=1, n_edges=4
+acdc_corrs 8
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+loading 19 runs with filter {'group': 'acdc-spreadsheet2', 'config.task': 'ioi', 'config.metric': 'logit_diff', 'config.zero_ablation': True, 'config.reset_network': 1} and None
+This run n edges: 11465
+Edges.pth not found for run agarriga-acdc-spreadsheet-00337, falling back to plotly
+Before copying: n_edges= 5853
+After copying: n_edges= 5853
+Added run with threshold=0.00631, n_edges=5853
+This run n edges: 24418
+Edges.pth not found for run agarriga-acdc-spreadsheet-00330, falling back to plotly
+Before copying: n_edges= 7367
+After copying: n_edges= 7367
+Added run with threshold=0.00025, n_edges=7367
+This run n edges: 8437
+Edges.pth not found for run agarriga-acdc-spreadsheet-00338, falling back to plotly
+Before copying: n_edges= 5604
+After copying: n_edges= 5604
+Added run with threshold=0.01, n_edges=5604
+This run n edges: 481
+33367 is a length
+Added run with threshold=0.02512, n_edges=481
+This run n edges: 32772
+Edges.pth not found for run agarriga-acdc-spreadsheet-00329, falling back to plotly
+Before copying: n_edges= 6515
+After copying: n_edges= 6515
+Added run with threshold=0.00016, n_edges=6515
+This run n edges: 61
+33367 is a length
+Added run with threshold=0.1, n_edges=61
+This run n edges: 32625
+Edges.pth not found for run agarriga-acdc-spreadsheet-00341, falling back to plotly
+Before copying: n_edges= 6426
+After copying: n_edges= 6426
+Added run with threshold=0.03981, n_edges=6426
+This run n edges: 32617
+Edges.pth not found for run agarriga-acdc-spreadsheet-00342, falling back to plotly
+Before copying: n_edges= 6418
+After copying: n_edges= 6418
+Added run with threshold=0.0631, n_edges=6418
+This run n edges: 32640
+Edges.pth not found for run agarriga-acdc-spreadsheet-00339, falling back to plotly
+Before copying: n_edges= 6448
+After copying: n_edges= 6448
+Added run with threshold=0.01585, n_edges=6448
+This run n edges: 27234
+Edges.pth not found for run agarriga-acdc-spreadsheet-00338, falling back to plotly
+Before copying: n_edges= 6399
+After copying: n_edges= 6399
+Added run with threshold=0.01, n_edges=6399
+This run n edges: 21908
+Edges.pth not found for run agarriga-acdc-spreadsheet-00337, falling back to plotly
+Before copying: n_edges= 6260
+After copying: n_edges= 6260
+Added run with threshold=0.00631, n_edges=6260
+This run n edges: 17927
+Edges.pth not found for run agarriga-acdc-spreadsheet-00336, falling back to plotly
+Before copying: n_edges= 6193
+After copying: n_edges= 6193
+Added run with threshold=0.00398, n_edges=6193
+This run n edges: 19126
+Edges.pth not found for run agarriga-acdc-spreadsheet-00335, falling back to plotly
+Before copying: n_edges= 6462
+After copying: n_edges= 6462
+Added run with threshold=0.00251, n_edges=6462
+This run n edges: 22914
+Edges.pth not found for run agarriga-acdc-spreadsheet-00334, falling back to plotly
+Before copying: n_edges= 6779
+After copying: n_edges= 6779
+Added run with threshold=0.00158, n_edges=6779
+This run n edges: 20519
+Edges.pth not found for run agarriga-acdc-spreadsheet-00333, falling back to plotly
+Before copying: n_edges= 6933
+After copying: n_edges= 6933
+Added run with threshold=0.001, n_edges=6933
+This run n edges: 23257
+Edges.pth not found for run agarriga-acdc-spreadsheet-00332, falling back to plotly
+Before copying: n_edges= 7278
+After copying: n_edges= 7278
+Added run with threshold=0.00063, n_edges=7278
+This run n edges: 23304
+Edges.pth not found for run agarriga-acdc-spreadsheet-00331, falling back to plotly
+Before copying: n_edges= 7550
+After copying: n_edges= 7550
+Added run with threshold=0.0004, n_edges=7550
+This run n edges: 31973
+Edges.pth not found for run agarriga-acdc-spreadsheet-00330, falling back to plotly
+Before copying: n_edges= 6688
+After copying: n_edges= 6688
+Added run with threshold=0.00025, n_edges=6688
+This run n edges: 21449
+Edges.pth not found for run agarriga-acdc-spreadsheet-00328, falling back to plotly
+Before copying: n_edges= 8066
+After copying: n_edges= 8066
+Added run with threshold=0.0001, n_edges=8066
+acdc_corrs 19
+Loaded pretrained model attn-only-4l into HookedTransformer
+Moving model to device:  cpu
+25
+Editing all edges...
+Done!
+loading 0 runs with filter {'group': 'adria-docstring3', 'config.task': 'docstring', 'config.metric': 'kl_div', 'config.zero_ablation': True, 'config.reset_network': 1} and None
+Loaded pretrained model attn-only-4l into HookedTransformer
+Moving model to device:  cpu
+25
+Editing all edges...
+Done!
+loading 21 runs with filter {'group': 'acdc-spreadsheet2', 'config.task': 'docstring', 'config.metric': 'docstring_metric', 'config.zero_ablation': True, 'config.reset_network': 1} and None
+This run n edges: 0
+1473 is a length
+Added run with threshold=1, n_edges=0
+This run n edges: 0
+1473 is a length
+Added run with threshold=0.63096, n_edges=0
+This run n edges: 0
+1473 is a length
+Added run with threshold=0.39811, n_edges=0
+This run n edges: 5
+1473 is a length
+Added run with threshold=0.25119, n_edges=5
+This run n edges: 9
+1473 is a length
+Added run with threshold=0.15849, n_edges=9
+This run n edges: 21
+1473 is a length
+Added run with threshold=0.1, n_edges=21
+This run n edges: 43
+1473 is a length
+Added run with threshold=0.0631, n_edges=43
+This run n edges: 70
+1473 is a length
+Added run with threshold=0.03981, n_edges=70
+This run n edges: 179
+1473 is a length
+Added run with threshold=0.02512, n_edges=179
+This run n edges: 205
+1473 is a length
+Added run with threshold=0.01585, n_edges=205
+This run n edges: 310
+1473 is a length
+Added run with threshold=0.01, n_edges=310
+This run n edges: 359
+1473 is a length
+Added run with threshold=0.00631, n_edges=359
+This run n edges: 462
+1473 is a length
+Added run with threshold=0.00398, n_edges=462
+This run n edges: 547
+1473 is a length
+Added run with threshold=0.00251, n_edges=547
+This run n edges: 550
+1473 is a length
+Added run with threshold=0.00158, n_edges=550
+This run n edges: 614
+1473 is a length
+Added run with threshold=0.001, n_edges=614
+This run n edges: 650
+1473 is a length
+Added run with threshold=0.00063, n_edges=650
+This run n edges: 649
+1473 is a length
+Added run with threshold=0.0004, n_edges=649
+This run n edges: 670
+1473 is a length
+Added run with threshold=0.00025, n_edges=670
+This run n edges: 680
+1473 is a length
+Added run with threshold=0.00016, n_edges=680
+This run n edges: 699
+1473 is a length
+Added run with threshold=0.0001, n_edges=699
+acdc_corrs 21
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+loading 27 runs with filter {} and None
+This run n edges: 2313
+Edges.pth not found for run 0.00031622776601683794, falling back to plotly
+Before copying: n_edges= 1563
+After copying: n_edges= 1563
+Added run with threshold=0.00031622776601683794, n_edges=1563
+This run n edges: 39
+33367 is a length
+Added run with threshold=0.1, n_edges=38
+This run n edges: 22413
+Edges.pth not found for run 0.01, falling back to plotly
+Before copying: n_edges= 172
+After copying: n_edges= 172
+Added run with threshold=0.01, n_edges=172
+This run n edges: 22452
+Edges.pth not found for run 0.001, falling back to plotly
+Before copying: n_edges= 185
+After copying: n_edges= 185
+Added run with threshold=0.001, n_edges=185
+Edges.pth not found for run 0.01, falling back to plotly
+Error a, falling back to parsing output.log
+Loading run 0.01 with state=killed config={} totally failed.
+Edges.pth not found for run 0.001, falling back to plotly
+Error a, falling back to parsing output.log
+Loading run 0.001 with state=killed config={} totally failed.
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.46415888336127725, n_edges=0
+This run n edges: 65
+33367 is a length
+Added run with threshold=0.021544346900318822, n_edges=63
+This run n edges: 2336
+Edges.pth not found for run 0.004641588833612777, falling back to plotly
+Before copying: n_edges= 701
+After copying: n_edges= 701
+Added run with threshold=0.004641588833612777, n_edges=701
+This run n edges: 4164
+Edges.pth not found for run 4.641588833612782e-05, falling back to plotly
+Before copying: n_edges= 624
+After copying: n_edges= 624
+Added run with threshold=4.641588833612782e-05, n_edges=624
+This run n edges: 0
+33367 is a length
+Added run with threshold=1.7782794100389228, n_edges=0
+This run n edges: 536
+33367 is a length
+Added run with threshold=0.0017782794100389228, n_edges=528
+This run n edges: 5522
+Edges.pth not found for run 5.623413251903491e-05, falling back to plotly
+Before copying: n_edges= 696
+After copying: n_edges= 696
+Added run with threshold=5.623413251903491e-05, n_edges=696
+This run n edges: 70
+33367 is a length
+Added run with threshold=0.05623413251903491, n_edges=68
+This run n edges: 0
+33367 is a length
+Added run with threshold=1.389495494373136, n_edges=0
+This run n edges: 68
+33367 is a length
+Added run with threshold=0.026826957952797246, n_edges=66
+This run n edges: 1586
+Edges.pth not found for run 0.003727593720314938, falling back to plotly
+Before copying: n_edges= 808
+After copying: n_edges= 808
+Added run with threshold=0.003727593720314938, n_edges=808
+This run n edges: 0
+33367 is a length
+Added run with threshold=1.0, n_edges=0
+This run n edges: 7863
+Edges.pth not found for run 0.03981071705534969, falling back to plotly
+Before copying: n_edges= 209
+After copying: n_edges= 209
+Added run with threshold=0.03981071705534969, n_edges=209
+This run n edges: 13
+33367 is a length
+Added run with threshold=0.31622776601683794, n_edges=12
+This run n edges: 47
+33367 is a length
+Added run with threshold=0.19306977288832497, n_edges=46
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.630957344480193, n_edges=0
+This run n edges: 1905
+Edges.pth not found for run 0.001, falling back to plotly
+Before copying: n_edges= 258
+After copying: n_edges= 258
+Added run with threshold=0.001, n_edges=258
+This run n edges: 5777
+Edges.pth not found for run 0.00015848931924611142, falling back to plotly
+Before copying: n_edges= 765
+After copying: n_edges= 765
+Added run with threshold=0.00015848931924611142, n_edges=765
+This run n edges: 266
+33367 is a length
+Added run with threshold=0.01, n_edges=261
+This run n edges: 39
+33367 is a length
+Added run with threshold=0.1, n_edges=38
+This run n edges: 5792
+Edges.pth not found for run 0.00031622776601683794, falling back to plotly
+Before copying: n_edges= 702
+After copying: n_edges= 702
+Added run with threshold=0.00031622776601683794, n_edges=702
+acdc_corrs 25
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cpu
+Editing all edges...
+Done!
+loading 13 runs with filter {'group': 'acdc-spreadsheet2', 'config.task': 'greaterthan', 'config.metric': 'greaterthan', 'config.zero_ablation': True, 'config.reset_network': 1} and None
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.02512, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.01585, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.01, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.00631, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.00398, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.00251, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.00158, n_edges=0
+This run n edges: 0
+33367 is a length
+Added run with threshold=0.001, n_edges=0
+This run n edges: 1
+33367 is a length
+Added run with threshold=0.00063, n_edges=1
+This run n edges: 1
+33367 is a length
+Added run with threshold=0.0004, n_edges=1
+This run n edges: 1
+33367 is a length
+Added run with threshold=0.00025, n_edges=1
+This run n edges: 3
+33367 is a length
+Added run with threshold=0.00016, n_edges=3
+This run n edges: 3
+33367 is a length
+Added run with threshold=0.0001, n_edges=3
+acdc_corrs 13
+python notebooks/roc_plot_generator.py --task=ioi --reset-network=0 --metric=kl_div --alg=16h --mode=nodes
+python notebooks/roc_plot_generator.py --task=ioi --reset-network=0 --metric=logit_diff --alg=16h --mode=nodes
+python notebooks/roc_plot_generator.py --task=docstring --reset-network=0 --metric=kl_div --alg=16h --mode=nodes
+python notebooks/roc_plot_generator.py --task=docstring --reset-network=0 --metric=docstring_metric --alg=16h --mode=nodes
+python notebooks/roc_plot_generator.py --task=greaterthan --reset-network=0 --metric=kl_div --alg=16h --mode=nodes
+python notebooks/roc_plot_generator.py --task=greaterthan --reset-network=0 --metric=greaterthan --alg=16h --mode=nodes
+python notebooks/roc_plot_generator.py --task=ioi --reset-network=1 --metric=kl_div --alg=16h --mode=nodes
+python notebooks/roc_plot_generator.py --task=ioi --reset-network=1 --metric=logit_diff --alg=16h --mode=nodes
+python notebooks/roc_plot_generator.py --task=docstring --reset-network=1 --metric=kl_div --alg=16h --mode=nodes
+python notebooks/roc_plot_generator.py --task=docstring --reset-network=1 --metric=docstring_metric --alg=16h --mode=nodes
+python notebooks/roc_plot_generator.py --task=greaterthan --reset-network=1 --metric=kl_div --alg=16h --mode=nodes
+python notebooks/roc_plot_generator.py --task=greaterthan --reset-network=1 --metric=greaterthan --alg=16h --mode=nodes
+python notebooks/roc_plot_generator.py --task=ioi --reset-network=0 --metric=kl_div --alg=sp --mode=nodes
+python notebooks/roc_plot_generator.py --task=ioi --reset-network=0 --metric=logit_diff --alg=sp --mode=nodes
+python notebooks/roc_plot_generator.py --task=docstring --reset-network=0 --metric=kl_div --alg=sp --mode=nodes
+python notebooks/roc_plot_generator.py --task=docstring --reset-network=0 --metric=docstring_metric --alg=sp --mode=nodes
+python notebooks/roc_plot_generator.py --task=greaterthan --reset-network=0 --metric=kl_div --alg=sp --mode=nodes
+python notebooks/roc_plot_generator.py --task=greaterthan --reset-network=0 --metric=greaterthan --alg=sp --mode=nodes
+python notebooks/roc_plot_generator.py --task=ioi --reset-network=0 --metric=kl_div --alg=sp --mode=nodes --zero-ablation
+python notebooks/roc_plot_generator.py --task=ioi --reset-network=0 --metric=logit_diff --alg=sp --mode=nodes --zero-ablation
+python notebooks/roc_plot_generator.py --task=docstring --reset-network=0 --metric=kl_div --alg=sp --mode=nodes --zero-ablation
+python notebooks/roc_plot_generator.py --task=docstring --reset-network=0 --metric=docstring_metric --alg=sp --mode=nodes --zero-ablation
+python notebooks/roc_plot_generator.py --task=greaterthan --reset-network=0 --metric=kl_div --alg=sp --mode=nodes --zero-ablation
+python notebooks/roc_plot_generator.py --task=greaterthan --reset-network=0 --metric=greaterthan --alg=sp --mode=nodes --zero-ablation
+python notebooks/roc_plot_generator.py --task=ioi --reset-network=1 --metric=kl_div --alg=sp --mode=nodes
+python notebooks/roc_plot_generator.py --task=ioi --reset-network=1 --metric=logit_diff --alg=sp --mode=nodes
+python notebooks/roc_plot_generator.py --task=docstring --reset-network=1 --metric=kl_div --alg=sp --mode=nodes
+Command '['python', 'notebooks/roc_plot_generator.py', '--task=docstring', '--reset-network=1', '--metric=kl_div', '--alg=sp', '--mode=nodes']' returned non-zero exit status 1. was a failure
+python notebooks/roc_plot_generator.py --task=docstring --reset-network=1 --metric=docstring_metric --alg=sp --mode=nodes
+Command '['python', 'notebooks/roc_plot_generator.py', '--task=docstring', '--reset-network=1', '--metric=docstring_metric', '--alg=sp', '--mode=nodes']' returned non-zero exit status 1. was a failure
+python notebooks/roc_plot_generator.py --task=greaterthan --reset-network=1 --metric=kl_div --alg=sp --mode=nodes
+python notebooks/roc_plot_generator.py --task=greaterthan --reset-network=1 --metric=greaterthan --alg=sp --mode=nodes
+python notebooks/roc_plot_generator.py --task=ioi --reset-network=1 --metric=kl_div --alg=sp --mode=nodes --zero-ablation
+python notebooks/roc_plot_generator.py --task=ioi --reset-network=1 --metric=logit_diff --alg=sp --mode=nodes --zero-ablation
+python notebooks/roc_plot_generator.py --task=docstring --reset-network=1 --metric=kl_div --alg=sp --mode=nodes --zero-ablation
+Command '['python', 'notebooks/roc_plot_generator.py', '--task=docstring', '--reset-network=1', '--metric=kl_div', '--alg=sp', '--mode=nodes', '--zero-ablation']' returned non-zero exit status 1. was a failure
+python notebooks/roc_plot_generator.py --task=docstring --reset-network=1 --metric=docstring_metric --alg=sp --mode=nodes --zero-ablation
+Command '['python', 'notebooks/roc_plot_generator.py', '--task=docstring', '--reset-network=1', '--metric=docstring_metric', '--alg=sp', '--mode=nodes', '--zero-ablation']' returned non-zero exit status 1. was a failure
+python notebooks/roc_plot_generator.py --task=greaterthan --reset-network=1 --metric=kl_div --alg=sp --mode=nodes --zero-ablation
+python notebooks/roc_plot_generator.py --task=greaterthan --reset-network=1 --metric=greaterthan --alg=sp --mode=nodes --zero-ablation
+python notebooks/roc_plot_generator.py --task=ioi --reset-network=0 --metric=kl_div --alg=acdc --mode=nodes
+python notebooks/roc_plot_generator.py --task=ioi --reset-network=0 --metric=logit_diff --alg=acdc --mode=nodes
+python notebooks/roc_plot_generator.py --task=docstring --reset-network=0 --metric=kl_div --alg=acdc --mode=nodes
+python notebooks/roc_plot_generator.py --task=docstring --reset-network=0 --metric=docstring_metric --alg=acdc --mode=nodes
+python notebooks/roc_plot_generator.py --task=greaterthan --reset-network=0 --metric=kl_div --alg=acdc --mode=nodes
+python notebooks/roc_plot_generator.py --task=greaterthan --reset-network=0 --metric=greaterthan --alg=acdc --mode=nodes
+python notebooks/roc_plot_generator.py --task=ioi --reset-network=0 --metric=kl_div --alg=acdc --mode=nodes --zero-ablation
+python notebooks/roc_plot_generator.py --task=ioi --reset-network=0 --metric=logit_diff --alg=acdc --mode=nodes --zero-ablation
+python notebooks/roc_plot_generator.py --task=docstring --reset-network=0 --metric=kl_div --alg=acdc --mode=nodes --zero-ablation
+python notebooks/roc_plot_generator.py --task=docstring --reset-network=0 --metric=docstring_metric --alg=acdc --mode=nodes --zero-ablation
+python notebooks/roc_plot_generator.py --task=greaterthan --reset-network=0 --metric=kl_div --alg=acdc --mode=nodes --zero-ablation
+python notebooks/roc_plot_generator.py --task=greaterthan --reset-network=0 --metric=greaterthan --alg=acdc --mode=nodes --zero-ablation
+python notebooks/roc_plot_generator.py --task=ioi --reset-network=1 --metric=kl_div --alg=acdc --mode=nodes
+Command '['python', 'notebooks/roc_plot_generator.py', '--task=ioi', '--reset-network=1', '--metric=kl_div', '--alg=acdc', '--mode=nodes']' returned non-zero exit status 1. was a failure
+python notebooks/roc_plot_generator.py --task=ioi --reset-network=1 --metric=logit_diff --alg=acdc --mode=nodes
+python notebooks/roc_plot_generator.py --task=docstring --reset-network=1 --metric=kl_div --alg=acdc --mode=nodes
+Command '['python', 'notebooks/roc_plot_generator.py', '--task=docstring', '--reset-network=1', '--metric=kl_div', '--alg=acdc', '--mode=nodes']' returned non-zero exit status 1. was a failure
+python notebooks/roc_plot_generator.py --task=docstring --reset-network=1 --metric=docstring_metric --alg=acdc --mode=nodes
+python notebooks/roc_plot_generator.py --task=greaterthan --reset-network=1 --metric=kl_div --alg=acdc --mode=nodes
+Command '['python', 'notebooks/roc_plot_generator.py', '--task=greaterthan', '--reset-network=1', '--metric=kl_div', '--alg=acdc', '--mode=nodes']' returned non-zero exit status 1. was a failure
+python notebooks/roc_plot_generator.py --task=greaterthan --reset-network=1 --metric=greaterthan --alg=acdc --mode=nodes
+python notebooks/roc_plot_generator.py --task=ioi --reset-network=1 --metric=kl_div --alg=acdc --mode=nodes --zero-ablation
+python notebooks/roc_plot_generator.py --task=ioi --reset-network=1 --metric=logit_diff --alg=acdc --mode=nodes --zero-ablation
+python notebooks/roc_plot_generator.py --task=docstring --reset-network=1 --metric=kl_div --alg=acdc --mode=nodes --zero-ablation
+Command '['python', 'notebooks/roc_plot_generator.py', '--task=docstring', '--reset-network=1', '--metric=kl_div', '--alg=acdc', '--mode=nodes', '--zero-ablation']' returned non-zero exit status 1. was a failure
+python notebooks/roc_plot_generator.py --task=docstring --reset-network=1 --metric=docstring_metric --alg=acdc --mode=nodes --zero-ablation
+python notebooks/roc_plot_generator.py --task=greaterthan --reset-network=1 --metric=kl_div --alg=acdc --mode=nodes --zero-ablation
+python notebooks/roc_plot_generator.py --task=greaterthan --reset-network=1 --metric=greaterthan --alg=acdc --mode=nodes --zero-ablation

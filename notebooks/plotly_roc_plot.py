@@ -24,8 +24,8 @@ from notebooks.emacs_plotly_render import set_plotly_renderer
 
 # %%
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / "plots_data"
-DO_PARETO = False
+DATA_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / "arthur_plots_data"
+DO_PARETO = True
 
 all_data = {}
 
@@ -129,6 +129,13 @@ def discard_non_pareto_optimal(points):
 
 
 def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", ablation_type="random_ablation"):
+# if True:
+#     metric_idx=0
+#     x_key = "fpr"
+#     y_key = "tpr"
+#     weights_type = "trained"
+#     ablation_type = "random_ablation"
+
     this_data = all_data[weights_type][ablation_type]
 
     task_idxs, task_names = zip(*TASK_NAMES.items())
@@ -164,9 +171,11 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
             try:
                 x_data = this_data[task_idx][metric_name][alg_idx][x_key]
                 y_data = this_data[task_idx][metric_name][alg_idx][y_key]
-            except KeyError:
+            except KeyError as e:
+                print(e)
                 x_data = []
                 y_data = []
+            print(x_data, y_data)
 
             points = list(zip(x_data, y_data))
             pareto_optimal = discard_non_pareto_optimal(points)
@@ -177,14 +186,14 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
                 if plot_type == "roc":
                     auc = sklearn.metrics.auc(x_data, y_data)
 
-                    df = df.append({
-                        "task": task_idx,
-                        "method": methodof,
-                        "auc": auc,
-                        "metric": metric_name,
-                        "weights_type": weights_type,
-                        "ablation_type": ablation_type,
-                    }, ignore_index=True)
+                    # df = df.append({
+                    #     "task": task_idx,
+                    #     "method": methodof,
+                    #     "auc": auc,
+                    #     "metric": metric_name,
+                    #     "weights_type": weights_type,
+                    #     "ablation_type": ablation_type,  
+                    # }, ignore_index=True) # what?
 
                 fig.add_trace(
                     go.Scatter(
@@ -356,4 +365,3 @@ pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
 # [Minor] Unify xlim=ylim=[-0.01, 1.01] or so
 # :raised_hands:
 # 1
-

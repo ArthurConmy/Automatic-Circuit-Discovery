@@ -22,7 +22,7 @@ METRICS_FOR_TASK = {
 
 def main():
     commands = []
-    for alg in ["acdc"]:  # ["16h", "sp", "acdc"]
+    for alg in ["16h", "sp", "acdc"]:
         for reset_network in [0, 1]:
             for zero_ablation in [0, 1]:
                 if alg == "16h" and zero_ablation:
@@ -49,7 +49,10 @@ def main():
     else: # don't do all the things async...
         for command in commands:
             print(" ".join(command))
-            subprocess.run(command, check=True)
+            try:
+                subprocess.run(command, check=True)
+            except Exception as e:
+                print(e, "was a failure")
 
 if __name__ == "__main__":
     main()
