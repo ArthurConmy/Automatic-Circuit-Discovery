@@ -587,7 +587,10 @@ if not SKIP_SIXTEEN_HEADS: methods.append("16H")
 #%%
 
 # get points from correspondence
+
 def get_points(corrs_and_scores, decreasing=True):
+
+# if True:
     keys = set()
     for _, s in corrs_and_scores:
         keys.update(s.keys())
@@ -662,6 +665,7 @@ def get_points(corrs_and_scores, decreasing=True):
 
             if MODE == "nodes":
                 _, len_ground_truth_all_nodes, len_recovered_all_nodes, max_subgraph_size = get_node_stat(ground_truth=canonical_circuit_subgraph, recovered=corr, mode="true positive", meta=True)
+
 
                 updater = {
                     "fpr": false_positive_stat(ground_truth=canonical_circuit_subgraph, recovered=corr, mode="nodes"),
@@ -760,5 +764,44 @@ if OUT_FILE is not None:
 
     with open(OUT_FILE, "w") as f:
         json.dump(out_dict, f, indent=2)
+
+# %%
+
+import os
+import json
+
+def find_files_with_fpr(directory):
+    for filename in os.listdir(directory):
+        if filename.endswith('.json'):
+            filepath = os.path.join(directory, filename)
+            with open(filepath, 'r') as file:
+                data = json.load(file)
+                ans = None
+                if check_nested_dict_for_fpr(data):
+                    # print(f"Found 'fpr' in: {filepath}")
+                    ans = True
+                else:
+                    ans = False
+                    # print(f"Did not find 'fpr' in: {filepath}")
+                assert ans == ("ioi" in filepath), f"Found 'fpr' in: {filepath} but not in filename"
+
+def check_nested_dict_for_fpr(data):
+    if isinstance(data, dict):
+        for key, value in data.items():
+            if key == "fpr" and isinstance(value, list) and all(x in [0.0, 1.0] for x in value):
+                return True
+            elif isinstance(value, dict):
+                if check_nested_dict_for_fpr(value):
+                    return True
+            elif isinstance(value, list):
+                for item in value:
+                    if isinstance(item, dict):
+                        if check_nested_dict_for_fpr(item):
+                            return True
+    return False
+
+# replace "your_directory_path" with the actual directory you want to search
+directory_path = "/mnt/ssd-0/arthurworkspace/TransformerLens/acdc/media/arthur_plots_data"
+find_files_with_fpr(directory_path)
 
 # %%
