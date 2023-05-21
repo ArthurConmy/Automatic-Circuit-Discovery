@@ -44,8 +44,8 @@ def main(TASKS: list[str], job: KubernetesJob, name: str):
                         f"--reset-network={reset_network}",
                         f"--seed={random.randint(0, 2**32 - 1)}",
                         f"--metric={metric}",
-                        "--wandb-dir=/training/16heads",  # If it doesn't exist wandb will use /tmp
-                        f"--wandb-mode=online",
+                        "--wandb-dir=/root/.cache/huggingface/tracr-training/16heads",  # If it doesn't exist wandb will use /tmp
+                        f"--wandb-mode=offline",
                     ]
                     if zero_ablation:
                         command.append("--zero-ablation")
