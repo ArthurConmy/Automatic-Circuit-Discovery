@@ -49,7 +49,7 @@ def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACD
             head_parents[(child_name, node.index)] += 1
 
             # Forgot to add these in earlier versions of Subnetwork Probing, and so the edge counts were inflated
-            additional_nodes_to_mask.append(TLACDCInterpNode(child_name + "_input", node.index, EdgeType.ADDITION))
+            additional_nodes_to_mask.append(TLACDCInterpNode(child_name.replace("_result", "_input"), node.index, EdgeType.ADDITION))
 
     # assert all([v <= 3 for v in head_parents.values()])
 

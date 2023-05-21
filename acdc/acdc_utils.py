@@ -356,6 +356,7 @@ def get_present_nodes(graph, meta=False):
 
         if e.present and e.edge_type != EdgeType.PLACEHOLDER:
             present_nodes.add((t[0], t[1]))
+            present_nodes.add((t[2], t[3]))
 
     ret = [list(present_nodes)]
     if meta:
@@ -389,6 +390,7 @@ def get_node_stat(ground_truth, recovered, mode, verbose=False, meta=False):
     assert set(ground_truth.all_edges().keys()) == set(recovered.all_edges().keys()), "There is a mismatch between the keys we're cmparing here"
 
     ground_truth_all_nodes, length_all_nodes = get_present_nodes(ground_truth, meta=True)
+    print()
     recovered_all_nodes = get_present_nodes(recovered)[0]
 
     # filter
@@ -396,6 +398,7 @@ def get_node_stat(ground_truth, recovered, mode, verbose=False, meta=False):
     recovered_all_nodes = filter_nodes(recovered_all_nodes)
 
     all_nodes = set(ground_truth_all_nodes + recovered_all_nodes)
+    print(len(ground_truth_all_nodes), len(recovered_all_nodes), len(all_nodes))
 
     cnt = 0
     for node in all_nodes:

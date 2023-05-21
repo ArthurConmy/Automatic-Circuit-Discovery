@@ -588,9 +588,13 @@ if not SKIP_SIXTEEN_HEADS: methods.append("16H")
 
 # get points from correspondence
 
-def get_points(corrs_and_scores, decreasing=True):
+# def get_points(corrs_and_scores, decreasing=True):
 
-# if True:
+decreasing=True
+points={}
+corrs_and_scores = acdc_corrs
+
+if True:
     keys = set()
     for _, s in corrs_and_scores:
         keys.update(s.keys())
@@ -665,7 +669,7 @@ def get_points(corrs_and_scores, decreasing=True):
 
             if MODE == "nodes":
                 _, len_ground_truth_all_nodes, len_recovered_all_nodes, max_subgraph_size = get_node_stat(ground_truth=canonical_circuit_subgraph, recovered=corr, mode="true positive", meta=True)
-
+                print(len_ground_truth_all_nodes, len_recovered_all_nodes, max_subgraph_size, "are things")
 
                 updater = {
                     "fpr": false_positive_stat(ground_truth=canonical_circuit_subgraph, recovered=corr, mode="nodes"),
@@ -694,9 +698,8 @@ def get_points(corrs_and_scores, decreasing=True):
 
     points.append(end_point)
     assert all(("n_edges" in p) for p in points)
-    return points
-
-points = {}
+    # return points
+# points = {}
 
 #%%
 
