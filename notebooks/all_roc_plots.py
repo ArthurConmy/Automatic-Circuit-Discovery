@@ -6,7 +6,8 @@ import random
 from typing import List
 
 MODE = "nodes" # or "edges"
-TASKS = ["ioi", "docstring", "greaterthan"]
+# TASKS = ["ioi", "docstring", "greaterthan"]
+TASKS = ["tracr-reverse", "tracr-proportion"]
 
 ADRIA_MODE = False
 
