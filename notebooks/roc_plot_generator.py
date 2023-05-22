@@ -154,6 +154,7 @@ parser.add_argument("--alg", type=str, default="none", choices=["none", "acdc", 
 parser.add_argument("--skip-sixteen-heads", action="store_true", help="Skip the 16 heads stuff")
 parser.add_argument("--skip-sp", action="store_true", help="Skip the SP stuff")
 parser.add_argument("--testing", action="store_true", help="Use testing data instead of validation data")
+parser.add_argument("--device", type=str, default="cpu")
 
 if IPython.get_ipython() is not None:
     args = parser.parse_args("--task=ioi --metric=logit_diff --alg=acdc".split())
@@ -167,7 +168,7 @@ if not args.mode == "edges":
 
 TASK = args.task
 METRIC = args.metric
-DEVICE = "cpu"
+DEVICE = args.device
 ZERO_ABLATION = True if args.zero_ablation else False
 RESET_NETWORK = 1 if args.reset_network else 0
 SKIP_ACDC = False

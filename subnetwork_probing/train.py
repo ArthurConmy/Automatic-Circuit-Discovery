@@ -245,17 +245,16 @@ def train_induction(
         loss = specific_metric_term + regularizer_term * lambda_reg
         loss.backward()
 
-        wandb.log(
-            {
-                "regularisation_loss": regularizer_term,
-                "specific_metric_loss": specific_metric_term,
-                "total_loss": loss,
-            }
-        )
         trainer.step()
 
-        if epoch % 10 == 0:
-            number_of_nodes, nodes_to_mask = visualize_mask(induction_model)
+    number_of_nodes, nodes_to_mask = visualize_mask(induction_model)
+    wandb.log(
+        {
+            "regularisation_loss": regularizer_term.item(),
+            "specific_metric_loss": specific_metric_term.item(),
+            "total_loss": loss.item(),
+        }
+    )
 
 
     with torch.no_grad():
