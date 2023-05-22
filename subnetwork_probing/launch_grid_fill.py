@@ -122,7 +122,7 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool, reset_n
                             f"--seq-len={seq_len}",
                             f"--n-loss-average-runs={1 if testing else 20}",
                             "--wandb-dir=/training",  # If it doesn't exist wandb will use /tmp
-                            f"--wandb-mode=offline",
+                            f"--wandb-mode=online",
                             f"--torch-num-threads={job.cpu}",
                         ]
                         commands.append(command)
@@ -146,7 +146,7 @@ if __name__ == "__main__":
     # )
     main(
         ["tracr-reverse", "tracr-proportion"],
-        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.6", cpu=4, gpu=0, mount_training=True),
+        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.6", cpu=4, gpu=0, mount_training=False),
         "sp-tracr",
         testing=False,
         reset_networks=True,
