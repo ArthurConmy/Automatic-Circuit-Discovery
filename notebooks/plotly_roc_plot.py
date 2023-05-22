@@ -115,11 +115,11 @@ x_names = {
     "precision": "Precision (edges)",
 }
 
-def discard_non_pareto_optimal(points):
+def discard_non_pareto_optimal(points, cmp="gt"):
     ret = []
     for x, y in points:
         for x1, y1 in points:
-            if x1 < x and y1 > y and (x1, y1) != (x, y):
+            if x1 < x and getattr(y1, f"__{cmp}__")(y) and (x1, y1) != (x, y):
                 break
         else:
             ret.append((x, y))
@@ -167,7 +167,10 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
                 y_data = []
 
             points = list(zip(x_data, y_data))
-            pareto_optimal = discard_non_pareto_optimal(points)
+            if y_key == "precision":
+                pareto_optimal = [] # list(sorted(points))  # Not actually pareto optimal but we want to plot all of them
+            else:
+                pareto_optimal = discard_non_pareto_optimal(points)
             others = [p for p in points if p not in pareto_optimal]
 
             if len(pareto_optimal):
@@ -333,13 +336,14 @@ PLOT_DIR.mkdir(exist_ok=True)
 all_dfs = []
 for metric_idx in [0, 1]:
     for ablation_type in ["random_ablation", "zero_ablation"]:
-        for plot_type in ["precision_recall", "roc"]:
-            x_key, y_key = plot_type_keys[plot_type]
-            fig, df = make_fig(metric_idx=metric_idx, ablation_type=ablation_type, x_key=x_key, y_key=y_key)
-            all_dfs.append(df)
+        for weights_type in ["trained", "reset"]: #, "reset"]:  # Didn't scramble the weights enough it seems
+            for plot_type in ["precision_recall", "roc"]:
+                x_key, y_key = plot_type_keys[plot_type]
+                fig, df = make_fig(metric_idx=metric_idx, weights_type=weights_type, ablation_type=ablation_type, x_key=x_key, y_key=y_key)
+                all_dfs.append(df)
 
-            metric = "kl" if metric_idx == 0 else "other"
-            fig.write_image(PLOT_DIR / ("--".join([metric, ablation_type, plot_type]) + ".pdf"))
+                metric = "kl" if metric_idx == 0 else "other"
+                fig.write_image(PLOT_DIR / ("--".join([metric, weights_type, ablation_type, plot_type]) + ".pdf"))
 
 pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
 # %%
