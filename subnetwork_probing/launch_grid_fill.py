@@ -123,6 +123,7 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool, reset_n
                             f"--n-loss-average-runs={1 if testing else 20}",
                             "--wandb-dir=/training",  # If it doesn't exist wandb will use /tmp
                             f"--wandb-mode=offline",
+                            f"--torch-num-threads={job.cpu}",
                         ]
                         commands.append(command)
 

@@ -398,8 +398,7 @@ parser.add_argument("--num-examples", type=int, default=50)
 parser.add_argument("--seq-len", type=int, default=300)
 parser.add_argument("--n-loss-average-runs", type=int, default=20)
 parser.add_argument("--task", type=str, required=True)
-
-
+parser.add_argument('--torch-num-threads', type=int, default=0, help="How many threads to use for torch (0=all)")
 
 def get_transformer_config():
     cfg = HookedTransformerConfig(
@@ -445,6 +444,11 @@ def get_transformer_config():
 
 if __name__ == "__main__":
     args = parser.parse_args()
+
+    if args.torch_num_threads > 0:
+        torch.set_num_threads(args.torch_num_threads)
+    torch.manual_seed(args.seed)
+
     if args.task == "ioi":
         all_task_things = get_all_ioi_things(
             num_examples=args.num_examples,
