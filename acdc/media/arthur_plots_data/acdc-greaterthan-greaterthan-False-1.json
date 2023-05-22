@@ -1,0 +1,40 @@
+{
+  "reset": {
+    "random_ablation": {
+      "greaterthan": {
+        "greaterthan": {
+          "ACDC": {
+            "test_kl_div": [
+              Infinity,
+              -Infinity
+            ],
+            "score": [
+              Infinity,
+              -Infinity
+            ],
+            "test_greaterthan": [
+              Infinity,
+              -Infinity
+            ],
+            "fpr": [
+              0.0,
+              1.0
+            ],
+            "tpr": [
+              0.0,
+              1.0
+            ],
+            "precision": [
+              1.0,
+              0.0
+            ],
+            "n_edges": [
+              NaN,
+              NaN
+            ]
+          }
+        }
+      }
+    }
+  }
+}
