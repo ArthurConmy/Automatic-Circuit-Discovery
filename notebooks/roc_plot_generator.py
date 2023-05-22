@@ -31,7 +31,9 @@ if IPython.get_ipython() is not None:
 from copy import deepcopy
 from subnetwork_probing.train import correspondence_from_mask
 from acdc.acdc_utils import false_positive_rate, false_negative_rate, true_positive_stat
+from acdc.utils import reset_network
 import pandas as pd
+import gc
 import math
 import sys
 import re
@@ -313,27 +315,30 @@ else:
 if RESET_NETWORK:
     SP_PRE_RUN_FILTER["group"] = "reset-networks3"
 
+    reset_network(TASK, DEVICE, things.tl_model)
+    gc.collect()
+    torch.cuda.empty_cache()
+
 #%% [markdown]
 # Setup the experiment for wrapping functionality nicely
 
-if things is not None:
-    things.tl_model.global_cache.clear()
-    things.tl_model.reset_hooks()
-    exp = TLACDCExperiment(
-        model=things.tl_model,
-        threshold=100_000,
-        early_exit=True,
-        using_wandb=False,
-        zero_ablation=False,
-        ds=things.validation_data,
-        ref_ds=things.validation_patch_data,
-        metric=things.validation_metric,
-        second_metric=None,
-        verbose=True,
-        use_pos_embed=USE_POS_EMBED,
-    )
+things.tl_model.global_cache.clear()
+things.tl_model.reset_hooks()
+exp = TLACDCExperiment(
+    model=things.tl_model,
+    threshold=100_000,
+    early_exit=True,
+    using_wandb=False,
+    zero_ablation=bool(ZERO_ABLATION),
+    ds=things.test_data,
+    ref_ds=things.test_patch_data,
+    metric=things.validation_metric,
+    second_metric=None,
+    verbose=True,
+    use_pos_embed=USE_POS_EMBED,
+)
 
-    max_subgraph_size = exp.corr.count_no_edges()
+max_subgraph_size = exp.corr.count_no_edges()
 
 #%% [markdown]
 # Load the *canonical* circuit
@@ -366,12 +371,6 @@ def get_acdc_runs(
     else:
         filtered_runs = list(filter(run_filter, tqdm(runs[:clip])))
     print(f"loading {len(filtered_runs)} runs with filter {pre_run_filter} and {run_filter}")
-
-    if things is None:
-        return [
-            (None, {"score": run.config["threshold"], **{k: v for k, v in run.summary.items() if k.startswith("test")}})
-            for run in runs
-        ]
 
     corrs = []
     for run in filtered_runs:
@@ -475,6 +474,13 @@ def get_acdc_runs(
                 all_edges[t].present = True
 
             corrs.append((corr, score_d))
+        try:
+            old_exp_corr = exp.corr
+            exp.corr = corrs[-1][0]
+            for name, fn in things.test_metrics.items():
+                corrs[-1][1]["test_"+name] = fn(exp.model(things.test_data))
+        finally:
+            exp.corr = old_exp_corr
         print(f"Added run with threshold={score_d['score']}, n_edges={corrs[-1][0].count_no_edges()}")
     return corrs
 
