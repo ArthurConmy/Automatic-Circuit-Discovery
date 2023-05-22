@@ -1,0 +1,32 @@
+{
+  "reset": {
+    "random_ablation": {
+      "greaterthan": {
+        "greaterthan": {
+          "ACDC": {
+            "score": [
+              Infinity,
+              -Infinity
+            ],
+            "fpr": [
+              0.0,
+              1.0
+            ],
+            "tpr": [
+              0.0,
+              1.0
+            ],
+            "precision": [
+              1.0,
+              0.0
+            ],
+            "n_edges": [
+              NaN,
+              NaN
+            ]
+          }
+        }
+      }
+    }
+  }
+}

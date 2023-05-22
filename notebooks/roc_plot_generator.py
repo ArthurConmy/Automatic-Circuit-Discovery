@@ -241,6 +241,9 @@ if TASK == "docstring":
     if METRIC == "kl_div":
         ACDC_PRE_RUN_FILTER["group"] = "adria-docstring3"
 
+    if RESET_NETWORK:
+        ACDC_PRE_RUN_FILTER["group"] = "reset-networks-neurips"
+
 elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     USE_POS_EMBED = True
 
@@ -273,6 +276,9 @@ elif TASK == "ioi":
         # del ACDC_PRE_RUN_FILTER["config.reset_network"]
         # ACDC_PRE_RUN_FILTER["group"] = "default"
 
+    if RESET_NETWORK:
+        ACDC_PRE_RUN_FILTER["group"] = "reset-networks-neurips"
+
     get_true_edges = partial(get_ioi_true_edges, model=things.tl_model)
 
 elif TASK == "greaterthan":
@@ -288,14 +294,24 @@ elif TASK == "greaterthan":
             # ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_greaterthan_sweep"
             ACDC_PRE_RUN_FILTER["group"] = "acdc-gt-ioi-redo"
 
+    if RESET_NETWORK:
+        ACDC_PRE_RUN_FILTER["group"] = "reset-networks-neurips"
+
 
 elif TASK == "induction":
     num_examples=50
     things = get_all_induction_things(num_examples=num_examples, seq_len=300, device=DEVICE, metric=METRIC)
 
-    ACDC_PRE_RUN_FILTER["group"] = "adria-induction-2"
+    if RESET_NETWORK:
+        ACDC_PRE_RUN_FILTER["group"] = "reset-networks-neurips"
+    else:
+        # ACDC_PRE_RUN_FILTER["group"] = "adria-induction-2"
+        ACDC_PRE_RUN_FILTER["group"] = "adria-induction-3"
 else:
     raise NotImplementedError("TODO " + TASK)
+
+if RESET_NETWORK:
+    SP_PRE_RUN_FILTER["group"] = "reset-networks3"
 
 #%% [markdown]
 # Setup the experiment for wrapping functionality nicely

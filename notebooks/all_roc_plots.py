@@ -5,8 +5,7 @@ import random
 from typing import List
 
 
-# TASKS = ["ioi", "docstring", "greaterthan"]
-TASKS = ["tracr-reverse", "tracr-proportion"]
+TASKS = ["ioi", "docstring", "greaterthan", "tracr-reverse", "tracr-proportion"]
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
@@ -20,7 +19,7 @@ METRICS_FOR_TASK = {
 
 def main():
     commands = []
-    for alg in ["acdc"]:  # ["16h", "sp", "acdc"]
+    for alg in ["16h", "sp", "acdc"]:
         for reset_network in [0, 1]:
             for zero_ablation in [0, 1]:
                 if alg == "16h" and zero_ablation:

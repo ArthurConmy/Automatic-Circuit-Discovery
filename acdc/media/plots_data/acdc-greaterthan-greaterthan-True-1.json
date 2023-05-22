@@ -1,0 +1,37 @@
+{
+  "reset": {
+    "zero_ablation": {
+      "greaterthan": {
+        "greaterthan": {
+          "ACDC": {
+            "score": [
+              Infinity,
+              0.0001,
+              -Infinity
+            ],
+            "fpr": [
+              0.0,
+              9.157229632795092e-05,
+              1.0
+            ],
+            "tpr": [
+              0.0,
+              0.0,
+              1.0
+            ],
+            "precision": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "n_edges": [
+              NaN,
+              3,
+              NaN
+            ]
+          }
+        }
+      }
+    }
+  }
+}
