@@ -156,7 +156,7 @@ parser.add_argument("--testing", action="store_true", help="Use testing data ins
 if IPython.get_ipython() is not None:
     # args = parser.parse_args("--task=ioi --metric=logit_diff --alg=acdc".split())
     # args = parser.parse_args("--task=docstring --reset-network=0 --metric=kl_div --alg=acdc --mode=nodes".split())
-    args = parser.parse_args("--task=ioi --reset-network=0 --metric=kl_div --alg=acdc --mode=nodes --zero-ablation".split())
+    args = parser.parse_args("--task=tracr-proportion --reset-network=0 --metric=kl_div --alg=sp --mode=nodes".split())
     # __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
 else:
     args = parser.parse_args()
@@ -806,3 +806,5 @@ if OUT_FILE is not None:
 # find_files_with_fpr(directory_path)
 
 # # %%
+
+# %%

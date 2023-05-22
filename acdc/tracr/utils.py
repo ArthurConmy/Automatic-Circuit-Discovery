@@ -270,8 +270,9 @@ def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: st
                 mask_repeat_candidates=None,
                 last_seq_element_only=False,
             )
-        else:
-            raise ValueError(f"Metric {metric_name} not recognized")
+        elif metric_name == "l2":
+            metric = lambda x: (x*x).sum()
+            # raise ValueError(f"Metric {metric_name} not recognized")
 
         return AllDataThings(
             tl_model,

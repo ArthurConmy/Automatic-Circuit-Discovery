@@ -172,10 +172,10 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
                 x_data = this_data[task_idx][metric_name][alg_idx][x_key]
                 y_data = this_data[task_idx][metric_name][alg_idx][y_key]
             except KeyError as e:
-                print(e)
+                print(e, f"errored out...; {task_idx}, {metric_name}, {alg_idx}, {x_key}, {y_key}")
                 x_data = []
                 y_data = []
-            print(x_data, y_data)
+            # print(x_data, y_data)
 
             points = list(zip(x_data, y_data))
             pareto_optimal = discard_non_pareto_optimal(points)
@@ -332,6 +332,7 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
                       margin=dict(l=55, r=70, t=20, b=50)
                       )
     return fig, df
+
 
 #%%
 

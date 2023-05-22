@@ -13,7 +13,7 @@ ADRIA_MODE = False
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
-    "tracr-reverse": ["kl_div"],
+    "tracr-reverse": ["kl_div", "l2"],
     "tracr-proportion": ["kl_div", "l2"],
     "induction": ["kl_div", "nll"],
     "docstring": ["kl_div", "docstring_metric"],
@@ -31,6 +31,24 @@ def main():
 
                 for task in TASKS:
                     for metric in METRICS_FOR_TASK[task]:
+                        
+                        thing = [
+                            task.lower(),
+                            str(reset_network).lower(),
+                            metric.lower(),
+                            alg.lower(),
+                            MODE.lower(),
+                        ]
+                        print(thing)
+                        if thing != [
+                            "tracr-reverse",
+                            "0",
+                            "l2",
+                            "sp",
+                            "nodes",
+                        ]:
+                            continue
+
                         command = [
                             "python",
                             "notebooks/roc_plot_generator.py",
