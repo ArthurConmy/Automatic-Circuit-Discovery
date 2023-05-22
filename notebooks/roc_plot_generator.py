@@ -478,7 +478,7 @@ def get_acdc_runs(
             old_exp_corr = exp.corr
             exp.corr = corrs[-1][0]
             for name, fn in things.test_metrics.items():
-                corrs[-1][1]["test_"+name] = fn(exp.model(things.test_data))
+                corrs[-1][1]["test_"+name] = fn(exp.model(things.test_data)).item()
         finally:
             exp.corr = old_exp_corr
         print(f"Added run with threshold={score_d['score']}, n_edges={corrs[-1][0].count_no_edges()}")
