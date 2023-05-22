@@ -139,14 +139,14 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool, reset_n
 if __name__ == "__main__":
     # main(
     #     ["ioi", "greaterthan", "induction", "docstring"],
-    #     KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=2, gpu=1),
+    #     KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.6", cpu=2, gpu=1),
     #     "sp-gpu",
     #     testing=False,
     #     reset_networks=True,
     # )
     main(
         ["tracr-reverse", "tracr-proportion"],
-        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=4, gpu=0, mount_training=True),
+        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.6", cpu=4, gpu=0, mount_training=True),
         "sp-tracr",
         testing=False,
         reset_networks=True,
