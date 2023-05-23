@@ -109,17 +109,15 @@ class GreaterThanConstants:
         self.INV_TOKENS_TENSOR = INV_TOKENS_TENSOR
 
 def greaterthan_metric_reference(logits, tokens):
-    raise NotImplementedError("Fix error!!!")
-
     constants = GreaterThanConstants.get(logits.device)
 
     probs = F.softmax(logits[:, -1], dim=-1) # last elem???
     ans = 0.0
     for i in range(len(probs)):
         yearend = constants.INV_TOKENS[tokens[i][7].item()]
-        for year_suff in range(yearend, 100):
+        for year_suff in range(yearend+1, 100):
             ans += probs[i, constants.TOKENS[year_suff]]
-        for year_pref in range(0, yearend):
+        for year_pref in range(0, yearend+1):
             ans -= probs[i, constants.TOKENS[year_pref]]
     return - float(ans / len(probs))
 
