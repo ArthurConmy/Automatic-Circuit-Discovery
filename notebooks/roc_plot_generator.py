@@ -155,6 +155,8 @@ parser.add_argument("--skip-sixteen-heads", action="store_true", help="Skip the 
 parser.add_argument("--skip-sp", action="store_true", help="Skip the SP stuff")
 parser.add_argument("--testing", action="store_true", help="Use testing data instead of validation data")
 parser.add_argument("--device", type=str, default="cpu")
+parser.add_argument("--out-dir", type=str, default="DEFAULT")
+parser.add_argument('--torch-num-threads', type=int, default=0, help="How many threads to use for torch (0=all)")
 
 if IPython.get_ipython() is not None:
     args = parser.parse_args("--task=ioi --metric=logit_diff --alg=acdc".split())
@@ -164,6 +166,11 @@ else:
 
 if not args.mode == "edges":
     raise NotImplementedError("Only edges mode is implemented for now")
+
+
+if args.torch_num_threads > 0:
+    torch.set_num_threads(args.torch_num_threads)
+torch.manual_seed(args.seed)
 
 
 TASK = args.task
@@ -176,11 +183,16 @@ SKIP_SP = True if args.skip_sp else False
 SKIP_SIXTEEN_HEADS = True if args.skip_sixteen_heads else False
 TESTING = True if args.testing else False
 
+if args.out_dir == "DEFAULT":
+    OUT_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / "plots_data"
+else:
+    OUT_DIR = Path(args.out_dir)
+
 if args.alg != "none":
     SKIP_ACDC = False if args.alg == "acdc" else True
     SKIP_SP = False if args.alg == "sp" else True
     SKIP_SIXTEEN_HEADS = False if args.alg == "16h" else True
-    OUT_FILE = Path(__file__).resolve().parent.parent / "acdc" / "media" / "plots_data" / f"{args.alg}-{args.task}-{args.metric}-{args.zero_ablation}-{args.reset_network}.json"
+    OUT_FILE = OUT_DIR / f"{args.alg}-{args.task}-{args.metric}-{args.zero_ablation}-{args.reset_network}.json"
 
     if OUT_FILE.exists():
         print("File already exists, skipping")
@@ -226,7 +238,7 @@ SIXTEEN_HEADS_RUN_FILTER = None
 USE_POS_EMBED = False
 
 
-ROOT = Path("/tmp/artifacts_for_plot")
+ROOT = Path(os.environ["HOME"]) / ".cache" / "artifacts_for_plot"
 ROOT.mkdir(exist_ok=True)
 
 #%% [markdown]
@@ -328,7 +340,7 @@ things.tl_model.reset_hooks()
 exp = TLACDCExperiment(
     model=things.tl_model,
     threshold=100_000,
-    early_exit=True,
+    early_exit=False,
     using_wandb=False,
     zero_ablation=bool(ZERO_ABLATION),
     ds=things.test_data,
@@ -338,6 +350,7 @@ exp = TLACDCExperiment(
     verbose=True,
     use_pos_embed=USE_POS_EMBED,
 )
+exp.setup_second_cache()
 
 max_subgraph_size = exp.corr.count_no_edges()
 
