@@ -8,6 +8,7 @@ if get_ipython() is not None:
 
 import plotly
 import os
+import numpy as np
 import json
 import wandb
 import time
@@ -17,9 +18,21 @@ from pathlib import Path
 import plotly.express as px
 import sklearn.metrics
 import pandas as pd
+import argparse
 
 from notebooks.emacs_plotly_render import set_plotly_renderer
-#set_plotly_renderer("emacs")
+set_plotly_renderer("emacs")
+
+# %%
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--arrows', action='store_true', help='Include help arrows')
+
+if get_ipython() is not None:
+    args = parser.parse_args([])
+else:
+    args = parser.parse_args()
+
 
 # %%
 DATA_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / "plots_data"
@@ -113,6 +126,8 @@ x_names = {
     "fpr": "False positive rate (edges)",
     "tpr": "True positive rate (edges)",
     "precision": "Precision (edges)",
+    "n_edges": "Number of edges",
+    "test_kl_div": "KL(model, ablated)"
 }
 
 def discard_non_pareto_optimal(points, cmp="gt"):
@@ -126,7 +141,7 @@ def discard_non_pareto_optimal(points, cmp="gt"):
     return list(sorted(ret))
 
 
-def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", ablation_type="random_ablation"):
+def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", ablation_type="random_ablation", plot_type="roc"):
     this_data = all_data[weights_type][ablation_type]
 
     task_idxs, task_names = zip(*TASK_NAMES.items())
@@ -166,8 +181,17 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
                 x_data = []
                 y_data = []
 
+            if alg_idx == "SP":
+                # Divide by number of loss runs. Fix earlier bug.
+                if x_key.startswith("test_"):
+                    x_data = [x / 20 for x in x_data]
+
+                if y_key.startswith("test_"):
+                    y_data = [y / 20 for y in y_data]
+
+
             points = list(zip(x_data, y_data))
-            if y_key == "precision":
+            if y_key != "tpr":
                 pareto_optimal = [] # list(sorted(points))  # Not actually pareto optimal but we want to plot all of them
             else:
                 pareto_optimal = discard_non_pareto_optimal(points)
@@ -203,9 +227,20 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
 
             if others:
                 x_data, y_data = zip(*others)
+                if not (np.isfinite(x_data[0]) and np.isfinite(y_data[0])):
+                    x_data = x_data[1:]
+                    y_data = y_data[1:]
+                if not (np.isfinite(x_data[-1]) and np.isfinite(y_data[-1])):
+                    x_data = x_data[:-1]
+                    y_data = y_data[:-1]
+
+                assert not np.any(~np.isfinite(x_data))
+                assert not np.any(~np.isfinite(y_data))
             else:
                 x_data, y_data = [None], [None]
-            
+
+            print(task_idx, alg_idx, metric_name, len(x_data), len(y_data))
+
             fig.add_trace(
                 go.Scatter(
                     x=x_data,
@@ -229,62 +264,70 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
                 title_font=dict(size=8),
             )
 
-            # I don't think we should add the arrows, just describe what's better in the caption.
             if (row, col) == rows_and_cols[0]:
-                fig.add_annotation(
-                    xref="x domain",
-                    yref="y",
-                    x=0.35, # end of arrow
-                    y=0.65,
-                    text="",
-                    axref="x domain",
-                    ayref="y",
-                    ax=0.55,
-                    ay=0.45,
-                    arrowhead=2,
-                    row = row,
-                    col = col,
-                )
-                fig.add_annotation(
-                    xref="x domain",
-                    yref="y",
-                    x=0.6, # end of arrow
-                    y=0.7,
-                    text="",
-                    axref="x domain",
-                    ayref="y",
-                    ax=0.6,
-                    ay=0.5,
-                    arrowhead=2,
-                    row = row,
-                    col = col,
-                )
-                fig.add_annotation(
-                    xref="x domain",
-                    yref="y",
-                    x=0.8, # end of arrow
-                    y=0.4,
-                    text="",
-                    axref="x domain",
-                    ayref="y",
-                    ax=0.6,
-                    ay=0.4,
-                    arrowhead=2,
-                    row = row,
-                    col = col,
-                )
-                fig.add_annotation(text="More true components recovered",
-                    xref="x", yref="y",
-                    x=0.55, y=0.75, showarrow=False, font=dict(size=8), row=row, col=col)
-                fig.add_annotation(text="Better",
-                    xref="x", yref="y",
-                    x=0.4, y=0.5, showarrow=False, font=dict(size=12), row=row, col=col)
-                fig.add_annotation(text="More wrong components recovered",
-                    xref="x", yref="y",
-                    x=0.65, y=0.35, showarrow=False, font=dict(size=8), row=row, col=col) # TODO could add two text boxes
+                if plot_type == "roc" and args.arrows:
+                    fig.add_annotation(
+                        xref="x domain",
+                        yref="y",
+                        x=0.35, # end of arrow
+                        y=0.65,
+                        text="",
+                        axref="x domain",
+                        ayref="y",
+                        ax=0.55,
+                        ay=0.45,
+                        arrowhead=2,
+                        row = row,
+                        col = col,
+                    )
+                    fig.add_annotation(
+                        xref="x domain",
+                        yref="y",
+                        x=0.6, # end of arrow
+                        y=0.7,
+                        text="",
+                        axref="x domain",
+                        ayref="y",
+                        ax=0.6,
+                        ay=0.5,
+                        arrowhead=2,
+                        row = row,
+                        col = col,
+                    )
+                    fig.add_annotation(
+                        xref="x domain",
+                        yref="y",
+                        x=0.8, # end of arrow
+                        y=0.4,
+                        text="",
+                        axref="x domain",
+                        ayref="y",
+                        ax=0.6,
+                        ay=0.4,
+                        arrowhead=2,
+                        row = row,
+                        col = col,
+                    )
+                    fig.add_annotation(text="More true components recovered",
+                        xref="x", yref="y",
+                        x=0.55, y=0.75, showarrow=False, font=dict(size=8), row=row, col=col)
+                    fig.add_annotation(text="Better",
+                        xref="x", yref="y",
+                        x=0.4, y=0.5, showarrow=False, font=dict(size=12), row=row, col=col)
+                    fig.add_annotation(text="More wrong components recovered",
+                        xref="x", yref="y",
+                        x=0.65, y=0.35, showarrow=False, font=dict(size=8), row=row, col=col) # TODO could add two text boxes
 
-                fig.update_yaxes(visible=True, row=row, col=col, tickangle=-90, dtick=0.25, range=[-0.05, 1.05]) # ???
-                fig.update_xaxes(dtick=0.25, range=[-0.05, 1.05])
+                if y_key in ["fpr", "tpr", "precision"]:
+                    fig.update_yaxes(visible=True, row=row, col=col, tickangle=-90, dtick=0.25, range=[-0.05, 1.05]) # ???
+                else:
+                    fig.update_yaxes(visible=True, row=row, col=col, tickangle=-90)
+
+                if x_key == "n_edges":
+                    fig.update_xaxes(type='log', row=row, col=col)
+                    # fig.update_yaxes(type='log', row=row, col=col)
+                else:
+                    fig.update_xaxes(dtick=0.25, range=[-0.05, 1.05], row=row, col=col)
 
                 # # add label to x axis
                 # fig.update_xaxes(title_text="False positive rate", row=row, col=col)
@@ -296,8 +339,17 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
 
             else:
                 # If the subplot is not the large plot, hide its axes
-                fig.update_xaxes(visible=True, row=row, col=col, tickvals=[0, 0.25, 0.5, 0.75, 1.], ticktext=["0", "", "0.5", "", "1"], range=[-0.05, 1.05])
-                fig.update_yaxes(visible=True, row=row, col=col, tickangle=-90, dtick=0.25, tickvals=[0, 0.25, 0.5, 0.75, 1.], ticktext=["0", "", "0.5", "", "1"], range=[-0.05, 1.05]) # ???
+                if y_key in ["fpr", "tpr", "precision"]:
+                    fig.update_yaxes(visible=True, row=row, col=col, tickangle=-90, dtick=0.25, tickvals=[0, 0.25, 0.5, 0.75, 1.], ticktext=["0", "", "0.5", "", "1"], range=[-0.05, 1.05]) # ???
+                else:
+                    fig.update_yaxes(visible=True, row=row, col=col, tickangle=-90)
+
+                if x_key == "n_edges":
+                    # fig.update_xaxes(type='log', row=row, col=col)
+                    # fig.update_yaxes(type='log', row=row, col=col)
+                    pass
+                else:
+                    fig.update_xaxes(visible=True, row=row, col=col, tickvals=[0, 0.25, 0.5, 0.75, 1.], ticktext=["0", "", "0.5", "", "1"], range=[-0.05, 1.05])
 
                 # smaller title font
                 fig.update_layout(title_font=dict(size=10)) # , row=row, col=col)
@@ -329,18 +381,20 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
 plot_type_keys = {
     "precision_recall": ("tpr", "precision"),
     "roc": ("fpr", "tpr"),
+    "kl_edges": ("n_edges", "test_kl_div"),
 }
 
+# %%
 PLOT_DIR = DATA_DIR.parent / "plots"
 PLOT_DIR.mkdir(exist_ok=True)
 
 all_dfs = []
 for metric_idx in [0, 1]:
     for ablation_type in ["random_ablation", "zero_ablation"]:
-        for weights_type in ["trained", "reset"]: #, "reset"]:  # Didn't scramble the weights enough it seems
-            for plot_type in ["precision_recall", "roc"]:
+        for weights_type in ["trained", "reset"]:  # Didn't scramble the weights enough it seems
+            for plot_type in ["precision_recall", "roc", "kl_edges"]:
                 x_key, y_key = plot_type_keys[plot_type]
-                fig, df = make_fig(metric_idx=metric_idx, weights_type=weights_type, ablation_type=ablation_type, x_key=x_key, y_key=y_key)
+                fig, df = make_fig(metric_idx=metric_idx, weights_type=weights_type, ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type)
                 if plot_type == "roc":
                     all_dfs.append(df.T)
                     print(all_dfs[-1])
@@ -359,3 +413,6 @@ pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
 # :raised_hands:
 # 1
 
+# x_key, y_key = plot_type_keys["kl_edges"]
+# fig, _ = make_fig(metric_idx=0, weights_type="reset", ablation_type="zero_ablation", plot_type="kl_edges")
+# fig.show()
