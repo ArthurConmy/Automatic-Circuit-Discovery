@@ -1,5 +1,6 @@
 from experiments.launcher import KubernetesJob, WandbIdentifier, launch
 import numpy as np
+import subprocess
 import random
 from typing import List
 
@@ -20,7 +21,7 @@ def main(TASKS: list[str], job: KubernetesJob, name: str):
 
     wandb_identifier = WandbIdentifier(
         run_name=f"{name}-{{i:05d}}",
-        group_name="sixteen-heads",
+        group_name=f"{'arthur-' if IS_ARTHUR else ''}sixteen-heads",
         project="acdc")
 
     commands: List[List[str]] = []
@@ -54,17 +55,25 @@ def main(TASKS: list[str], job: KubernetesJob, name: str):
                     commands.append(command)
 
 
-    launch(commands, name=wandb_identifier.run_name, job=job, check_wandb=wandb_identifier, just_print_commands=False)
+    if IS_ARTHUR:
+        for command in commands:
+            print(" ".join(command))
+            subprocess.run(command)
+
+    else:
+        launch(commands, name=wandb_identifier.run_name, job=job, check_wandb=wandb_identifier, just_print_commands=False)
 
 
 if __name__ == "__main__":
     main(
-        ["ioi", "greaterthan", "induction", "docstring"],
+        ["greaterthan"] if IS_ARTHUR else ["ioi", "greaterthan", "induction", "docstring"],
         KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=2, gpu=1),
         "16h-gpu",
     )
-    main(
-        ["tracr-reverse", "tracr-proportion"],
-        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=4, gpu=0),
-        "16h-tracr",
-    )
+
+    if not IS_ARTHUR:
+        main(
+            ["tracr-reverse", "tracr-proportion"],
+            KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=4, gpu=0),
+            "16h-tracr",
+        )

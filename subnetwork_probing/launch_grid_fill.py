@@ -3,6 +3,7 @@ import numpy as np
 import random
 from typing import List
 import subprocess
+import os
 
 IS_ARTHUR = "arthurworkspace" in __file__
 
@@ -130,8 +131,63 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool, reset_n
                         commands.append(command)
 
     if IS_ARTHUR:
-            for command in commands:
-                subprocess.run(command)
+        # ------------------------------
+        # GPT-4 stuff
+        # ------------------------------
+
+        from multiprocessing import Process, Queue
+
+        # Number of GPUs
+        NUM_GPUS = 1
+
+        def worker(gpu_queue, cmd_queue):
+            while True:
+                gpu_id = gpu_queue.get()
+                if gpu_id is None:
+                    break
+                cmd = cmd_queue.get()
+                if cmd is None:
+                    break
+                # cmd[cmd.index('--device=')+1] = f'cuda:{gpu_id}'
+                # cmd = [f"CUDA_VISIBLE_DEVICES={gpu_id}"] + cmd
+                print(cmd)
+                # env = os.environ.copy()
+                # env["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
+                subprocess.run(cmd)
+                gpu_queue.put(gpu_id)
+
+        # Create a queue for GPUs
+        gpu_queue = Queue()
+        for i in range(NUM_GPUS):
+            gpu_queue.put(i)
+
+        # Create a queue for commands
+        cmd_queue = Queue()
+        for cmd in commands:
+            cmd_queue.put(cmd)
+
+        # Start worker processes
+        workers = []
+        for _ in range(NUM_GPUS):
+            worker_process = Process(target=worker, args=(gpu_queue, cmd_queue))
+            worker_process.start()
+            workers.append(worker_process)
+
+        # Signal end of tasks
+        for _ in range(NUM_GPUS):
+            cmd_queue.put(None)
+
+        # Wait for all worker processes to finish
+        for worker in workers:
+            worker.join()
+
+        # Signal end of GPUs
+        for _ in range(NUM_GPUS):
+            gpu_queue.put(None)
+
+        # ------------------------------
+        # GPT-4 stuff
+        # ------------------------------
 
     else:
         launch(
