@@ -4,7 +4,15 @@
       "tracr-proportion": {
         "l2": {
           "ACDC": {
+            "test_l2": [
+              Infinity,
+              -Infinity
+            ],
             "score": [
+              Infinity,
+              -Infinity
+            ],
+            "test_kl_div": [
               Infinity,
               -Infinity
             ],

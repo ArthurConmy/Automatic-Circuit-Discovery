@@ -34,7 +34,7 @@ def main():
     induction_files = []
 
     with open(OUT_DIR/ "Makefile", "w") as f:
-        possible_files = {"analysis_of_rocs.py"}
+        possible_files = {"analysis_of_rocs.py", "Makefile"}
 
         for alg in ["16h", "sp", "acdc"]:
             for reset_network in [0, 1]:
@@ -102,6 +102,15 @@ def main():
         f.write("tracr-reverse: " + " ".join(tracr_reverse_files) + "\n\n")
         f.write("tracr-proportion: " + " ".join(tracr_proportion_files) + "\n\n")
         f.write("induction: " + " ".join(induction_files) + "\n\n")
+
+    print(actual_files - possible_files)
+    assert len(actual_files - possible_files) == 0, "There are files that shouldn't be there"
+
+    missing_files = possible_files - actual_files
+    print(f"Missing {len(missing_files)} files:")
+    for missing_file in missing_files:
+        print(missing_file)
+
 
 
 def start_jobs(actual_files, possible_files):

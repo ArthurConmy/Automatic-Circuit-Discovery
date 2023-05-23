@@ -8,6 +8,10 @@
               Infinity,
               -Infinity
             ],
+            "test_kl_div": [
+              Infinity,
+              -Infinity
+            ],
             "fpr": [
               0.0,
               1.0

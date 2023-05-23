@@ -4,6 +4,10 @@
       "tracr-reverse": {
         "kl_div": {
           "ACDC": {
+            "test_kl_div": [
+              Infinity,
+              -Infinity
+            ],
             "score": [
               Infinity,
               -Infinity
