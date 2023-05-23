@@ -350,6 +350,8 @@ exp = TLACDCExperiment(
     second_metric=None,
     verbose=True,
     use_pos_embed=USE_POS_EMBED,
+    first_cache_cpu=False,
+    second_cache_cpu=False,
 )
 if not SKIP_ACDC:
     exp.setup_second_cache()

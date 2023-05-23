@@ -86,6 +86,7 @@ TASK_NAMES = {
     "tracr-proportion": "Tracr (Proportion)",
     "docstring": "Docstring",
     "greaterthan": "Greater Than",
+    "induction": "Induction",
 }
 
 measurement_names = {
@@ -127,7 +128,8 @@ x_names = {
     "tpr": "True positive rate (edges)",
     "precision": "Precision (edges)",
     "n_edges": "Number of edges",
-    "test_kl_div": "KL(model, ablated)"
+    "test_kl_div": "KL(model, ablated)",
+    "test_loss": "test loss",
 }
 
 def discard_non_pareto_optimal(points, cmp="gt"):
@@ -144,13 +146,34 @@ def discard_non_pareto_optimal(points, cmp="gt"):
 def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", ablation_type="random_ablation", plot_type="roc"):
     this_data = all_data[weights_type][ablation_type]
 
-    task_idxs, task_names = zip(*TASK_NAMES.items())
+    if plot_type in ["roc", "precision_recall"]:
+        rows_cols_task_idx = [
+            ((1, 1), "ioi"),
+            ((1, 3), "tracr-reverse"),
+            ((1, 4), "tracr-proportion"),
+            ((2, 3), "docstring"),
+            ((2, 4), "greaterthan"),
+        ]
+        specs=[[{"rowspan": 2, "colspan": 2}, None, {}, {}], [None, None, {}, {}]]
+    else:
+        rows_cols_task_idx = [
+            ((1, 1), "ioi"),
+            ((1, 2), "tracr-reverse"),
+            ((1, 3), "tracr-proportion"),
+            ((2, 1), "induction"),
+            ((2, 2), "docstring"),
+            ((2, 3), "greaterthan"),
+        ]
+        specs = [[{}]*3]*2
+
+    rows_and_cols, task_idxs = list(zip(*rows_cols_task_idx))
+    task_names = [TASK_NAMES[i] for i in task_idxs]
 
     fig = make_subplots(
         rows=2,
-        cols=4,
+        cols=4 if plot_type in ["roc", "precision_recall"] else 3,
         # specs parameter is really cool, this argument needs to have same dimenions as the rows and cols
-        specs=[[{"rowspan": 2, "colspan": 2}, None, {}, {}], [None, None, {}, {}]],
+        specs=specs,
         print_grid=True,
         # subplot_titles=("First Subplot", "Second Subplot", "Third Subplot", "Fourth Subplot", "Fifth Subplot"),
         subplot_titles=tuple(task_names),
@@ -161,19 +184,12 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
 
     fig.update_annotations(font_size=12)
 
-    rows_and_cols = [
-        (1, 1),
-        (1, 3),
-        (1, 4),
-        (2, 3),
-        (2, 4),
-    ]
-
     all_series = []
-
-    for task_idx, (row, col) in zip(task_idxs, rows_and_cols):
+    for (row, col), task_idx in rows_cols_task_idx:
         for alg_idx, methodof in alg_names.items():
             metric_name = METRICS_FOR_TASK[task_idx][metric_idx]
+            if plot_type == "metric_edges":
+                y_key = "test_" + metric_name
             try:
                 x_data = this_data[task_idx][metric_name][alg_idx][x_key]
                 y_data = this_data[task_idx][metric_name][alg_idx][y_key]
@@ -262,6 +278,7 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
 
             fig.update_layout(
                 title_font=dict(size=8),
+                title=plot_type,
             )
 
             if (row, col) == rows_and_cols[0]:
@@ -319,9 +336,9 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
                         x=0.65, y=0.35, showarrow=False, font=dict(size=8), row=row, col=col) # TODO could add two text boxes
 
                 if y_key in ["fpr", "tpr", "precision"]:
-                    fig.update_yaxes(visible=True, row=row, col=col, tickangle=-90, dtick=0.25, range=[-0.05, 1.05]) # ???
+                    fig.update_yaxes(visible=True, row=row, col=col, tickangle=-45, dtick=0.25, range=[-0.05, 1.05]) # ???
                 else:
-                    fig.update_yaxes(visible=True, row=row, col=col, tickangle=-90)
+                    fig.update_yaxes(visible=True, row=row, col=col, tickangle=-45)
 
                 if x_key == "n_edges":
                     fig.update_xaxes(type='log', row=row, col=col)
@@ -340,9 +357,9 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
             else:
                 # If the subplot is not the large plot, hide its axes
                 if y_key in ["fpr", "tpr", "precision"]:
-                    fig.update_yaxes(visible=True, row=row, col=col, tickangle=-90, dtick=0.25, tickvals=[0, 0.25, 0.5, 0.75, 1.], ticktext=["0", "", "0.5", "", "1"], range=[-0.05, 1.05]) # ???
+                    fig.update_yaxes(visible=True, row=row, col=col, tickangle=-45, dtick=0.25, tickvals=[0, 0.25, 0.5, 0.75, 1.], ticktext=["0", "", "0.5", "", "1"], range=[-0.05, 1.05]) # ???
                 else:
-                    fig.update_yaxes(visible=True, row=row, col=col, tickangle=-90)
+                    fig.update_yaxes(visible=True, row=row, col=col, tickangle=-45)
 
                 if x_key == "n_edges":
                     # fig.update_xaxes(type='log', row=row, col=col)
@@ -352,7 +369,7 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
                     fig.update_xaxes(visible=True, row=row, col=col, tickvals=[0, 0.25, 0.5, 0.75, 1.], ticktext=["0", "", "0.5", "", "1"], range=[-0.05, 1.05])
 
                 # smaller title font
-                fig.update_layout(title_font=dict(size=10)) # , row=row, col=col)
+                fig.update_layout(title_font=dict(size=20)) # , row=row, col=col)
 
             # add label to x axis
 
@@ -382,6 +399,7 @@ plot_type_keys = {
     "precision_recall": ("tpr", "precision"),
     "roc": ("fpr", "tpr"),
     "kl_edges": ("n_edges", "test_kl_div"),
+    "metric_edges": ("n_edges", "test_loss"),
 }
 
 # %%
@@ -392,7 +410,7 @@ all_dfs = []
 for metric_idx in [0, 1]:
     for ablation_type in ["random_ablation", "zero_ablation"]:
         for weights_type in ["trained", "reset"]:  # Didn't scramble the weights enough it seems
-            for plot_type in ["precision_recall", "roc", "kl_edges"]:
+            for plot_type in ["precision_recall", "roc", "kl_edges", "metric_edges"]:
                 x_key, y_key = plot_type_keys[plot_type]
                 fig, df = make_fig(metric_idx=metric_idx, weights_type=weights_type, ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type)
                 if plot_type == "roc":
