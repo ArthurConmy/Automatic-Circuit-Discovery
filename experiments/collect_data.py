@@ -56,14 +56,20 @@ def main(alg: str, task: str, job: KubernetesJob, testing: bool = False):
     )
 
 
+tasks_for = {
+    "acdc": ["ioi", "greaterthan"],
+    "16h": TASKS,
+    "sp": [],
+}
+
 if __name__ == "__main__":
     for alg in ["acdc", "16h", "sp"]:
-        for task in TASKS:
+        for task in tasks_for[alg]:
             main(
                 alg,
                 task,
                 KubernetesJob(
-                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.7",
+                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.10",
                     cpu=4,
                     gpu=0 if task.startswith("tracr") or alg != "acdc" else 1,
                     mount_training=False,

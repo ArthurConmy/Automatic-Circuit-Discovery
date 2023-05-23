@@ -286,14 +286,22 @@ elif TASK == "ioi":
     num_examples = 100
     things = get_all_ioi_things(num_examples=num_examples, device=DEVICE, metric_name=METRIC)
 
-    if METRIC == "kl_div":
-        ACDC_PRE_RUN_FILTER["group"] = "acdc-gt-ioi-redo"
-        # ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_ioi_sweep"
-        # del ACDC_PRE_RUN_FILTER["config.reset_network"]
-        # ACDC_PRE_RUN_FILTER["group"] = "default"
-
-    if RESET_NETWORK:
-        ACDC_PRE_RUN_FILTER["group"] = "reset-networks-neurips"
+    if METRIC == "kl_div" and not RESET_NETWORK:
+        ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_ioi_sweep"
+        del ACDC_PRE_RUN_FILTER["config.reset_network"]
+        ACDC_PRE_RUN_FILTER["group"] = "default"
+    else:
+        try:
+            del ACDC_PRE_RUN_FILTER["group"]
+        except KeyError:
+            pass
+        ACDC_PRE_RUN_FILTER = {
+            "$or": [
+                {"group": "reset-networks-neurips", **ACDC_PRE_RUN_FILTER},
+                {"group": "acdc-gt-ioi-redo", **ACDC_PRE_RUN_FILTER},
+                {"group": "acdc-spreadsheet2", **ACDC_PRE_RUN_FILTER},
+            ]
+        }
 
     get_true_edges = partial(get_ioi_true_edges, model=things.tl_model)
 
@@ -303,7 +311,7 @@ elif TASK == "greaterthan":
     get_true_edges = partial(get_greaterthan_true_edges, model=things.tl_model)
 
     if METRIC == "kl_div":
-        if ZERO_ABLATION:
+        if ZERO_ABLATION and not RESET_NETWORK:
             ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_greaterthan_zero_sweep"
             ACDC_PRE_RUN_FILTER = {}
         else:
@@ -311,7 +319,17 @@ elif TASK == "greaterthan":
             ACDC_PRE_RUN_FILTER["group"] = "acdc-gt-ioi-redo"
 
     if RESET_NETWORK:
-        ACDC_PRE_RUN_FILTER["group"] = "reset-networks-neurips"
+        try:
+            del ACDC_PRE_RUN_FILTER["group"]
+        except KeyError:
+            pass
+        ACDC_PRE_RUN_FILTER = {
+            "$or": [
+                {"group": "reset-networks-neurips", **ACDC_PRE_RUN_FILTER},
+                {"group": "acdc-gt-ioi-redo", **ACDC_PRE_RUN_FILTER},
+                {"group": "acdc-spreadsheet2", **ACDC_PRE_RUN_FILTER},
+            ]
+        }
 
 
 elif TASK == "induction":
@@ -584,10 +602,14 @@ def get_sixteen_heads_corrs(
 
     nodes_names_indices = run.summary["nodes_names_indices"]
 
-    corrs = []
     nodes_to_mask = []
     cum_score = 0.0
-    for nodes, hook_name, idx, score in tqdm(nodes_names_indices):
+    test_keys = [k for k in run.summary.keys() if k.startswith("test")]
+    score_d_list = list(run.scan_history(keys=test_keys, page_size=100000))
+    assert len(score_d_list) == len(nodes_names_indices) + 1
+
+    corrs = [(correspondence_from_mask(model=model, nodes_to_mask=[], use_pos_embed=exp.use_pos_embed), {"score": 0.0, **score_d_list[0]})]
+    for (nodes, hook_name, idx, score), score_d in tqdm(zip(nodes_names_indices, score_d_list[1:])):
         if score == "NaN":
             score = 0.0
         if things is None:
@@ -596,8 +618,7 @@ def get_sixteen_heads_corrs(
             nodes_to_mask += list(map(parse_interpnode, nodes))
             corr = correspondence_from_mask(model=model, nodes_to_mask=nodes_to_mask, use_pos_embed=exp.use_pos_embed)
         cum_score += score
-        score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
-        score_d["score"] = cum_score
+        score_d = {"score": cum_score, **score_d}
         corrs.append((corr, score_d))
     return corrs
 
