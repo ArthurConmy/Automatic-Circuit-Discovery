@@ -478,6 +478,12 @@ def get_acdc_runs(
         try:
             old_exp_corr = exp.corr
             exp.corr = corrs[-1][0]
+            exp.model.reset_hooks()
+            exp.setup_model_hooks(
+                add_sender_hooks=True,
+                add_receiver_hooks=True,
+                doing_acdc_runs=False,
+            )
             for name, fn in things.test_metrics.items():
                 corrs[-1][1]["test_"+name] = fn(exp.model(things.test_data)).item()
         finally:
