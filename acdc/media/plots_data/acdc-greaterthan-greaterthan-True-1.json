@@ -4,6 +4,16 @@
       "greaterthan": {
         "greaterthan": {
           "ACDC": {
+            "test_greaterthan": [
+              Infinity,
+              3.054697799598216e-06,
+              -Infinity
+            ],
+            "test_kl_div": [
+              Infinity,
+              14.293285369873047,
+              -Infinity
+            ],
             "score": [
               Infinity,
               0.0001,

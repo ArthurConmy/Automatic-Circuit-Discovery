@@ -273,7 +273,7 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     else:
         raise NotImplementedError("not a tracr task")
 
-    SP_PRE_RUN_FILTER["group"] = "tracr-shuffled-redo-2"
+    SP_PRE_RUN_FILTER["group"] = "tracr-shuffled-redo"
     ACDC_PRE_RUN_FILTER["group"] = "acdc-tracr-neurips-3"
 
     things = get_all_tracr_things(task=tracr_task, metric_name=METRIC, num_examples=num_examples, device=DEVICE)
@@ -327,7 +327,7 @@ else:
     raise NotImplementedError("TODO " + TASK)
 
 if RESET_NETWORK:
-    SP_PRE_RUN_FILTER["group"] = "reset-networks3"
+    SP_PRE_RUN_FILTER["group"] = "tracr-shuffled-redo"
 
     reset_network(TASK, DEVICE, things.tl_model)
     gc.collect()
@@ -341,7 +341,7 @@ things.tl_model.reset_hooks()
 exp = TLACDCExperiment(
     model=things.tl_model,
     threshold=100_000,
-    early_exit=False,
+    early_exit=SKIP_ACDC,
     using_wandb=False,
     zero_ablation=bool(ZERO_ABLATION),
     ds=things.test_data,
@@ -351,7 +351,8 @@ exp = TLACDCExperiment(
     verbose=True,
     use_pos_embed=USE_POS_EMBED,
 )
-exp.setup_second_cache()
+if not SKIP_ACDC:
+    exp.setup_second_cache()
 
 max_subgraph_size = exp.corr.count_no_edges()
 
