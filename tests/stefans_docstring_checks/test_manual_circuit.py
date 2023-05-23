@@ -99,6 +99,8 @@ from acdc.graphics import (
 import argparse
 torch.autograd.set_grad_enabled(False)
 
+# Random seed 0
+torch.manual_seed(0)
 #%%
 
 parser = argparse.ArgumentParser()
@@ -127,7 +129,7 @@ WANDB_PROJECT_NAME = args.wandb_project_name
 WANDB_RUN_NAME = args.wandb_run_name
 INDICES_MODE = args.indices_mode
 NAMES_MODE = args.names_mode
-DEVICE = "cuda"
+DEVICE = "cpu"
 
 if WANDB_RUN_NAME is None or IPython.get_ipython() is not None:
     WANDB_RUN_NAME = f"{ct()}{'_randomindices' if INDICES_MODE=='random' else ''}_{THRESHOLD}{'_zero' if ZERO_ABLATION else ''}"
@@ -141,7 +143,16 @@ notes = "dummy"
 assert TASK == "docstring"
 num_examples = 50
 seq_len = 41
-tl_model, toks_int_values, toks_int_values_other, metric, ldgz_metric = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric_name="docstring_stefan", correct_incorrect_wandb=False)
+docstring_things = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric_name="docstring_stefan", correct_incorrect_wandb=False)
+tl_model = docstring_things.tl_model
+toks_int_values = docstring_things.test_data
+toks_int_values_other = docstring_things.test_patch_data
+metrics = docstring_things.test_metrics
+kl_metric = metrics["kl_div"]
+ld_metric = metrics["docstring_metric"]
+ldgz_metric = metrics["docstring_stefan"]
+
+
 tl_model.global_cache.clear()
 tl_model.reset_hooks()
 
@@ -181,7 +192,7 @@ exp = TLACDCExperiment(
     zero_ablation=ZERO_ABLATION,
     ds=toks_int_values,
     ref_ds=toks_int_values_other,
-    metric=metric,
+    metric=kl_metric,
     second_metric=ldgz_metric,
     verbose=True,
     indices_mode=INDICES_MODE,
@@ -197,31 +208,34 @@ exp.setup_second_cache()
 #%%
 
 edges_to_keep = []
+edges_to_keep.append(("blocks.1.attn.hook_v", H4, "blocks.1.hook_v_input", H4))
+edges_to_keep.append(("blocks.1.hook_v_input", H4, "blocks.0.hook_resid_pre", COL))
+edges_to_keep.append(("blocks.1.hook_v_input", H4, "blocks.0.attn.hook_result", H5))
+edges_to_keep.append(("blocks.0.attn.hook_v", H5, "blocks.0.hook_v_input", H5))
+edges_to_keep.append(("blocks.0.hook_v_input", H5, "blocks.0.hook_resid_pre", COL))
+# edges_to_keep.append(("blocks.0.attn.hook_q", H5, "blocks.0.hook_q_input", H5))
+# edges_to_keep.append(("blocks.0.hook_q_input", H5, "blocks.0.hook_resid_pre", COL))
+# edges_to_keep.append(("blocks.0.attn.hook_k", H5, "blocks.0.hook_k_input", H5))
+# edges_to_keep.append(("blocks.0.hook_k_input", H5, "blocks.0.hook_resid_pre", COL))
+edges_to_keep.append(("blocks.2.attn.hook_q", H0, "blocks.2.hook_q_input", H0))
+edges_to_keep.append(("blocks.2.hook_q_input", H0, "blocks.0.hook_resid_pre", COL))
+edges_to_keep.append(("blocks.2.hook_q_input", H0, "blocks.0.attn.hook_result", H5))
+edges_to_keep.append(("blocks.2.attn.hook_k", H0, "blocks.2.hook_k_input", H0))
+edges_to_keep.append(("blocks.2.hook_k_input", H0, "blocks.0.hook_resid_pre", COL))
+edges_to_keep.append(("blocks.2.hook_k_input", H0, "blocks.0.attn.hook_result", H5))
+edges_to_keep.append(("blocks.2.attn.hook_v", H0, "blocks.2.hook_v_input", H0))
+edges_to_keep.append(("blocks.2.hook_v_input", H0, "blocks.1.attn.hook_result", H4))
+edges_to_keep.append(("blocks.1.attn.hook_v", H4, "blocks.1.hook_v_input", H4))
+edges_to_keep.append(("blocks.1.hook_v_input", H4, "blocks.0.hook_resid_pre", COL))
 for L3H in [H0, H6]:
     edges_to_keep.append(("blocks.3.hook_resid_post", COL, "blocks.3.attn.hook_result", L3H))
     edges_to_keep.append(("blocks.3.attn.hook_q", L3H, "blocks.3.hook_q_input", L3H))
     edges_to_keep.append(("blocks.3.hook_q_input", L3H, "blocks.1.attn.hook_result", H4))
-    edges_to_keep.append(("blocks.1.attn.hook_v", H4, "blocks.1.hook_v_input", H4))
-    edges_to_keep.append(("blocks.1.hook_v_input", H4, "blocks.0.hook_resid_pre", COL))
-    edges_to_keep.append(("blocks.1.hook_v_input", H4, "blocks.0.attn.hook_result", H5))
-    edges_to_keep.append(("blocks.0.attn.hook_v", H5, "blocks.0.hook_v_input", H5))
-    edges_to_keep.append(("blocks.0.hook_v_input", H5, "blocks.0.hook_resid_pre", COL))
     edges_to_keep.append(("blocks.3.attn.hook_v", L3H, "blocks.3.hook_v_input", L3H))
     edges_to_keep.append(("blocks.3.hook_v_input", L3H, "blocks.0.hook_resid_pre", COL))
     edges_to_keep.append(("blocks.3.hook_v_input", L3H, "blocks.0.attn.hook_result", H5))
-    edges_to_keep.append(("blocks.0.attn.hook_v", H5, "blocks.0.hook_v_input", H5))
-    edges_to_keep.append(("blocks.0.hook_v_input", H5, "blocks.0.hook_resid_pre", COL))
     edges_to_keep.append(("blocks.3.attn.hook_k", L3H, "blocks.3.hook_k_input", L3H))
     edges_to_keep.append(("blocks.3.hook_k_input", L3H, "blocks.2.attn.hook_result", H0))
-    edges_to_keep.append(("blocks.2.attn.hook_q", H0, "blocks.2.hook_q_input", H0))
-    edges_to_keep.append(("blocks.2.hook_q_input", H0, "blocks.0.hook_resid_pre", COL))
-    edges_to_keep.append(("blocks.2.hook_q_input", H0, "blocks.0.attn.hook_result", H5))
-    edges_to_keep.append(("blocks.0.attn.hook_v", H5, "blocks.0.hook_v_input", H5))
-    edges_to_keep.append(("blocks.0.hook_v_input", H5, "blocks.0.hook_resid_pre", COL))
-    edges_to_keep.append(("blocks.2.attn.hook_v", H0, "blocks.2.hook_v_input", H0))
-    edges_to_keep.append(("blocks.2.hook_v_input", H0, "blocks.1.attn.hook_result", H4))
-    edges_to_keep.append(("blocks.1.attn.hook_v", H4, "blocks.1.hook_v_input", H4))
-    edges_to_keep.append(("blocks.1.hook_v_input", H4, "blocks.0.hook_resid_pre", COL))
 
 for t in exp.corr.all_edges():
     if t not in edges_to_keep:
@@ -232,7 +246,14 @@ for t in exp.corr.all_edges():
         print("Keeping", t)
 
 exp.count_no_edges()
-print("Mean Logit Diff:", exp.metric(exp.model(exp.ds)))
-print(f"Fraction of LogitDiff>0: {ldgz_metric(exp.model(exp.ds)):.0%}")
+print("Neg. Mean Logit Diff (small=good):", ld_metric(exp.model(exp.ds)))
+print("KL (actual, small=good):", kl_metric(exp.model(exp.ds)))
+print(f"Neg. Fraction of LogitDiff>0 (small=good): {ldgz_metric(exp.model(exp.ds)):.0%}")
 
+
+show(
+    exp.corr,
+    "manual_circuit.png",
+    show_full_index=False,
+)
 # %%

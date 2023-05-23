@@ -99,6 +99,9 @@ from acdc.graphics import (
 import argparse
 torch.autograd.set_grad_enabled(False)
 
+# Random seed 0
+torch.manual_seed(0)
+
 #%%
 
 parser = argparse.ArgumentParser()
@@ -127,7 +130,7 @@ WANDB_PROJECT_NAME = args.wandb_project_name
 WANDB_RUN_NAME = args.wandb_run_name
 INDICES_MODE = args.indices_mode
 NAMES_MODE = args.names_mode
-DEVICE = "cuda"
+DEVICE = "cpu"
 
 if WANDB_RUN_NAME is None or IPython.get_ipython() is not None:
     WANDB_RUN_NAME = f"{ct()}{'_randomindices' if INDICES_MODE=='random' else ''}_{THRESHOLD}{'_zero' if ZERO_ABLATION else ''}"
@@ -166,7 +169,17 @@ num_examples = 50
 seq_len = 41
 
 #%%
-tl_model, toks_int_values, toks_int_values_other, metric, ldgz_metric = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric_name="docstring_stefan", correct_incorrect_wandb=False)
+
+docstring_things = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric_name="docstring_stefan", correct_incorrect_wandb=False)
+
+tl_model = docstring_things.tl_model
+toks_int_values = docstring_things.test_data
+toks_int_values_other = docstring_things.test_patch_data
+metrics = docstring_things.test_metrics
+kl_metric = metrics["kl_div"]
+ld_metric = metrics["docstring_metric"]
+ldgz_metric = metrics["docstring_stefan"]
+
 tl_model.global_cache.clear()
 tl_model.reset_hooks()
 
@@ -181,7 +194,7 @@ exp = TLACDCExperiment(
     zero_ablation=ZERO_ABLATION,
     ds=toks_int_values,
     ref_ds=toks_int_values_other,
-    metric=metric,
+    metric=kl_metric,
     second_metric=ldgz_metric,
     verbose=True,
     indices_mode=INDICES_MODE,
@@ -220,20 +233,23 @@ for t in exp.corr.all_edges():
         edge.effect_size = 1
         print("Keeping", t)
 
+#%%
 exp.count_no_edges()
-print("Mean Logit Diff:", exp.metric(exp.model(exp.ds)))
-print(f"Fraction of LogitDiff>0: {ldgz_metric(exp.model(exp.ds)):.0%}")
+print("Neg. Mean Logit Diff (small=good):", ld_metric(exp.model(exp.ds)))
+print("KL (actual, small=good):", kl_metric(exp.model(exp.ds)))
+print(f"Neg. Fraction of LogitDiff>0 (small=good): {ldgz_metric(exp.model(exp.ds)):.0%}")
+# # %%
+# for t in exp.corr.all_edges():
+#     print(f"To {t[0]} {t[1]} from {t[2]} {t[3]}")
+#     #if t not in edges_to_keep:
+#     #    print(f"To {t[0]} {t[1]} from {t[2]} {t[3]}")
+# # %%
 
-# %%
-for t in exp.corr.all_edges():
-    print(f"To {t[0]} {t[1]} from {t[2]} {t[3]}")
-    #if t not in edges_to_keep:
-    #    print(f"To {t[0]} {t[1]} from {t[2]} {t[3]}")
-# %%
+# for t in exp.corr.all_edges():
+#     if "attn.hook_result" in t[0] or t not in edges_to_keep or (t[2] == "blocks.0.hook_resid_pre" and t[0] == "blocks.3.hook_resid_post"):
+#         pass
+#     else:
+#         print("Keeping", t)
+# # %%
 
-for t in exp.corr.all_edges():
-    if "attn.hook_result" in t[0] or t not in edges_to_keep or (t[2] == "blocks.0.hook_resid_pre" and t[0] == "blocks.3.hook_resid_post"):
-        pass
-    else:
-        print("Keeping", t)
 # %%
