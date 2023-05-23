@@ -70,8 +70,8 @@ def launch(commands: List[List[str]], name: str, job: Optional[KubernetesJob] = 
             else:
                 base_path = Path(f"/tmp/{name}")
                 base_path.mkdir(parents=True, exist_ok=True)
-                stdout = open(base_path / f"stdout_{i:03d}.txt", "w")
-                stderr = open(base_path / f"stderr_{i:03d}.txt", "w")
+                stdout = open(base_path / f"stdout_{i:05d}.txt", "w")
+                stderr = open(base_path / f"stderr_{i:05d}.txt", "w")
                 out = subprocess.Popen(command, stdout=stdout, stderr=stderr)
                 to_wait.append((command_str, out, stdout, stderr))
         else:
@@ -95,8 +95,8 @@ def launch(commands: List[List[str]], name: str, job: Optional[KubernetesJob] = 
                     "--never-restart",
                     f"--command={command_str}",
                     "--working-dir=/Automatic-Circuit-Discovery",
-                    "--shared-host-dir=/home/agarriga/.cache/huggingface",
-                    "--shared-host-dir-mount=/root/.cache/huggingface",
+                    "--shared-host-dir=/home/agarriga/.cache",
+                    "--shared-host-dir-mount=/root/.cache",
                     *job.mount_training_options(),
                 ],
                 check=True,
