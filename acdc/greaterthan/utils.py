@@ -4,9 +4,10 @@ from typing import ClassVar, Optional
 import torch
 import torch.nn.functional as F
 
-from acdc.acdc_utils import kl_divergence
+from acdc.acdc_utils import kl_divergence, TorchIndex
 from acdc.docstring.utils import AllDataThings
 from acdc.ioi.utils import get_gpt2_small
+from collections import OrderedDict
 
 NOUNS = [
     "abduction", "accord", "affair", "agreement", "appraisal",
