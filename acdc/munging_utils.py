@@ -6,7 +6,7 @@ from acdc.TLACDCInterpNode import TLACDCInterpNode
 from acdc.acdc_utils import TorchIndex, EdgeType
 import warnings
 
-def parse_interpnode(s: str, verbose=False) -> TLACDCInterpNode:
+def parse_interpnode(s: str) -> TLACDCInterpNode:
     try:
         name, idx = s.split("[")
         try:
@@ -18,9 +18,11 @@ def parse_interpnode(s: str, verbose=False) -> TLACDCInterpNode:
                 idx = None
         return TLACDCInterpNode(name, TorchIndex([None, None, idx]) if idx is not None else TorchIndex([None]), EdgeType.ADDITION)
 
-    except Exception as e:
-        print("Couldn't parse a node...", s, "and", str(e))
+    except Exception as e: 
+        print(s, e)
         raise e
+
+    return TLACDCInterpNode(name, TorchIndex([None, None, idx]), EdgeType.ADDITION)
 
 def get_col_from_df(df, col_name):
     return df[col_name].values
