@@ -157,6 +157,7 @@ parser.add_argument("--testing", action="store_true", help="Use testing data ins
 parser.add_argument("--device", type=str, default="cpu")
 parser.add_argument("--out-dir", type=str, default="DEFAULT")
 parser.add_argument('--torch-num-threads', type=int, default=0, help="How many threads to use for torch (0=all)")
+parser.add_argument('--seed', type=int, default=42, help="Random seed")
 
 if IPython.get_ipython() is not None:
     args = parser.parse_args("--task=ioi --metric=logit_diff --alg=acdc".split())

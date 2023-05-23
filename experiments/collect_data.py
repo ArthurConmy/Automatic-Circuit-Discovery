@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from experiments.launcher import KubernetesJob, WandbIdentifier, launch
 import shlex
+import random
 
 TASKS = ["ioi", "docstring", "greaterthan", "tracr-reverse", "tracr-proportion", "induction"]
 
@@ -22,6 +23,9 @@ def main(alg: str, task: str, job: KubernetesJob, testing: bool = False):
 
     OUT_DIR = Path("/root") / OUT_RELPATH
 
+    seed = 1233778640
+    random.seed(seed)
+
     commands = []
     for reset_network in [0, 1]:
         for zero_ablation in [0, 1]:
@@ -36,6 +40,7 @@ def main(alg: str, task: str, job: KubernetesJob, testing: bool = False):
                     f"--device={'cpu' if testing or not job.gpu else 'cuda'}",
                     f"--torch-num-threads={job.cpu}",
                     f"--out-dir={OUT_DIR}",
+                    f"--seed={random.randint(0, 2**31-1)}",
                 ]
                 if zero_ablation:
                     command.append("--zero-ablation")
@@ -46,8 +51,8 @@ def main(alg: str, task: str, job: KubernetesJob, testing: bool = False):
         name="collect_data",
         job=job,
         synchronous=True,
-        check_wandb=None,
         just_print_commands=False,
+        check_wandb=WandbIdentifier(f"agarriga-collect-{alg}-{task[-5:]}-{{i:05d}}", "collect", "acdc"),
     )
 
 
