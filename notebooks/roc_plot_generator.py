@@ -671,18 +671,18 @@ def get_points(corrs_and_scores, decreasing=True):
             score = a
 
         circuit_size = corr.count_no_edges()
-        if circuit_size == 0:
-            continue
         if TASK != "induction":
-            tp_stat = true_positive_stat(ground_truth=canonical_circuit_subgraph, recovered=corr)
+            if circuit_size == 0:
+                tp_stat = 0
+                fp_stat = 0
+            else:
+                tp_stat = true_positive_stat(ground_truth=canonical_circuit_subgraph, recovered=corr)
+                fp_stat = false_positive_rate(ground_truth=canonical_circuit_subgraph, recovered=corr)
             score.update(
                 {
-                    "fpr": (
-                        false_positive_rate(ground_truth=canonical_circuit_subgraph, recovered=corr)
-                        / (max_subgraph_size - canonical_circuit_subgraph_size)  # FP / (TOTAL - P) = FP / N
-                    ),
+                    "fpr": fp_stat / (max_subgraph_size - canonical_circuit_subgraph_size),  # FP / (TOTAL - P) = FP / N
                     "tpr": tp_stat / canonical_circuit_subgraph_size,  # TP / P
-                    "precision": tp_stat / circuit_size,  # TP / (TP + FP) = TP / (predicted positive)
+                    "precision": 1 if circuit_size == 0 else tp_stat / circuit_size,  # TP / (TP + FP) = TP / (predicted positive)
                     "n_edges": circuit_size,
                 }
             )
@@ -693,6 +693,7 @@ def get_points(corrs_and_scores, decreasing=True):
 
     points.append(end_point)
     assert all(("n_edges" in p) for p in points)
+    assert len(points) > 3
     return points
 
 points = {}
@@ -748,6 +749,8 @@ if OUT_FILE is not None:
 
     ablation = "zero_ablation" if ZERO_ABLATION else "random_ablation"
     weights = "reset" if RESET_NETWORK else "trained"
+
+    assert len(points[ALG]) > 3
 
     out_dict = {
         weights: {

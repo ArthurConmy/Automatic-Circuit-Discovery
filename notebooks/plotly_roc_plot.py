@@ -154,7 +154,7 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
         (2, 4),
     ]
 
-    df = pd.DataFrame()
+    all_series = []
 
     for task_idx, (row, col) in zip(task_idxs, rows_and_cols):
         for alg_idx, methodof in alg_names.items():
@@ -178,14 +178,15 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
                 if plot_type == "roc":
                     auc = sklearn.metrics.auc(x_data, y_data)
 
-                    df = df.append({
+                    all_series.append(pd.Series({
                         "task": task_idx,
                         "method": methodof,
                         "auc": auc,
                         "metric": metric_name,
                         "weights_type": weights_type,
                         "ablation_type": ablation_type,
-                    }, ignore_index=True)
+                        "n_points": len(points),
+                    }))
 
                 fig.add_trace(
                     go.Scatter(
@@ -323,7 +324,7 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
     fig.update_layout(height=250*scale, width=scale*scale*500,
                       margin=dict(l=55, r=70, t=20, b=50)
                       )
-    return fig, df
+    return fig, pd.concat(all_series, axis=1) if all_series else pd.DataFrame()
 
 plot_type_keys = {
     "precision_recall": ("tpr", "precision"),
@@ -340,7 +341,9 @@ for metric_idx in [0, 1]:
             for plot_type in ["precision_recall", "roc"]:
                 x_key, y_key = plot_type_keys[plot_type]
                 fig, df = make_fig(metric_idx=metric_idx, weights_type=weights_type, ablation_type=ablation_type, x_key=x_key, y_key=y_key)
-                all_dfs.append(df)
+                if plot_type == "roc":
+                    all_dfs.append(df.T)
+                    print(all_dfs[-1])
 
                 metric = "kl" if metric_idx == 0 else "other"
                 fig.write_image(PLOT_DIR / ("--".join([metric, weights_type, ablation_type, plot_type]) + ".pdf"))
