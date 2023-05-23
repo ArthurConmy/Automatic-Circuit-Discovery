@@ -59,7 +59,6 @@ for fname in os.listdir(DATA_DIR):
 
 fig=px.scatter(x=[0, 1, 2, 3, 4], y=[0, 1, 4, 9, 16])
 fig.write_image("/tmp/discard.pdf", format="pdf")
-# time.sleep(1)
 
 # %%
 

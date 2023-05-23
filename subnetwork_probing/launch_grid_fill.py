@@ -2,6 +2,9 @@ from experiments.launcher import KubernetesJob, WandbIdentifier, launch
 import numpy as np
 import random
 from typing import List
+import subprocess
+
+IS_ARTHUR = "arthurworkspace" in __file__
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
@@ -9,7 +12,7 @@ METRICS_FOR_TASK = {
     "tracr-proportion": ["kl_div", "l2"],
     "induction": ["kl_div", "nll"],
     "docstring": ["kl_div", "docstring_metric"],
-    "greaterthan": ["kl_div", "greaterthan"],
+    "greaterthan": ["kl_div"] if IS_ARTHUR else ["kl_div", "greaterthan"],
 }
 
 
@@ -108,10 +111,10 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool, reset_n
                             "subnetwork_probing/train.py",
                             f"--task={task}",
                             f"--lambda-reg={lambda_reg:.3f}",
-                            f"--wandb-name=agarriga-sp-{len(commands):05d}{'-optional' if task in ['induction', 'docstring'] else ''}",
+                            f"--wandb-name={'arthur' if IS_ARTHUR else 'agarriga'}-sp-{len(commands):05d}{'-optional' if task in ['induction', 'docstring'] else ''}",
                             "--wandb-project=induction-sp-replicate",
                             "--wandb-entity=remix_school-of-rock",
-                            "--wandb-group=tracr-shuffled-redo",
+                            f"--wandb-group={'arthur-sp' if IS_ARTHUR else 'tracr-shuffled-redo'}",
                             f"--device={'cpu' if testing or not job.gpu else 'cuda'}",
                             f"--epochs={1 if testing else 10000}",
                             f"--zero-ablation={zero_ablation}",
@@ -126,27 +129,34 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool, reset_n
                         ]
                         commands.append(command)
 
-    launch(
-        commands,
-        name="complete-spreadsheet",
-        job=job,
-        synchronous=True,
-        check_wandb=wandb_identifier,
-        just_print_commands=False,
-    )
+    if IS_ARTHUR:
+            for command in commands:
+                subprocess.run(command)
+
+    else:
+        launch(
+            commands,
+            name="complete-spreadsheet",
+            job=job,
+            synchronous=True,
+            check_wandb=wandb_identifier,
+            just_print_commands=False,
+        )
 
 if __name__ == "__main__":
     main(
-        ["ioi", "greaterthan", "induction", "docstring"],
+        ["greaterthan"] if IS_ARTHUR else ["ioi", "greaterthan", "induction", "docstring"],
         KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=2, gpu=1),
         "sp-gpu",
         testing=False,
-        reset_networks=True,
+        reset_networks=not IS_ARTHUR,
     )
-    main(
-        ["tracr-reverse", "tracr-proportion"],
-        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=4, gpu=0),
-        "sp-tracr",
-        testing=False,
-        reset_networks=True,
-    )
+
+    if not IS_ARTHUR:
+        main(
+            ["tracr-reverse", "tracr-proportion"],
+            KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=4, gpu=0),
+            "sp-tracr",
+            testing=False,
+            reset_networks=True,
+        )

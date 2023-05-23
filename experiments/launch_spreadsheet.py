@@ -1,7 +1,10 @@
 from experiments.launcher import KubernetesJob, WandbIdentifier, launch
 import numpy as np
+import subprocess
 import random
 from typing import List
+
+IS_ARTHUR = "arthurworkspace" in __file__
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
@@ -24,7 +27,8 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
     wandb_identifier = WandbIdentifier(
         run_name=run_name,
         group_name=group_name,
-        project="acdc")
+        project="acdc"
+    )
 
     commands: List[List[str]] = []
     for reset_network in [int(reset_networks)]:
@@ -116,31 +120,39 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
 
                         commands.append(command)
 
-    launch(
-        commands,
-        name="acdc-spreadsheet",
-        job=None
-        if not use_kubernetes
-        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=CPU, gpu=1),
-        check_wandb=wandb_identifier,
-        just_print_commands=False,
-    )
+        if IS_ARTHUR:
+            for command in commands:
+                print(" ".join(command))
+                subprocess.run(command)
+
+        else:
+            launch(
+                commands,
+                name="acdc-spreadsheet",
+                job=None
+                if not use_kubernetes
+                else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=CPU, gpu=1),
+                check_wandb=wandb_identifier,
+                just_print_commands=False,
+            )
 
 
 if __name__ == "__main__":
     main(
-        ["ioi", "greaterthan", "induction", "docstring"],
-        "reset-networks-neurips",
-        "agarriga-tracr3-{i:05d}",
+        ["greaterthan"] if IS_ARTHUR else ["ioi", "greaterthan", "induction", "docstring"],
+        "arthur-some-greaterthan",
+        "arthur-greaterthan1-{i:05d}",
         testing=False,
-        use_kubernetes=True,
-        reset_networks=True,
-    )
-    main(
-        ["induction"],
-        "adria-induction-3",
-        "agarriga-induction-{i:05d}",
-        testing=False,
-        use_kubernetes=True,
+        use_kubernetes=False, # OK Arthur just vandalised this
         reset_networks=False,
     )
+
+    if not IS_ARTHUR:
+        main(
+            ["induction"],
+            "adria-induction-3",
+            "agarriga-induction-{i:05d}",
+            testing=False,
+            use_kubernetes=True,
+            reset_networks=False,
+        )

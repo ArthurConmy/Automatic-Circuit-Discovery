@@ -3,15 +3,16 @@ import numpy as np
 import random
 from typing import List
 
+IS_ARTHUR = "arthurworkspace" in __file__
+
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
     "tracr-reverse": ["kl_div"],
     "tracr-proportion": ["kl_div", "l2"],
     "induction": ["kl_div", "nll"],
     "docstring": ["kl_div", "docstring_metric"],
-    "greaterthan": ["kl_div", "greaterthan"],
+    "greaterthan": ["greaterthan"] if IS_ARTHUR else ["kl_div", "greaterthan"],
 }
-
 
 def main(TASKS: list[str], job: KubernetesJob, name: str):
     seed = 1259281515
