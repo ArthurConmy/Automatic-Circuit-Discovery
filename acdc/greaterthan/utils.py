@@ -16,19 +16,15 @@ import wandb
 from acdc.HookedTransformer import HookedTransformer
 import warnings
 from functools import partial
-from copy import deepcopy
-import torch.nn.functional as F
-from typing import List, ClassVar, Optional
-import click
-import IPython
-from acdc.acdc_utils import kl_divergence
+from typing import ClassVar, Optional
+
 import torch
+import torch.nn.functional as F
+
+from acdc.acdc_utils import kl_divergence, TorchIndex
 from acdc.docstring.utils import AllDataThings
-from acdc.ioi.ioi_dataset import IOIDataset  # NOTE: we now import this LOCALLY so it is deterministic
-from tqdm import tqdm
-import wandb
-from acdc.HookedTransformer import HookedTransformer
 from acdc.ioi.utils import get_gpt2_small
+from collections import OrderedDict
 
 NOUNS = [
     "abduction", "accord", "affair", "agreement", "appraisal",
@@ -115,9 +111,9 @@ def greaterthan_metric_reference(logits, tokens):
     ans = 0.0
     for i in range(len(probs)):
         yearend = constants.INV_TOKENS[tokens[i][7].item()]
-        for year_suff in range(yearend, 100):
+        for year_suff in range(yearend+1, 100):
             ans += probs[i, constants.TOKENS[year_suff]]
-        for year_pref in range(0, yearend):
+        for year_pref in range(0, yearend+1):
             ans -= probs[i, constants.TOKENS[year_pref]]
     return - float(ans / len(probs))
 
@@ -132,7 +128,7 @@ def greaterthan_metric(logits, tokens, return_one_element: bool=True):
     range = torch.arange(len(yearend))
     positive = csum[:, -1]
     # Before: negative term
-    negative = torch.where(yearend == 0, torch.zeros((), device=csum.device), csum[range, yearend-1])
+    negative = torch.where(yearend == 0, torch.zeros((), device=csum.device), csum[range, yearend])
     if return_one_element:
         return - (positive - 2*negative).mean()
     else:
