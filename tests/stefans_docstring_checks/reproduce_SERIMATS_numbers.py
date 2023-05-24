@@ -208,9 +208,7 @@ exp = TLACDCExperiment(
 exp.model.reset_hooks() # essential, I would guess
 exp.setup_second_cache()
 
-heads_to_keep = [(0, 2), (0, 5), (1,2), (1, 4), (2, 0), (3, 0), (3, 6)] #post
-#heads_to_keep = [(0, 2), (0, 5), (1, 4), (2, 0), (3, 0), (3, 6)] #44%, mean=-0.85
-#heads_to_keep = [(0, 1), (0, 2), (0, 3), (0, 5), (1, 0), (1, 2), (1, 4), (2, 0), (2, 3), (3, 0), (3, 6)] #64%, mean=0.24
+heads_to_keep = [(0,2), (0,4), (0, 5), (1,2), (1, 4), (2, 0), (3, 0), (3, 6)] # LessWrong post
 
 edges_to_keep = []
 for t in exp.corr.all_edges():
@@ -238,18 +236,22 @@ exp.count_no_edges()
 print("Neg. Mean Logit Diff (small=good):", ld_metric(exp.model(exp.ds)))
 print("KL (actual, small=good):", kl_metric(exp.model(exp.ds)))
 print(f"Neg. Fraction of LogitDiff>0 (small=good): {ldgz_metric(exp.model(exp.ds)):.0%}")
-# # %%
-# for t in exp.corr.all_edges():
-#     print(f"To {t[0]} {t[1]} from {t[2]} {t[3]}")
-#     #if t not in edges_to_keep:
-#     #    print(f"To {t[0]} {t[1]} from {t[2]} {t[3]}")
-# # %%
-
-# for t in exp.corr.all_edges():
-#     if "attn.hook_result" in t[0] or t not in edges_to_keep or (t[2] == "blocks.0.hook_resid_pre" and t[0] == "blocks.3.hook_resid_post"):
-#         pass
-#     else:
-#         print("Keeping", t)
-# # %%
 
 # %%
+# Neither 0.2 or 0.4
+# No edge 312
+# Neg. Mean Logit Diff (small=good): tensor(0.8710)
+# KL (actual, small=good): tensor(0.9340)
+# Neg. Fraction of LogitDiff>0 (small=good): -40%
+
+# Only 0.2 not 0.4 as in Colab
+# No edge 388
+# Neg. Mean Logit Diff (small=good): tensor(0.6966)
+# KL (actual, small=good): tensor(0.8483)
+# Neg. Fraction of LogitDiff>0 (small=good): -40%
+
+# Both 0.2 and 0.4 <--- This is the one we use, and the one from the Heimersheim & Janiak Colab
+# No edge 464
+# Neg. Mean Logit Diff (small=good): tensor(0.6167)
+# KL (actual, small=good): tensor(0.8295)
+# Neg. Fraction of LogitDiff>0 (small=good): -42%

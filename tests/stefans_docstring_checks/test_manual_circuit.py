@@ -158,6 +158,7 @@ tl_model.reset_hooks()
 
 COL = TorchIndex([None])
 H0 = TorchIndex([None, None, 0])
+H2 = TorchIndex([None, None, 2])
 H4 = TorchIndex([None, None, 4])
 H5 = TorchIndex([None, None, 5])
 H6 = TorchIndex([None, None, 6])
@@ -227,6 +228,12 @@ edges_to_keep.append(("blocks.2.attn.hook_v", H0, "blocks.2.hook_v_input", H0))
 edges_to_keep.append(("blocks.2.hook_v_input", H0, "blocks.1.attn.hook_result", H4))
 edges_to_keep.append(("blocks.1.attn.hook_v", H4, "blocks.1.hook_v_input", H4))
 edges_to_keep.append(("blocks.1.hook_v_input", H4, "blocks.0.hook_resid_pre", COL))
+edges_to_keep.append(("blocks.1.attn.hook_q", H2, "blocks.1.hook_q_input", H2))
+edges_to_keep.append(("blocks.1.attn.hook_k", H2, "blocks.1.hook_k_input", H2))
+edges_to_keep.append(("blocks.1.hook_q_input", H2, "blocks.0.hook_resid_pre", COL))
+edges_to_keep.append(("blocks.1.hook_k_input", H2, "blocks.0.hook_resid_pre", COL))
+edges_to_keep.append(("blocks.1.hook_q_input", H2, "blocks.0.attn.hook_result", H5))
+edges_to_keep.append(("blocks.1.hook_k_input", H2, "blocks.0.attn.hook_result", H5))
 for L3H in [H0, H6]:
     edges_to_keep.append(("blocks.3.hook_resid_post", COL, "blocks.3.attn.hook_result", L3H))
     edges_to_keep.append(("blocks.3.attn.hook_q", L3H, "blocks.3.hook_q_input", L3H))
@@ -236,6 +243,7 @@ for L3H in [H0, H6]:
     edges_to_keep.append(("blocks.3.hook_v_input", L3H, "blocks.0.attn.hook_result", H5))
     edges_to_keep.append(("blocks.3.attn.hook_k", L3H, "blocks.3.hook_k_input", L3H))
     edges_to_keep.append(("blocks.3.hook_k_input", L3H, "blocks.2.attn.hook_result", H0))
+    edges_to_keep.append(("blocks.3.hook_k_input", L3H, "blocks.1.attn.hook_result", H2))
 
 for t in exp.corr.all_edges():
     if t not in edges_to_keep:

@@ -98,6 +98,10 @@ from acdc.graphics import (
 )
 import argparse
 torch.autograd.set_grad_enabled(False)
+import pickle
+
+# Seed 0
+torch.manual_seed(0)
 
 #%%
 
@@ -127,7 +131,7 @@ WANDB_PROJECT_NAME = args.wandb_project_name
 WANDB_RUN_NAME = args.wandb_run_name
 INDICES_MODE = args.indices_mode
 NAMES_MODE = args.names_mode
-DEVICE = "cuda"
+DEVICE = "cpu"
 
 if WANDB_RUN_NAME is None or IPython.get_ipython() is not None:
     WANDB_RUN_NAME = f"{ct()}{'_randomindices' if INDICES_MODE=='random' else ''}_{THRESHOLD}{'_zero' if ZERO_ABLATION else ''}"
@@ -141,7 +145,17 @@ notes = "dummy"
 assert TASK == "docstring"
 num_examples = 50
 seq_len = 41
-tl_model, toks_int_values, toks_int_values_other, metric, second_metric = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric_name="docstring_stefan", correct_incorrect_wandb=False)
+
+
+docstring_things = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric_name="docstring_stefan", correct_incorrect_wandb=False)
+tl_model = docstring_things.tl_model
+toks_int_values = docstring_things.test_data
+toks_int_values_other = docstring_things.test_patch_data
+metrics = docstring_things.test_metrics
+kl_metric = metrics["kl_div"]
+ld_metric = metrics["docstring_metric"]
+ldgz_metric = metrics["docstring_stefan"]
+
 tl_model.global_cache.clear()
 tl_model.reset_hooks()
 
@@ -180,8 +194,8 @@ exp = TLACDCExperiment(
     zero_ablation=ZERO_ABLATION,
     ds=toks_int_values,
     ref_ds=toks_int_values_other,
-    metric=metric,
-    second_metric=second_metric,
+    metric=kl_metric,
+    second_metric=kl_metric,
     verbose=True,
     indices_mode=INDICES_MODE,
     names_mode=NAMES_MODE,
@@ -194,13 +208,42 @@ exp = TLACDCExperiment(
 exp.model.reset_hooks() # essential, I would guess
 exp.setup_second_cache()
 
-print("FULL circuit Logit Diff:", exp.metric(exp.model(exp.ds)))
-print(f"Fraction of LogitDiff>0: {second_metric(exp.model(exp.ds)):.0%}")
+
+exp.count_no_edges()
+print("Neg. Mean Logit Diff (small=good):", ld_metric(exp.model(exp.ds)))
+print("KL (actual, small=good):", kl_metric(exp.model(exp.ds)))
+print(f"Neg. Fraction of LogitDiff>0 (small=good): {ldgz_metric(exp.model(exp.ds)):.0%}")
 
 
-import pickle
-with open("another_final_edges.pkl", "rb") as f:  # Use "rb" instead of "r"
+#%%
+
+# We use the following runs:
+# * ACDC runs in table https://wandb.ai/remix_school-of-rock/acdc/groups/abstract/workspace
+#   * abstract-00000: LD, tau=0.067, 98 edges, v832
+#   * abstract-00002: KL, tau=0.095, 34 edges, v831
+# * The run from the abstract can be found under https://wandb.ai/remix_school-of-rock/acdc/runs/yjiv90g1
+
+# Code to download the artifacts with edges lists:
+# run = wandb.init()
+# artifact = run.use_artifact('remix_school-of-rock/acdc/edges.pth:v833', type='dataset')
+# artifact_dir = artifact.download()
+
+# Quick check that the number of edges is correct:
+# for filename in os.listdir("./artifacts"):
+#     with open("./artifacts/"+filename+"/edges.pth", "rb") as f:  # Use "rb" instead of "r"
+#         edges = pickle.load(f)
+#     edges_2 = []
+#     for e in edges:
+#         if e[1] is not None:
+#              edges_2.append(e)
+#     print(filename, len(edges_2), len(edges))
+
+
+# Load artifact 831 or 832
+number="832"
+with open(f"./artifacts/edges.pth:v{number}/edges.pth", "rb") as f:  # Use "rb" instead of "r"
     final_edges = pickle.load(f)
+
 edges_to_keep = []
 for e in final_edges:
     edges_to_keep.append(e[0])
@@ -215,12 +258,13 @@ for t in exp.corr.all_edges():
         print("Keeping", t)
 
 exp.count_no_edges()
-print("ACDC circuit Logit Diff:", exp.metric(exp.model(exp.ds)))
-print(f"Fraction of LogitDiff>0: {second_metric(exp.model(exp.ds)):.0%}")
+print("Neg. Mean Logit Diff (small=good):", ld_metric(exp.model(exp.ds)))
+print("KL (actual, small=good):", kl_metric(exp.model(exp.ds)))
+print(f"Neg. Fraction of LogitDiff>0 (small=good): {ldgz_metric(exp.model(exp.ds)):.0%}")
 
-#%%
-for t in exp.corr.all_edges():
-    if t not in edges_to_keep:
-        pass#print("Removing", t)
-    else:
-        print("Keeping", t)
+show(
+    exp.corr,
+    f"acdc_abstract_{number}.png",
+    show_full_index=False,
+)
+# %%
