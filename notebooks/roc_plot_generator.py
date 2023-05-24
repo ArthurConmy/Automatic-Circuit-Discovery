@@ -179,6 +179,7 @@ if args.alg != "none":
     SKIP_SIXTEEN_HEADS = False if args.alg == "16h" else True
     # make a new 
     OUT_FILE = Path(__file__).resolve().parent.parent / "acdc" / "media" / "arthur_plots_data" / f"{args.alg}-{args.task}-{args.metric}-{args.zero_ablation}-{args.reset_network}.json"
+    print(f"Saving to {OUT_FILE}")
 
     if OUT_FILE.exists():
         print("File already exists, skipping")

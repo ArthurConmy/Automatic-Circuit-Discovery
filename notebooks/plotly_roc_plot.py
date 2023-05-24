@@ -16,7 +16,6 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 from pathlib import Path
 import plotly.express as px
-import sklearn.metrics
 import pandas as pd
 
 from notebooks.emacs_plotly_render import set_plotly_renderer
@@ -184,8 +183,8 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
             if len(pareto_optimal) and DO_PARETO:
                 x_data, y_data = zip(*pareto_optimal)
                 if plot_type == "roc":
-                    auc = sklearn.metrics.auc(x_data, y_data)
-
+                    # auc = sklearn.metrics.auc(x_data, y_data)
+                    auc = -69.0
                     # df = df.append({
                     #     "task": task_idx,
                     #     "method": methodof,
