@@ -16,19 +16,15 @@ import wandb
 from acdc.HookedTransformer import HookedTransformer
 import warnings
 from functools import partial
-from copy import deepcopy
-import torch.nn.functional as F
-from typing import List, ClassVar, Optional
-import click
-import IPython
-from acdc.acdc_utils import kl_divergence
+from typing import ClassVar, Optional
+
 import torch
+import torch.nn.functional as F
+
+from acdc.acdc_utils import kl_divergence, TorchIndex
 from acdc.docstring.utils import AllDataThings
-from acdc.ioi.ioi_dataset import IOIDataset  # NOTE: we now import this LOCALLY so it is deterministic
-from tqdm import tqdm
-import wandb
-from acdc.HookedTransformer import HookedTransformer
 from acdc.ioi.utils import get_gpt2_small
+from collections import OrderedDict
 
 NOUNS = [
     "abduction", "accord", "affair", "agreement", "appraisal",
