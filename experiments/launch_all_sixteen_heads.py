@@ -56,7 +56,7 @@ def main(TASKS: list[str], job: KubernetesJob, name: str):
     launch(
         commands,
         name=wandb_identifier.run_name,
-        job=None,
+        job=job,
         check_wandb=wandb_identifier,
         just_print_commands=False,
         synchronous=True,
