@@ -75,9 +75,9 @@ fig.write_image("/tmp/discard.pdf", format="pdf")
 # %%
 
 alg_names = {
-    "ACDC": "ACDC",
-    "SP": "SP",
     "16H": "HISP",
+    "SP": "SP",
+    "ACDC": "ACDC",
 }
 
 TASK_NAMES = {
@@ -184,6 +184,21 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
 
     fig.update_annotations(font_size=12)
 
+    min_score = 1e90
+    max_score = -1e90
+    for task_idx in task_idxs:
+        for metric_name in METRICS_FOR_TASK[task_idx]:
+            try:
+                x_data = this_data[task_idx][metric_name]["ACDC"]["score"]
+            except KeyError:
+                continue
+            if len(x_data) > 0:
+                finites = [x for x in x_data if np.isfinite(x)]
+                min_score = min(min_score, min(finites))
+                max_score = max(max_score, max(finites))
+
+
+
     all_series = []
     for (row, col), task_idx in rows_cols_task_idx:
         for alg_idx, methodof in alg_names.items():
@@ -193,9 +208,11 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
             try:
                 x_data = this_data[task_idx][metric_name][alg_idx][x_key]
                 y_data = this_data[task_idx][metric_name][alg_idx][y_key]
+                scores = this_data[task_idx][metric_name][alg_idx]["score"]
             except KeyError:
                 x_data = []
                 y_data = []
+                scores = []
 
             if alg_idx == "SP":
                 # Divide by number of loss runs. Fix earlier bug.
@@ -217,6 +234,12 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
                 x_data, y_data = zip(*pareto_optimal)
                 if plot_type == "roc":
                     auc = sklearn.metrics.auc(x_data, y_data)
+                    test_kl_div = this_data[task_idx][metric_name][alg_idx]["test_kl_div"][1:-1]
+                    test_loss = this_data[task_idx][metric_name][alg_idx]["test_" + metric_name][1:-1]
+                    if alg_idx == "SP":
+                        test_kl_div = [x / 20 for x in test_kl_div]
+                        test_loss = [x / 20 for x in test_loss]
+
 
                     all_series.append(pd.Series({
                         "task": task_idx,
@@ -226,6 +249,12 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
                         "weights_type": weights_type,
                         "ablation_type": ablation_type,
                         "n_points": len(points),
+                        "test_kl_div": np.mean(test_kl_div),
+                        "test_kl_div_max": np.max(test_kl_div),
+                        "test_kl_div_mean": np.mean(test_kl_div),
+                        "test_loss": np.mean(test_loss),
+                        "test_loss_max": np.max(test_loss),
+                        "test_loss_mean": np.mean(test_loss),
                     }))
 
                 fig.add_trace(
@@ -257,6 +286,7 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
 
             print(task_idx, alg_idx, metric_name, len(x_data), len(y_data))
 
+            colorscale = px.colors.get_colorscale("Purples")
             fig.add_trace(
                 go.Scatter(
                     x=x_data,
@@ -267,7 +297,7 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
                     showlegend = (row, col) == rows_and_cols[-2],
                     marker=dict(
                         size=7,
-                        color=colors[methodof],
+                        color=colors[methodof] if alg_idx != "ACDC" else plotly.colors.sample_colorscale(colorscale, (np.clip(scores, min_score, max_score) - min_score)/(2*(max_score-min_score)) + 0.5),
                         symbol=symbol[methodof],
                     ),
 
@@ -276,10 +306,10 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
                 col=col,
             )
 
-            fig.update_layout(
-                title_font=dict(size=8),
-                title=plot_type,
-            )
+            # fig.update_layout(
+            #     title_font=dict(size=20),
+            #     title=plot_type,
+            # )
 
             if (row, col) == rows_and_cols[0]:
                 if plot_type == "roc" and args.arrows:
@@ -362,9 +392,8 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
                     fig.update_yaxes(visible=True, row=row, col=col, tickangle=-45)
 
                 if x_key == "n_edges":
-                    # fig.update_xaxes(type='log', row=row, col=col)
+                    fig.update_xaxes(type='log', row=row, col=col)
                     # fig.update_yaxes(type='log', row=row, col=col)
-                    pass
                 else:
                     fig.update_xaxes(visible=True, row=row, col=col, tickvals=[0, 0.25, 0.5, 0.75, 1.], ticktext=["0", "", "0.5", "", "1"], range=[-0.05, 1.05])
 

@@ -39,7 +39,7 @@ def main(use_kubernetes: bool, testing: bool, CPU: int = 4):
             f"--seed={random.randint(0, 2**32 - 1)}",
             f"--metric={kwargs['metric']}",
             "--wandb-dir=/root/.cache/huggingface/tracr-training/acdc",  # If it doesn't exist wandb will use /tmp
-            f"--wandb-mode=offline",
+            f"--wandb-mode=online",
             f"--max-num-epochs={1 if testing else 40_000}",
         ]
         commands.append(command)
