@@ -270,20 +270,21 @@ def log_metrics_to_wandb(
     list_of_timesteps = [i + 1 for i in range(experiment.metrics_to_plot["acdc_step"])]
     if experiment.metrics_to_plot["acdc_step"] > 1:
         if result is not None:
-            for y_name in []: # "results", "times_diff"]:  # Do not push these to wandb to avoid rate limiting
-                do_plotly_plot_and_log(
-                    experiment,
-                    x=list_of_timesteps,
-                    y=experiment.metrics_to_plot[y_name],
-                    metadata=[
-                        f"{parent_string} to {child_string}"
-                        for parent_string, child_string in zip(
-                            experiment.metrics_to_plot["list_of_parents_evaluated"],
-                            experiment.metrics_to_plot["list_of_children_evaluated"],
-                        )
-                    ],
-                    plot_name=y_name,
-                )
+            for y_name in ["results"]:
+                if len(list_of_timesteps) % 20 == 19:
+                    do_plotly_plot_and_log(
+                        experiment,
+                        x=list_of_timesteps,
+                        y=experiment.metrics_to_plot[y_name],
+                        metadata=[
+                            f"{parent_string} to {child_string}"
+                            for parent_string, child_string in zip(
+                                experiment.metrics_to_plot["list_of_parents_evaluated"],
+                                experiment.metrics_to_plot["list_of_children_evaluated"],
+                            )
+                        ],
+                        plot_name=y_name,
+                    )
 
         if evaluated_metric is not None:
             do_plotly_plot_and_log(

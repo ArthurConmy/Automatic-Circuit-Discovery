@@ -39,8 +39,8 @@ class TLACDCExperiment:
         ds: torch.Tensor,
         ref_ds: Optional[torch.Tensor],
         threshold: float,
-        metric: Callable[[torch.Tensor, torch.Tensor], torch.Tensor], # dataset and logits to metric. Output should be a scalar
-        second_metric: Optional[Callable[[torch.Tensor, torch.Tensor], float]] = None,
+        metric: Callable[[torch.Tensor], torch.Tensor],
+        second_metric: Optional[Callable[[torch.Tensor], float]] = None,
         verbose: bool = False,
         hook_verbose: bool = False,
         parallel_hypotheses: int = 1, # lol
@@ -750,9 +750,7 @@ class TLACDCExperiment:
 
     def load_from_wandb_run(
         self,
-        wandb_entity_name,
-        wandb_project_name,
-        wandb_run_name,
+        log_text: str,
     ) -> None:
         """Set the current subgraph equal to one from a wandb run"""
 
@@ -760,46 +758,28 @@ class TLACDCExperiment:
         for _, edge in self.corr.all_edges().items():
             edge.present = False
 
-        # get the wandb logs
-        api = wandb.Api()
-        run = api.run(f"{wandb_entity_name}/{wandb_project_name}/{wandb_run_name}")
-        file = run.file("output.log")
-        
         found_at_least_one_readable_line = False
+        lines = log_text.split("\n")
 
-        # file.download() in a temp dir
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            try:
-                file.download(tmpdirname)
-            except Exception as e:
-                raise ValueError("Probably, this doesn't have an output.log file??")
-            fpath = os.path.join(tmpdirname, "output.log")
+        for i, line in enumerate(lines):
+            removing_connection = "...so removing connection" in line
+            keeping_connection = "...so keeping connection" in line
 
-            # load the subgraph
-            with open(fpath, "r") as f:
-                log_text = f.read()  
+            if removing_connection or keeping_connection:
+                # check that the readable line is well readable
 
-            lines = log_text.split("\n")
+                found_at_least_one_readable_line = True
+                for back_index in range(6):
+                    previous_line = lines[i-back_index] # magic number because of the formatting of the log lines
+                    if previous_line.startswith("Node: "):
+                        break
+                else:
+                    raise ValueError("Didn't find corresponding node line")
+                parent_name, parent_list, current_name, current_list = extract_info(previous_line)
+                parent_torch_index, current_torch_index = TorchIndex(parent_list), TorchIndex(current_list)
+                self.corr.edges[current_name][current_torch_index][parent_name][parent_torch_index].present = keeping_connection
 
-            for i, line in enumerate(lines):
-                removing_connection = "...so removing connection" in line
-                keeping_connection = "...so keeping connection" in line
-
-                if removing_connection or keeping_connection:
-                    # check that the readable line is well readable
-
-                    found_at_least_one_readable_line = True
-                    for back_index in range(6):
-                        previous_line = lines[i-back_index] # magic number because of the formatting of the log lines
-                        if previous_line.startswith("Node: "):
-                            break
-                    else:
-                        raise ValueError("Didn't find corresponding node line")
-                    parent_name, parent_list, current_name, current_list = extract_info(previous_line)
-                    parent_torch_index, current_torch_index = TorchIndex(parent_list), TorchIndex(current_list)
-                    self.corr.edges[current_name][current_torch_index][parent_name][parent_torch_index].present = keeping_connection
-        
-            assert found_at_least_one_readable_line, f"No readable lines found in the log file. Is this formatted correctly ??? {lines=}"
+        assert found_at_least_one_readable_line, f"No readable lines found in the log file. Is this formatted correctly ??? {lines=}"
         
     def remove_all_non_attention_connections(self):
         # remove all connection except the MLP connections

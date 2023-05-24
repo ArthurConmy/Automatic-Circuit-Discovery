@@ -1,9 +1,7 @@
-from experiments.launcher import KubernetesJob, launch
+from experiments.launcher import KubernetesJob, WandbIdentifier, launch
 import numpy as np
 import random
 from typing import List
-
-TASKS = ["ioi", "tracr-reverse", "tracr-proportion", "greaterthan", "induction", "docstring"]
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
@@ -15,19 +13,32 @@ METRICS_FOR_TASK = {
 }
 
 
-def main(testing: bool, use_kubernetes: bool):
-    base_regularization_params = np.concatenate(
+def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool, reset_networks: bool):
+    NUM_SPACINGS = 5 if reset_networks else 21
+    expensive_base_regularization_params = np.concatenate(
         [
             10 ** np.linspace(-2, 0, 11),
             np.linspace(1, 10, 10)[1:],
             np.linspace(10, 250, 13)[1:],
         ]
     )
+
+    if reset_networks:
+        base_regularization_params = 10 ** np.linspace(-2, 1.5, NUM_SPACINGS)
+    else:
+        base_regularization_params = expensive_base_regularization_params
+
+    wandb_identifier = WandbIdentifier(
+        run_name=f"{name}-{{i:05d}}",
+        group_name="reset-networks3",
+        project="induction-sp-replicate")
+
+
     seed = 1507014021
     random.seed(seed)
 
     commands: List[List[str]] = []
-    for reset_network in [0, 1]:
+    for reset_network in [int(reset_networks)]:
         for zero_ablation in [0, 1]:
             for task in TASKS:
                 for metric in METRICS_FOR_TASK[task]:
@@ -50,7 +61,7 @@ def main(testing: bool, use_kubernetes: bool):
                             regularization_params = base_regularization_params
                         elif metric == "greaterthan":
                             # Typical metric value range: -1.0 - 0.0
-                            regularization_params = 10 ** np.linspace(-4, 2, 21)
+                            regularization_params = 10 ** np.linspace(-4, 2, NUM_SPACINGS)
                         else:
                             raise ValueError("Unknown metric")
                         num_examples = 100
@@ -59,7 +70,7 @@ def main(testing: bool, use_kubernetes: bool):
                         seq_len = 41
                         if metric == "kl_div":
                             # Typical metric value range: 0.0-10.0
-                            regularization_params = base_regularization_params
+                            regularization_params = expensive_base_regularization_params
                         elif metric == "docstring_metric":
                             # Typical metric value range: -1.0 - 0.0
                             regularization_params = 10 ** np.linspace(-4, 2, 21)
@@ -74,7 +85,7 @@ def main(testing: bool, use_kubernetes: bool):
                             regularization_params = base_regularization_params
                         elif metric == "logit_diff":
                             # Typical metric value range: -0.31 -- -0.01
-                            regularization_params = 10 ** np.linspace(-4, 2, 21)
+                            regularization_params = 10 ** np.linspace(-4, 2, NUM_SPACINGS)
                         else:
                             raise ValueError("Unknown metric")
                     elif task == "induction":
@@ -82,10 +93,10 @@ def main(testing: bool, use_kubernetes: bool):
                         num_examples  = 50
                         if metric == "kl_div":
                             # Typical metric value range: 0.0-16.0
-                            regularization_params = base_regularization_params
+                            regularization_params = expensive_base_regularization_params
                         elif metric == "nll":
                             # Typical metric value range: 0.0-16.0
-                            regularization_params = base_regularization_params
+                            regularization_params = expensive_base_regularization_params
                         else:
                             raise ValueError("Unknown metric")
                     else:
@@ -100,8 +111,8 @@ def main(testing: bool, use_kubernetes: bool):
                             f"--wandb-name=agarriga-sp-{len(commands):05d}{'-optional' if task in ['induction', 'docstring'] else ''}",
                             "--wandb-project=induction-sp-replicate",
                             "--wandb-entity=remix_school-of-rock",
-                            "--wandb-group=complete-spreadsheet-4",
-                            f"--device=cpu",
+                            "--wandb-group=tracr-shuffled-redo",
+                            f"--device={'cpu' if testing or not job.gpu else 'cuda'}",
                             f"--epochs={1 if testing else 10000}",
                             f"--zero-ablation={zero_ablation}",
                             f"--reset-subject={reset_network}",
@@ -110,18 +121,32 @@ def main(testing: bool, use_kubernetes: bool):
                             f"--num-examples={6 if testing else num_examples}",
                             f"--seq-len={seq_len}",
                             f"--n-loss-average-runs={1 if testing else 20}",
-                            "--wandb-dir=/training/sp",  # If it doesn't exist wandb will use /tmp
-                            "--wandb-mode=online",
+                            "--wandb-dir=./tracr_anew",  # If it doesn't exist wandb will use /tmp
+                            f"--wandb-mode={'offline' if testing else 'online'}",
                         ]
                         commands.append(command)
 
     launch(
         commands,
         name="complete-spreadsheet",
-        job=None
-        if not use_kubernetes
-        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.2.24", cpu=4, gpu=0),
+        job=job,
+        synchronous=True,
+        check_wandb=wandb_identifier,
+        just_print_commands=False,
     )
 
 if __name__ == "__main__":
-    main(testing=True, use_kubernetes=False)
+    main(
+        ["ioi", "greaterthan", "induction", "docstring"],
+        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=2, gpu=1),
+        "sp-gpu",
+        testing=False,
+        reset_networks=True,
+    )
+    main(
+        ["tracr-reverse", "tracr-proportion"],
+        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=4, gpu=0),
+        "sp-tracr",
+        testing=False,
+        reset_networks=True,
+    )
