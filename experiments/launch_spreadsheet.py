@@ -9,7 +9,7 @@ METRICS_FOR_TASK = {
     "tracr-proportion": ["kl_div", "l2"],
     "induction": ["kl_div", "nll"],
     "docstring": ["kl_div", "docstring_metric"],
-    "greaterthan": ["kl_div", "greaterthan"],
+    "greaterthan": ["greaterthan"],  # "kl_div"
 }
 
 CPU = 4
@@ -28,7 +28,7 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
 
     commands: List[List[str]] = []
     for reset_network in [int(reset_networks)]:
-        for zero_ablation in [0, 1]:
+        for zero_ablation in [0, 1] if reset_networks else [1]:
             for task in TASKS:
                 for metric in METRICS_FOR_TASK[task]:
 
@@ -51,7 +51,7 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
                             thresholds = 10 ** np.linspace(-4, 0, NUM_SPACINGS)
                         elif metric == "greaterthan":
                             # Typical metric value range: -1.0 - 0.0
-                            thresholds = 10 ** np.linspace(-4, 0, NUM_SPACINGS)
+                            thresholds = 10 ** np.linspace(-3, -1, NUM_SPACINGS)
                         else:
                             raise ValueError("Unknown metric")
                         num_examples = 100
@@ -121,26 +121,38 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
         name="acdc-spreadsheet",
         job=None
         if not use_kubernetes
-        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=CPU, gpu=1),
+        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.11", cpu=CPU, gpu=1),
         check_wandb=wandb_identifier,
         just_print_commands=False,
     )
 
 
 if __name__ == "__main__":
-    main(
-        ["ioi", "greaterthan", "induction", "docstring"],
-        "reset-networks-neurips",
-        "agarriga-tracr3-{i:05d}",
-        testing=False,
-        use_kubernetes=True,
-        reset_networks=True,
-    )
-    main(
-        ["induction"],
-        "adria-induction-3",
-        "agarriga-induction-{i:05d}",
-        testing=False,
-        use_kubernetes=True,
-        reset_networks=False,
-    )
+    for reset_networks in [False, True]:
+        main(
+            ["greaterthan"],
+            "gt-fix-metric",
+            f"agarriga-gt-res{int(reset_networks)}-{{i:05d}}",
+            testing=False,
+            use_kubernetes=True,
+            reset_networks=reset_networks,
+        )
+
+# if __name__ == "__main__":
+#     for reset_networks in [False, True]:
+#         main(
+#             ["ioi", "greaterthan", "induction", "docstring"],
+#             "reset-networks-neurips",
+#             "agarriga-tracr3-{i:05d}",
+#             testing=False,
+#             use_kubernetes=True,
+#             reset_networks=True,
+#         )
+#         main(
+#             ["induction"],
+#             "adria-induction-3",
+#             "agarriga-induction-{i:05d}",
+#             testing=False,
+#             use_kubernetes=True,
+#             reset_networks=False,
+#         )

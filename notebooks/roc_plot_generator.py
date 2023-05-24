@@ -320,8 +320,9 @@ elif TASK == "greaterthan":
     if METRIC == "greaterthan" and not RESET_NETWORK and not ZERO_ABLATION:
         ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_greaterthan_sweep_fixed_random"
         ACDC_PRE_RUN_FILTER = {}
-
-    if RESET_NETWORK:
+    elif METRIC == "greaterthan":
+        ACDC_PRE_RUN_FILTER["group"] = "gt-fix-metric"
+    elif RESET_NETWORK:
         try:
             del ACDC_PRE_RUN_FILTER["group"]
         except KeyError:
