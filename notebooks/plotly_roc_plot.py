@@ -111,9 +111,9 @@ symbol = {
 
 
 x_names = {
-    "fpr": "False positive rate (edges)",
-    "tpr": "True positive rate (edges)",
-    "precision": "Precision (edges)",
+    "fpr": "False positive rate (nodes)",
+    "tpr": "True positive rate (nodes)",
+    "precision": "Precision (nodes)",
 }
 
 def discard_non_pareto_optimal(points):

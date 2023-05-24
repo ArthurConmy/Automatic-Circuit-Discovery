@@ -1,3 +1,11 @@
+# import wandb
+# api = wandb.Api()
+# runs = api.runs("remix_school-of-rock/induction-sp-replicate") # , filters=pre_run_filter)
+
+# print("Done")
+# print(dir(runs[0]), runs[0]._summary, runs[0].created_at)
+# assert False
+
 # %% [markdown]
 # Script of ROC Plots!!!
 
@@ -313,6 +321,8 @@ elif TASK == "greaterthan":
             SIXTEEN_HEADS_PRE_RUN_FILTER = None
             SIXTEEN_HEADS_RUN_FILTER = lambda run: run.id == "i4kwsri0" #  in str(run.state)
 
+            SP_RUN_FILTER = lambda run: "2023-05-24" in str(run.created_at) or "2023-05-25" in str(run.created_at) or "2023-05-23" in str(run.created_at)
+
         else:
             ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_greaterthan_sweep_fixed_random"
             ACDC_PRE_RUN_FILTER = None
@@ -339,7 +349,8 @@ else:
 #%% [markdown]
 # Setup the experiment for wrapping functionality nicely
 
-if things is not None:
+# if things is not None:
+if True:
     things.tl_model.global_cache.clear()
     things.tl_model.reset_hooks()
     exp = TLACDCExperiment(
@@ -355,8 +366,9 @@ if things is not None:
         verbose=True,
         use_pos_embed=USE_POS_EMBED,
     )
-
+    print("DONNNE")
     max_subgraph_size = exp.corr.count_no_edges()
+    print("Do")
 
 #%% [markdown]
 # Load the *canonical* circuit
@@ -623,6 +635,9 @@ def get_points(corrs_and_scores, decreasing=True):
 # points={}
 # corrs_and_scores = acdc_corrs
 # if True:
+
+    max_subgraph_size = exp.corr.count_no_edges()
+
     keys = set()
     for _, s in corrs_and_scores:
         keys.update(s.keys())
@@ -683,17 +698,17 @@ def get_points(corrs_and_scores, decreasing=True):
         if TASK != "induction":
             tp_stat = true_positive_stat(ground_truth=canonical_circuit_subgraph, recovered=corr)
             if MODE == "edges":
-                score.update(
-                    {
-                        "fpr": (
-                            false_positive_stat(ground_truth=canonical_circuit_subgraph, recovered=corr)
-                            / (max_subgraph_size - canonical_circuit_subgraph_size)  # FP / (TOTAL - P) = FP / N
-                        ),
-                        "tpr": tp_stat / canonical_circuit_subgraph_size,  # TP / P
-                        "precision": tp_stat / circuit_size,  # TP / (TP + FP) = TP / (predicted positive)
-                        "n_edges": circuit_size,
-                    }
-                )
+                    score.update(
+                        {
+                            "fpr": (
+                                1.0 if (max_subgraph_size - canonical_circuit_subgraph_size)==0 else false_positive_stat(ground_truth=canonical_circuit_subgraph, recovered=corr)
+                                / (max_subgraph_size - canonical_circuit_subgraph_size)  # FP / (TOTAL - P) = FP / N
+                            ),
+                            "tpr": 0.0 if canonical_circuit_subgraph_size==0 else tp_stat / canonical_circuit_subgraph_size,  # TP / P
+                            "precision": 0.0 if circuit_size==0 else tp_stat / circuit_size,  # TP / (TP + FP) = TP / (predicted positive)
+                            "n_edges": circuit_size,
+                        }
+                    )
 
             if MODE == "nodes":
                 _, len_ground_truth_all_nodes, len_recovered_all_nodes, max_subgraph_size = get_node_stat(ground_truth=canonical_circuit_subgraph, recovered=corr, mode="true positive", meta=True)
