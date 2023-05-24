@@ -312,13 +312,14 @@ elif TASK == "greaterthan":
 
     SP_PRE_RUN_FILTER["group"] = "sp-gt-fix-metric"
 
-    if METRIC == "kl_div":
-        if ZERO_ABLATION and not RESET_NETWORK:
+    if METRIC == "kl_div" and not RESET_NETWORK:
+        if ZERO_ABLATION:
             ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_greaterthan_zero_sweep"
             ACDC_PRE_RUN_FILTER = {}
-        else:
-            # ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_greaterthan_sweep"
-            ACDC_PRE_RUN_FILTER["group"] = "acdc-gt-ioi-redo"
+
+    if METRIC == "greaterthan" and not RESET_NETWORK and not ZERO_ABLATION:
+        ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_greaterthan_sweep_fixed_random"
+        ACDC_PRE_RUN_FILTER = {}
 
     if RESET_NETWORK:
         try:
@@ -416,7 +417,11 @@ def get_acdc_runs(
         try:
             score_d["score"] = run.config["threshold"]
         except KeyError:
-            score_d["score"] = float(run.name)
+            try:
+                score_d["score"] = float(run.name)
+            except ValueError:
+                score_d["score"] = float(run.name.split("_")[-1])
+
         threshold = score_d["score"]
 
         if "num_edges" in run.summary:
