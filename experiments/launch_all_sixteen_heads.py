@@ -9,7 +9,7 @@ METRICS_FOR_TASK = {
     "tracr-proportion": ["kl_div", "l2"],
     "induction": ["kl_div", "nll"],
     "docstring": ["kl_div", "docstring_metric"],
-    "greaterthan": ["kl_div", "greaterthan"],
+    "greaterthan": ["greaterthan"],  # "kl_div",
 }
 
 
@@ -19,7 +19,7 @@ def main(TASKS: list[str], job: KubernetesJob, name: str):
 
     wandb_identifier = WandbIdentifier(
         run_name=f"{name}-{{i:05d}}",
-        group_name="sixteen-heads",
+        group_name="16h-gpu-proper",
         project="acdc")
 
     commands: List[List[str]] = []
@@ -64,13 +64,14 @@ def main(TASKS: list[str], job: KubernetesJob, name: str):
 
 
 if __name__ == "__main__":
-    # main(
-    #     ["ioi", "greaterthan", "induction", "docstring"],
-    #     KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=2, gpu=1),
-    #     "16h-gpu",
-    # )
     main(
-        ["tracr-reverse", "tracr-proportion"],
-        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=4, gpu=0),
-        "16h-tracr",
+        # ["ioi", "greaterthan", "induction", "docstring"],
+        ["greaterthan"],
+        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.11", cpu=2, gpu=1),
+        "16h-redo",
     )
+    # main(
+    #     ["tracr-reverse", "tracr-proportion"],
+    #     KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=4, gpu=0),
+    #     "16h-tracr",
+    # )
