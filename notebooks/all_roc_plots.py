@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import warnings
 from experiments.launcher import KubernetesJob, launch
 import subprocess
 import numpy as np
@@ -11,27 +12,31 @@ TASKS = ["tracr-reverse", "tracr-proportion"]
 
 ADRIA_MODE = False
 
+warnings.warn("Several edited sections so Arthur can get results")
+
 METRICS_FOR_TASK = {
-    "ioi": ["kl_div", "logit_diff"],
-    "tracr-reverse": ["kl_div", "l2"],
-    "tracr-proportion": ["kl_div", "l2"],
-    "induction": ["kl_div", "nll"],
-    "docstring": ["kl_div", "docstring_metric"],
+    # "ioi": ["kl_div", "logit_diff"],
+    # "tracr-reverse": ["kl_div", "l2"],
+    # "tracr-proportion": ["kl_div", "l2"],
+    # "induction": ["kl_div", "nll"],
+    # "docstring": ["kl_div", "docstring_metric"],
     "greaterthan": ["kl_div", "greaterthan"],
 }
-
 
 def main():
     commands = []
     for alg in ["16h", "sp", "acdc"]:
-        for reset_network in [0, 1]:
-            for zero_ablation in [0, 1]:
+        for reset_network in [0]: # [0, 1]:
+            for zero_ablation in [1]: # [0, 1]:
                 if alg == "16h" and zero_ablation:
                     continue  # TODO remove
 
                 for task in TASKS:
                     for metric in METRICS_FOR_TASK[task]:
-                        
+
+                        if metric == "kl_div": 
+                            continue
+
                         thing = [
                             task.lower(),
                             str(reset_network).lower(),

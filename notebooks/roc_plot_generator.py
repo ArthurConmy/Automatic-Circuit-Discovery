@@ -156,7 +156,7 @@ parser.add_argument("--testing", action="store_true", help="Use testing data ins
 if IPython.get_ipython() is not None:
     # args = parser.parse_args("--task=ioi --metric=logit_diff --alg=acdc".split())
     # args = parser.parse_args("--task=docstring --reset-network=0 --metric=kl_div --alg=acdc --mode=nodes".split())
-    args = parser.parse_args("--task=tracr-proportion --reset-network=0 --metric=kl_div --alg=sp --mode=nodes".split())
+    args = parser.parse_args("--task=greaterthan --reset-network=0 --metric=greaterthan --alg=none --mode=nodes".split())
     # __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
 else:
     args = parser.parse_args()
@@ -291,12 +291,41 @@ elif TASK == "greaterthan":
 
     if METRIC == "kl_div":
         if ZERO_ABLATION:
+            raise Exception("This is the invalid old data")
+        
             ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_greaterthan_zero_sweep"
             ACDC_PRE_RUN_FILTER = {}
         else:
+            raise Exception("This is the invalid old data")            
+
             # ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_greaterthan_sweep"
             ACDC_PRE_RUN_FILTER["group"] = "acdc-gt-ioi-redo"
 
+    elif METRIC == "greaterthan":
+        if ZERO_ABLATION:
+            ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_greaterthan_zero_sweep"
+            ACDC_PRE_RUN_FILTER = None
+            ACDC_RUN_FILTER = lambda run: "finished" in str(run.state)
+
+            # add 16H stuff
+            SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
+            SIXTEEN_HEADS_PRE_RUN_FILTER = None
+            SIXTEEN_HEADS_RUN_FILTER = lambda run: run.id == "i4kwsri0" #  in str(run.state)
+
+        else:
+            ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_greaterthan_sweep_fixed_random"
+            ACDC_PRE_RUN_FILTER = None
+            def run_filter(run):
+                if not "finished" in str(run.state):
+                    print(run.name, "---", run.id, "not fin")
+                print(run.name, "---", run.id, "fin")
+                return "random" in run.name
+            ACDC_RUN_FILTER = run_filter
+
+            # add 16H stuff
+            SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
+            SIXTEEN_HEADS_PRE_RUN_FILTER = None
+            SIXTEEN_HEADS_RUN_FILTER = lambda run: run.id == "9qb820cp"
 
 elif TASK == "induction":
     num_examples=50
@@ -374,7 +403,7 @@ def get_acdc_runs(
         try:
             score_d["score"] = run.config["threshold"]
         except KeyError:
-            score_d["score"] = float(run.name)
+            score_d["score"] = float(run.name.split("_")[-1])
         threshold = score_d["score"]
 
         if "num_edges" in run.summary:
