@@ -5,7 +5,7 @@ from typing import List
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
-    "tracr-reverse": ["kl_div"],
+    "tracr-reverse": ["l2"],
     "tracr-proportion": ["kl_div", "l2"],
     "induction": ["kl_div", "nll"],
     "docstring": ["kl_div", "docstring_metric"],
@@ -138,11 +138,11 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool, reset_n
 
 if __name__ == "__main__":
     for reset_networks in [False, True]:
-        for task in ["greaterthan"]:
+        for task in ["tracr-reverse"]:
             main(
                 [task],
                 KubernetesJob(
-                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.11",
+                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.7.0",
                     cpu=4,
                     gpu=0 if task.startswith("tracr") else 1,
                     mount_training=False,

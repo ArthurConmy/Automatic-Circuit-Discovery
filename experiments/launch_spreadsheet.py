@@ -5,7 +5,7 @@ from typing import List
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
-    "tracr-reverse": ["kl_div"],
+    "tracr-reverse": ["l2"],
     "tracr-proportion": ["kl_div", "l2"],
     "induction": ["kl_div", "nll"],
     "docstring": ["kl_div", "docstring_metric"],
@@ -14,7 +14,7 @@ METRICS_FOR_TASK = {
 
 CPU = 4
 
-def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_kubernetes: bool, reset_networks: bool):
+def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_kubernetes: bool, reset_networks: bool, use_gpu: bool=True):
     NUM_SPACINGS = 5 if reset_networks else 21
     base_thresholds = 10 ** np.linspace(-4, 0, 21)
 
@@ -121,7 +121,7 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
         name="acdc-spreadsheet",
         job=None
         if not use_kubernetes
-        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.11", cpu=CPU, gpu=1),
+        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.7.0", cpu=CPU, gpu=use_gpu),
         check_wandb=wandb_identifier,
         just_print_commands=False,
     )
@@ -130,12 +130,13 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
 if __name__ == "__main__":
     for reset_networks in [False, True]:
         main(
-            ["greaterthan"],
-            "gt-fix-metric",
-            f"agarriga-gt-res{int(reset_networks)}-{{i:05d}}",
+            ["tracr-reverse"],
+            "acdc-tracr-neurips-3",
+            f"agarriga-tr-rev-res{int(reset_networks)}-{{i:05d}}",
             testing=False,
             use_kubernetes=True,
             reset_networks=reset_networks,
+            use_gpu=False,
         )
 
 # if __name__ == "__main__":

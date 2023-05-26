@@ -5,7 +5,7 @@ from typing import List
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
-    "tracr-reverse": ["kl_div"],
+    "tracr-reverse": ["l2"],
     "tracr-proportion": ["kl_div", "l2"],
     "induction": ["kl_div", "nll"],
     "docstring": ["kl_div", "docstring_metric"],
@@ -13,13 +13,13 @@ METRICS_FOR_TASK = {
 }
 
 
-def main(TASKS: list[str], job: KubernetesJob, name: str):
+def main(TASKS: list[str], job: KubernetesJob, name: str, group_name: str):
     seed = 1259281515
     random.seed(seed)
 
     wandb_identifier = WandbIdentifier(
         run_name=f"{name}-{{i:05d}}",
-        group_name="16h-gpu-proper",
+        group_name=group_name,
         project="acdc")
 
     commands: List[List[str]] = []
@@ -66,9 +66,10 @@ def main(TASKS: list[str], job: KubernetesJob, name: str):
 if __name__ == "__main__":
     main(
         # ["ioi", "greaterthan", "induction", "docstring"],
-        ["greaterthan"],
-        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.11", cpu=2, gpu=1),
+        ["tracr-reverse"],
+        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.7.0", cpu=2, gpu=0),
         "16h-redo",
+        group_name="sixteen-heads",
     )
     # main(
     #     ["tracr-reverse", "tracr-proportion"],
