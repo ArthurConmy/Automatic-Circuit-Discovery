@@ -88,7 +88,7 @@ def main():
                             elif task == "induction":
                                 induction_files.append(fname)
 
-        f.write("all: " + " ".join(possible_files) + "\n\n")
+        f.write("all: " + " ".join(sorted(possible_files)) + "\n\n")
         f.write("16h: " + " ".join(sixteenh_files) + "\n\n")
         f.write("sp: " + " ".join(sp_files) + "\n\n")
         f.write("acdc: " + " ".join(acdc_files) + "\n\n")
