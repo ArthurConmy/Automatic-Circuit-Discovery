@@ -28,13 +28,13 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
 
     commands: List[List[str]] = []
     for reset_network in [int(reset_networks)]:
-        for zero_ablation in [0, 1] if reset_networks else [0, 1]:
+        for zero_ablation in [0, 1]:
             for task in TASKS:
                 for metric in METRICS_FOR_TASK[task]:
 
                     if task.startswith("tracr"):
                         # Typical metric value range: 0.0-0.1
-                        thresholds = 10 ** np.linspace(-3, -1, 11)
+                        thresholds = 10 ** np.linspace(-5, -1, 21)
 
                         if task == "tracr-reverse":
                             num_examples = 6
@@ -131,7 +131,7 @@ if __name__ == "__main__":
     for reset_networks in [False, True]:
         main(
             ["tracr-reverse"],
-            "acdc-tracr-neurips-4",
+            "acdc-tracr-neurips-5",
             f"agarriga-tr-rev-res{int(reset_networks)}-{{i:05d}}",
             testing=False,
             use_kubernetes=True,
