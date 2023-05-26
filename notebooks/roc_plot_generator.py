@@ -158,6 +158,8 @@ parser.add_argument("--device", type=str, default="cpu")
 parser.add_argument("--out-dir", type=str, default="DEFAULT")
 parser.add_argument('--torch-num-threads', type=int, default=0, help="How many threads to use for torch (0=all)")
 parser.add_argument('--seed', type=int, default=42, help="Random seed")
+parser.add_argument("--canonical-graph-save-dir", type=str, default="DEFAULT")
+parser.add_argument("--only-save-canonical", action="store_true", help="Only save the canonical graph")
 
 if IPython.get_ipython() is not None:
     args = parser.parse_args("--task=ioi --metric=logit_diff --alg=acdc".split())
@@ -183,11 +185,15 @@ SKIP_ACDC = False
 SKIP_SP = True if args.skip_sp else False
 SKIP_SIXTEEN_HEADS = True if args.skip_sixteen_heads else False
 TESTING = True if args.testing else False
+ONLY_SAVE_CANONICAL = True if args.only_save_canonical else False
 
 if args.out_dir == "DEFAULT":
     OUT_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / "plots_data"
+    CANONICAL_OUT_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / "canonical_circuits"
 else:
     OUT_DIR = Path(args.out_dir)
+    CANONICAL_OUT_DIR = Path(args.canonical_graph_save_dir)
+CANONICAL_OUT_DIR.mkdir(exist_ok=True, parents=True)
 
 if args.alg != "none":
     SKIP_ACDC = False if args.alg == "acdc" else True
@@ -363,7 +369,7 @@ things.tl_model.reset_hooks()
 exp = TLACDCExperiment(
     model=things.tl_model,
     threshold=100_000,
-    early_exit=SKIP_ACDC,
+    early_exit=SKIP_ACDC or ONLY_SAVE_CANONICAL,
     using_wandb=False,
     zero_ablation=bool(ZERO_ABLATION),
     ds=things.test_data,
@@ -375,7 +381,7 @@ exp = TLACDCExperiment(
     first_cache_cpu=False,
     second_cache_cpu=False,
 )
-if not SKIP_ACDC:
+if not SKIP_ACDC and not ONLY_SAVE_CANONICAL:
     exp.setup_second_cache()
 
 max_subgraph_size = exp.corr.count_no_edges()
@@ -392,6 +398,13 @@ if TASK != "induction":
     canonical_circuit_subgraph = deepcopy(exp.corr)
     canonical_circuit_subgraph_size = canonical_circuit_subgraph.count_no_edges()
 
+    for edge in canonical_circuit_subgraph.all_edges().values():
+        edge.effect_size = 1.0   # make it visible
+
+    show(canonical_circuit_subgraph, str(CANONICAL_OUT_DIR / f"{TASK}.pdf"), show_full_index=False)
+
+if ONLY_SAVE_CANONICAL:
+    sys.exit(0)
 #%%
 
 def get_acdc_runs(
