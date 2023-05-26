@@ -220,7 +220,7 @@ def get_ioi_true_edges(model):
         ("induction", "s2 inhibition"),
         ("induction"),
         ("previous token", "induction"),
-        # ("duplicate token", "induction"),
+        ("duplicate token", "s2 inhibition"),
     }
 
     for group_name_1 in CIRCUIT.keys():
