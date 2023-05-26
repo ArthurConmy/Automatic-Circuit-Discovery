@@ -18,6 +18,7 @@ import networkx as nx
 import graphviz
 from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from acdc.TLACDCInterpNode import TLACDCInterpNode
+from acdc.acdc_utils import EdgeType
 
 # # I hope that it's reasonable...
 # from acdc.utils import (
@@ -114,7 +115,11 @@ def show(
     """
     takes matplotlib colormaps
     """
-    g = graphviz.Digraph(format="png")
+    if fname is None:
+        format = "png"
+    else:
+        format = fname.split(".")[-1]
+    g = graphviz.Digraph(format=format)
 
     colors = build_colorscheme(correspondence, colorscheme, show_full_index=show_full_index)
 
@@ -131,7 +136,7 @@ def show(
                     parent_name = get_node_name(parent, show_full_index=show_full_index)
                     child_name = get_node_name(child, show_full_index=show_full_index)
 
-                    if edge.present and edge.effect_size is not None:
+                    if edge.present and edge.effect_size is not None and edge.edge_type != EdgeType.PLACEHOLDER:
                         for node_name in [parent_name, child_name]:
                             g.node(
                                 node_name,
@@ -150,10 +155,7 @@ def show(
                         )
 
     if fname is not None:
-        assert fname.endswith(
-            ".png"
-        ), "Must save as png (... or you can take this g object and read the graphviz docs)"
-        g.render(outfile=fname, format="png")
+        g.render(outfile=fname, format=format)
 
     if show:
         return g
