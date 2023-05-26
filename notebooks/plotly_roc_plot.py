@@ -16,7 +16,6 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 from pathlib import Path
 import plotly.express as px
-import sklearn.metrics
 import pandas as pd
 import argparse
 
@@ -33,6 +32,22 @@ if get_ipython() is not None:
 else:
     args = parser.parse_args()
 
+# %%
+
+def pessimistic_auc(xs, ys):
+    i = np.argsort(xs)
+    xs = np.array(xs, dtype=np.float64)[i]
+    ys = np.array(ys, dtype=np.float64)[i]
+
+    assert np.all(np.diff(xs) >= 0), "not sorted"
+    assert np.all(np.diff(ys) >= 0), "not monotonically increasing"
+
+    # The slabs of the stairs
+    area = np.sum((1 - xs) * ys)
+    return area
+
+assert pessimistic_auc([0, 1], [0, 1]) == 0.0
+assert pessimistic_auc([0, 0.5, 1], [0, 0.5, 1]) == 0.25
 
 # %%
 DATA_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / "plots_data"
@@ -101,8 +116,8 @@ measurement_names = {
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
-    "tracr-reverse": ["kl_div", "kl_div"],
-    "tracr-proportion": ["kl_div", "l2"],
+    "tracr-reverse": ["l2", "l2"],
+    "tracr-proportion": ["l2", "l2"],
     "induction": ["kl_div", "nll"],
     "docstring": ["kl_div", "docstring_metric"],
     "greaterthan": ["kl_div", "greaterthan"],
@@ -236,7 +251,7 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
             if len(pareto_optimal):
                 x_data, y_data = zip(*pareto_optimal)
                 if plot_type == "roc":
-                    auc = sklearn.metrics.auc(x_data, y_data)
+                    auc = pessimistic_auc(x_data, y_data)
                 fig.add_trace(
                     go.Scatter(
                         x=x_data,

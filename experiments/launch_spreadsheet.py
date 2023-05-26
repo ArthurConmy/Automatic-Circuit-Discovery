@@ -28,7 +28,7 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
 
     commands: List[List[str]] = []
     for reset_network in [int(reset_networks)]:
-        for zero_ablation in [0, 1] if reset_networks else [1]:
+        for zero_ablation in [0, 1] if reset_networks else [0, 1]:
             for task in TASKS:
                 for metric in METRICS_FOR_TASK[task]:
 
