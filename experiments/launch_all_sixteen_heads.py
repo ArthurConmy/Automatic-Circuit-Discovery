@@ -13,6 +13,8 @@ METRICS_FOR_TASK = {
 }
 
 
+CPU = 2
+
 def main(TASKS: list[str], job: KubernetesJob, name: str, group_name: str):
     seed = 1259281515
     random.seed(seed)
@@ -44,6 +46,7 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, group_name: str):
                         f"--reset-network={reset_network}",
                         f"--seed={random.randint(0, 2**32 - 1)}",
                         f"--metric={metric}",
+                        f"--torch-num-threads={CPU}",
                         "--wandb-dir=/root/.cache/huggingface/tracr-training/16heads",  # If it doesn't exist wandb will use /tmp
                         f"--wandb-mode=online",
                     ]
@@ -67,7 +70,7 @@ if __name__ == "__main__":
     main(
         # ["ioi", "greaterthan", "induction", "docstring"],
         ["tracr-reverse"],
-        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.7.0", cpu=2, gpu=0),
+        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.7.1", cpu=CPU, gpu=0),
         "16h-redo",
         group_name="sixteen-heads",
     )

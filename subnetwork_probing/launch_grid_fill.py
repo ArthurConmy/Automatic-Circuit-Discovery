@@ -142,7 +142,7 @@ if __name__ == "__main__":
             main(
                 [task],
                 KubernetesJob(
-                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.7.0",
+                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.7.1",
                     cpu=4,
                     gpu=0 if task.startswith("tracr") else 1,
                     mount_training=False,

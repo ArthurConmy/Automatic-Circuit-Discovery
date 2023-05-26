@@ -4,11 +4,12 @@ from experiments.launcher import KubernetesJob, WandbIdentifier, launch
 import shlex
 import random
 
-TASKS = ["ioi", "docstring", "greaterthan", "tracr-reverse", "tracr-proportion", "induction"]
+#TASKS = ["ioi", "docstring", "greaterthan", "tracr-reverse", "tracr-proportion", "induction"]
+TASKS = ["tracr-reverse"]
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
-    "tracr-reverse": ["kl_div"],
+    "tracr-reverse": ["l2"],
     "tracr-proportion": ["kl_div", "l2"],
     "induction": ["kl_div", "nll"],
     "docstring": ["kl_div", "docstring_metric"],
@@ -69,7 +70,7 @@ if __name__ == "__main__":
                 alg,
                 task,
                 KubernetesJob(
-                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.10",
+                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.7.0",
                     cpu=4,
                     gpu=0 if task.startswith("tracr") or alg != "acdc" else 1,
                     mount_training=False,
