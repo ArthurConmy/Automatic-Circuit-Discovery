@@ -231,7 +231,7 @@ for layer_i in range(model.cfg.n_layers):
 
     # normalize by L2 of the layers
     for k in keys:
-        prune_scores[k] /= norm
+        prune_scores[k] /= norm.clamp(min=1e-6)
 
     for qkv in ["q", "k", "v"]:
         for head_i in range(model.cfg.n_heads):

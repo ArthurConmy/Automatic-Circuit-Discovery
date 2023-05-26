@@ -7,8 +7,8 @@ TASKS = ["ioi", "docstring", "greaterthan", "tracr-reverse", "tracr-proportion",
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
-    "tracr-reverse": ["kl_div"],
-    "tracr-proportion": ["kl_div", "l2"],
+    "tracr-reverse": ["l2"],
+    "tracr-proportion": ["l2"],
     "induction": ["kl_div", "nll"],
     "docstring": ["kl_div", "docstring_metric"],
     "greaterthan": ["kl_div", "greaterthan"],
@@ -47,7 +47,7 @@ def main():
 
                             command = [
                                 "python",
-                                "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py",
+                                "../../../notebooks/roc_plot_generator.py",
                                 f"--task={task}",
                                 f"--reset-network={reset_network}",
                                 f"--metric={metric}",

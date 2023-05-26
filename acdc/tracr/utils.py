@@ -278,21 +278,24 @@ def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: st
             model_out = tl_model(data_tens)
             base_model_logprobs = F.log_softmax(model_out, dim=-1) # oh no...
 
-        if metric_name == "kl_div":
-            raise Exception("This is wrong-tracr outputs one-hot distributions and taking KL divergences between distributions of different supports is not well-defined")
-            metric = partial(
+        test_metrics = {
+            "kl_div": partial(
                 kl_divergence,
                 base_model_logprobs=base_model_logprobs,
                 mask_repeat_candidates=None,
                 last_seq_element_only=False,
-            )
-        elif metric_name == "l2":
-            metric = partial(
+            ),
+            "l2": partial(
                 l2_metric,
                 model_out = model_out[:, 1:,],
                 take_element_zero=False,
-            )
+            ),
+        }
 
+        if metric_name == "kl_div":
+            raise Exception("This is wrong-tracr outputs one-hot distributions and taking KL divergences between distributions of different supports is not well-defined")
+        elif metric_name == "l2":
+            metric = test_metrics["l2"]
         else:
             raise ValueError(f"Metric {metric_name} not recognized")
 
@@ -303,7 +306,7 @@ def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: st
             validation_labels=None,
             validation_mask=None,
             validation_patch_data=patch_data_tens,
-            test_metrics={"kl_div": metric},
+            test_metrics=test_metrics,
             test_data=data_tens,
             test_labels=None,
             test_mask=None,

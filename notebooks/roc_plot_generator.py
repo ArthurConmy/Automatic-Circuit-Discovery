@@ -30,7 +30,7 @@ if IPython.get_ipython() is not None:
 
 from copy import deepcopy
 from subnetwork_probing.train import correspondence_from_mask
-from acdc.acdc_utils import false_positive_rate, false_negative_rate, true_positive_stat
+from acdc.acdc_utils import filter_nodes, get_edge_stats, get_node_stats, get_present_nodes
 from acdc.utils import reset_network
 import pandas as pd
 import gc
@@ -651,45 +651,27 @@ def get_points(corrs_and_scores, decreasing=True):
     for _, s in corrs_and_scores:
         keys.update(s.keys())
 
-    # if things is None:
-    #     points = []
-    #     n_skipped = 0
-    #     for _, score in sorted(corrs_and_scores, key=lambda x: x[1]["score"], reverse=decreasing):
-    #         if set(score.keys()) != keys:
-    #             n_skipped += 1
-    #             continue
-    #         points.append(score)
-    #     assert n_skipped <= 2
-    #     return points
+    init_point = {k: math.inf for k in keys}
+    if TASK != "induction":
+        for prefix in ["edge", "node"]:
+            init_point[f"{prefix}_fpr"] = 0.0
+            init_point[f"{prefix}_tpr"] = 0.0
+            init_point[f"{prefix}_precision"] = 1.0
+    init_point["n_edges"] = math.nan
 
-    if decreasing:
-        init_point = {k: math.inf for k in keys}
-        if TASK != "induction":
-            init_point["fpr"] = 0.0
-            init_point["tpr"] = 0.0
-            init_point["precision"] = 1.0
-        init_point["n_edges"] = math.nan
+    end_point = {k: -math.inf for k in keys}
+    if TASK != "induction":
+        for prefix in ["edge", "node"]:
+            init_point[f"{prefix}_fpr"] = 1.0
+            init_point[f"{prefix}_tpr"] = 1.0
+            init_point[f"{prefix}_precision"] = 0.0
+    end_point["n_edges"] = math.nan
 
-        end_point = {k: -math.inf for k in keys}
-        if TASK != "induction":
-            end_point["fpr"] = 1.0
-            end_point["tpr"] = 1.0
-            end_point["precision"] = 0.0
-        end_point["n_edges"] = math.nan
-    else:
-        init_point = {k: -math.inf for k in keys}
-        if TASK != "induction":
-            init_point["fpr"] = 1.0
-            init_point["tpr"] = 1.0
-            init_point["precision"] = 0.0
-        init_point["n_edges"] = math.nan
-
-        end_point = {k: math.inf for k in keys}
-        if TASK != "induction":
-            end_point["fpr"] = 0.0
-            end_point["tpr"] = 0.0
-            end_point["precision"] = 1.0
-        end_point["n_edges"] = math.nan
+    if not decreasing:
+        swap = init_point
+        init_point = end_point
+        end_point = swap
+        del swap
 
     points = [init_point]
 
@@ -701,24 +683,37 @@ def get_points(corrs_and_scores, decreasing=True):
             a.update(score)
             score = a
 
-        circuit_size = corr.count_no_edges()
+        n_edges = corr.count_no_edges()
+        n_nodes = len(filter_nodes(get_present_nodes(corr)[0]))
+
+        score.update({"n_edges": n_edges, "n_nodes": n_nodes})
+
         if TASK != "induction":
-            if circuit_size == 0:
-                tp_stat = 0
-                fp_stat = 0
-            else:
-                tp_stat = true_positive_stat(ground_truth=canonical_circuit_subgraph, recovered=corr)
-                fp_stat = false_positive_rate(ground_truth=canonical_circuit_subgraph, recovered=corr)
-            score.update(
-                {
-                    "fpr": fp_stat / (max_subgraph_size - canonical_circuit_subgraph_size),  # FP / (TOTAL - P) = FP / N
-                    "tpr": tp_stat / canonical_circuit_subgraph_size,  # TP / P
-                    "precision": 1 if circuit_size == 0 else tp_stat / circuit_size,  # TP / (TP + FP) = TP / (predicted positive)
-                    "n_edges": circuit_size,
-                }
-            )
-        else:
-            score.update({"n_edges": circuit_size})
+            edge_stats = get_edge_stats(ground_truth=canonical_circuit_subgraph, recovered=corr)
+            node_stats = get_node_stats(ground_truth=canonical_circuit_subgraph, recovered=corr)
+
+            assert n_edges == edge_stats["recovered"]
+            assert n_nodes == node_stats["recovered"]
+
+            assert edge_stats["all"] == max_subgraph_size
+            assert edge_stats["ground truth"] == canonical_circuit_subgraph_size
+            assert edge_stats["recovered"] == n_edges
+
+            for prefix, stats in [("edge", edge_stats), ("node", node_stats)]:
+                assert (stats["all"] - stats["ground truth"]) == stats["false positive"] + stats["true negative"]
+                assert stats["ground truth"] == stats["true positive"] + stats["false negative"]
+                assert stats["recovered"] == stats["true positive"] + stats["false positive"]
+
+                score.update(
+                    {
+                        f"{prefix}_tpr": stats["true positive"] / (stats["true positive"] + stats["false negative"]),
+                        f"{prefix}_fpr": stats["false positive"] / (stats["false positive"] + stats["true negative"]),
+                        f"{prefix}_precision": 1
+                        if stats["recovered"] == 0
+                        else stats["true positive"] / (stats["recovered"]),
+                    }
+                )
+
         points.append(score)
     assert n_skipped <= 2
 

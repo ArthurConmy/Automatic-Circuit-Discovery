@@ -108,7 +108,7 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
                             f"--metric={metric}",
                             f"--torch-num-threads={CPU}",
                             "--wandb-dir=/root/.cache/huggingface/tracr-training/acdc",  # If it doesn't exist wandb will use /tmp
-                            f"--wandb-mode=offline",
+                            f"--wandb-mode=online",
                             f"--max-num-epochs={1 if testing else 40_000}",
                         ]
                         if zero_ablation:
