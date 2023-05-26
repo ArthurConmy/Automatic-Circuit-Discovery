@@ -675,9 +675,9 @@ def get_points(corrs_and_scores, decreasing=True):
     end_point = {k: -math.inf for k in keys}
     if TASK != "induction":
         for prefix in ["edge", "node"]:
-            init_point[f"{prefix}_fpr"] = 1.0
-            init_point[f"{prefix}_tpr"] = 1.0
-            init_point[f"{prefix}_precision"] = 0.0
+            end_point[f"{prefix}_fpr"] = 1.0
+            end_point[f"{prefix}_tpr"] = 1.0
+            end_point[f"{prefix}_precision"] = 0.0
     end_point["n_edges"] = math.nan
 
     if not decreasing:
