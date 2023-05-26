@@ -82,20 +82,20 @@ alg_names = {
 
 TASK_NAMES = {
     "ioi": "Circuit Recovery (IOI)",
-    "tracr-reverse": "Tracr (Reverse)",
-    "tracr-proportion": "Tracr (Proportion)",
+    "tracr-reverse": "tracr-reverse",
+    "tracr-proportion": "tracr-xproportion",
     "docstring": "Docstring",
-    "greaterthan": "Greater Than",
+    "greaterthan": "Greater-Than",
     "induction": "Induction",
 }
 
 measurement_names = {
-    "kl_div": "KL Divergence",
+    "kl_div": "KL divergence",
     "logit_diff": "Logit difference",
-    "l2": "MSE",
+    "l2": "Mean squared error",
     "nll": "Negative log-likelihood",
     "docstring_metric": "Negative log-likelihood (Docstring)",
-    "greaterthan": "p(larger) - p(smaller)",
+    "greaterthan": "Probability difference",
 }
 
 
@@ -174,7 +174,7 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
         cols=4 if plot_type in ["roc", "precision_recall"] else 3,
         # specs parameter is really cool, this argument needs to have same dimenions as the rows and cols
         specs=specs,
-        print_grid=True,
+        print_grid=False,
         # subplot_titles=("First Subplot", "Second Subplot", "Third Subplot", "Fourth Subplot", "Fifth Subplot"),
         subplot_titles=tuple(task_names),
         x_title=x_names[x_key],
@@ -230,33 +230,13 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
                 pareto_optimal = discard_non_pareto_optimal(points)
             others = [p for p in points if p not in pareto_optimal]
 
+
+
+            auc = None
             if len(pareto_optimal):
                 x_data, y_data = zip(*pareto_optimal)
                 if plot_type == "roc":
                     auc = sklearn.metrics.auc(x_data, y_data)
-                    test_kl_div = this_data[task_idx][metric_name][alg_idx]["test_kl_div"][1:-1]
-                    test_loss = this_data[task_idx][metric_name][alg_idx]["test_" + metric_name][1:-1]
-                    if alg_idx == "SP":
-                        test_kl_div = [x / 20 for x in test_kl_div]
-                        test_loss = [x / 20 for x in test_loss]
-
-
-                    all_series.append(pd.Series({
-                        "task": task_idx,
-                        "method": methodof,
-                        "auc": auc,
-                        "metric": metric_name,
-                        "weights_type": weights_type,
-                        "ablation_type": ablation_type,
-                        "n_points": len(points),
-                        "test_kl_div": np.mean(test_kl_div),
-                        "test_kl_div_max": np.max(test_kl_div),
-                        "test_kl_div_mean": np.mean(test_kl_div),
-                        "test_loss": np.mean(test_loss),
-                        "test_loss_max": np.max(test_loss),
-                        "test_loss_mean": np.mean(test_loss),
-                    }))
-
                 fig.add_trace(
                     go.Scatter(
                         x=x_data,
@@ -269,6 +249,48 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
                     row=row,
                     col=col,
                 )
+
+            test_kl_div = this_data[task_idx][metric_name][alg_idx]["test_kl_div"][1:-1]
+            test_loss = this_data[task_idx][metric_name][alg_idx]["test_" + metric_name][1:-1]
+            if alg_idx == "SP":
+                test_kl_div = [x / 20 for x in test_kl_div]
+                test_loss = [x / 20 for x in test_loss]
+
+            if plot_type == "roc":
+                all_series.append(pd.Series({
+                    "task": task_idx,
+                    "method": methodof,
+                    "auc": auc,
+                    "metric": metric_name,
+                    "weights_type": weights_type,
+                    "ablation_type": ablation_type,
+                    "n_points": len(points),
+                    "test_kl_div": np.mean(test_kl_div),
+                    "test_kl_div_max": np.max(test_kl_div),
+                    "test_kl_div_min": np.min(test_kl_div),
+                    "test_loss": np.mean(test_loss),
+                    "test_loss_max": np.max(test_loss),
+                    "test_loss_min": np.min(test_loss),
+                }))
+
+            if task_idx == "induction" and plot_type == "kl_edges":
+                assert auc is None
+                all_series.append(pd.Series({
+                    "task": task_idx,
+                    "method": methodof,
+                    "auc": None,
+                    "metric": metric_name,
+                    "weights_type": weights_type,
+                    "ablation_type": ablation_type,
+                    "n_points": len(points),
+                    "test_kl_div": np.mean(test_kl_div),
+                    "test_kl_div_max": np.max(test_kl_div),
+                    "test_kl_div_min": np.min(test_kl_div),
+                    "test_loss": np.mean(test_loss),
+                    "test_loss_max": np.max(test_loss),
+                    "test_loss_min": np.min(test_loss),
+                }))
+
 
             if others:
                 x_data, y_data = zip(*others)
@@ -284,7 +306,7 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
             else:
                 x_data, y_data = [None], [None]
 
-            print(task_idx, alg_idx, metric_name, len(x_data), len(y_data))
+            # print(task_idx, alg_idx, metric_name, len(x_data), len(y_data), plot_type)
 
             colorscale = px.colors.get_colorscale("Purples")
             fig.add_trace(
@@ -297,7 +319,7 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
                     showlegend = (row, col) == rows_and_cols[-2],
                     marker=dict(
                         size=7,
-                        color=colors[methodof] if alg_idx != "ACDC" else plotly.colors.sample_colorscale(colorscale, (np.clip(scores, min_score, max_score) - min_score)/(2*(max_score-min_score)) + 0.5),
+                        color=colors[methodof], # if alg_idx != "ACDC" else plotly.colors.sample_colorscale(colorscale, (np.clip(scores, min_score, max_score) - min_score)/(2*(max_score-min_score)) + 0.5),
                         symbol=symbol[methodof],
                     ),
 
@@ -442,7 +464,7 @@ for metric_idx in [0, 1]:
             for plot_type in ["precision_recall", "roc", "kl_edges", "metric_edges"]:
                 x_key, y_key = plot_type_keys[plot_type]
                 fig, df = make_fig(metric_idx=metric_idx, weights_type=weights_type, ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type)
-                if plot_type == "roc":
+                if len(df):
                     all_dfs.append(df.T)
                     print(all_dfs[-1])
 
