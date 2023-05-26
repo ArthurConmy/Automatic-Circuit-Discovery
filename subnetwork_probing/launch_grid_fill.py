@@ -30,7 +30,7 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool, reset_n
 
     wandb_identifier = WandbIdentifier(
         run_name=f"{name}-res{int(reset_networks)}-{{i:05d}}",
-        group_name="sp-gt-fix-metric",
+        group_name="tracr-shuffled-redo",
         project="induction-sp-replicate")
 
 
@@ -142,7 +142,7 @@ if __name__ == "__main__":
             main(
                 [task],
                 KubernetesJob(
-                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.7.1",
+                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.7.2",
                     cpu=4,
                     gpu=0 if task.startswith("tracr") else 1,
                     mount_training=False,

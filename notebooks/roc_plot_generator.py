@@ -274,7 +274,7 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
         raise NotImplementedError("not a tracr task")
 
     SP_PRE_RUN_FILTER["group"] = "tracr-shuffled-redo"
-    ACDC_PRE_RUN_FILTER["group"] = "acdc-tracr-neurips-3"
+    ACDC_PRE_RUN_FILTER["group"] = "acdc-tracr-neurips-3" if TASK == "tracr-proportion" else "acdc-tracr-neurips-4"
 
     things = get_all_tracr_things(task=tracr_task, metric_name=METRIC, num_examples=num_examples, device=DEVICE)
 
