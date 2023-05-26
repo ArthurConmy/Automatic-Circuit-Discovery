@@ -31,3 +31,7 @@ From the root directory, run
 ```bash
 pytest tests/acdc -vv
 ```
+
+## TODO
+
+[ ] Neuron-level experiments
