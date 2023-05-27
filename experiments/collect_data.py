@@ -5,7 +5,8 @@ import shlex
 import random
 
 #TASKS = ["ioi", "docstring", "greaterthan", "tracr-reverse", "tracr-proportion", "induction"]
-TASKS = ["ioi", "docstring", "greaterthan", "induction"]
+#TASKS = ["ioi", "docstring", "greaterthan", "induction"]
+TASKS = ["greaterthan"]
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
@@ -70,7 +71,7 @@ if __name__ == "__main__":
                 alg,
                 task,
                 KubernetesJob(
-                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.7.3",
+                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.7.5",
                     cpu=4,
                     gpu=0 if task.startswith("tracr") or alg != "acdc" else 1,
                     mount_training=False,
