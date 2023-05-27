@@ -359,9 +359,10 @@ elif TASK == "induction":
 else:
     raise NotImplementedError("TODO " + TASK)
 
-if RESET_NETWORK and TASK != "greaterthan":
+if RESET_NETWORK and TASK != "greaterthan" and not TASK.startswith("tracr"):
     SP_PRE_RUN_FILTER["group"] = "tracr-shuffled-redo"
 
+if RESET_NETWORK:
     reset_network(TASK, DEVICE, things.tl_model)
     gc.collect()
     torch.cuda.empty_cache()
