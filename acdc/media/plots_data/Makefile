@@ -251,7 +251,7 @@ acdc-docstring-docstring_metric-False-0.json:
 	python ../../../notebooks/roc_plot_generator.py --task=docstring --reset-network=0 --metric=docstring_metric --alg=acdc
 
 acdc-greaterthan-kl_div-False-0.json:
-	python ../../../notebooks/roc_plot_generator.py --task=greaterthan --reset-network=0 --metric=kl_div --alg=acdc
+	python ../../../notebooks/roc_plot_generator.py --task=greaterthan --reset-network=0 --metric=kl_div --alg=acdc --ignore-missing-score
 
 acdc-greaterthan-greaterthan-False-0.json:
 	python ../../../notebooks/roc_plot_generator.py --task=greaterthan --reset-network=0 --metric=greaterthan --alg=acdc

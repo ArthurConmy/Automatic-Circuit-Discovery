@@ -160,6 +160,7 @@ parser.add_argument('--torch-num-threads', type=int, default=0, help="How many t
 parser.add_argument('--seed', type=int, default=42, help="Random seed")
 parser.add_argument("--canonical-graph-save-dir", type=str, default="DEFAULT")
 parser.add_argument("--only-save-canonical", action="store_true", help="Only save the canonical graph")
+parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 
 if IPython.get_ipython() is not None:
     args = parser.parse_args("--task=ioi --metric=logit_diff --alg=acdc".split())
@@ -438,7 +439,13 @@ def get_acdc_runs(
             try:
                 score_d["score"] = float(run.name)
             except ValueError:
-                score_d["score"] = float(run.name.split("_")[-1])
+                try:
+                    score_d["score"] = float(run.name.split("_")[-1])
+                except ValueError as e:
+                    if args.ignore_missing_score:
+                        continue
+                    else:
+                        raise e
 
         threshold = score_d["score"]
 
