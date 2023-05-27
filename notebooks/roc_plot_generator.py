@@ -273,13 +273,14 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     if tracr_task == "proportion":
         get_true_edges = get_tracr_proportion_edges
         num_examples = 50
+        SP_PRE_RUN_FILTER["group"] = "tracr-shuffled-redo"
     elif tracr_task == "reverse":
         get_true_edges = get_tracr_reverse_edges
         num_examples = 6
+        SP_PRE_RUN_FILTER["group"] = "tracr-shuffled-redo-2"
     else:
         raise NotImplementedError("not a tracr task")
 
-    SP_PRE_RUN_FILTER["group"] = "tracr-shuffled-redo"
     ACDC_PRE_RUN_FILTER["group"] = "acdc-tracr-neurips-5"
 
     things = get_all_tracr_things(task=tracr_task, metric_name=METRIC, num_examples=num_examples, device=DEVICE)
@@ -667,20 +668,20 @@ def get_points(corrs_and_scores, decreasing=True):
         keys.update(s.keys())
 
     init_point = {k: math.inf for k in keys}
-    if TASK != "induction":
-        for prefix in ["edge", "node"]:
+    for prefix in ["edge", "node"]:
+        if TASK != "induction":
             init_point[f"{prefix}_fpr"] = 0.0
             init_point[f"{prefix}_tpr"] = 0.0
             init_point[f"{prefix}_precision"] = 1.0
-            init_point[f"n_{prefix}s"] = math.nan
+        init_point[f"n_{prefix}s"] = math.nan
 
     end_point = {k: -math.inf for k in keys}
-    if TASK != "induction":
-        for prefix in ["edge", "node"]:
+    for prefix in ["edge", "node"]:
+        if TASK != "induction":
             end_point[f"{prefix}_fpr"] = 1.0
             end_point[f"{prefix}_tpr"] = 1.0
             end_point[f"{prefix}_precision"] = 0.0
-            end_point[f"n_{prefix}s"] = math.nan
+        end_point[f"n_{prefix}s"] = math.nan
 
     if not decreasing:
         swap = init_point
