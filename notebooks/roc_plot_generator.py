@@ -164,7 +164,8 @@ parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore 
 
 if IPython.get_ipython() is not None:
     args = parser.parse_args("--task=ioi --metric=logit_diff --alg=acdc".split())
-    __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
+    if "arthur" not in __file__:
+        __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
 else:
     args = parser.parse_args()
 
@@ -189,7 +190,7 @@ TESTING = True if args.testing else False
 ONLY_SAVE_CANONICAL = True if args.only_save_canonical else False
 
 if args.out_dir == "DEFAULT":
-    OUT_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / "plots_data"
+    OUT_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / f"{'arthur_' if 'arthur' in __file__ else ''}plots_data"
     CANONICAL_OUT_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / "canonical_circuits"
 else:
     OUT_DIR = Path(args.out_dir)
@@ -407,7 +408,9 @@ if TASK != "induction":
     for edge in canonical_circuit_subgraph.all_edges().values():
         edge.effect_size = 1.0   # make it visible
 
-    show(canonical_circuit_subgraph, str(CANONICAL_OUT_DIR / f"{TASK}.pdf"), show_full_index=False)
+    # seems bugged
+    if "arthur" not in __file__:
+        show(canonical_circuit_subgraph, str(CANONICAL_OUT_DIR / f"{TASK}.pdf"), show_full_index=False)
 
 if ONLY_SAVE_CANONICAL:
     sys.exit(0)
@@ -426,9 +429,9 @@ def get_acdc_runs(
     api = wandb.Api()
     runs = api.runs(project_name, filters=pre_run_filter)
     if run_filter is None:
-        filtered_runs = runs[:clip]
+        filtered_runs = list(runs)[:clip]
     else:
-        filtered_runs = list(filter(run_filter, tqdm(runs[:clip])))
+        filtered_runs = list(filter(run_filter, tqdm(list(runs)[:clip])))
     print(f"loading {len(filtered_runs)} runs with filter {pre_run_filter} and {run_filter}")
 
     corrs = []
