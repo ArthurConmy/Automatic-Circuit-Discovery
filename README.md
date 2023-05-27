@@ -35,3 +35,5 @@ pytest tests/acdc -vv
 ## TODO
 
 [ ] Neuron-level experiments
+[ ] Position-level experiments
+[ ] `tracr` and other dependencies better managed
