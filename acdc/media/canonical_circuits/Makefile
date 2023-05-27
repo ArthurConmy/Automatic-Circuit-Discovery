@@ -1,8 +1,8 @@
 tracr-proportion.pdf:
-	python ../../../notebooks/roc_plot_generator.py --task=tracr-proportion --only-save-canonical
+	python ../../../notebooks/roc_plot_generator.py --task=tracr-proportion --only-save-canonical --metric=l2
 
 tracr-reverse.pdf:
-	python ../../../notebooks/roc_plot_generator.py --task=tracr-reverse --only-save-canonical
+	python ../../../notebooks/roc_plot_generator.py --task=tracr-reverse --only-save-canonical --metric=l2
 
 ioi.pdf:
 	python ../../../notebooks/roc_plot_generator.py --task=ioi --only-save-canonical
