@@ -159,12 +159,13 @@ parser.add_argument("--out-dir", type=str, default="DEFAULT")
 parser.add_argument('--torch-num-threads', type=int, default=0, help="How many threads to use for torch (0=all)")
 parser.add_argument('--seed', type=int, default=42, help="Random seed")
 parser.add_argument("--canonical-graph-save-dir", type=str, default="DEFAULT")
-parser.add_argument("--only-save-canonical", action="store_true", help="Only save the canonical graph")
+Fparser.add_argument("--only-save-canonical", action="store_true", help="Only save the canonical graph")
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 
 if IPython.get_ipython() is not None:
     args = parser.parse_args("--task=ioi --metric=logit_diff --alg=acdc".split())
-    __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
+    if "arthur" not in __file__:
+        __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
 else:
     args = parser.parse_args()
 
@@ -189,7 +190,7 @@ TESTING = True if args.testing else False
 ONLY_SAVE_CANONICAL = True if args.only_save_canonical else False
 
 if args.out_dir == "DEFAULT":
-    OUT_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / "plots_data"
+    OUT_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / "arthur_plots_data"
     CANONICAL_OUT_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / "canonical_circuits"
 else:
     OUT_DIR = Path(args.out_dir)
@@ -407,7 +408,8 @@ if TASK != "induction":
     for edge in canonical_circuit_subgraph.all_edges().values():
         edge.effect_size = 1.0   # make it visible
 
-    show(canonical_circuit_subgraph, str(CANONICAL_OUT_DIR / f"{TASK}.pdf"), show_full_index=False)
+    # seems bugged
+    # show(canonical_circuit_subgraph, str(CANONICAL_OUT_DIR / f"{TASK}.pdf"), show_full_index=False)
 
 if ONLY_SAVE_CANONICAL:
     sys.exit(0)
@@ -426,9 +428,9 @@ def get_acdc_runs(
     api = wandb.Api()
     runs = api.runs(project_name, filters=pre_run_filter)
     if run_filter is None:
-        filtered_runs = runs[:clip]
+        filtered_runs = list(runs)[:clip]
     else:
-        filtered_runs = list(filter(run_filter, tqdm(runs[:clip])))
+        filtered_runs = list(filter(run_filter, tqdm(list(runs)[:clip])))
     print(f"loading {len(filtered_runs)} runs with filter {pre_run_filter} and {run_filter}")
 
     corrs = []

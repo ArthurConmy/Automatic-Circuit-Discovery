@@ -508,7 +508,7 @@ pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
 # [Minor] Unify xlim=ylim=[-0.01, 1.01] or so
 # :raised_hands:
 # 1
-if len(df
+# if len(df
 # x_key, y_key = plot_type_keys["kl_edges"]
 # fig, _ = make_fig(metric_idx=0, weights_type="reset", ablation_type="zero_ablation", plot_type="kl_edges")
 # fig.show()
