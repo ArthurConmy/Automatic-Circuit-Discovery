@@ -322,6 +322,8 @@ elif TASK == "greaterthan":
         if ZERO_ABLATION:
             ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_greaterthan_zero_sweep"
             ACDC_PRE_RUN_FILTER = {}
+        else:
+            del ACDC_PRE_RUN_FILTER["group"]
 
     if METRIC == "greaterthan" and not RESET_NETWORK and not ZERO_ABLATION:
         ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_greaterthan_sweep_fixed_random"
@@ -670,7 +672,7 @@ def get_points(corrs_and_scores, decreasing=True):
             init_point[f"{prefix}_fpr"] = 0.0
             init_point[f"{prefix}_tpr"] = 0.0
             init_point[f"{prefix}_precision"] = 1.0
-    init_point["n_edges"] = math.nan
+            init_point[f"n_{prefix}s"] = math.nan
 
     end_point = {k: -math.inf for k in keys}
     if TASK != "induction":
@@ -678,7 +680,7 @@ def get_points(corrs_and_scores, decreasing=True):
             end_point[f"{prefix}_fpr"] = 1.0
             end_point[f"{prefix}_tpr"] = 1.0
             end_point[f"{prefix}_precision"] = 0.0
-    end_point["n_edges"] = math.nan
+            end_point[f"n_{prefix}s"] = math.nan
 
     if not decreasing:
         swap = init_point
