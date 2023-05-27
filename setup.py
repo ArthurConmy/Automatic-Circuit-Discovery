@@ -22,6 +22,8 @@ setup(
         "huggingface_hub",
         "cmapy",
         "graphviz", 
+        "kaleido",
+        "plotly",
         "networkx",
         "rich",
         # "git+https://github.com/deepmind/tracr.git", # sad does not work; pip deprecated
