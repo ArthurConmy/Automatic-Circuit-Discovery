@@ -8,7 +8,10 @@ profile*.json
 *.gv
 __pycache__
 Testing_Notebook.ipynb
+
+scratch.py
 transformer_lens/scratch.py
+
 .vscode/
 wandb*
 transformer_lens\.egg*

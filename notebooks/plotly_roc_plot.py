@@ -4,7 +4,8 @@ from IPython import get_ipython
 if get_ipython() is not None:
     get_ipython().magic('load_ext autoreload')
     get_ipython().magic('autoreload 2')
-    __file__ = '/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/plotly_roc_plot.py'
+    if "arthur" not in __file__:
+        __file__ = '/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/plotly_roc_plot.py'
 
 import plotly
 import os
@@ -38,6 +39,10 @@ def pessimistic_auc(xs, ys):
     i = np.argsort(xs)
     xs = np.array(xs, dtype=np.float64)[i]
     ys = np.array(ys, dtype=np.float64)[i]
+
+    print(xs, ys)
+    print(min(np.diff(xs)))
+    print(min(np.diff(ys)))
 
     assert np.all(np.diff(xs) >= 0), "not sorted"
     assert np.all(np.diff(ys) >= 0), "not monotonically increasing"
@@ -81,11 +86,10 @@ for fname in os.listdir(DATA_DIR):
         dict_merge(all_data, data)
 
 # %% Prevent mathjax
+
 fig=px.scatter(x=[0, 1, 2, 3, 4], y=[0, 1, 4, 9, 16])
 fig.write_image("/tmp/discard.pdf", format="pdf")
 # time.sleep(1)
-
-
 
 # %%
 
@@ -139,8 +143,10 @@ symbol = {
 
 
 x_names = {
-    "fpr": "False positive rate (edges)",
-    "tpr": "True positive rate (edges)",
+    "edge_fpr": "False positive rate (edges)",
+    "node_fpr": "False positive rate (nodes)",
+    "edge_tpr": "True positive rate (edges)",
+    "node_tpr": "True positive rate (nodes)",
     "precision": "Precision (edges)",
     "n_edges": "Number of edges",
     "test_kl_div": "KL(model, ablated)",
@@ -158,10 +164,10 @@ def discard_non_pareto_optimal(points, cmp="gt"):
     return list(sorted(ret))
 
 
-def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", ablation_type="random_ablation", plot_type="roc"):
+def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="trained", ablation_type="random_ablation", plot_type="roc_nodes"):
     this_data = all_data[weights_type][ablation_type]
 
-    if plot_type in ["roc", "precision_recall"]:
+    if plot_type in ["roc_nodes", "roc_edges", "precision_recall"]:
         rows_cols_task_idx = [
             ((1, 1), "ioi"),
             ((1, 3), "tracr-reverse"),
@@ -186,7 +192,7 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
 
     fig = make_subplots(
         rows=2,
-        cols=4 if plot_type in ["roc", "precision_recall"] else 3,
+        cols=4 if plot_type in ["roc_nodes", "roc_edges", "precision_recall"] else 3,
         # specs parameter is really cool, this argument needs to have same dimenions as the rows and cols
         specs=specs,
         print_grid=False,
@@ -239,19 +245,25 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
 
 
             points = list(zip(x_data, y_data))
-            if y_key != "tpr":
+            if y_key not in ["node_tpr", "edge_tpr"]:
                 pareto_optimal = [] # list(sorted(points))  # Not actually pareto optimal but we want to plot all of them
+                print("Yep")
             else:
+                print("Hehe", y_key)
                 pareto_optimal = discard_non_pareto_optimal(points)
             others = [p for p in points if p not in pareto_optimal]
-
-
 
             auc = None
             if len(pareto_optimal):
                 x_data, y_data = zip(*pareto_optimal)
-                if plot_type == "roc":
-                    auc = pessimistic_auc(x_data, y_data)
+                if plot_type in ["roc_nodes", "roc_edges"]:
+                    try:
+                        auc = pessimistic_auc(x_data, y_data)
+                    except Exception as e:
+                        print(task_idx, metric_name, alg_idx, x_key)
+                        print(e)
+                        auc=-420.0
+
                 fig.add_trace(
                     go.Scatter(
                         x=x_data,
@@ -271,7 +283,7 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
                 test_kl_div = [x / 20 for x in test_kl_div]
                 test_loss = [x / 20 for x in test_loss]
 
-            if plot_type == "roc":
+            if plot_type in ["roc_nodes", "roc_edges"]:
                 all_series.append(pd.Series({
                     "task": task_idx,
                     "method": methodof,
@@ -349,7 +361,7 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
             # )
 
             if (row, col) == rows_and_cols[0]:
-                if plot_type == "roc" and args.arrows:
+                if plot_type in ["roc_nodes", "roc_edges"] and args.arrows:
                     fig.add_annotation(
                         xref="x domain",
                         yref="y",
@@ -402,7 +414,7 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
                         xref="x", yref="y",
                         x=0.65, y=0.35, showarrow=False, font=dict(size=8), row=row, col=col) # TODO could add two text boxes
 
-                if y_key in ["fpr", "tpr", "precision"]:
+                if y_key in ["edge_fpr", "edge_tpr", "node_fpr", "node_tpr", "precision"]:
                     fig.update_yaxes(visible=True, row=row, col=col, tickangle=-45, dtick=0.25, range=[-0.05, 1.05]) # ???
                 else:
                     fig.update_yaxes(visible=True, row=row, col=col, tickangle=-45)
@@ -423,7 +435,7 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
 
             else:
                 # If the subplot is not the large plot, hide its axes
-                if y_key in ["fpr", "tpr", "precision"]:
+                if y_key in ["edge_fpr", "edge_tpr", "node_tpr", "node_fpr", "precision"]:
                     fig.update_yaxes(visible=True, row=row, col=col, tickangle=-45, dtick=0.25, tickvals=[0, 0.25, 0.5, 0.75, 1.], ticktext=["0", "", "0.5", "", "1"], range=[-0.05, 1.05]) # ???
                 else:
                     fig.update_yaxes(visible=True, row=row, col=col, tickangle=-45)
@@ -462,8 +474,9 @@ def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_type="trained", abl
     return fig, pd.concat(all_series, axis=1) if all_series else pd.DataFrame()
 
 plot_type_keys = {
-    "precision_recall": ("tpr", "precision"),
-    "roc": ("fpr", "tpr"),
+    "precision_recall": ("node_tpr", "precision"),
+    "roc_nodes": ("node_fpr", "node_tpr"),
+    "roc_edges": ("edge_fpr", "edge_tpr"),
     "kl_edges": ("n_edges", "test_kl_div"),
     "metric_edges": ("n_edges", "test_loss"),
 }
@@ -476,13 +489,12 @@ all_dfs = []
 for metric_idx in [0, 1]:
     for ablation_type in ["random_ablation", "zero_ablation"]:
         for weights_type in ["trained", "reset"]:  # Didn't scramble the weights enough it seems
-            for plot_type in ["precision_recall", "roc", "kl_edges", "metric_edges"]:
+            for plot_type in ["precision_recall", "roc_nodes", "roc_edges", "kl_edges", "metric_edges"]:
                 x_key, y_key = plot_type_keys[plot_type]
                 fig, df = make_fig(metric_idx=metric_idx, weights_type=weights_type, ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type)
                 if len(df):
                     all_dfs.append(df.T)
                     print(all_dfs[-1])
-
                 metric = "kl" if metric_idx == 0 else "other"
                 fig.write_image(PLOT_DIR / ("--".join([metric, weights_type, ablation_type, plot_type]) + ".pdf"))
 
@@ -496,7 +508,7 @@ pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
 # [Minor] Unify xlim=ylim=[-0.01, 1.01] or so
 # :raised_hands:
 # 1
-
+# if len(df
 # x_key, y_key = plot_type_keys["kl_edges"]
 # fig, _ = make_fig(metric_idx=0, weights_type="reset", ablation_type="zero_ablation", plot_type="kl_edges")
 # fig.show()
