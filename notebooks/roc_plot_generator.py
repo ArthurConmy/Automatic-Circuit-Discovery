@@ -159,7 +159,7 @@ parser.add_argument("--out-dir", type=str, default="DEFAULT")
 parser.add_argument('--torch-num-threads', type=int, default=0, help="How many threads to use for torch (0=all)")
 parser.add_argument('--seed', type=int, default=42, help="Random seed")
 parser.add_argument("--canonical-graph-save-dir", type=str, default="DEFAULT")
-Fparser.add_argument("--only-save-canonical", action="store_true", help="Only save the canonical graph")
+parser.add_argument("--only-save-canonical", action="store_true", help="Only save the canonical graph")
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 
 if IPython.get_ipython() is not None:
@@ -190,7 +190,7 @@ TESTING = True if args.testing else False
 ONLY_SAVE_CANONICAL = True if args.only_save_canonical else False
 
 if args.out_dir == "DEFAULT":
-    OUT_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / "arthur_plots_data"
+    OUT_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / f"{'arthur_' if 'arthur' in __file__ else ''}plots_data"
     CANONICAL_OUT_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / "canonical_circuits"
 else:
     OUT_DIR = Path(args.out_dir)
@@ -409,7 +409,8 @@ if TASK != "induction":
         edge.effect_size = 1.0   # make it visible
 
     # seems bugged
-    # show(canonical_circuit_subgraph, str(CANONICAL_OUT_DIR / f"{TASK}.pdf"), show_full_index=False)
+    if "arthur" not in __file__:
+        show(canonical_circuit_subgraph, str(CANONICAL_OUT_DIR / f"{TASK}.pdf"), show_full_index=False)
 
 if ONLY_SAVE_CANONICAL:
     sys.exit(0)
