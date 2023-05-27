@@ -5,8 +5,7 @@ import shlex
 import random
 
 #TASKS = ["ioi", "docstring", "greaterthan", "tracr-reverse", "tracr-proportion", "induction"]
-#TASKS = ["ioi", "docstring", "greaterthan", "induction"]
-TASKS = ["greaterthan"]
+TASKS = ["ioi", "docstring", "greaterthan", "induction"]
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
@@ -46,6 +45,9 @@ def main(alg: str, task: str, job: KubernetesJob, testing: bool = False):
                 ]
                 if zero_ablation:
                     command.append("--zero-ablation")
+
+                if alg == "acdc" and task == "greaterthan" and metric == "kl_div" and not zero_ablation and not reset_network:
+                    command.append("--ignore-missing-score")
                 commands.append(command)
 
     launch(
@@ -71,7 +73,7 @@ if __name__ == "__main__":
                 alg,
                 task,
                 KubernetesJob(
-                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.7.5",
+                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.8.0",
                     cpu=4,
                     gpu=0 if task.startswith("tracr") or alg != "acdc" else 1,
                     mount_training=False,
