@@ -44,6 +44,8 @@ def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACD
     # to the list of nodes to mask
     head_parents = collections.defaultdict(lambda: 0)
     for node in nodes_to_mask:
+        additional_nodes_to_mask.append(TLACDCInterpNode(node.name.replace(".attn.", ".") + "_input", node.index, EdgeType.ADDITION))
+
         if node.name.endswith("_q") or node.name.endswith("_k") or node.name.endswith("_v"):
             child_name = node.name.replace("_q", "_result").replace("_k", "_result").replace("_v", "_result")
             head_parents[(child_name, node.index)] += 1

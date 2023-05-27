@@ -399,6 +399,15 @@ max_subgraph_size = exp.corr.count_no_edges()
 if TASK != "induction":
     d = {(d[0], d[1].hashable_tuple, d[2], d[3].hashable_tuple): False for d in exp.corr.all_edges()}
     d_trues = get_true_edges()
+    if ONLY_SAVE_CANONICAL and TASK == "ioi":
+        # Remove non-adjacent layer connections
+        def layer(name):
+            return int(name.split(".")[1])
+
+        for t in d_trues.keys():
+            if abs(layer(t[0]) - layer(t[2])) > 1:
+                del d_trues[t]
+
     for k in d_trues:
         d[k] = True
     exp.load_subgraph(d)

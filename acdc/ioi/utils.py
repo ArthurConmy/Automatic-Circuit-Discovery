@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from acdc.acdc_utils import Edge, TorchIndex, EdgeType
+from acdc.acdc_utils import Edge, TorchIndex, EdgeType, filter_nodes, get_present_nodes
 from acdc.TLACDCInterpNode import TLACDCInterpNode
 import warnings
 from functools import partial
@@ -198,9 +198,10 @@ def get_ioi_true_edges(model):
     for layer_idx in range(12):
         for head_idx in range(12):
             if (layer_idx, head_idx) not in all_nodes:
-                nodes_to_mask.append(
-                    TLACDCInterpNode(name=f"blocks.{layer_idx}.attn.hook_result", index = TorchIndex([None, None, head_idx]), incoming_edge_type=EdgeType.DIRECT_COMPUTATION),
-                )
+                for letter in ["q", "k", "v"]:
+                    nodes_to_mask.append(
+                        TLACDCInterpNode(name=f"blocks.{layer_idx}.attn.hook_{letter}", index = TorchIndex([None, None, head_idx]), incoming_edge_type=EdgeType.DIRECT_COMPUTATION),
+                    )
 
 
     from subnetwork_probing.train import correspondence_from_mask
