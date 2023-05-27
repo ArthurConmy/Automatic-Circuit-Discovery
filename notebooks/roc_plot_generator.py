@@ -317,7 +317,8 @@ elif TASK == "greaterthan":
     things = get_all_greaterthan_things(num_examples=num_examples, metric_name=METRIC, device=DEVICE)
     get_true_edges = partial(get_greaterthan_true_edges, model=things.tl_model)
 
-    SP_PRE_RUN_FILTER["group"] = "sp-gt-fix-metric"
+    SP_PRE_RUN_FILTER["group"] = "tracr-shuffled-redo"
+    SP_PROJECT_NAME = "remix_school-of-rock/induction_arthur"  # moved here manually
 
     if METRIC == "kl_div" and not RESET_NETWORK:
         if ZERO_ABLATION:
