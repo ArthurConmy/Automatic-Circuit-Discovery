@@ -40,19 +40,19 @@ def pessimistic_auc(xs, ys):
     xs = np.array(xs, dtype=np.float64)[i]
     ys = np.array(ys, dtype=np.float64)[i]
 
-    print(xs, ys)
-    print(min(np.diff(xs)))
-    print(min(np.diff(ys)))
-
+    dys = np.diff(ys)
     assert np.all(np.diff(xs) >= 0), "not sorted"
-    assert np.all(np.diff(ys) >= 0), "not monotonically increasing"
+    assert np.all(dys >= 0), "not monotonically increasing"
 
     # The slabs of the stairs
-    area = np.sum((1 - xs) * ys)
+    area = np.sum((1 - xs)[1:] * dys)
     return area
 
 assert pessimistic_auc([0, 1], [0, 1]) == 0.0
-assert pessimistic_auc([0, 0.5, 1], [0, 0.5, 1]) == 0.25
+assert pessimistic_auc([0, 0.5, 1], [0, 0.5, 1]) == 0.5**2
+assert pessimistic_auc([0, 0.25, 1], [0, 0.25, 1]) == .25 * .75
+assert pessimistic_auc([0, 0.25, 0.5, 1], [0, 0.25, 0.5, 1]) == 5/16
+assert pessimistic_auc([0, 0.25, 0.75, 1], [0, 0.25, 0.5, 1]) == 4/16
 
 # %%
 DATA_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / "plots_data"
