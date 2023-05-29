@@ -1,3 +1,17 @@
+from collections import OrderedDict
+from acdc.acdc_utils import Edge, TorchIndex, EdgeType
+from acdc.TLACDCInterpNode import TLACDCInterpNode
+import warnings
+from functools import partial
+from copy import deepcopy
+import torch.nn.functional as F
+from typing import List
+from acdc.acdc_utils import kl_divergence
+import torch
+from acdc.ioi.ioi_dataset import IOIDataset  # NOTE: we now import this LOCALLY so it is deterministic
+from tqdm import tqdm
+from acdc.HookedTransformer import HookedTransformer
+import warnings
 from functools import partial
 from typing import ClassVar, Optional
 

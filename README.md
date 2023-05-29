@@ -19,7 +19,7 @@ You may need to install DeepMind's `tracr` if you're dealing with that (e.g <a h
 You may also need do this
 
 ```bash
-sudo apt-get update && sudo apt-get install ffmpeg libsm6 libxext6
+sudo apt-get update && sudo apt-get install ffmpeg libsm6 libxext6 graphviz
 ```
 
 in order to install graphics dependencies on linux.
@@ -31,3 +31,9 @@ From the root directory, run
 ```bash
 pytest tests/acdc -vv
 ```
+
+## TODO
+
+[ ] Neuron-level experiments
+[ ] Position-level experiments
+[ ] `tracr` and other dependencies better managed
