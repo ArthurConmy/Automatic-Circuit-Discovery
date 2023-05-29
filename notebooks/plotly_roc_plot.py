@@ -6,12 +6,15 @@ if get_ipython() is not None:
     get_ipython().magic('autoreload 2')
     if "arthur" not in __file__:
         __file__ = '/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/plotly_roc_plot.py'
+        from notebooks.emacs_plotly_render import set_plotly_renderer
+        set_plotly_renderer("emacs")
 
 import plotly
 import os
 import numpy as np
 import json
 import wandb
+from acdc.graphics import dict_merge, pessimistic_auc
 import time
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
@@ -20,8 +23,6 @@ import plotly.express as px
 import pandas as pd
 import argparse
 
-from notebooks.emacs_plotly_render import set_plotly_renderer
-set_plotly_renderer("emacs")
 
 # %%
 
@@ -35,49 +36,8 @@ else:
 
 # %%
 
-def pessimistic_auc(xs, ys):
-    i = np.argsort(xs)
-    xs = np.array(xs, dtype=np.float64)[i]
-    ys = np.array(ys, dtype=np.float64)[i]
-
-    dys = np.diff(ys)
-    assert np.all(np.diff(xs) >= 0), "not sorted"
-    assert np.all(dys >= 0), "not monotonically increasing"
-
-    # The slabs of the stairs
-    area = np.sum((1 - xs)[1:] * dys)
-    return area
-
-assert pessimistic_auc([0, 1], [0, 1]) == 0.0
-assert pessimistic_auc([0, 0.5, 1], [0, 0.5, 1]) == 0.5**2
-assert pessimistic_auc([0, 0.25, 1], [0, 0.25, 1]) == .25 * .75
-assert pessimistic_auc([0, 0.25, 0.5, 1], [0, 0.25, 0.5, 1]) == 5/16
-assert pessimistic_auc([0, 0.25, 0.75, 1], [0, 0.25, 0.5, 1]) == 4/16
-
-# %%
 DATA_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / "plots_data"
-
 all_data = {}
-
-def dict_merge(dct, merge_dct):
-    """ Recursive dict merge. Inspired by :meth:``dict.update()``, instead of
-    updating only top-level keys, dict_merge recurses down into dicts nested
-    to an arbitrary depth, updating keys. The ``merge_dct`` is merged into
-    ``dct``.
-
-    Copyright 2016-2022 Paul Durivage, licensed under Apache License https://gist.github.com/angstwad/bf22d1822c38a92ec0a9
-
-    :param dct: dict onto which the merge is executed
-    :param merge_dct: dct merged into dct
-    :return: None
-    """
-    for k in merge_dct.keys():
-        if (k in dct and isinstance(dct[k], dict) and isinstance(merge_dct[k], dict)):  #noqa
-            dict_merge(dct[k], merge_dct[k])
-        else:
-            dct[k] = merge_dct[k]
-
-
 
 for fname in os.listdir(DATA_DIR):
     if fname.endswith(".json"):
@@ -163,10 +123,17 @@ def discard_non_pareto_optimal(points, cmp="gt"):
             ret.append((x, y))
     return list(sorted(ret))
 
+#%%
 
 def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="trained", ablation_type="random_ablation", plot_type="roc_nodes"):
+# metric_idx=1
+# x_key="edge_fpr"
+# y_key="edge_tpr"
+# weights_type="trained"
+# ablation_type="random_ablation"
+# plot_type="roc_nodes"
+# if True:
     this_data = all_data[weights_type][ablation_type]
-
     if plot_type in ["roc_nodes", "roc_edges", "precision_recall"]:
         rows_cols_task_idx = [
             ((1, 1), "ioi"),
@@ -261,6 +228,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
                         auc = pessimistic_auc(x_data, y_data)
                     except Exception as e:
                         print(task_idx, metric_name, alg_idx, x_key)
+                        assert False
                         print(e)
                         auc=-420.0
 
@@ -287,10 +255,11 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
                 all_series.append(pd.Series({
                     "task": task_idx,
                     "method": methodof,
-                    "auc": auc,
                     "metric": metric_name,
                     "weights_type": weights_type,
                     "ablation_type": ablation_type,
+                    "plot_type": plot_type,
+                    "auc": auc,
                     "n_points": len(points),
                     "test_kl_div": np.mean(test_kl_div),
                     "test_kl_div_max": np.max(test_kl_div),
@@ -305,10 +274,11 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
                 all_series.append(pd.Series({
                     "task": task_idx,
                     "method": methodof,
-                    "auc": None,
                     "metric": metric_name,
                     "weights_type": weights_type,
                     "ablation_type": ablation_type,
+                    "plot_type": "induction_kl_edges",
+                    "auc": None,
                     "n_points": len(points),
                     "test_kl_div": np.mean(test_kl_div),
                     "test_kl_div_max": np.max(test_kl_div),
@@ -378,7 +348,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
                     )
                     fig.add_annotation(
                         xref="x domain",
-                        yref="y",
+                       # yref="y",
                         x=0.6, # end of arrow
                         y=0.7,
                         text="",
@@ -468,10 +438,13 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
     scale = 1.2
 
     # No title,
-    fig.update_layout(height=250*scale, width=scale*scale*500,
-                      margin=dict(l=55, r=70, t=20, b=50)
-                      )
-    return fig, pd.concat(all_series, axis=1) if all_series else pd.DataFrame()
+    fig.update_layout(
+        height=250*scale, 
+        width=scale*scale*500,
+        margin=dict(l=55, r=70, t=20, b=50),                  
+    )
+    ret = [fig, pd.concat(all_series, axis=1) if all_series else pd.DataFrame()]
+    return ret[0], ret[1]
 
 plot_type_keys = {
     "precision_recall": ("node_tpr", "precision"),
@@ -481,7 +454,8 @@ plot_type_keys = {
     "metric_edges": ("n_edges", "test_loss"),
 }
 
-# %%
+#%%
+
 PLOT_DIR = DATA_DIR.parent / "plots"
 PLOT_DIR.mkdir(exist_ok=True)
 
@@ -499,6 +473,7 @@ for metric_idx in [0, 1]:
                 fig.write_image(PLOT_DIR / ("--".join([metric, weights_type, ablation_type, plot_type]) + ".pdf"))
 
 pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
+
 # %%
 
 # Stefan

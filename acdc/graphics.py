@@ -3,6 +3,7 @@ import os
 from collections import defaultdict
 import pickle
 import torch
+import numpy as np
 import huggingface_hub
 import datetime
 from typing import Dict
@@ -315,3 +316,47 @@ def log_metrics_to_wandb(
             wandb.log(
                 {"acdc_graph": wandb.Image(picture_fname),}
             )
+
+# -------------------------------------------
+# utilities for ROC and AUC
+# -------------------------------------------
+
+def pessimistic_auc(xs, ys):
+    
+    # Sort indices based on 'x' and 'y'
+    i = np.lexsort((ys, xs)) # lexsort sorts by the last column first, then the second last, etc., i.e we firstly sort by x and then y to break ties
+
+    xs = np.array(xs, dtype=np.float64)[i]
+    ys = np.array(ys, dtype=np.float64)[i]
+
+    dys = np.diff(ys)
+    assert np.all(np.diff(xs) >= 0), "not sorted"
+    assert np.all(dys >= 0), "not monotonically increasing"
+
+    # The slabs of the stairs
+    area = np.sum((1 - xs)[1:] * dys)
+    return area
+
+assert pessimistic_auc([0, 1], [0, 1]) == 0.0
+assert pessimistic_auc([0, 0.5, 1], [0, 0.5, 1]) == 0.5**2
+assert pessimistic_auc([0, 0.25, 1], [0, 0.25, 1]) == .25 * .75
+assert pessimistic_auc([0, 0.25, 0.5, 1], [0, 0.25, 0.5, 1]) == 5/16
+assert pessimistic_auc([0, 0.25, 0.75, 1], [0, 0.25, 0.5, 1]) == 4/16
+
+def dict_merge(dct, merge_dct):
+    """ Recursive dict merge. Inspired by :meth:``dict.update()``, instead of
+    updating only top-level keys, dict_merge recurses down into dicts nested
+    to an arbitrary depth, updating keys. The ``merge_dct`` is merged into
+    ``dct``.
+
+    Copyright 2016-2022 Paul Durivage, licensed under Apache License https://gist.github.com/angstwad/bf22d1822c38a92ec0a9
+
+    :param dct: dict onto which the merge is executed
+    :param merge_dct: dct merged into dct
+    :return: None
+    """
+    for k in merge_dct.keys():
+        if (k in dct and isinstance(dct[k], dict) and isinstance(merge_dct[k], dict)):  #noqa
+            dict_merge(dct[k], merge_dct[k])
+        else:
+            dct[k] = merge_dct[k]
