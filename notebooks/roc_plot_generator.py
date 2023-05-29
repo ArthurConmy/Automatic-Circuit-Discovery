@@ -412,6 +412,8 @@ if TASK != "induction":
         d[k] = True
     exp.load_subgraph(d)
     canonical_circuit_subgraph = deepcopy(exp.corr)
+    for t, e in exp.corr.all_edges():
+        exp.corr.edges[t[0]][t[1]][t[2]][t[3]].present = True
     canonical_circuit_subgraph_size = canonical_circuit_subgraph.count_no_edges()
 
     for edge in canonical_circuit_subgraph.all_edges().values():
