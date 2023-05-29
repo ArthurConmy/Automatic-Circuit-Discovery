@@ -36,7 +36,9 @@ else:
 # %%
 
 def pessimistic_auc(xs, ys):
-    i = np.argsort(xs)
+    # Sort indices based on 'x' and 'y'
+    i = np.lexsort((ys, xs)) # lexsort sorts by the last column first, then the second last, etc., i.e we firstly sort by x and then y to break ties
+
     xs = np.array(xs, dtype=np.float64)[i]
     ys = np.array(ys, dtype=np.float64)[i]
 
