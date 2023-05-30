@@ -163,7 +163,7 @@ parser.add_argument("--only-save-canonical", action="store_true", help="Only sav
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task=greaterthan --metric=greaterthan --alg=acdc".split())
+    args = parser.parse_args("--task=tracr-reverse --metric=l2 --alg=acdc".split())
     if "arthur" not in __file__:
         __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
 else:
@@ -459,9 +459,6 @@ def get_acdc_runs(
     corrs = []
     ids = []
     for run in filtered_runs:
-        if run.id != "vhjs7vm9":
-            continue
-
         score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
         try:
             score_d["score"] = run.config["threshold"]
@@ -780,16 +777,13 @@ def get_points(corrs_and_scores, decreasing=True):
                     }
                 )
 
-            if idx == 4:
-                assert False
-
         points.append(score)
     assert n_skipped <= 2
 
     points.append(end_point)
     assert all(("n_edges" in p) for p in points)
     assert len(points) > 3
-    # return points
+    return points
 
 points = {}
 
@@ -870,3 +864,5 @@ if OUT_FILE is not None:
 
     with open(OUT_FILE, "w") as f:
         json.dump(out_dict, f, indent=2)
+
+# %%
