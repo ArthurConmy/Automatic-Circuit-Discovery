@@ -151,45 +151,48 @@ def get_all_ioi_things(num_examples, device, metric_name, kl_return_one_element=
         test_patch_data=test_patch_data,
     )
 
+IOI_CIRCUIT = {
+    "name mover": [
+        (9, 9),  # by importance
+        (10, 0),
+        (9, 6),
+    ],
+    "backup name mover": [
+        (10, 10),
+        (10, 6),
+        (10, 2),
+        (10, 1),
+        (11, 2),
+        (9, 7),
+        (9, 0),
+        (11, 9),
+    ],
+    "negative": [(10, 7), (11, 10)],
+    "s2 inhibition": [(7, 3), (7, 9), (8, 6), (8, 10)],
+    "induction": [(5, 5), (5, 8), (5, 9), (6, 9)],
+    "duplicate token": [
+        (0, 1),
+        (0, 10),
+        (3, 0),
+        # (7, 1),
+    ],  # unclear exactly what (7,1) does
+    "previous token": [
+        (2, 2),
+        # (2, 9),
+        (4, 11),
+        # (4, 3),
+        # (4, 7),
+        # (5, 6),
+        # (3, 3),
+        # (3, 7),
+        # (3, 6),
+    ],
+}
+
 def get_ioi_true_edges(model):
     nodes_to_mask = []
     
-    CIRCUIT = {
-        "name mover": [
-            (9, 9),  # by importance
-            (10, 0),
-            (9, 6),
-            (10, 10),
-            (10, 6),
-            (10, 2),
-            (10, 1),
-            (11, 2),
-            (9, 7),
-            (9, 0),
-            (11, 9),
-        ],
-        "negative": [(10, 7), (11, 10)],
-        "s2 inhibition": [(7, 3), (7, 9), (8, 6), (8, 10)],
-        "induction": [(5, 5), (5, 8), (5, 9), (6, 9)],
-        "duplicate token": [
-            (0, 1),
-            (0, 10),
-            (3, 0),
-            # (7, 1),
-        ],  # unclear exactly what (7,1) does
-        "previous token": [
-            (2, 2),
-            # (2, 9),
-            (4, 11),
-            # (4, 3),
-            # (4, 7),
-            # (5, 6),
-            # (3, 3),
-            # (3, 7),
-            # (3, 6),
-        ],
-    }
-    all_groups_of_nodes = [group for _, group in CIRCUIT.items()]
+    all_groups_of_nodes = [group for _, group in IOI_CIRCUIT.items()]
     all_nodes = [node for group in all_groups_of_nodes for node in group]
     assert len(all_nodes) == 26, len(all_nodes)
 
@@ -211,12 +214,13 @@ def get_ioi_true_edges(model):
     )
 
     # remove input -> induction heads connections
-    for layer_idx, head_idx in CIRCUIT["induction"]:
+    for layer_idx, head_idx in IOI_CIRCUIT["induction"]:
         for letter in "qkv":
             corr.edges[f"blocks.{layer_idx}.hook_{letter}_input"][TorchIndex([None, None, head_idx])][f"blocks.0.hook_resid_pre"][TorchIndex([None])].present = False
 
     special_connections = {
         ("s2 inhibition", "name mover"),
+        ("s2 inhibition", "backup name mover"),
         ("s2 inhibition", "negative"),
         ("induction", "s2 inhibition"),
         ("induction"),
@@ -224,15 +228,15 @@ def get_ioi_true_edges(model):
         ("duplicate token", "s2 inhibition"),
     }
 
-    for group_name_1 in CIRCUIT.keys():
-        for group_name_2 in CIRCUIT.keys():
+    for group_name_1 in IOI_CIRCUIT.keys():
+        for group_name_2 in IOI_CIRCUIT.keys():
             if group_name_1 == group_name_2:
                 continue
             if (group_name_1, group_name_2) in special_connections:
                 continue
 
-            for layer_idx1, head_idx1 in CIRCUIT[group_name_1]:
-                for layer_idx2, head_idx2 in CIRCUIT[group_name_2]:
+            for layer_idx1, head_idx1 in IOI_CIRCUIT[group_name_1]:
+                for layer_idx2, head_idx2 in IOI_CIRCUIT[group_name_2]:
                     if layer_idx1 >= layer_idx2:
                         continue # no connection..
                     for letter in "qkv":
@@ -240,3 +244,31 @@ def get_ioi_true_edges(model):
 
     ret =  OrderedDict({(t[0], t[1].hashable_tuple, t[2], t[3].hashable_tuple): e.present for t, e in corr.all_edges().items() if e.present})
     return ret
+
+
+GROUP_COLORS = {
+    "name mover": "#d7f8ee",
+    "backup name mover": "#e7f2da",
+    "negative": "#fee7d5",
+    "s2 inhibition": "#ececf5",
+    "induction": "#fff6db",
+    "duplicate token": "#fad6e9",
+    "previous token": "#f9ecd7",
+}
+
+def ioi_group_colorscheme():
+    assert set(GROUP_COLORS.keys()) == set(IOI_CIRCUIT.keys())
+
+    scheme = {
+        "embed": "#cbd5e8",
+        "<resid_post>": "#fff2ae",
+    }
+
+    for k, heads in IOI_CIRCUIT.items():
+        for (layer, head) in heads:
+            for qkv in ["", "_q", "_k", "_v"]:
+                scheme[f"<a{layer}.{head}{qkv}>"] = GROUP_COLORS[k]
+
+    for layer in range(12):
+        scheme[f"<m{layer}>"] = "#f0f0f0"
+    return scheme

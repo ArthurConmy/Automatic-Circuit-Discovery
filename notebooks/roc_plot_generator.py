@@ -113,6 +113,7 @@ from acdc.acdc_utils import (
 from acdc.ioi.utils import (
     get_ioi_true_edges,
     get_gpt2_small,
+    ioi_group_colorscheme,
 )
 from acdc.induction.utils import (
     get_all_induction_things,
@@ -122,6 +123,7 @@ from acdc.induction.utils import (
 )
 from acdc.graphics import (
     build_colorscheme,
+    get_node_name,
     show,
 )
 from acdc.ioi.utils import (
@@ -399,29 +401,51 @@ max_subgraph_size = exp.corr.count_no_edges()
 if TASK != "induction":
     d = {(d[0], d[1].hashable_tuple, d[2], d[3].hashable_tuple): False for d in exp.corr.all_edges()}
     d_trues = get_true_edges()
-    if ONLY_SAVE_CANONICAL and TASK == "ioi":
-        # Remove non-adjacent layer connections
-        def layer(name):
-            return int(name.split(".")[1])
+    # if ONLY_SAVE_CANONICAL and TASK == "ioi":
+    #     # Remove non-adjacent layer connections
+    #     def layer(name):
+    #         return int(name.split(".")[1])
 
-        for t in d_trues.keys():
-            if abs(layer(t[0]) - layer(t[2])) > 1:
-                del d_trues[t]
+    #     for t in list(d_trues.keys()):
+    #         if abs(layer(t[0]) - layer(t[2])) > 1:
+    #             del d_trues[t]
 
     for k in d_trues:
         d[k] = True
     exp.load_subgraph(d)
     canonical_circuit_subgraph = deepcopy(exp.corr)
-    for t, e in exp.corr.all_edges():
+    for t in exp.corr.all_edges().keys():
         exp.corr.edges[t[0]][t[1]][t[2]][t[3]].present = True
     canonical_circuit_subgraph_size = canonical_circuit_subgraph.count_no_edges()
 
     for edge in canonical_circuit_subgraph.all_edges().values():
         edge.effect_size = 1.0   # make it visible
 
-    # seems bugged
-    if "arthur" not in __file__:
-        show(canonical_circuit_subgraph, str(CANONICAL_OUT_DIR / f"{TASK}.pdf"), show_full_index=False)
+    if ONLY_SAVE_CANONICAL and TASK == "ioi":
+        g: graphviz.Digraph = show(canonical_circuit_subgraph, colorscheme=ioi_group_colorscheme(), show_full_index=False, show=True)
+        g.render(str(CANONICAL_OUT_DIR / TASK), view=False, cleanup=True, format="pdf")
+
+        source = g.source.replace("_q>", ">").replace("_k>", ">").replace("_v>", ">")
+        seen_lines = {"}"}
+        # Don't add self-loops
+        for layer in range(12):
+            for head in range(12):
+                seen_lines.add(f"\t<a{layer}.{head}> -> <a{layer}.{head}> ")
+
+        out = []
+        for line in source.split("\n")[1:-1]:
+            if "<m" not in line:
+                edge_info = line.split("[")[0]
+                if edge_info not in seen_lines:
+                    out.append(line)
+                    seen_lines.add(edge_info)
+
+        source = "\n".join(sorted(out))
+        with open(CANONICAL_OUT_DIR / f"{TASK}_heads.gv", "w") as f:
+            f.write("digraph {\n" + source + "\n}")
+
+
+
 
 if ONLY_SAVE_CANONICAL:
     sys.exit(0)
