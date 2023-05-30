@@ -6,7 +6,8 @@ from experiments.launcher import KubernetesJob, WandbIdentifier, launch
 import shlex
 import random
 
-IS_ADRIA = "arthur" not in __file__
+IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root")
+print(IS_ADRIA)
 
 #TASKS = ["ioi", "docstring", "greaterthan", "tracr-reverse", "tracr-proportion", "induction"]
 TASKS = ["ioi", "docstring", "greaterthan", "tracr-reverse", "tracr-proportion", "induction"]
