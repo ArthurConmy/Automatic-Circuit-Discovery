@@ -425,26 +425,27 @@ if TASK != "induction":
         g: graphviz.Digraph = show(canonical_circuit_subgraph, colorscheme=ioi_group_colorscheme(), show_full_index=False, show=True)
         g.render(str(CANONICAL_OUT_DIR / TASK), view=False, cleanup=True, format="pdf")
 
-        source = g.source.replace("_q>", ">").replace("_k>", ">").replace("_v>", ">")
-        seen_lines = {"}"}
-        # Don't add self-loops
-        for layer in range(12):
-            for head in range(12):
-                seen_lines.add(f"\t<a{layer}.{head}> -> <a{layer}.{head}> ")
+        def save(source, suffix):
+            seen_lines = {"}"}
+            # Don't add self-loops
+            for layer in range(12):
+                for head in range(12):
+                    seen_lines.add(f"\t<a{layer}.{head}> -> <a{layer}.{head}> ")
 
-        out = []
-        for line in source.split("\n")[1:-1]:
-            if "<m" not in line:
-                edge_info = line.split("[")[0]
-                if edge_info not in seen_lines:
-                    out.append(line)
-                    seen_lines.add(edge_info)
+            out = []
+            for line in source.split("\n")[1:-1]:
+                if "<m" not in line:
+                    edge_info = line.split("[")[0]
+                    if edge_info not in seen_lines:
+                        out.append(line)
+                        seen_lines.add(edge_info)
 
-        source = "\n".join(sorted(out))
-        with open(CANONICAL_OUT_DIR / f"{TASK}_heads.gv", "w") as f:
-            f.write("digraph {\n" + source + "\n}")
+            source = "\n".join(sorted(out))
+            with open(CANONICAL_OUT_DIR / f"{TASK}_{suffix}.gv", "w") as f:
+                f.write("digraph {\n" + source + "\n}")
 
-
+        save(g.source, "heads_qkv")
+        save(g.source.replace("_q>", ">").replace("_k>", ">").replace("_v>", ">"), "heads")
 
 
 if ONLY_SAVE_CANONICAL:
