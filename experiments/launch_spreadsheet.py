@@ -98,7 +98,7 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
                             "python",
                             "acdc/main.py",
                             f"--task={task}",
-                            f"--threshold={threshold:.5f}",
+                            f"--threshold={threshold}",
                             "--using-wandb",
                             f"--wandb-run-name={wandb_identifier.run_name.format(i=len(commands))}",
                             f"--wandb-group-name={wandb_identifier.group_name}",
