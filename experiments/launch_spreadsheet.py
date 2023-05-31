@@ -28,9 +28,9 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
 
     commands: List[List[str]] = []
     for reset_network in [int(reset_networks)]:
-        for zero_ablation in [0, 1]:
+        for zero_ablation in [0]:
             for task in TASKS:
-                for metric in METRICS_FOR_TASK[task]:
+                for metric in ["kl_div"]: # METRICS_FOR_TASK[task]:
 
                     if task.startswith("tracr"):
                         # Typical metric value range: 0.0-0.1
@@ -48,7 +48,8 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
                     elif task == "greaterthan":
                         if metric == "kl_div":
                             # Typical metric value range: 0.0-20
-                            thresholds = 10 ** np.linspace(-4, 0, NUM_SPACINGS)
+                            # thresholds = 10 ** np.linspace(-4, 0, NUM_SPACINGS)
+                            thresholds = 10 ** np.linspace(-6, -4, 11)
                         elif metric == "greaterthan":
                             # Typical metric value range: -1.0 - 0.0
                             thresholds = 10 ** np.linspace(-3, -1, NUM_SPACINGS)
@@ -72,7 +73,7 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
                         seq_len = -1
                         if metric == "kl_div":
                             # Typical metric value range: 0.0-12.0
-                            thresholds = 10 ** np.linspace(-4, 0, NUM_SPACINGS)
+                            thresholds = 10 ** np.linspace(-6, 0, 31)
                         elif metric == "logit_diff":
                             # Typical metric value range: -0.31 -- -0.01
                             thresholds = 10 ** np.linspace(-4, 0, NUM_SPACINGS)
@@ -128,15 +129,15 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
 
 
 if __name__ == "__main__":
-    for reset_networks in [False, True]:
+    for reset_networks in [False]:
         main(
-            ["tracr-reverse"],
-            "acdc-tracr-neurips-5",
-            f"agarriga-tr-rev-res{int(reset_networks)}-{{i:05d}}",
+            ["ioi", "greaterthan"],
+            "acdc-ioi-gt-redo2",
+            f"agarriga-ioi-res{int(reset_networks)}-{{i:05d}}",
             testing=False,
             use_kubernetes=True,
             reset_networks=reset_networks,
-            use_gpu=False,
+            use_gpu=True,
         )
 
 # if __name__ == "__main__":
