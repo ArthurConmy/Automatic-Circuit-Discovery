@@ -2,27 +2,27 @@
 We should i) remove global cache dependencies for ACDC 
 ii) make most of this file the same as Neel's main"""
 
-from typing import Union, Dict, Optional, Tuple
+import logging
+from functools import *
+from typing import Dict, Optional, Tuple, Union
+
+import einops
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
-import einops
-import logging
-
-from functools import *
-import warnings
-from transformer_lens.hook_points import HookPoint
-from transformer_lens.utils import gelu_new, solu, gelu_fast
-from transformer_lens.HookedTransformerConfig import HookedTransformerConfig
-from transformer_lens.FactoredMatrix import FactoredMatrix
-from transformer_lens.torchtyping_helper import T
-
 from fancy_einsum import einsum
+from jaxtyping import Float, Int
+from typeguard import typeguard_ignore
 
+from transformer_lens.FactoredMatrix import FactoredMatrix
+from transformer_lens.hook_points import HookPoint
+from transformer_lens.HookedTransformerConfig import HookedTransformerConfig
 from transformer_lens.past_key_value_caching import HookedTransformerKeyValueCacheEntry
+from transformer_lens.utils import gelu_fast, gelu_new, solu
 
-# See tests/should_fail.py for an example of how to enforce type annotations at runtime
+# TODO should these coexist
+from transformer_lens.torchtyping_helper import T
 from torchtyping import TensorType as TT
 
 # Embed & Unembed
@@ -91,6 +91,96 @@ class PosEmbed(nn.Module):
             pos_embed, "pos d_model -> batch pos d_model", batch=tokens.size(0)
         )  # [batch, pos, d_model]
         return broadcast_pos_embed.clone()
+
+class TokenTypeEmbed(nn.Module):
+    """
+    The token-type embed is a binary ids indicating whether a token belongs to sequence A or B. For example, for two sentences: "[CLS] Sentence A [SEP] Sentence B [SEP]", token_type_ids would be [0, 0, ..., 0, 1, ..., 1, 1]. `0` represents tokens from Sentence A, `1` from Sentence B. If not provided, BERT assumes a single sequence input. Typically, shape is (batch_size, sequence_length).
+
+    See the BERT paper for more information: https://arxiv.org/pdf/1810.04805.pdf
+    """
+
+    def __init__(self, cfg: Union[Dict, HookedTransformerConfig]):
+        super().__init__()
+        if isinstance(cfg, Dict):
+            cfg = HookedTransformerConfig.from_dict(cfg)
+        self.cfg = cfg
+        self.W_token_type = nn.Parameter(torch.empty(2, self.cfg.d_model))
+
+    def forward(self, token_type_ids: Int[torch.Tensor, "batch pos"]):
+        return self.W_token_type[token_type_ids, :]
+
+
+class BertEmbed(nn.Module):
+    """
+    Custom embedding layer for a BERT-like model. This module computes the sum of the token, positional and token-type embeddings and takes the layer norm of the result.
+    """
+
+    def __init__(self, cfg: Union[Dict, HookedTransformerConfig]):
+        super().__init__()
+        if isinstance(cfg, Dict):
+            cfg = HookedTransformerConfig.from_dict(cfg)
+        self.cfg = cfg
+        self.embed = Embed(cfg)
+        self.pos_embed = PosEmbed(cfg)
+        self.token_type_embed = TokenTypeEmbed(cfg)
+        self.ln = LayerNorm(cfg)
+
+        self.hook_embed = HookPoint()
+        self.hook_pos_embed = HookPoint()
+        self.hook_token_type_embed = HookPoint()
+
+    def forward(
+        self,
+        input_ids: Int[torch.Tensor, "batch pos"],
+        token_type_ids: Optional[Int[torch.Tensor, "batch pos"]] = None,
+    ):
+        base_index_id = torch.arange(input_ids.shape[1], device=input_ids.device)
+        index_ids = einops.repeat(
+            base_index_id, "pos -> batch pos", batch=input_ids.shape[0]
+        )
+        if token_type_ids is None:
+            token_type_ids = torch.zeros_like(input_ids)
+
+        word_embeddings_out = self.hook_embed(self.embed(input_ids))
+        position_embeddings_out = self.hook_pos_embed(self.pos_embed(index_ids))
+        token_type_embeddings_out = self.hook_token_type_embed(
+            self.token_type_embed(token_type_ids)
+        )
+
+        embeddings_out = (
+            word_embeddings_out + position_embeddings_out + token_type_embeddings_out
+        )
+        layer_norm_out = self.ln(embeddings_out)
+        return layer_norm_out
+
+
+class BertMLMHead(nn.Module):
+    """
+    Transforms BERT embeddings into logits. The purpose of this module is to predict masked tokens in a sentence.
+    """
+
+    def __init__(self, cfg: Union[Dict, HookedTransformerConfig]):
+        super().__init__()
+        if isinstance(cfg, Dict):
+            cfg = HookedTransformerConfig.from_dict(cfg)
+        self.cfg = cfg
+        self.W = nn.Parameter(torch.empty(cfg.d_model, cfg.d_model))
+        self.b = nn.Parameter(torch.zeros(cfg.d_model))
+        self.act_fn = nn.GELU()
+        self.ln = LayerNorm(cfg)
+
+    def forward(self, resid: Float[torch.Tensor, "batch pos d_model"]) -> torch.Tensor:
+        resid = (
+            einsum(
+                "batch pos d_model_in, d_model_out d_model_in -> batch pos d_model_out",
+                resid,
+                self.W,
+            )
+            + self.b
+        )
+        resid = self.act_fn(resid)
+        resid = self.ln(resid)
+        return resid
 
 
 # LayerNormPre

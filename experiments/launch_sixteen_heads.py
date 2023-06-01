@@ -70,18 +70,17 @@ parser.add_argument('--seed', type=int, default=1234)
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args([
-        "--task=tracr-proportion",
-        "--wandb-mode=offline",
-        "--wandb-dir=/tmp/wandb",
-        "--wandb-entity=remix_school-of-rock",
-        "--wandb-group=default",
-        "--wandb-project=acdc",
-        "--wandb-run-name=notebook-testing",
-        "--device=cpu",
-        "--reset-network=0",
-        "--metric=kl_div",
-    ])
+    args = parser.parse_args([line.strip() for line in r"""--task=tracr-proportion \
+--wandb-mode=offline \
+--wandb-dir=/tmp/wandb \
+--wandb-entity=remix_school-of-rock \
+--wandb-group=default \
+--wandb-project=acdc \
+--wandb-run-name=notebook-testing \
+--device=cpu \
+--reset-network=0 \
+--metric=kl_div""".split("\\\n")]) # so easy to copy and paste into terminal!!!
+
 else:
     args = parser.parse_args()
 
@@ -128,8 +127,14 @@ else:
 
 
 kwargs = dict(**things.tl_model.cfg.__dict__)
-del kwargs["use_split_qkv_input"]
-del kwargs["use_global_cache"]
+
+for extra_arg in [
+    "use_split_qkv_input",
+    "use_global_cache",
+    "n_devices", # extra from new merge
+    "gated_mlp",
+]:
+    del kwargs[extra_arg]
 
 cfg = SPHookedTransformerConfig(**kwargs)
 model = SPHookedTransformer(cfg, is_masked=True)

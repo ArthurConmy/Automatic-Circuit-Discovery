@@ -41,7 +41,7 @@ class HookPoint(nn.Module):
     intermediate activation in a HookPoint, it provides a convenient way to add PyTorch hooks.
     """
 
-    def __init__(self):
+    def __init__(self, global_cache=None):
         super().__init__()
         self.fwd_hooks: List[LensHandle] = []
         self.bwd_hooks: List[LensHandle] = []
