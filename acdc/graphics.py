@@ -108,7 +108,7 @@ def build_colorscheme(correspondence, colorscheme: str = "Pastel2", show_full_in
 def show(
     correspondence: TLACDCCorrespondence,
     fname=None,
-    colorscheme: str = "Pastel2",
+    colorscheme: dict | str = "Pastel2",
     minimum_penwidth: float = 0.3,
     show: bool = True,
     show_full_index: bool = True,
@@ -122,7 +122,10 @@ def show(
         format = fname.split(".")[-1]
     g = graphviz.Digraph(format=format)
 
-    colors = build_colorscheme(correspondence, colorscheme, show_full_index=show_full_index)
+    if isinstance(colorscheme, dict):
+        colors = colorscheme
+    else:
+        colors = build_colorscheme(correspondence, colorscheme, show_full_index=show_full_index)
 
     # create all nodes
     for child_hook_name in correspondence.edges:
