@@ -84,6 +84,7 @@ if get_ipython() is not None: # heheh get around this failing in notebooks
 else:
     args = parser.parse_args()
 
+torch.manual_seed(args.seed)
 
 wandb.init(
     name=args.wandb_run_name,
