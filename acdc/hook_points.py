@@ -65,63 +65,46 @@ class HookPoint(nn.Module):
     def add_perma_hook(self, hook, dir="fwd") -> None:
         self.add_hook(hook, dir=dir, is_permanent=True)
 
-<<<<<<< HEAD:acdc/hook_points.py
-    def add_hook(self, hook, dir="fwd", is_permanent=False, prepend=False) -> LensHandle: # TODO make sure all updates to this are legit...
+
+    def add_hook(self, hook, dir="fwd", is_permanent=False, level=None, prepend=False) -> None:
+        """
+        Hook format is fn(activation, hook_name)
+        Change it into PyTorch hook format (this includes input and output,
+        which are the same for a HookPoint)
         
-=======
-    def add_hook(self, hook, dir="fwd", is_permanent=False, level=None) -> None:
->>>>>>> neel/main:transformer_lens/hook_points.py
-        # Hook format is fn(activation, hook_name)
-        # Change it into PyTorch hook format (this includes input and output,
-        # which are the same for a HookPoint)
-
-        if is_permanent or dir != "fwd":
-            warnings.warn("Only fwd hooks are supported for core ACDC usages. You could disable this but no guarantees of correctness.")
-
+        ACDC adds the `prepend` argument
+        """
         if dir == "fwd":
-            if prepend:
-                print("INFO: prepending a hook")
-                old_fwd_hook_functions = [hook for hook in self.fwd_hook_functions] # so this doesn't get deleted
-                self.remove_hooks()
-                handle = self.add_hook(hook)
-                for old_hook in old_fwd_hook_functions:
-                    self.add_hook(old_hook)
-                return handle
 
             def full_hook(module, module_input, module_output):
                 return hook(module_output, hook=self)
 
             handle = self.register_forward_hook(full_hook)
-<<<<<<< HEAD:acdc/hook_points.py
-            handle = LensHandle(handle, is_permanent)
+            handle = LensHandle(handle, is_permanent, level)
 
             if prepend:
+                # we could just pass this as an argument in PyTorch 2.0, but for now we manually do this...
+                self._forward_hooks.move_to_end(handle.hook.id, last=False)
                 self.fwd_hooks.insert(0, handle)
+
             else:
                 self.fwd_hooks.append(handle)
-
-=======
-            handle = LensHandle(handle, is_permanent, level)
-            self.fwd_hooks.append(handle)
->>>>>>> neel/main:transformer_lens/hook_points.py
         elif dir == "bwd":
             # For a backwards hook, module_output is a tuple of (grad,) - I don't know why.
             def full_hook(module, module_input, module_output):
                 return hook(module_output[0], hook=self)
 
             handle = self.register_full_backward_hook(full_hook)
-<<<<<<< HEAD:acdc/hook_points.py
-            handle = LensHandle(handle, is_permanent)
+            handle = LensHandle(handle, is_permanent, level)
+
             if prepend:
+                # we could just pass this as an argument in PyTorch 2.0, but for now we manually do this...
+                self._backward_hooks.move_to_end(handle.hook.id, last=False)
                 self.bwd_hooks.insert(0, handle)
             else:
                 self.bwd_hooks.append(handle)
-
         else:
             raise ValueError(f"Invalid direction {dir}")
-
-        self.fwd_hook_functions.append(hook)
-        return handle
 
     def remove_hooks(self, dir="fwd", including_permanent=False) -> None:
         def _remove_hooks(handles: List[LensHandle]) -> None:
