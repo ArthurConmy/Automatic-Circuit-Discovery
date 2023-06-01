@@ -425,7 +425,7 @@ class TLACDCExperiment:
                 assert "sender_hook" in hook_func_name, f"You should only add sender hooks to {node.name}, and this: {hook_func_name} doesn't look like a sender hook"
             return False # already added, whatever move on
 
-        handle = self.model.add_hook(
+        self.model.add_hook(
             name=node.name, 
             hook=partial(self.sender_hook, verbose=self.hook_verbose, cache="first", device="cpu" if self.first_cache_cpu else None),
         )
@@ -439,7 +439,7 @@ class TLACDCExperiment:
                 assert "receiver_hook" in hook_func_name, f"You should only add receiver hooks to {node.name}, and this: {hook_func_name} doesn't look like a receiver hook"
             return False # already added, whatever move on
 
-        handle = self.model.add_hook(
+        self.model.add_hook(
             name=node.name,
             hook=partial(self.receiver_hook, verbose=self.hook_verbose),
             prepend=prepend,
