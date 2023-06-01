@@ -463,7 +463,6 @@ class TLACDCExperiment:
             print("New metric:", cur_metric)
 
         if self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value:
-            print("Yay the check is done, indeed we did some prepending of backwards hooks")
             added_receiver_hook = self.add_receiver_hook(self.current_node, override=True, prepend=True)
 
         if self.current_node.incoming_edge_type.value == EdgeType.DIRECT_COMPUTATION.value:
