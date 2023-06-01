@@ -21,6 +21,7 @@ setup(
         "huggingface_hub",
         "cmapy",
         "graphviz", 
+        "matplotlib",
         "kaleido",
         "plotly",
         "torchtyping",
