@@ -106,17 +106,8 @@ class HookPoint(nn.Module):
         else:
             raise ValueError(f"Invalid direction {dir}")
 
-    def remove_hooks(self, dir="fwd", including_permanent=False) -> None:
-        def _remove_hooks(handles: List[LensHandle]) -> None:
-=======
-            handle = LensHandle(handle, is_permanent, level)
-            self.bwd_hooks.append(handle)
-        else:
-            raise ValueError(f"Invalid direction {dir}")
-
     def remove_hooks(self, dir="fwd", including_permanent=False, level=None) -> None:
         def _remove_hooks(handles: List[LensHandle]) -> List[LensHandle]:
->>>>>>> neel/main:transformer_lens/hook_points.py
             output_handles = []
             for handle in handles:
                 if including_permanent:
@@ -135,8 +126,6 @@ class HookPoint(nn.Module):
             self.bwd_hooks = _remove_hooks(self.bwd_hooks)
         if dir not in ["fwd", "bwd", "both"]:
             raise ValueError(f"Invalid direction {dir}")
-
-        self.fwd_hook_functions = [] # lol, support for permanents and partial removal of hooks will be bad
 
     def clear_context(self):
         del self.ctx
@@ -212,30 +201,17 @@ class HookedRootModule(nn.Module):
             hp.clear_context()
 
     def reset_hooks(
-<<<<<<< HEAD:acdc/hook_points.py
-        self, clear_contexts=True, direction="both", including_permanent=False
-=======
         self,
         clear_contexts=True,
         direction="both",
         including_permanent=False,
         level=None,
->>>>>>> neel/main:transformer_lens/hook_points.py
     ):
         if clear_contexts:
             self.clear_contexts()
         self.remove_all_hook_fns(direction, including_permanent, level=level)
         self.is_caching = False
 
-<<<<<<< HEAD:acdc/hook_points.py
-    def check_and_add_hook(self, hook_point, hook_point_name, hook, dir="fwd", is_permanent=False, prepend=False) -> None:
-        """Override this function to add checks on which hooks should be added"""
-        return hook_point.add_hook(hook, dir=dir, is_permanent=is_permanent, prepend=prepend)
-
-    def add_hook(self, name, hook, dir="fwd", is_permanent=False, prepend=False) -> None:
-        if type(name) == str:
-            return self.check_and_add_hook(self.mod_dict[name], name, hook, dir=dir, is_permanent=is_permanent, prepend=prepend)
-=======
     def check_and_add_hook(
         self,
         hook_point,
@@ -267,18 +243,12 @@ class HookedRootModule(nn.Module):
                 is_permanent=is_permanent,
                 level=level,
             )
->>>>>>> neel/main:transformer_lens/hook_points.py
         else:
             handles = []
 
             # Otherwise, name is a Boolean function on names
             for hook_point_name, hp in self.hook_dict.items():
                 if name(hook_point_name):
-<<<<<<< HEAD:acdc/hook_points.py
-                    handles.append(self.check_and_add_hook(hp, hook_point_name, hook, dir=dir, is_permanent=is_permanent, prepend=prepend))
-            
-            return handles
-=======
                     self.check_and_add_hook(
                         hp,
                         hook_point_name,
@@ -287,7 +257,6 @@ class HookedRootModule(nn.Module):
                         is_permanent=is_permanent,
                         level=level,
                     )
->>>>>>> neel/main:transformer_lens/hook_points.py
 
     def add_perma_hook(self, name, hook, dir="fwd") -> None:
         self.add_hook(name, hook, dir=dir, is_permanent=True)

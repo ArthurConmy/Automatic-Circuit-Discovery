@@ -1,32 +1,19 @@
 # %%
 from __future__ import annotations
-<<<<<<< HEAD:acdc/ActivationCache.py
-import acdc.utils as utils
-from acdc.utils import Slice, SliceInput
-import torch
-=======
 
 import logging
 from typing import Dict, List, Optional, Tuple, Union
 
->>>>>>> neel/main:transformer_lens/ActivationCache.py
 import einops
 import numpy as np
 import torch
 from fancy_einsum import einsum
 from jaxtyping import Float, Int
 from typing_extensions import Literal
-<<<<<<< HEAD:acdc/ActivationCache.py
-from torchtyping import TensorType as TT
-import re
-import numpy as np
-import logging
-=======
 
 import transformer_lens.utils as utils
 from transformer_lens.utils import Slice, SliceInput
 
->>>>>>> neel/main:transformer_lens/ActivationCache.py
 
 from acdc.torchtyping_helper import T
 
@@ -391,12 +378,8 @@ class ActivationCache:
         return_labels: bool = False,
         incl_remainder: bool = False,
         pos_slice: Union[Slice, SliceInput] = None,
-<<<<<<< HEAD:acdc/ActivationCache.py
-    ) -> TT[T.num_components, T.batch_and_pos_dims : ..., T.d_model]:
-=======
         apply_ln: bool = False,
     ) -> Float[torch.Tensor, "num_components *batch_and_pos_dims d_model"]:
->>>>>>> neel/main:transformer_lens/ActivationCache.py
         """Returns a stack of all head results (ie residual stream contribution) up to layer L. A good way to decompose the outputs of attention layers into attribution by specific heads. Note that the num_components axis has length layer x n_heads ((layer head_index) in einops notation)
 
         Args:
@@ -521,9 +504,6 @@ class ActivationCache:
         neuron_slice: Union[Slice, SliceInput] = None,
         return_labels: bool = False,
         incl_remainder: bool = False,
-<<<<<<< HEAD:acdc/ActivationCache.py
-    ) -> TT[T.num_components, T.batch_and_pos_dims : ..., T.d_model]:
-=======
         apply_ln: bool = False,
     ) -> Union[
         Float[torch.Tensor, "num_components *batch_and_pos_dims d_model"],
@@ -531,7 +511,6 @@ class ActivationCache:
             Float[torch.Tensor, "num_components *batch_and_pos_dims d_model"], List[str]
         ],
     ]:
->>>>>>> neel/main:transformer_lens/ActivationCache.py
         """Returns a stack of all neuron results (ie residual stream contribution) up to layer L - ie the amount each individual neuron contributes to the residual stream. Also returns a list of labels of the form "L0N0" for the neurons. A good way to decompose the outputs of MLP layers into attribution by specific neurons.
 
         Note that doing this for all neurons is SUPER expensive on GPU memory and only works for small models or short inputs.
@@ -599,13 +578,9 @@ class ActivationCache:
 
     def apply_ln_to_stack(
         self,
-<<<<<<< HEAD:acdc/ActivationCache.py
-        residual_stack: TT[T.num_components, T.batch_and_pos_dims : ..., T.d_model],
-=======
         residual_stack: Float[
             torch.Tensor, "num_components *batch_and_pos_dims d_model"
         ],
->>>>>>> neel/main:transformer_lens/ActivationCache.py
         layer: Optional[int] = None,
         mlp_input: bool = False,
         pos_slice: Union[Slice, SliceInput] = None,
