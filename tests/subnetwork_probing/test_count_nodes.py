@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
 import graphviz
-from acdc.TLACDCCorrespondence import TLACDCCorrespondence
-from acdc.TLACDCInterpNode import TLACDCInterpNode
-from acdc.acdc_utils import EdgeType, TorchIndex
-from acdc.graphics import show
+from transformer_lens.TLACDCCorrespondence import TLACDCCorrespondence
+from transformer_lens.TLACDCInterpNode import TLACDCInterpNode
+from transformer_lens.acdc_utils import EdgeType, TorchIndex
+from transformer_lens.graphics import show
 import tempfile
 import os
 
@@ -17,7 +17,7 @@ sys.path.append(str(Path(__file__).parent.parent / "code"))
 
 from subnetwork_probing.train import correspondence_from_mask, get_transformer_config
 import networkx as nx
-from acdc.munging_utils import parse_interpnode
+from transformer_lens.munging_utils import parse_interpnode
 
 def delete_nested_dict(d: dict, keys: list):
     inner_dicts = [d]

@@ -44,11 +44,11 @@ import plotly.express as px
 import plotly.io as pio
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
-from acdc.hook_points import HookedRootModule, HookPoint
-from acdc.HookedTransformer import (
+from transformer_lens.hook_points import HookedRootModule, HookPoint
+from transformer_lens.HookedTransformer import (
     HookedTransformer,
 )
-from acdc.acdc_utils import (
+from transformer_lens.acdc_utils import (
     make_nd_dict,
     shuffle_tensor,
     ct,
@@ -57,20 +57,20 @@ from acdc.acdc_utils import (
     EdgeType,
 )  # these introduce several important classes !!!
 
-from acdc.TLACDCCorrespondence import TLACDCCorrespondence
-from acdc.TLACDCInterpNode import TLACDCInterpNode
-from acdc.TLACDCExperiment import TLACDCExperiment
+from transformer_lens.TLACDCCorrespondence import TLACDCCorrespondence
+from transformer_lens.TLACDCInterpNode import TLACDCInterpNode
+from transformer_lens.TLACDCExperiment import TLACDCExperiment
 
 from collections import defaultdict, deque, OrderedDict
-from acdc.induction.utils import (
+from transformer_lens.induction.utils import (
     get_all_induction_things,
     get_induction_model,
     get_validation_data,
     get_good_induction_candidates,
     get_mask_repeat_candidates,
 )
-from acdc.tracr.utils import get_tracr_model_input_and_tl_model
-from acdc.graphics import (
+from transformer_lens.tracr.utils import get_tracr_model_input_and_tl_model
+from transformer_lens.graphics import (
     build_colorscheme,
     show,
 )

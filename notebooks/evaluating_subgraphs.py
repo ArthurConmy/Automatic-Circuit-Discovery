@@ -8,14 +8,14 @@
 
 from IPython import get_ipython
 
-from acdc.acdc_utils import TorchIndex
+from transformer_lens.acdc_utils import TorchIndex
 if get_ipython() is not None:
     get_ipython().run_line_magic("load_ext", "autoreload")
     get_ipython().run_line_magic("autoreload", "2")
 
-from acdc.HookedTransformer import HookedTransformer
-from acdc.TLACDCExperiment import TLACDCExperiment
-from acdc.induction.utils import get_all_induction_things
+from transformer_lens.HookedTransformer import HookedTransformer
+from transformer_lens.TLACDCExperiment import TLACDCExperiment
+from transformer_lens.induction.utils import get_all_induction_things
 
 # %%
 

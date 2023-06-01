@@ -13,12 +13,12 @@ def test_notebook():
 
     from tqdm import tqdm
     import warnings
-    import acdc
+    import transformer_lens
     from copy import deepcopy
-    from acdc import HookedTransformer
-    from acdc.induction.utils import get_all_induction_things
+    from transformer_lens import HookedTransformer
+    from transformer_lens.induction.utils import get_all_induction_things
     import torch
-    from acdc.acdc_utils import TorchIndex, Edge, EdgeType, OrderedDefaultdict, make_nd_dict
+    from transformer_lens.acdc_utils import TorchIndex, Edge, EdgeType, OrderedDefaultdict, make_nd_dict
 
     RECOMPUTE = True # turn this off to just get the ordered heads, with no need for a backward pass!
     ZERO_ABLATION = False
@@ -279,7 +279,7 @@ def test_notebook():
 
         return cnt
 
-    from acdc.TLACDCCorrespondence import TLACDCCorrespondence
+    from transformer_lens.TLACDCCorrespondence import TLACDCCorrespondence
     corr = TLACDCCorrespondence.setup_from_model(tl_model)
 
     # %%

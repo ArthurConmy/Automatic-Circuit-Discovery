@@ -1,6 +1,6 @@
 import torch
-from acdc.greaterthan.utils import greaterthan_metric_reference, greaterthan_metric, get_year_data
-from acdc.ioi.utils import get_gpt2_small
+from transformer_lens.greaterthan.utils import greaterthan_metric_reference, greaterthan_metric, get_year_data
+from transformer_lens.ioi.utils import get_gpt2_small
 
 
 def test_greaterthan_metric():
