@@ -348,7 +348,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
                     )
                     fig.add_annotation(
                         xref="x domain",
-                       # yref="y",
+                        yref="y",
                         x=0.6, # end of arrow
                         y=0.7,
                         text="",

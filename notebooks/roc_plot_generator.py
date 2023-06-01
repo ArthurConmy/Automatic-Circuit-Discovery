@@ -519,7 +519,7 @@ def get_acdc_runs(
             try:
                 if latest_file is None:
                     raise wandb.CommError("a")
-                with latest_file.download(ROOT / run.name, replace=False, exist_ok=True) as f:
+                with latest_file.download(ROOT / run.name, replace=True, exist_ok=True) as f:
                     d = json.load(f)
 
                 data = d["data"][0]
@@ -556,7 +556,7 @@ def get_acdc_runs(
             except (wandb.CommError, requests.exceptions.HTTPError) as e:
                 print(f"Error {e}, falling back to parsing output.log")
                 try:
-                    with run.file("output.log").download(root=ROOT / run.name, replace=False, exist_ok=True) as f:
+                    with run.file("output.log").download(root=ROOT / run.name, replace=True, exist_ok=True) as f:
                         log_text = f.read()
                     experiment.load_from_wandb_run(log_text)
                     corrs.append((deepcopy(experiment.corr), score_d))
@@ -573,7 +573,7 @@ def get_acdc_runs(
             this_root = ROOT / edges_artifact.name
             # Load the edges
             for f in edges_artifact.files():
-                with f.download(root=this_root, replace=False, exist_ok=True) as fopen:
+                with f.download(root=this_root, replace=True, exist_ok=True) as fopen:
                     # Sadly f.download opens in text mode
                     with open(fopen.name, "rb") as fopenb:
                         edges_pth = pickle.load(fopenb)
