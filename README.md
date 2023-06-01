@@ -2,7 +2,7 @@
 
 This is the accompanying code to the arXiv paper "Towards Automated Circuit Discovery for Mechanistic Interpretability".
 
-To run ACDC, see `acdc/main.py`. To see how we edit connections, see `notebooks/evaluating_subgraphs.py`. This repo is still under construction.
+To run ACDC, see `acdc/main.py`. To see how we edit connections, see `notebooks/evaluating_subgraphs.py`. <b>This repo is still under construction.</b>
 
 # Automatic Circuit Discovery 
 
