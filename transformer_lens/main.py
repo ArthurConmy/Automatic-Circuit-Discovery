@@ -66,6 +66,7 @@ from transformer_lens.tracr.utils import get_all_tracr_things, get_tracr_model_i
 from transformer_lens.docstring.utils import get_all_docstring_things
 from transformer_lens.acdc_utils import (
     make_nd_dict,
+    reset_network,
     shuffle_tensor,
     cleanup,
     ct,
@@ -97,7 +98,6 @@ from transformer_lens.graphics import (
     build_colorscheme,
     show,
 )
-from transformer_lens.utils import reset_network
 import argparse
 torch.autograd.set_grad_enabled(False)
 

@@ -27,7 +27,6 @@ import wandb
 import IPython
 import torch
 
-# from easy_transformer.ioi_dataset import IOIDataset  # type: ignore
 from tqdm import tqdm
 import random
 from functools import *

@@ -1,3 +1,7 @@
+"""TODO: LIKE IN HOOKEDTRANSFORMER.PY,
+We should i) remove global cache dependencies for ACDC 
+ii) make most of this file the same as Neel's main"""
+
 from typing import Union, Dict, Optional, Tuple
 import torch
 import torch.nn as nn

@@ -28,7 +28,7 @@ from transformer_lens.acdc_utils import (
     make_nd_dict,
     shuffle_tensor,
 )
-from transformer_lens.utils import reset_network
+from transformer_lens.acdc_utils import reset_network
 from transformer_lens.docstring.utils import get_all_docstring_things
 from transformer_lens.greaterthan.utils import get_all_greaterthan_things
 from transformer_lens.induction.utils import (

@@ -1,3 +1,5 @@
+# TODO: ideally eventually remove but I think there's vestigual code???
+
 class T:
     """Helper class to get mypy to work with TorchTyping and solidify naming conventions as a byproduct.
 

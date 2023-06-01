@@ -1,36 +1,4 @@
-# TODO isort this top bit...
-
 from __future__ import annotations
-import wandb
-from functools import partial
-from copy import deepcopy
-import warnings
-import collections
-import random
-from collections import defaultdict
-from enum import Enum
-from typing import Any, Literal, Dict, Tuple, Union, List, Optional, Callable, TypeVar, Generic, Iterable, Set, Type, cast, Sequence, Mapping, overload
-import torch
-import time
-import torch.nn.functional as F
-from collections import OrderedDict
-
-import numpy as np
-import torch
-import torch.nn.functional as F
-from typing import Any
-
-# from datasets.arrow_dataset import Dataset
-import einops
-from enum import Enum
-from transformers import AutoTokenizer
-from typing import Optional, Union, Tuple, List, Dict, Type
-from torchtyping import TensorType as TT
-import transformers
-from huggingface_hub import hf_hub_download
-import re
-from rich import print as rprint
-
 
 import re
 from typing import Dict, List, Optional, Tuple, Type, Union, cast
@@ -47,21 +15,19 @@ from rich import print as rprint
 from transformers import AutoTokenizer
 
 from transformer_lens import FactoredMatrix
-from transformer_lens.torchtyping_helper import T
-from collections import defaultdict
 
 CACHE_DIR = transformers.TRANSFORMERS_CACHE
 import json
 
 from jaxtyping import Float, Int
 
-import collections
 
 def download_file_from_hf(
     repo_name, file_name, subfolder=".", cache_dir=CACHE_DIR, force_is_torch=False
 ):
     """
     Helper function to download files from the HuggingFace Hub, from subfolder/file_name in repo_name, saving locally to cache_dir and returning the loaded file (if a json or Torch object) and the file path otherwise.
+
     If it's a Torch file without the ".pth" extension, set force_is_torch=True to load it as a Torch object.
     """
     file_path = hf_hub_download(
@@ -112,11 +78,12 @@ def to_numpy(tensor):
 
 
 def lm_cross_entropy_loss(
-    logits: TT[T.batch, T.pos, T.d_vocab],
-    tokens: TT[T.batch, T.pos],
+    logits: Float[torch.Tensor, "batch pos d_vocab"],
+    tokens: Int[torch.Tensor, "batch pos"],
     per_token: bool = False,
-) -> Union[TT[()], TT[T.batch, T.pos]]:
+) -> Union[Float[torch.Tensor, ""], Float[torch.Tensor, "batch pos"]]:
     """Cross entropy loss for the language model, gives the loss for predicting the NEXT token.
+
     Args:
         logits (torch.Tensor): Logits. Shape [batch, pos, d_vocab]
         tokens (torch.Tensor[int64]): Input tokens. Shape [batch, pos]
@@ -136,11 +103,12 @@ def lm_cross_entropy_loss(
 
 
 def lm_accuracy(
-    logits: TT[T.batch, T.pos, T.d_vocab],
-    tokens: TT[T.batch, T.pos],
+    logits: Float[torch.Tensor, "batch pos d_vocab"],
+    tokens: Int[torch.Tensor, "batch pos"],
     per_token: bool = False,
-) -> Union[TT[()], TT[T.batch, T.pos]]:
+) -> Union[Float[torch.Tensor, ""], Float[torch.Tensor, "batch pos"]]:
     """Cross-Entropy Accuracy for Language Modelling. We measure the accuracy on the logits for predicting the NEXT token.
+
     If per_token is True, returns the boolean for top 1 accuracy for each token in the batch. Note that this has size [batch, seq_len-1], as we cannot predict the first token.
     """
     top_prediction = logits.argmax(dim=-1)
@@ -183,6 +151,7 @@ def solu(
     """
     SoLU activation function as described by
     https://transformer-circuits.pub/2022/solu/index.html.
+
     LayerNorm implemented by the MLP class.
     """
     return input * F.softmax(input, dim=-1)
@@ -208,7 +177,9 @@ def tokenize_and_concatenate(
     num_proc: int = 10,
 ) -> Dataset:
     """Helper function to tokenizer and concatenate a dataset of text. This converts the text to tokens, concatenates them (separated by EOS tokens) and then reshapes them into a 2D array of shape (____, sequence_length), dropping the last batch. Tokenizers are much faster if parallelised, so we chop the string into 20, feed it into the tokenizer, in parallel with padding, then remove padding at the end.
+
     This tokenization is useful for training language models, as it allows us to efficiently train on a large corpus of text of varying lengths (without, eg, a lot of truncation or padding). Further, for models with absolute positional encodings, this avoids privileging early tokens (eg, news articles often begin with CNN, and models may learn to use early positional encodings to predict these)
+
     Args:
         dataset (Dataset): The dataset to tokenize, assumed to be a HuggingFace text dataset.
         tokenizer (AutoTokenizer): The tokenizer. Assumed to have a bos_token_id and an eos_token_id.
@@ -216,8 +187,10 @@ def tokenize_and_concatenate(
         max_length (int, optional): The length of the context window of the sequence. Defaults to 1024.
         column_name (str, optional): The name of the text column in the dataset. Defaults to 'text'.
         add_bos_token (bool, optional): . Defaults to True.
+
     Returns:
         Dataset: Returns the tokenized dataset, as a dataset of tensors, with a single column called "tokens"
+
     Note: There is a bug when inputting very small datasets (eg, <1 batch per process) where it just outputs nothing. I'm not super sure why
     """
     dataset = keep_single_column(dataset, column_name)
@@ -271,6 +244,7 @@ def tokenize_and_concatenate(
 
 """ 
 Test ^
+
 data = Dataset.from_dict({"text":[str(i) for i in range(1000)]})
 tokenizer = AutoTokenizer.from_pretrained("NeelNanda/gpt-neox-tokenizer-digits")
 print(data)
@@ -279,19 +253,22 @@ tokenize_and_concatenate(data, tokenizer, streaming=False, column_name="text")
 
 
 def sample_logits(
-    final_logits: TT[T.batch, T.d_vocab],
+    final_logits: Float[torch.Tensor, "batch d_vocab"],
     top_k: Optional[int] = None,
     top_p: Optional[float] = None,
     temperature: float = 1.0,
     freq_penalty: float = 0.0,
-    tokens: Optional[TT[T.batch, T.pos]] = None,
-) -> TT[T.batch]:
+    tokens: Optional[Int[torch.Tensor, "batch pos"]] = None,
+) -> Float[torch.Tensor, "batch"]:
     """
     Sample from the logits, in order to generate text
+
     final_logits has shape [batch, vocab_size]
     We divide the logits by temperature before softmaxing and sampling - high temperature = more uniform, low = more argmaxy. Temp = 0.0 is greedy sampling
     We apply top_k and top_p filtering to the logits, to encourage diversity. top_k = 10 means we only sample from the 10 most likely tokens. top_p = 0.9 means we only sample from the top 90% of tokens, and then renormalise the distribution. top_k and top_p are mutually exclusive. By default we apply neither and just sample from the full distribution.
+
     Frequency penalty is a penalty on the probability of a token, proportional to the number of times it has been generated so far. This encourages the model to generate new tokens, rather than repeating itself. It is a hyperparameter, and should be tuned. It is applied to the logits before sampling. If this is non-zero it is required to input the input_tokens
+
     #! TODO: Finish testing all the edge cases here. Useful testing code:
     logits = torch.randn(4)
     print(logits)
@@ -350,23 +327,44 @@ SliceInput: Type = Optional[
         np.ndarray,
     ]
 ]
+"""
+An optional type alias for a slice input used in the `ActivationCache` module.
+
+A `SliceInput` can be one of the following types:
+    - `int`: an integer representing a single position
+    - `Tuple[int, int]`: a tuple of two integers representing a range of positions
+    - `Tuple[int, int, int]`: a tuple of three integers representing a range of positions with a step size
+    - `List[int]`: a list of integers representing multiple positions
+    - `torch.Tensor`: a tensor containing a boolean mask or a list of indices to be selected from the input tensor.
+
+`SliceInput` is used in the `apply_ln_to_stack` method in the `ActivationCache` module.
+
+:class:`SliceInput`
+    An object that represents a slice input. It can be a tuple of integers or a slice object.
+"""
 
 
 class Slice:
     """
     We use a custom slice syntax because Python/Torch's don't let us reduce the number of dimensions:
+
     Note that slicing with input_slice=None means do nothing, NOT add an extra dimension (use unsqueeze for that)
+
     There are several modes:
     int - just index with that integer (decreases number of dimensions)
     slice - Input is a tuple converted to a slice ((k,) means :k, (k, m) means m:k, (k, m, n) means m:k:n)
     array - Input is a list or tensor or numpy array, converted to a numpy array, and we take the stack of values at those indices
     identity - Input is None, leave it unchanged.
+
     Examples for dim=0:
     if input_slice=0, tensor -> tensor[0]
     elif input_slice = (1, 5), tensor -> tensor[1:5]
     elif input_slice = (1, 5, 2), tensor -> tensor[1:5:2] (ie indexing with [1, 3])
     elif input_slice = [1, 4, 5], tensor -> tensor[[1, 4, 5]] (ie changing the first axis to have length 3, and taking the indices 1, 4, 5 out).
     elif input_slice is a Tensor, same as list - Tensor is assumed to be a 1D list of indices.
+
+    :class: `Slice`
+        An object that represents a slice input. It can be a tuple of integers or a slice object.
     """
 
     def __init__(
@@ -375,6 +373,7 @@ class Slice:
     ):
         """
         Modular component for slicing tensors. Can be used to slice a tensor along a given dimension, or to index into a tensor along a given dimension.
+
         Args:
             input_slice (SliceInput): The slice to apply. Can be an int, a tuple, a list, a torch.Tensor, or None. If None, do nothing.
 
@@ -410,9 +409,11 @@ class Slice:
     ) -> torch.Tensor:
         """
         Takes in a tensor and a slice, and applies the slice to the given dimension (supports positive and negative dimension syntax). Returns the sliced tensor.
+
         Args:
             tensor (torch.Tensor): The tensor to slice.
             dim (int, optional): The dimension to slice along. Supports positive and negative dimension syntax.
+
         Returns:
             torch.Tensor: The sliced tensor.
         """
@@ -427,10 +428,13 @@ class Slice:
     ) -> Union[np.ndarray, np.int64]:
         """
         Returns the indices when this slice is applied to an axis of size max_ctx. Returns them as a numpy array, for integer slicing it is eg array([4])
+
         Args:
             max_ctx (int, optional): The size of the axis to slice. Only used if the slice is not an integer.
+
         Returns:
             np.ndarray: The indices that this slice will select.
+
         Raises:
             ValueError: If the slice is not an integer and max_ctx is not specified.
         """
@@ -575,7 +579,9 @@ def test_prompt(
 ):
     """
     Function to test whether a model can give the correct answer to a prompt. Intended for exploratory analysis, so it prints things out rather than returning things.
+
     Works for multi-token answers and multi-token prompts.
+
     Will always print the ranks of the answer tokens, and if print_details will print the logit and prob for the answer tokens and the top k tokens returned for each answer position.
     """
     if prepend_space_to_answer and not answer.startswith(" "):
@@ -617,7 +623,7 @@ def test_prompt(
 
 
 # %%
-def transpose(tensor: TT[..., T.a, T.b]) -> TT[..., T.b, T.a]:
+def transpose(tensor: Float[torch.Tensor, "... a b"]) -> Float[torch.Tensor, "... b a"]:
     """
     Utility to swap the last two dimensions of a tensor, regardless of the number of leading dimensions
     """
@@ -656,8 +662,11 @@ def composition_scores(
 def get_dataset(dataset_name: str, **kwargs) -> Dataset:
     """
     Returns a small HuggingFace dataset, for easy testing and exploration. Accesses several convenience datasets with 10,000 elements (dealing with the enormous 100GB - 2TB datasets is a lot of effort!). Note that it returns a dataset (ie a dictionary containing all the data), *not* a DataLoader (iterator over the data + some fancy features). But you can easily convert it to a DataLoader.
+
     Each dataset has a 'text' field, which contains the relevant info, some also have several meta data fields
+
     Kwargs will be passed to the huggingface dataset loading function, e.g. "data_dir"
+
     Possible inputs:
     * openwebtext (approx the GPT-2 training data https://huggingface.co/datasets/openwebtext)
     * pile (The Pile, a big mess of tons of diverse data https://pile.eleuther.ai/)
@@ -684,19 +693,6 @@ def get_dataset(dataset_name: str, **kwargs) -> Dataset:
     return dataset
 
 
-# %%
-def reset_network(task: str, device, model: torch.nn.Module) -> None:
-    filename = {
-        "ioi": "ioi_reset_heads_neurons.pt",
-        "tracr-reverse": "tracr_reverse_reset_heads_neurons.pt",
-        "tracr-proportion": "tracr_proportion_reset_heads_neurons.pt",
-        "induction": "induction_reset_heads_neurons.pt",
-        "docstring": "docstring_reset_heads_neurons.pt",
-        "greaterthan": "greaterthan_reset_heads_neurons.pt",
-    }[task]
-    random_model_file = hf_hub_download(repo_id="agaralon/acdc_reset_models", filename=filename)
-    reset_state_dict = torch.load(random_model_file, map_location=device)
-    model.load_state_dict(reset_state_dict, strict=False)
 def is_square(x: torch.Tensor) -> bool:
     """Checks if `x` is a square matrix."""
     return x.ndim == 2 and x.shape[0] == x.shape[1]

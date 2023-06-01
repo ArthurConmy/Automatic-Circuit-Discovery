@@ -244,8 +244,6 @@ class HookedRootModule(nn.Module):
                 level=level,
             )
         else:
-            handles = []
-
             # Otherwise, name is a Boolean function on names
             for hook_point_name, hp in self.hook_dict.items():
                 if name(hook_point_name):
@@ -390,7 +388,6 @@ class HookedRootModule(nn.Module):
         self.is_caching = True
 
         def save_hook(tensor, hook):
-            # print(hook.name, id(cache)) # we don't even get here with the attention shit!
             if remove_batch_dim:
                 cache[hook.name] = tensor.detach().to(device)[0]
             else:
