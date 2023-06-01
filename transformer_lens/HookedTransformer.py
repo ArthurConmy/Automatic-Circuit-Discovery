@@ -1,3 +1,6 @@
+"""TODO: we should i) remove global cache dependencies for ACDC 
+ii) make most of this file (from HookedTransformer class down) the same as Neel's main"""
+
 from typing import Callable, Union, List, Tuple, Dict, Optional, NamedTuple, overload
 from typing_extensions import Literal
 from torchtyping import TensorType as TT
@@ -156,7 +159,7 @@ class HookedTransformer(HookedRootModule):
             self.cfg.d_vocab_out = self.cfg.d_vocab
 
         if self.cfg.use_global_cache:
-            self.global_cache = global_cache = GlobalCache(device=cfg.device, sixteen_heads = self.cfg.sixteen_heads)                
+            self.global_cache = global_cache = GlobalCache(device=cfg.device, sixteen_heads = self.cfg.sixteen_heads)               
         else:
             self.global_cache = global_cache = None
 
