@@ -10,8 +10,8 @@ from transformer_lens.utilities.devices import get_device_for_block_index
 
 @dataclass
 class HookedTransformerKeyValueCacheEntry:
-    past_keys: TT[T.batch, T.pos_so_far, T.n_heads, T.d_head]
-    past_values: TT[T.batch, T.pos_so_far, T.n_heads, T.d_head]
+    past_keys: Float[torch.Tensor, "batch pos_so_far n_heads d_head"]
+    past_values: Float[torch.Tensor, "batch pos_so_far n_heads d_head"]
 
     @classmethod
     def init_cache_entry(
@@ -31,8 +31,8 @@ class HookedTransformerKeyValueCacheEntry:
 
     def append(
         self,
-        new_keys: TT[T.batch, T.new_tokens, T.n_heads, T.d_head],
-        new_values: TT[T.batch, T.new_tokens, T.n_heads, T.d_head],
+        new_keys: Float[torch.Tensor, "batch new_tokens n_heads d_head"],
+        new_values: Float[torch.Tensor, "batch new_tokens n_heads d_head"],
     ):
         updated_keys: Float[
             torch.Tensor, "batch pos_so_far_plus_new_tokens n_heads d_head"

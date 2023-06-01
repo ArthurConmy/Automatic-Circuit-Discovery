@@ -10,16 +10,10 @@ import einops
 import torch
 import tqdm.auto as tqdm
 from datasets import load_dataset
-<<<<<<< HEAD:acdc/evals.py
-from acdc import HookedTransformer, HookedTransformerConfig, utils
-from torch.utils.data import DataLoader
-import einops
-=======
 from torch.utils.data import DataLoader, Dataset
 
 from transformer_lens import utils
 
->>>>>>> neel/main:transformer_lens/evals.py
 
 # %%
 def sanity_check(model):
