@@ -4,8 +4,8 @@ from functools import lru_cache
 from easy_transformer import loading
 
 # %%
-cfg = loading.get_pretrained_model_config("solu-1l")
-print(cfg)
+# cfg = (loading.get_pretrained_model_config("solu-1l"))
+# print(cfg)
 # %%
 """ 
 Structure:

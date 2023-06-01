@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "transformer_lens"
+name = "transformer-lens"
 version = "0.0.0" # This is automatically set by the CD pipeline on release
-description = "transformer_lens; on top of TL: an implementation of transformers tailored for mechanistic interpretability."
-authors = ["Neel Nanda, Arthur Conmy"]
+description = "An implementation of transformers tailored for mechanistic interpretability."
+authors = ["Neel Nanda <77788841+neelnanda-io@users.noreply.github.com>"]
 license = "MIT"
 readme = "README.md"
 packages = [{include = "transformer_lens"}]
@@ -58,11 +58,6 @@ filterwarnings = [
     "ignore:distutils Version classes are deprecated:DeprecationWarning"
 ]
 
-[tool.black]
-line-length = 120
-
 [tool.isort]
 profile = "black"
-line_length = 120
-skip_gitignore = true
 extend_skip = ["__init__.py"]
