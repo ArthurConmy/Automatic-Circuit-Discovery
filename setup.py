@@ -25,6 +25,9 @@ setup(
         "networkx",
         "rich",
         # "git+https://github.com/deepmind/tracr.git", # sad does not work; pip deprecated
+        "rich",
+        "accelerate",
+        "typing-extensions",
     ],
     extras_require={
         "dev": ["pytest", "mypy", "pytest-cov"],

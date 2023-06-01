@@ -1,11 +1,4 @@
-from typeguard.importhook import install_import_hook
-
-install_import_hook("transformer_lens")
-
 from transformer_lens import HookedTransformer
-from torchtyping import TensorType as TT, patch_typeguard
-
-patch_typeguard()
 
 MODEL = "solu-1l"
 
@@ -41,5 +34,5 @@ act_names_in_cache = [
 
 
 def test_cache_hook_names():
-    logits, cache = model.run_with_cache(prompt)
+    _, cache = model.run_with_cache(prompt)
     assert list(cache.keys()) == act_names_in_cache

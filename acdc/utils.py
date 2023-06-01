@@ -1,3 +1,5 @@
+# TODO isort this top bit...
+
 from __future__ import annotations
 import wandb
 from functools import partial
@@ -29,8 +31,20 @@ from huggingface_hub import hf_hub_download
 import re
 from rich import print as rprint
 
+
+import re
+from typing import Dict, List, Optional, Tuple, Type, Union, cast
+
+import einops
+import numpy as np
+import torch
+import torch.nn.functional as F
+import transformers
 from datasets.arrow_dataset import Dataset
 from datasets.load import load_dataset
+from huggingface_hub import hf_hub_download
+from rich import print as rprint
+from transformers import AutoTokenizer
 
 from acdc import FactoredMatrix
 from acdc.torchtyping_helper import T
@@ -38,6 +52,8 @@ from collections import defaultdict
 
 CACHE_DIR = transformers.TRANSFORMERS_CACHE
 import json
+
+from jaxtyping import Float, Int
 
 import collections
 
@@ -62,6 +78,7 @@ def download_file_from_hf(
     else:
         print("File type not supported:", file_path.split(".")[-1])
         return file_path
+
 
 def print_gpu_mem(step_name=""):
     print(
@@ -134,7 +151,9 @@ def lm_accuracy(
         return correct_matches.sum() / correct_matches.numel()
 
 
-def gelu_new(input: TT[T.batch, T.pos, T.d_mlp]) -> TT[T.batch, T.pos, T.d_mlp]:
+def gelu_new(
+    input: Float[torch.Tensor, "batch pos d_mlp"]
+) -> Float[torch.Tensor, "batch pos d_mlp"]:
     # Implementation of GeLU used by GPT2 - subtly different from PyTorch's
     return (
         0.5
@@ -148,7 +167,9 @@ def gelu_new(input: TT[T.batch, T.pos, T.d_mlp]) -> TT[T.batch, T.pos, T.d_mlp]:
     )
 
 
-def gelu_fast(input: TT[T.batch, T.pos, T.d_mlp]) -> TT[T.batch, T.pos, T.d_mlp]:
+def gelu_fast(
+    input: Float[torch.Tensor, "batch pos d_mlp"]
+) -> Float[torch.Tensor, "batch pos d_mlp"]:
     return (
         0.5
         * input
@@ -156,7 +177,9 @@ def gelu_fast(input: TT[T.batch, T.pos, T.d_mlp]) -> TT[T.batch, T.pos, T.d_mlp]
     )
 
 
-def solu(input: TT[T.batch, T.pos, T.d_mlp]) -> TT[T.batch, T.pos, T.d_mlp]:
+def solu(
+    input: Float[torch.Tensor, "batch pos d_mlp"]
+) -> Float[torch.Tensor, "batch pos d_mlp"]:
     """
     SoLU activation function as described by
     https://transformer-circuits.pub/2022/solu/index.html.
@@ -317,7 +340,15 @@ def sample_logits(
 # %%
 # Type alias
 SliceInput: Type = Optional[
-    Union[int, Tuple[int,], Tuple[int, int], Tuple[int, int, int], List[int], torch.Tensor, np.ndarray]
+    Union[
+        int,
+        Tuple[int,],
+        Tuple[int, int],
+        Tuple[int, int, int],
+        List[int],
+        torch.Tensor,
+        np.ndarray,
+    ]
 ]
 
 
@@ -346,15 +377,15 @@ class Slice:
         Modular component for slicing tensors. Can be used to slice a tensor along a given dimension, or to index into a tensor along a given dimension.
         Args:
             input_slice (SliceInput): The slice to apply. Can be an int, a tuple, a list, a torch.Tensor, or None. If None, do nothing.
-            
+
         Returns:
             Slice: A Slice object that can be applied to a tensor.
-        
+
         Raises:
             ValueError: If the input_slice is not one of the above types.
         """
         if type(input_slice) == tuple:
-            input_slice = slice(*input_slice)
+            input_slice: slice = slice(*input_slice)
             self.slice = input_slice
             self.mode = "slice"
         elif type(input_slice) == int:
@@ -373,10 +404,10 @@ class Slice:
             raise ValueError(f"Invalid input_slice {input_slice}")
 
     def apply(
-        self, 
-        tensor: torch.Tensor, 
+        self,
+        tensor: torch.Tensor,
         dim: int = 0,
-        ) -> torch.Tensor:
+    ) -> torch.Tensor:
         """
         Takes in a tensor and a slice, and applies the slice to the given dimension (supports positive and negative dimension syntax). Returns the sliced tensor.
         Args:
@@ -391,9 +422,9 @@ class Slice:
         return tensor[tuple(slices)]
 
     def indices(
-        self, 
+        self,
         max_ctx: Optional[int] = None,
-        ) -> Union[np.ndarray, np.int64]:
+    ) -> Union[np.ndarray, np.int64]:
         """
         Returns the indices when this slice is applied to an axis of size max_ctx. Returns them as a numpy array, for integer slicing it is eg array([4])
         Args:
@@ -411,7 +442,7 @@ class Slice:
 
     def __repr__(
         self,
-        ) -> str:
+    ) -> str:
         return f"Slice: {self.slice} Mode: {self.mode} "
 
 
@@ -424,8 +455,30 @@ def get_act_name(
     layer_type: Optional[str] = None,
 ):
     """
-    Helper function to convert shorthand to an activation name. Pretty hacky, intended to be useful for short feedback loop hacking stuff together, more so than writing good, readable code. But it is deterministic!
-    eg:
+    Helper function to convert shorthand to an activation name. Pretty hacky, intended to be useful for short feedback
+    loop hacking stuff together, more so than writing good, readable code. But it is deterministic!
+
+    Returns a name corresponding to an activation point in a TransformerLens model.
+
+    Args:
+         name (str): Takes in the name of the activation. This can be used to specify any activation name by itself.
+         The code assumes the first sequence of digits passed to it (if any) is the layer number, and anything after
+         that is the layer type.
+
+         Given only a word and number, it leaves layer_type as is.
+         Given only a word, it leaves layer and layer_type as is.
+
+         Examples:
+             get_act_name('embed') = get_act_name('embed', None, None)
+             get_act_name('k6') = get_act_name('k', 6, None)
+             get_act_name('scale4ln1') = get_act_name('scale', 4, 'ln1')
+
+         layer (int, optional): Takes in the layer number. Used for activations that appear in every block.
+
+         layer_type (string, optional): Used to distinguish between activations that appear multiple times in one block.
+
+    Full Examples:
+
     get_act_name('k', 6, 'a')=='blocks.6.attn.hook_k'
     get_act_name('pre', 2)=='blocks.2.mlp.hook_pre'
     get_act_name('embed')=='hook_embed'
@@ -465,6 +518,8 @@ def get_act_name(
         "mlp_post": "post",
     }
 
+    layer_norm_names = ["scale", "normalized"]
+
     if name in act_name_alias:
         name = act_name_alias[name]
 
@@ -491,10 +546,15 @@ def get_act_name(
     if layer_type:
         full_act_name += f"{layer_type}."
     full_act_name += f"hook_{name}"
+
+    if name in layer_norm_names and layer is None:
+        full_act_name = f"ln_final.{full_act_name}"
     return full_act_name
 
 
-def remove_batch_dim(tensor: TT[1, ...]) -> TT[...]:
+def remove_batch_dim(
+    tensor: Float[torch.Tensor, "1 ..."]
+) -> Float[torch.Tensor, "..."]:
     """
     Removes the first dimension of a tensor if it is size 1, otherwise returns the tensor unchanged
     """
@@ -567,7 +627,8 @@ def transpose(tensor: TT[..., T.a, T.b]) -> TT[..., T.b, T.a]:
 def composition_scores(
     left: FactoredMatrix, right: FactoredMatrix, broadcast_dims=True
 ) -> Union[
-    TT[T.leading_dims : ...], TT[T.leading_dims_left : ..., T.leading_dims_right : ...]
+    Float[torch.Tensor, "*leading_dims"],
+    Float[torch.Tensor, "*leading_dims_left *T.leading_dims_right"],
 ]:
     """
     See `HookedTransformer.all_composition_scores` for documentation.
@@ -636,3 +697,59 @@ def reset_network(task: str, device, model: torch.nn.Module) -> None:
     random_model_file = hf_hub_download(repo_id="agaralon/acdc_reset_models", filename=filename)
     reset_state_dict = torch.load(random_model_file, map_location=device)
     model.load_state_dict(reset_state_dict, strict=False)
+def is_square(x: torch.Tensor) -> bool:
+    """Checks if `x` is a square matrix."""
+    return x.ndim == 2 and x.shape[0] == x.shape[1]
+
+
+def is_lower_triangular(x: torch.Tensor) -> bool:
+    """Checks if `x` is a lower triangular matrix."""
+    if not is_square(x):
+        return False
+    return x.equal(x.tril())
+
+
+def check_structure(
+    t1: torch.Tensor, t2: torch.Tensor, *, verbose: bool = False
+) -> None:
+    """Validate that the two square tensors have the same structure, i.e.,
+    that the directionality of comparisons points in the same directions both
+    row-wise and column-wise.
+
+    This function is not used anywhere in the code right now, just for debugging tests.
+    """
+    assert t1.ndim == 2
+    assert t1.shape == t2.shape
+    n_rows, n_cols = cast(Tuple[int, int], t1.shape)
+
+    if verbose:
+        print("Checking rows")
+    row_mismatch = []
+    for row_i in range(n_rows - 1):
+        t1_result = t1[row_i].ge(t1[row_i + 1])
+        t2_result = t2[row_i].ge(t2[row_i + 1])
+        if any(t1_result != t2_result):
+            row_mismatch.append(row_i)
+            if verbose:
+                print(f"\trows {row_i}:{row_i + 1}")
+                print(f"\tt1: {t1_result.tolist()}")
+                print(f"\tt2: {t2_result.tolist()}")
+
+    if verbose:
+        print("Checking columns")
+    col_mismatch = []
+    for col_i in range(n_cols - 1):
+        t1_result = t1[:, col_i].ge(t1[:, col_i + 1])
+        t2_result = t2[:, col_i].ge(t2[:, col_i + 1])
+        if any(t1_result != t2_result):
+            col_mismatch.append(col_i)
+            if verbose:
+                print(f"\trows {col_i}:{col_i + 1}")
+                print(f"\tt1: {t1_result.tolist()}")
+                print(f"\tt2: {t2_result.tolist()}")
+    if not row_mismatch and not col_mismatch:
+        print("PASSED")
+    elif row_mismatch:
+        print(f"row mismatch: {row_mismatch}")
+    elif col_mismatch:
+        print(f"column mismatch: {col_mismatch}")

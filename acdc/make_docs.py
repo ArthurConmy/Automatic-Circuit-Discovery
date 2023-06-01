@@ -1,8 +1,11 @@
 # %%
-from easy_transformer import loading
-from easy_transformer import utils
 from functools import lru_cache
 
+<<<<<<< HEAD:acdc/make_docs.py
+=======
+from easy_transformer import loading
+
+>>>>>>> neel/main:transformer_lens/make_docs.py
 # %%
 cfg = loading.get_pretrained_model_config("solu-1l")
 print(cfg)
@@ -17,10 +20,17 @@ architecture
 Architecture should list weird shit to be aware of.
 """
 import pandas as pd
+<<<<<<< HEAD:acdc/make_docs.py
 import numpy as np
 
 df = pd.DataFrame(np.random.randn(2, 2))
 print(df.to_markdown(open("test.md", "w")))
+=======
+
+
+# df = pd.DataFrame(np.random.randn(2, 2))
+# print(df.to_markdown(open("test.md", "w")))
+>>>>>>> neel/main:transformer_lens/make_docs.py
 # %%
 @lru_cache(maxsize=None)
 def get_config(model_name):
@@ -60,6 +70,7 @@ def get_property(name, model_name):
         return cfg.to_dict()[name]
 
 
+<<<<<<< HEAD:acdc/make_docs.py
 column_names = (
     "n_params, n_layers, d_model, n_heads, act_fn, n_ctx, d_vocab, d_head, d_mlp".split(
         ", "
@@ -79,3 +90,20 @@ df = pd.DataFrame(
 display(df)
 df.to_markdown(open("model_properties_table.md", "w"))
 # %%
+=======
+if __name__ == "__main__":
+    column_names = "n_params, n_layers, d_model, n_heads, act_fn, n_ctx, d_vocab, d_head, d_mlp".split(
+        ", "
+    )
+    df = pd.DataFrame(
+        {
+            name: [
+                get_property(name, model_name)
+                for model_name in loading.DEFAULT_MODEL_ALIASES
+            ]
+            for name in column_names
+        },
+        index=loading.DEFAULT_MODEL_ALIASES,
+    )
+    df.to_markdown(open("model_properties_table.md", "w"))
+>>>>>>> neel/main:transformer_lens/make_docs.py

@@ -1,12 +1,13 @@
-from dataclasses import dataclass
-from typing import Union, Tuple, List, Dict, Any, Optional
-import torch
-import torch.nn as nn
-import random
-import numpy as np
+from __future__ import annotations
+
 import logging
-import json
 import pprint
+import random
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
+
+import numpy as np
+import torch
 
 SUPPORTED_ACTIVATIONS = ["relu", "gelu", "silu", "gelu_new", "solu_ln", "gelu_fast"]
 
@@ -72,7 +73,9 @@ class HookedTransformerConfig:
             & biases) and 'LNPre' (use LayerNorm, but no weights & biases).
             Defaults to LN
         device(str): The device to use for the model. Defaults to 'cuda' if
-            available, else 'cpu
+            available, else 'cpu'. Must be 'cuda' if `n_devices` > 1.
+        n_devices (int): The number of devices to use for the model. Defaults to 1. Layers are loaded
+            to support "pipeline parallelism", where each device is responsible for a subset of the layers.
         attention_dir (str): Whether to use causal (aka unidirectional aka GPT-2
             style) or bidirectional attention. Options are 'causal' and
             'bidirectional'. Defaults to 'causal'
@@ -149,6 +152,7 @@ class HookedTransformerConfig:
     init_mode: str = "gpt2"
     normalization_type: Optional[str] = "LN"
     device: Optional[str] = None
+    n_devices: int = 1
     attention_dir: str = "causal"
     attn_only: bool = False
     seed: Optional[int] = None
@@ -162,6 +166,7 @@ class HookedTransformerConfig:
     rotary_dim: Optional[int] = None
     n_params: Optional[int] = None
     use_hook_tokens: bool = False
+    gated_mlp: bool = False
 
     def __post_init__(self):
         if self.n_heads == -1:
@@ -214,8 +219,16 @@ class HookedTransformerConfig:
         if self.device is None:
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
+        if self.n_devices > 1:
+            assert (
+                self.device == "cuda"
+            ), "n_devices > 1 is only supported on CUDA devices"
+            assert (
+                torch.cuda.device_count() >= self.n_devices
+            ), f"Not enough CUDA devices to support n_devices {self.n_devices}"
+
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]):
+    def from_dict(cls, config_dict: Dict[str, Any]) -> HookedTransformerConfig:
         """
         Instantiates a `HookedTransformerConfig` from a Python dictionary of
         parameters.

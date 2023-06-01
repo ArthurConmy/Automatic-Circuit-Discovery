@@ -1,5 +1,10 @@
 from __future__ import annotations
+
+from functools import lru_cache
+from typing import Tuple, Union
+
 import torch
+<<<<<<< HEAD:acdc/FactoredMatrix.py
 from typing import Optional, Union, Tuple, List, Dict
 from torchtyping import TensorType as TT
 from functools import lru_cache
@@ -8,13 +13,28 @@ from acdc.torchtyping_helper import (
     T as TH,
 )  # Need the import as since FactoredMatrix declares T (for transpose)
 
+=======
+from jaxtyping import Float
+from typeguard import typeguard_ignore
+
+import transformer_lens.utils as utils
+>>>>>>> neel/main:transformer_lens/FactoredMatrix.py
+
 
 class FactoredMatrix:
     """
     Class to represent low rank factored matrices, where the matrix is represented as a product of two matrices. Has utilities for efficient calculation of eigenvalues, norm and SVD.
     """
 
+<<<<<<< HEAD:acdc/FactoredMatrix.py
     def __init__(self, A: TT[..., TH.ldim, TH.mdim], B: TT[..., TH.mdim, TH.rdim]):
+=======
+    def __init__(
+        self,
+        A: Float[torch.Tensor, "... ldim mdim"],
+        B: Float[torch.Tensor, "... mdim rdim"],
+    ):
+>>>>>>> neel/main:transformer_lens/FactoredMatrix.py
         self.A = A
         self.B = B
         assert self.A.size(-1) == self.B.size(
@@ -32,8 +52,18 @@ class FactoredMatrix:
         self.B = self.B.broadcast_to(self.shape[:-2] + (self.mdim, self.rdim))
 
     def __matmul__(
+<<<<<<< HEAD:acdc/FactoredMatrix.py
         self, other: Union[TT[..., TH.rdim, TH.new_rdim], TT[TH.rdim], FactoredMatrix]
     ) -> Union[FactoredMatrix, TT[..., TH.ldim]]:
+=======
+        self,
+        other: Union[
+            Float[torch.Tensor, "... rdim new_rdim"],
+            Float[torch.Tensor, "rdim"],
+            FactoredMatrix,
+        ],
+    ) -> Union[FactoredMatrix, Float[torch.Tensor, "... ldim"]]:
+>>>>>>> neel/main:transformer_lens/FactoredMatrix.py
         if isinstance(other, torch.Tensor):
             if other.ndim < 2:
                 # It's a vector, so we collapse the factorisation and just return a vector
@@ -51,15 +81,25 @@ class FactoredMatrix:
             return (self @ other.A) @ other.B
 
     def __rmatmul__(
+<<<<<<< HEAD:acdc/FactoredMatrix.py
         self, other: Union[TT[..., TH.new_rdim, TH.ldim], TT[TH.ldim], FactoredMatrix]
     ) -> Union[FactoredMatrix, TT[..., TH.rdim]]:
+=======
+        self,
+        other: Union[
+            Float[torch.Tensor, "... new_rdim ldim"],
+            Float[torch.Tensor, "ldim"],
+            FactoredMatrix,
+        ],
+    ) -> Union[FactoredMatrix, Float[torch.Tensor, "... rdim"]]:
+>>>>>>> neel/main:transformer_lens/FactoredMatrix.py
         if isinstance(other, torch.Tensor):
             assert (
                 other.size(-1) == self.ldim
             ), f"Left matrix must match on inner dimension, shapes were self: {self.shape}, other:{other.shape}"
             if other.ndim < 2:
                 # It's a vector, so we collapse the factorisation and just return a vector
-                return ((other.unsqueeze(-2) @ self.A) @ self.B).squeeze(-1)
+                return ((other.unsqueeze(-2) @ self.A) @ self.B).squeeze(-2)
             elif self.ldim > self.mdim:
                 return FactoredMatrix(other @ self.A, self.B)
             else:
@@ -68,12 +108,22 @@ class FactoredMatrix:
             return other.A @ (other.B @ self)
 
     @property
+<<<<<<< HEAD:acdc/FactoredMatrix.py
     def AB(self) -> TT[TH.leading_dims : ..., TH.ldim, TH.rdim]:
+=======
+    @typeguard_ignore
+    def AB(self) -> Float[torch.Tensor, "*leading_dims ldim rdim"]:
+>>>>>>> neel/main:transformer_lens/FactoredMatrix.py
         """The product matrix - expensive to compute, and can consume a lot of GPU memory"""
         return self.A @ self.B
 
     @property
+<<<<<<< HEAD:acdc/FactoredMatrix.py
     def BA(self) -> TT[TH.leading_dims : ..., TH.rdim, TH.ldim]:
+=======
+    @typeguard_ignore
+    def BA(self) -> Float[torch.Tensor, "*leading_dims rdim ldim"]:
+>>>>>>> neel/main:transformer_lens/FactoredMatrix.py
         """The reverse product. Only makes sense when ldim==rdim"""
         assert (
             self.rdim == self.ldim
@@ -81,6 +131,7 @@ class FactoredMatrix:
         return self.B @ self.A
 
     @property
+    @typeguard_ignore
     def T(self) -> FactoredMatrix:
         return FactoredMatrix(self.B.transpose(-2, -1), self.A.transpose(-2, -1))
 
@@ -107,6 +158,7 @@ class FactoredMatrix:
         return U, S, Vh
 
     @property
+<<<<<<< HEAD:acdc/FactoredMatrix.py
     def U(self) -> TT[TH.leading_dims : ..., TH.ldim, TH.mdim]:
         return self.svd()[0]
 
@@ -120,6 +172,25 @@ class FactoredMatrix:
 
     @property
     def eigenvalues(self) -> TT[TH.leading_dims : ..., TH.mdim]:
+=======
+    @typeguard_ignore
+    def U(self) -> Float[torch.Tensor, "*leading_dims ldim mdim"]:
+        return self.svd()[0]
+
+    @property
+    @typeguard_ignore
+    def S(self) -> Float[torch.Tensor, "*leading_dims mdim"]:
+        return self.svd()[1]
+
+    @property
+    @typeguard_ignore
+    def Vh(self) -> Float[torch.Tensor, "*leading_dims rdim mdim"]:
+        return self.svd()[2]
+
+    @property
+    @typeguard_ignore
+    def eigenvalues(self) -> Float[torch.Tensor, "*leading_dims mdim"]:
+>>>>>>> neel/main:transformer_lens/FactoredMatrix.py
         """Eigenvalues of AB are the same as for BA (apart from trailing zeros), because if BAv=kv ABAv = A(BAv)=kAv, so Av is an eigenvector of AB with eigenvalue k."""
         return torch.linalg.eig(self.BA).eigenvalues
 
@@ -163,6 +234,7 @@ class FactoredMatrix:
         return utils.get_corner(self.A[..., :k, :] @ self.B[..., :, :k], k)
 
     @property
+    @typeguard_ignore
     def ndim(self) -> int:
         return len(self.shape)
 
@@ -182,10 +254,16 @@ class FactoredMatrix:
         return FactoredMatrix(self.A.unsqueeze(k), self.B.unsqueeze(k))
 
     @property
+    @typeguard_ignore
     def pair(
         self,
     ) -> Tuple[
+<<<<<<< HEAD:acdc/FactoredMatrix.py
         TT[TH.leading_dims : ..., TH.ldim, TH.mdim],
         TT[TH.leading_dims : ..., TH.mdim, TH.rdim],
+=======
+        Float[torch.Tensor, "*leading_dims ldim mdim"],
+        Float[torch.Tensor, "*leading_dims mdim rdim"],
+>>>>>>> neel/main:transformer_lens/FactoredMatrix.py
     ]:
         return (self.A, self.B)
