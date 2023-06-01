@@ -15,9 +15,6 @@ import transformer_lens.utils as utils
 from transformer_lens.utils import Slice, SliceInput
 
 
-from transformer_lens.torchtyping_helper import T
-
-
 class ActivationCache:
     """
     A wrapper around a dictionary of cached activations from a model run, with a variety of helper functions. In general, any utility which is specifically about editing/processing activations should be a method here, while any utility which is more general should be a function in utils.py, and any utility which is specifically about model weights should be in HookedTransformer.py or components.py.
@@ -150,7 +147,7 @@ class ActivationCache:
         pos_slice: Union[Slice, SliceInput] = None,
         mlp_input: bool = False,
         return_labels: bool = False,
-    ) -> TT[T.layers_covered, T.batch_and_pos_dims : ..., T.d_model]:
+    ) -> Float[torch.Tensor, "layers_covered *batch_and_pos_dims d_model"]:
         """Returns the accumulated residual stream up to a given layer, ie a stack of previous residual streams up to that layer's input. This can be thought of as a series of partial values of the residual stream, where the model gradually accumulates what it wants.
 
         Args:
@@ -292,7 +289,7 @@ class ActivationCache:
         pos_slice: Union[Slice, SliceInput] = None,
         incl_embeds: bool = True,
         return_labels: bool = False,
-    ) -> TT[T.layers_covered, T.batch_and_pos_dims : ..., T.d_model]:
+    ) -> Float[torch.Tensor, "layers_covered *batch_and_pos_dims d_model"]:
         """Decomposes the residual stream input to layer L into a stack of the output of previous layers. The sum of these is the input to layer L (plus embedding and pos embedding). This is useful for attributing model behaviour to different components of the residual stream
 
         Args:
@@ -444,7 +441,7 @@ class ActivationCache:
         activation_name: str,
         layer: int = -1,
         sublayer_type: Optional[str] = None,
-    ) -> TT[T.layers_covered, ...]:
+    ) -> Float[torch.Tensor, "layers_covered ..."]:
         """Returns a stack of all head results (ie residual stream contribution) up to layer L. A good way to decompose the outputs of attention layers into attribution by specific heads. The output shape is exactly the same shape as the activations, just with a leading layers dimension.
 
         Args:
@@ -469,7 +466,7 @@ class ActivationCache:
         layer: int,
         neuron_slice: Union[Slice, SliceInput] = None,
         pos_slice: Union[Slice, SliceInput] = None,
-    ) -> TT[T.batch_and_pos_dims : ..., T.num_neurons, T.d_model]:
+    ) -> Float[torch.Tensor, "*batch_and_pos_dims num_neurons d_model"]:
         """Returns the results of for neurons in a specific layer (ie, how much each neuron contributes to the residual stream). Does it for the subset of neurons specified by neuron_slice, defaults to all of them. Does *not* cache these because it's expensive in space and cheap to compute.
 
         Args:
@@ -604,7 +601,7 @@ class ActivationCache:
             mlp_input (bool, optional): Whether the input is to the MLP or attn
                 (ie ln2 vs ln1). Defaults to False, ie ln1. If layer==n_layers,
                 must be False, and we use ln_final
-            pos_slice: The slice to take of positions, if residual_stack is not
+            pos_slice (Slice, optional): The slice to take of positions, if residual_stack is not
                 over the full context, None means do nothing. It is assumed that
                 pos_slice has already been applied to residual_stack, and this
                 is only applied to the scale. See utils.Slice for details.
@@ -656,7 +653,7 @@ class ActivationCache:
         apply_ln: bool = False,
         pos_slice: Union[Slice, SliceInput] = None,
         return_labels: bool = False,
-    ) -> TT[T.num_components, T.batch_and_pos_dims : ..., T.d_model]:
+    ) -> Float[torch.Tensor, "num_components *batch_and_pos_dims d_model"]:
         """Returns the full decomposition of the residual stream into embed, pos_embed, each head result, each neuron result, and the accumulated biases. We break down the residual stream that is input into some layer.
 
         Args:
