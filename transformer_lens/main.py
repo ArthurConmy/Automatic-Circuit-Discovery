@@ -197,8 +197,6 @@ tl_model = things.tl_model
 
 if RESET_NETWORK:
     reset_network(TASK, DEVICE, tl_model)
-    gc.collect()
-    torch.cuda.empty_cache()
 
 #%%
 
@@ -206,6 +204,9 @@ with open(__file__, "r") as f:
     notes = f.read()
 
 tl_model.reset_hooks()
+
+gc.collect()
+torch.cuda.empty_cache()
 
 if WANDB_RUN_NAME is None or IPython.get_ipython() is not None:
     WANDB_RUN_NAME = f"{ct()}{'_randomindices' if INDICES_MODE=='random' else ''}_{THRESHOLD}{'_zero' if ZERO_ABLATION else ''}"

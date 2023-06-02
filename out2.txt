@@ -1,0 +1,150 @@
+Traceback (most recent call last):
+  File "/opt/conda/lib/python3.10/subprocess.py", line 1209, in wait
+    return self._wait(timeout=timeout)
+  File "/opt/conda/lib/python3.10/subprocess.py", line 1959, in _wait
+    (pid, sts) = self._try_wait(0)
+  File "/opt/conda/lib/python3.10/subprocess.py", line 1917, in _try_wait
+    (pid, sts) = os.waitpid(self.pid, wait_flags)
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/opt/conda/lib/python3.10/site-packages/_pytest/main.py", line 269, in wrap_session
+    session.exitstatus = doit(config, session) or 0
+  File "/opt/conda/lib/python3.10/site-packages/_pytest/main.py", line 323, in _main
+    config.hook.pytest_runtestloop(session=session)
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_hooks.py", line 265, in __call__
+    return self._hookexec(self.name, self.get_hookimpls(), kwargs, firstresult)
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_manager.py", line 80, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_callers.py", line 60, in _multicall
+    return outcome.get_result()
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_result.py", line 60, in get_result
+    raise ex[1].with_traceback(ex[2])
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_callers.py", line 39, in _multicall
+    res = hook_impl.function(*args)
+  File "/opt/conda/lib/python3.10/site-packages/_pytest/main.py", line 348, in pytest_runtestloop
+    item.config.hook.pytest_runtest_protocol(item=item, nextitem=nextitem)
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_hooks.py", line 265, in __call__
+    return self._hookexec(self.name, self.get_hookimpls(), kwargs, firstresult)
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_manager.py", line 80, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_callers.py", line 60, in _multicall
+    return outcome.get_result()
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_result.py", line 60, in get_result
+    raise ex[1].with_traceback(ex[2])
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_callers.py", line 39, in _multicall
+    res = hook_impl.function(*args)
+  File "/opt/conda/lib/python3.10/site-packages/_pytest/runner.py", line 114, in pytest_runtest_protocol
+    runtestprotocol(item, nextitem=nextitem)
+  File "/opt/conda/lib/python3.10/site-packages/_pytest/runner.py", line 133, in runtestprotocol
+    reports.append(call_and_report(item, "call", log))
+  File "/opt/conda/lib/python3.10/site-packages/_pytest/runner.py", line 222, in call_and_report
+    call = call_runtest_hook(item, when, **kwds)
+  File "/opt/conda/lib/python3.10/site-packages/_pytest/runner.py", line 261, in call_runtest_hook
+    return CallInfo.from_call(
+  File "/opt/conda/lib/python3.10/site-packages/_pytest/runner.py", line 341, in from_call
+    result: Optional[TResult] = func()
+  File "/opt/conda/lib/python3.10/site-packages/_pytest/runner.py", line 262, in <lambda>
+    lambda: ihook(item=item, **kwds), when=when, reraise=reraise
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_hooks.py", line 265, in __call__
+    return self._hookexec(self.name, self.get_hookimpls(), kwargs, firstresult)
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_manager.py", line 80, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_callers.py", line 60, in _multicall
+    return outcome.get_result()
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_result.py", line 60, in get_result
+    raise ex[1].with_traceback(ex[2])
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_callers.py", line 39, in _multicall
+    res = hook_impl.function(*args)
+  File "/opt/conda/lib/python3.10/site-packages/_pytest/runner.py", line 169, in pytest_runtest_call
+    item.runtest()
+  File "/opt/conda/lib/python3.10/site-packages/_pytest/python.py", line 1799, in runtest
+    self.ihook.pytest_pyfunc_call(pyfuncitem=self)
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_hooks.py", line 265, in __call__
+    return self._hookexec(self.name, self.get_hookimpls(), kwargs, firstresult)
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_manager.py", line 80, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_callers.py", line 60, in _multicall
+    return outcome.get_result()
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_result.py", line 60, in get_result
+    raise ex[1].with_traceback(ex[2])
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_callers.py", line 39, in _multicall
+    res = hook_impl.function(*args)
+  File "/opt/conda/lib/python3.10/site-packages/_pytest/python.py", line 194, in pytest_pyfunc_call
+    result = testfunction(**testargs)
+  File "/root/Automatic-Circuit-Discovery/tests/test_launch.py", line 10, in test_acdc_induction
+    experiments.launch_induction.main(testing=True)
+  File "/root/Automatic-Circuit-Discovery/experiments/launch_induction.py", line 37, in main
+    launch(
+  File "/root/Automatic-Circuit-Discovery/experiments/launcher.py", line 58, in launch
+    out = subprocess.run(command)
+  File "/opt/conda/lib/python3.10/subprocess.py", line 505, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+  File "/opt/conda/lib/python3.10/subprocess.py", line 1146, in communicate
+    self.wait()
+  File "/opt/conda/lib/python3.10/subprocess.py", line 1222, in wait
+    self._wait(timeout=sigint_timeout)
+  File "/opt/conda/lib/python3.10/subprocess.py", line 1953, in _wait
+    time.sleep(delay)
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/opt/conda/bin/pytest", line 8, in <module>
+    sys.exit(console_main())
+  File "/opt/conda/lib/python3.10/site-packages/_pytest/config/__init__.py", line 189, in console_main
+    code = main()
+  File "/opt/conda/lib/python3.10/site-packages/_pytest/config/__init__.py", line 166, in main
+    ret: Union[ExitCode, int] = config.hook.pytest_cmdline_main(
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_hooks.py", line 265, in __call__
+    return self._hookexec(self.name, self.get_hookimpls(), kwargs, firstresult)
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_manager.py", line 80, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_callers.py", line 60, in _multicall
+    return outcome.get_result()
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_result.py", line 60, in get_result
+    raise ex[1].with_traceback(ex[2])
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_callers.py", line 39, in _multicall
+    res = hook_impl.function(*args)
+  File "/opt/conda/lib/python3.10/site-packages/_pytest/main.py", line 316, in pytest_cmdline_main
+    return wrap_session(config, _main)
+  File "/opt/conda/lib/python3.10/site-packages/_pytest/main.py", line 283, in wrap_session
+    config.hook.pytest_keyboard_interrupt(excinfo=excinfo)
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_hooks.py", line 265, in __call__
+    return self._hookexec(self.name, self.get_hookimpls(), kwargs, firstresult)
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_manager.py", line 80, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_callers.py", line 60, in _multicall
+    return outcome.get_result()
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_result.py", line 60, in get_result
+    raise ex[1].with_traceback(ex[2])
+  File "/opt/conda/lib/python3.10/site-packages/pluggy/_callers.py", line 39, in _multicall
+    res = hook_impl.function(*args)
+  File "/opt/conda/lib/python3.10/site-packages/_pytest/terminal.py", line 846, in pytest_keyboard_interrupt
+    self._keyboardinterrupt_memo = excinfo.getrepr(funcargs=True)
+  File "/opt/conda/lib/python3.10/site-packages/_pytest/_code/code.py", line 669, in getrepr
+    return fmt.repr_excinfo(self)
+  File "/opt/conda/lib/python3.10/site-packages/_pytest/_code/code.py", line 946, in repr_excinfo
+    reprtraceback = self.repr_traceback(excinfo_)
+  File "/opt/conda/lib/python3.10/site-packages/_pytest/_code/code.py", line 873, in repr_traceback
+    reprentry = self.repr_traceback_entry(entry, einfo)
+  File "/opt/conda/lib/python3.10/site-packages/_pytest/_code/code.py", line 816, in repr_traceback_entry
+    source = self._getentrysource(entry)
+  File "/opt/conda/lib/python3.10/site-packages/_pytest/_code/code.py", line 722, in _getentrysource
+    source = entry.getsource(self.astcache)
+  File "/opt/conda/lib/python3.10/site-packages/_pytest/_code/code.py", line 263, in getsource
+    astnode, _, end = getstatementrange_ast(
+  File "/opt/conda/lib/python3.10/site-packages/_pytest/_code/source.py", line 187, in getstatementrange_ast
+    start, end = get_statement_startend2(lineno, astnode)
+  File "/opt/conda/lib/python3.10/site-packages/_pytest/_code/source.py", line 150, in get_statement_startend2
+    for x in ast.walk(node):
+  File "/opt/conda/lib/python3.10/ast.py", line 390, in walk
+    todo.extend(iter_child_nodes(node))
+  File "/opt/conda/lib/python3.10/ast.py", line 272, in iter_child_nodes
+    for name, field in iter_fields(node):
+  File "/opt/conda/lib/python3.10/ast.py", line 262, in iter_fields
+    yield field, getattr(node, field)
+KeyboardInterrupt

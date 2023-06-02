@@ -1,0 +1,184 @@
+============================= test session starts ==============================
+platform linux -- Python 3.10.11, pytest-7.3.1, pluggy-1.0.0 -- /opt/conda/bin/python
+cachedir: .pytest_cache
+hypothesis profile 'default' -> database=DirectoryBasedExampleDatabase('/root/Automatic-Circuit-Discovery/.hypothesis/examples')
+rootdir: /root/Automatic-Circuit-Discovery
+configfile: pyproject.toml
+plugins: hypothesis-6.75.2, jaxtyping-0.2.19, typeguard-3.0.2, torchtyping-0.1.4, anyio-3.6.2
+collecting ... collected 312 items
+
+tests/test_launch.py::test_acdc_docstring FAILED                         [  0%]
+tests/test_launch.py::test_acdc_induction 
+
+=================================== FAILURES ===================================
+_____________________________ test_acdc_docstring ______________________________
+
+    def test_acdc_docstring():
+>       experiments.launch_docstring.main(testing=True)
+
+tests/test_launch.py:7: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+experiments/launch_docstring.py:38: in main
+    launch(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+commands = [['python', 'transformer_lens/main.py', '--task=docstring', '--threshold=1.00000', '--using-wandb', '--wandb-run-name=....py', '--task=docstring', '--threshold=1.00000', '--using-wandb', '--wandb-run-name=agarriga-docstring-005', ...], ...]
+name = 'acdc-docstring', job = None, check_wandb = None
+ids_for_worker = range(0, 10000000), synchronous = True
+just_print_commands = False
+
+    def launch(commands: List[List[str]], name: str, job: Optional[KubernetesJob] = None, check_wandb: Optional[WandbIdentifier]=None, ids_for_worker=range(0, 10000000), synchronous=True, just_print_commands=False):
+        to_wait: List[Tuple[str, subprocess.Popen, TextIO, TextIO]] = []
+    
+        assert len(commands) <= 100_000, "Too many commands for 5 digits"
+    
+        print(f"Launching {len(commands)} jobs")
+        for i, command in enumerate(commands):
+            if i not in ids_for_worker:
+                print(f"Skipping {name} because it's not my turn, {i} not in {ids_for_worker}")
+                continue
+    
+            command_str = shlex.join(command)
+    
+    
+            if check_wandb is not None:
+                # HACK this is pretty vulnerable to duplicating work if the same run is launched in close succession,
+                # it's more to be able to restart
+                # api = wandb.Api()
+                name = check_wandb.run_name.format(i=i)
+                # if name in existing_names:
+                #     print(f"Skipping {name} because it already exists")
+                #     continue
+    
+                # runs = api.runs(path=f"remix_school-of-rock/{check_wandb.project}", filters={"group": check_wandb.group_name})
+                # existing_names = existing_names.union({r.name for r in runs})
+                # print("Runs that exist: ", existing_names)
+                # if name in existing_names:
+                #     print(f"Run {name} already exists, skipping")
+                #     continue
+    
+            print("Launching", name, command_str)
+            if just_print_commands:
+                continue
+    
+            if job is None:
+                if synchronous:
+                    out = subprocess.run(command)
+>                   assert out.returncode == 0, f"Command return={out.returncode} != 0"
+E                   AssertionError: Command return=1 != 0
+
+experiments/launcher.py:59: AssertionError
+----------------------------- Captured stdout call -----------------------------
+Launching 10 jobs
+Launching acdc-docstring python transformer_lens/main.py --task=docstring --threshold=1.00000 --using-wandb --wandb-run-name=agarriga-docstring-000 --wandb-group-name=adria-docstring --device=cpu --reset-network=0 --seed=516626229 --metric=kl_div --torch-num-threads=4 --wandb-dir=/training/acdc --wandb-mode=offline --max-num-epochs=1
+Loaded pretrained model attn-only-4l into HookedTransformer
+Moving model to device:  cpu
+dict_keys(['blocks.3.hook_resid_post', 'blocks.3.attn.hook_result', 'blocks.3.attn.hook_q', 'blocks.3.hook_q_input', 'blocks.3.attn.hook_k', 'blocks.3.hook_k_input', 'blocks.3.attn.hook_v', 'blocks.3.hook_v_input', 'blocks.2.attn.hook_result', 'blocks.2.attn.hook_q', 'blocks.2.hook_q_input', 'blocks.2.attn.hook_k', 'blocks.2.hook_k_input', 'blocks.2.attn.hook_v', 'blocks.2.hook_v_input', 'blocks.1.attn.hook_result', 'blocks.1.attn.hook_q', 'blocks.1.hook_q_input', 'blocks.1.attn.hook_k', 'blocks.1.hook_k_input', 'blocks.1.attn.hook_v', 'blocks.1.hook_v_input', 'blocks.0.attn.hook_result', 'blocks.0.attn.hook_q', 'blocks.0.hook_q_input', 'blocks.0.attn.hook_k', 'blocks.0.hook_k_input', 'blocks.0.attn.hook_v', 'blocks.0.hook_v_input', 'blocks.0.hook_resid_pre'])
+ln_final.hook_normalized
+ln_final.hook_scale
+blocks.3.hook_resid_post
+blocks.3.hook_attn_out
+blocks.3.attn.hook_result
+blocks.3.attn.hook_z
+blocks.3.attn.hook_pattern
+blocks.3.attn.hook_attn_scores
+blocks.3.attn.hook_v
+blocks.3.attn.hook_k
+blocks.3.attn.hook_q
+blocks.3.ln1.hook_normalized
+blocks.3.ln1.hook_scale
+blocks.3.hook_v_input
+blocks.3.hook_k_input
+blocks.3.hook_q_input
+blocks.3.hook_resid_pre
+blocks.2.hook_resid_post
+blocks.2.hook_attn_out
+blocks.2.attn.hook_result
+blocks.2.attn.hook_z
+blocks.2.attn.hook_pattern
+blocks.2.attn.hook_attn_scores
+blocks.2.attn.hook_v
+blocks.2.attn.hook_k
+blocks.2.attn.hook_q
+blocks.2.ln1.hook_normalized
+blocks.2.ln1.hook_scale
+blocks.2.hook_v_input
+blocks.2.hook_k_input
+blocks.2.hook_q_input
+blocks.2.hook_resid_pre
+blocks.1.hook_resid_post
+blocks.1.hook_attn_out
+blocks.1.attn.hook_result
+blocks.1.attn.hook_z
+blocks.1.attn.hook_pattern
+blocks.1.attn.hook_attn_scores
+blocks.1.attn.hook_v
+blocks.1.attn.hook_k
+blocks.1.attn.hook_q
+blocks.1.ln1.hook_normalized
+blocks.1.ln1.hook_scale
+blocks.1.hook_v_input
+blocks.1.hook_k_input
+blocks.1.hook_q_input
+blocks.1.hook_resid_pre
+blocks.0.hook_resid_post
+blocks.0.hook_attn_out
+blocks.0.attn.hook_result
+blocks.0.attn.hook_z
+blocks.0.attn.hook_pattern
+blocks.0.attn.hook_attn_scores
+blocks.0.attn.hook_v
+blocks.0.attn.hook_k
+blocks.0.attn.hook_q
+blocks.0.ln1.hook_normalized
+blocks.0.ln1.hook_scale
+blocks.0.hook_v_input
+blocks.0.hook_k_input
+blocks.0.hook_q_input
+blocks.0.hook_resid_pre
+hook_pos_embed
+hook_embed
+self.current_node=TLACDCInterpNode(blocks.3.hook_resid_post, [:])
+Adding sender hooks...
+Now corrupting things..
+Done corrupting things
+Adding sender hooks...
+----------------------------- Captured stderr call -----------------------------
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+wandb: WARNING Path /training/acdc/wandb/ wasn't writable, using system temp directory.
+wandb: WARNING Path /training/acdc/wandb/ wasn't writable, using system temp directory
+wandb: Tracking run with wandb version 0.13.11
+wandb: W&B syncing is set to `offline` in this directory.  
+wandb: Run `wandb online` or set WANDB_MODE=online to enable cloud syncing.
+Traceback (most recent call last):
+  File "/root/Automatic-Circuit-Discovery/transformer_lens/main.py", line 216, in <module>
+    exp = TLACDCExperiment(
+  File "/root/Automatic-Circuit-Discovery/transformer_lens/TLACDCExperiment.py", line 145, in __init__
+    self.update_cur_metric()
+  File "/root/Automatic-Circuit-Discovery/transformer_lens/TLACDCExperiment.py", line 175, in update_cur_metric
+    logits = self.model(self.ds)
+  File "/opt/conda/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1194, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/root/Automatic-Circuit-Discovery/transformer_lens/HookedTransformer.py", line 396, in forward
+    residual = block(
+  File "/opt/conda/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1194, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/root/Automatic-Circuit-Discovery/transformer_lens/components.py", line 891, in forward
+    resid_pre = self.hook_resid_pre(resid_pre)  # [batch, pos, d_model]
+  File "/opt/conda/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1215, in _call_impl
+    hook_result = hook(self, input, result)
+  File "/root/Automatic-Circuit-Discovery/transformer_lens/hook_points.py", line 80, in full_hook
+    return hook(module_output, hook=self)
+  File "/root/Automatic-Circuit-Discovery/transformer_lens/TLACDCExperiment.py", line 232, in sender_hook
+    hook.global_cache.cache[hook.name] = tens
+  File "/opt/conda/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1269, in __getattr__
+    raise AttributeError("'{}' object has no attribute '{}'".format(
+AttributeError: 'HookPoint' object has no attribute 'global_cache'
+wandb: Waiting for W&B process to finish... (failed 1).
+wandb: You can sync this run to the cloud by running:
+wandb: wandb sync /tmp/wandb/offline-run-20230602_193656-2ucjh90z
+wandb: Find logs at: /tmp/wandb/offline-run-20230602_193656-2ucjh90z/logs
+=========================== short test summary info ============================
+FAILED tests/test_launch.py::test_acdc_docstring - AssertionError: Command re...
+============================== 1 failed in 56.63s ==============================
