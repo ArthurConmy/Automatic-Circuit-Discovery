@@ -484,8 +484,12 @@ if __name__ == "__main__":
         raise ValueError(f"Unknown task {args.task}")
 
     kwargs = dict(**all_task_things.tl_model.cfg.__dict__)
-    del kwargs["use_split_qkv_input"]
-    del kwargs["use_global_cache"]
+    for kwarg_string in [
+        "use_split_qkv_input",
+    ]:
+        if kwarg_string in kwargs:
+            del kwargs[kwarg_string]
+
     cfg = HookedTransformerConfig(**kwargs)
     model = HookedTransformer(cfg, is_masked=True)
 

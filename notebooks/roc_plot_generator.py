@@ -55,7 +55,6 @@ import IPython
 from transformer_lens.munging_utils import heads_to_nodes_to_mask
 import torch
 
-# from easy_transformer.ioi_dataset import IOIDataset  # type: ignore
 from tqdm import tqdm
 import random
 from functools import partial
@@ -301,7 +300,6 @@ else:
 # Setup the experiment for wrapping functionality nicely
 
 if things is not None:
-    things.tl_model.global_cache.clear()
     things.tl_model.reset_hooks()
     exp = TLACDCExperiment(
         model=things.tl_model,

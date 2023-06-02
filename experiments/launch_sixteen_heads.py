@@ -124,18 +124,19 @@ else:
     raise ValueError(f"Unknown task {args.task}")
 
 # %% load the model into a Subnetwork-Probing model.
-# We don't use the sixteen_heads=True argument any more, because we want to keep qkv separated.
+# We don't use the sixteen_heads=True argument any more, because we want to keep QKV separated.
+# Deleted the 16H true argument from the kwargs
 
 
 kwargs = dict(**things.tl_model.cfg.__dict__)
 
 for extra_arg in [
     "use_split_qkv_input",
-    "use_global_cache",
     "n_devices", # extra from new merge
     "gated_mlp",
 ]:
-    del kwargs[extra_arg]
+    if extra_arg in kwargs:
+        del kwargs[extra_arg]
 
 cfg = SPHookedTransformerConfig(**kwargs)
 model = SPHookedTransformer(cfg, is_masked=True)

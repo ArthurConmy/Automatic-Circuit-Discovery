@@ -205,7 +205,6 @@ if RESET_NETWORK:
 with open(__file__, "r") as f:
     notes = f.read()
 
-tl_model.global_cache.clear()
 tl_model.reset_hooks()
 
 if WANDB_RUN_NAME is None or IPython.get_ipython() is not None:

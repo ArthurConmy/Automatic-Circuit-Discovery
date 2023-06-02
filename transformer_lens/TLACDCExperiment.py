@@ -12,7 +12,7 @@ from torch import nn
 from torch.nn import functional as F
 from transformer_lens.TLACDCInterpNode import TLACDCInterpNode
 from transformer_lens.TLACDCCorrespondence import TLACDCCorrespondence, TLACDCCorrespondenceFast
-from transformer_lens.HookedTransformer import HookedTransformer
+from transformer_lens.HookedTransformer import HookedTransformer, GlobalCache
 from transformer_lens.graphics import log_metrics_to_wandb
 import warnings
 import wandb
@@ -114,9 +114,13 @@ class TLACDCExperiment:
                 self.ref_ds = self.ds.clone()
             else:
                 warnings.warn("We shall overwrite the ref_ds with zeros.")
+        self.global_cache = GlobalCache(
+            device=("cpu" if self.first_cache_cpu else "cuda", "cpu" if self.second_cache_cpu else "cuda"),
+        )
+
         self.setup_second_cache()
         if self.second_cache_cpu:
-            self.model.global_cache.to("cpu", which_caches="second")
+            self.global_cache.to("cpu", which_caches="second")
 
         self.setup_model_hooks(
             add_sender_hooks=add_sender_hooks,
@@ -165,7 +169,6 @@ class TLACDCExperiment:
     def verify_model_setup(self):
         assert self.model.cfg.use_attn_result, "Need to be able to see split by head outputs"
         assert self.model.cfg.use_split_qkv_input, "Need to be able to see split by head QKV inputs"
-        assert self.model.cfg.use_global_cache, "Need to be able to use global cache to do ACDC"
 
     def update_cur_metric(self, recalc_metric=True, recalc_edges=True, initial=False):
         if recalc_metric:
@@ -245,7 +248,7 @@ class TLACDCExperiment:
         if EdgeType.DIRECT_COMPUTATION in incoming_edge_types:
 
             old_z = z.clone()
-            z[:] = self.model.global_cache.second_cache[hook.name].to(z.device)
+            z[:] = self.global_cache.second_cache[hook.name].to(z.device)
 
             if verbose:
                 print("Overwrote to sec cache")
@@ -275,7 +278,7 @@ class TLACDCExperiment:
     
             return z
 
-        z[:] = self.model.global_cache.second_cache[hook.name].to(z.device)
+        z[:] = self.global_cache.second_cache[hook.name].to(z.device)
 
         # TODO - is this slow ???
         # answer: yes --- try and have hoooks for each individual (name, index)
@@ -358,7 +361,7 @@ class TLACDCExperiment:
             print("Adding sender hooks...")
         
         self.model.reset_hooks()
-        self.model.cache_all(self.model.global_cache.second_cache)
+        self.model.cache_all(self.global_cache.second_cache)
 
         if self.verbose:
             print("Now corrupting things..")
@@ -369,20 +372,19 @@ class TLACDCExperiment:
             print("Done corrupting things")
 
         if self.zero_ablation:
-            names = list(self.model.global_cache.second_cache.keys())
+            names = list(self.global_cache.second_cache.keys())
             assert len(names)>0, "No second cache names found"
-            print("WE NAAMING")
             for name in names:
-                self.model.global_cache.second_cache[name] = torch.zeros_like(
-                    self.model.global_cache.second_cache[name]
+                self.global_cache.second_cache[name] = torch.zeros_like(
+                    self.global_cache.second_cache[name]
                 )
                 torch.cuda.empty_cache()
 
         if self.second_cache_cpu:
-            self.model.global_cache.to("cpu", which_caches="second")
+            self.global_cache.to("cpu", which_caches="second")
 
         if self.use_pos_embed:
-            self.model.global_cache.second_cache["hook_pos_embed"][:] = shuffle_tensor(self.model.global_cache.second_cache["hook_pos_embed"][0], seed=49) # make all positions the same shuffled set of positions
+            self.global_cache.second_cache["hook_pos_embed"][:] = shuffle_tensor(self.global_cache.second_cache["hook_pos_embed"][0], seed=49) # make all positions the same shuffled set of positions
 
         self.model.reset_hooks()
 

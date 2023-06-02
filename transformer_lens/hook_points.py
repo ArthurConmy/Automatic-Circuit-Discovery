@@ -139,17 +139,7 @@ class HookPoint(nn.Module):
         return int(split_name[1])
 
     def forward(self, x):
-        if "global_cache" in dir(self) and self.global_cache.sixteen_heads_config is not None and self.global_cache.sixteen_heads_config.forward_pass_enabled and "xi" in dir(self):
-            raise NotImplementedError("Discontinued 16H Support after 9f2bc4a1cecc527e564e5479507943460ad8ef2d")
-
-            if self.global_cache.sixteen_heads_config.zero_ablation:
-                return self.xi * x
-
-            else:
-                return self.xi * x + (-self.xi + 1) * self.global_cache.second_cache[self.name].to(x.device)
-
-        else:
-            return x
+        return x
 
 
 # %%

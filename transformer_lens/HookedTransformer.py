@@ -50,18 +50,12 @@ class Output(NamedTuple):
     logits: TT[T.batch, T.pos, T.d_vocab]
     loss: Loss
 
-@dataclass
-class SixteenHeadsConfig:
-    """Simple class to manage the different forward passes for 16 Heads"""
-    forward_pass_enabled: bool = False
-    zero_ablation: bool = False
-
 class GlobalCache: # this dict stores the activations from the forward pass
-    """Class for managing some caches for passing activations around
+    """Class for managing several caches for passing activations around
     
     Also has flags that are relevant for whether we're doing 16 Heads things or not"""
 
-    def __init__(self, device: Union[str, Tuple[str, str]] = "cuda", sixteen_heads=False):
+    def __init__(self, device: Union[str, Tuple[str, str]] = "cuda"):
         # TODO find a way to make the device propagate when we to .to on the p
         # TODO make it essential first key is a str, second a TorchIndex, third a str
 
@@ -72,7 +66,6 @@ class GlobalCache: # this dict stores the activations from the forward pass
         self.second_cache = OrderedDict()
         self.device: Tuple[str, str] = (device, device)
 
-        self.sixteen_heads_config: Optional[SixteenHeadsConfig] = SixteenHeadsConfig() if sixteen_heads else None
 
     def clear(self, just_first_cache=False):
         
@@ -159,11 +152,6 @@ class HookedTransformer(HookedRootModule):
         if self.cfg.d_vocab_out == -1:
             self.cfg.d_vocab_out = self.cfg.d_vocab
 
-        if self.cfg.use_global_cache:
-            self.global_cache = global_cache = GlobalCache(device=cfg.device, sixteen_heads = self.cfg.sixteen_heads)               
-        else:
-            self.global_cache = global_cache = None
-
         self.embed = Embed(self.cfg)
         self.hook_embed = HookPoint()  # [batch, pos, d_model]
 
@@ -216,14 +204,6 @@ class HookedTransformer(HookedRootModule):
         # Needed for HookPoints to work
         self.setup()
         self.is_caching = False
-
-        if self.cfg.sixteen_heads: 
-            self.setup_sixteen_heads()
-
-    def setup_sixteen_heads(self):
-        for layer_idx in range(self.cfg.n_layers):
-            self.hook_dict[f"blocks.{layer_idx}.attn.hook_result"].add_xi_parameter(shape = [1, 1, self.cfg.n_heads, 1])
-            self.hook_dict[f"blocks.{layer_idx}.hook_mlp_out"].add_xi_parameter(shape = [])
 
     def xis_to_device(self, device):
         for hook_point in self.hook_dict.values():

@@ -50,15 +50,12 @@ class AllDataThings:
     test_mask: Optional[torch.Tensor]
     test_patch_data: torch.Tensor
 
-def get_docstring_model(device="cuda", sixteen_heads=False):
+def get_docstring_model(device="cuda"):
     tl_model = HookedTransformer.from_pretrained(
         "attn-only-4l",
-        use_global_cache=True,
-        sixteen_heads=sixteen_heads,
     )
     tl_model.set_use_attn_result(True)
-    if not sixteen_heads:
-        tl_model.set_use_split_qkv_input(True)
+    tl_model.set_use_split_qkv_input(True)
     tl_model.to(device)
     return tl_model
 
@@ -69,10 +66,9 @@ def get_all_docstring_things(
     metric_name="kl_div",
     dataset_version="random_random",
     correct_incorrect_wandb=True,
-    sixteen_heads=False,
     return_one_element=True,
 ) -> AllDataThings:
-    tl_model = get_docstring_model(device=device, sixteen_heads=sixteen_heads)
+    tl_model = get_docstring_model(device=device)
 
     docstring_ind_prompt_kwargs = dict(
         n_matching_args=3, n_def_prefix_args=2, n_def_suffix_args=1, n_doc_prefix_args=0, met_desc_len=3, arg_desc_len=2

@@ -19,7 +19,7 @@ import torch.nn.functional as F
 
 bos = "BOS"
 
-def get_tracr_model_input_and_tl_model(task: Literal["reverse", "proportion"], device, return_im = False, sixteen_heads=False):
+def get_tracr_model_input_and_tl_model(task: Literal["reverse", "proportion"], device, return_im = False):
     """
     This function adapts Neel's TransformerLens porting of tracr
     """
@@ -89,8 +89,6 @@ def get_tracr_model_input_and_tl_model(task: Literal["reverse", "proportion"], d
         act_fn=act_fn,
         attention_dir=attention_type,
         normalization_type=normalization_type,
-        use_global_cache=True,
-        sixteen_heads=sixteen_heads,
         use_attn_result=True,
         use_split_qkv_input=True,
         device=device,
