@@ -136,6 +136,6 @@ print("Loss without the induction head direct connections:", get_loss(experiment
 # That's much larger!
 # Forthcoming tutorials: 
 # 1. on the abstractions used to be able to edit connections (The `TorchIndex`s)
-# 2. see acdc/main.py for how to run ACDC experiments; try python acdc/main.py --help
+# 2. see transformer_lens/main.py for how to run ACDC experiments; try python transformer_lens/main.py --help
 
 # %%

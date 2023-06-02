@@ -2,7 +2,7 @@
 
 This is the accompanying code to the arXiv paper "Towards Automated Circuit Discovery for Mechanistic Interpretability".
 
-To run ACDC, see `acdc/main.py`. To see how we edit connections, see `notebooks/evaluating_subgraphs.py`. <b>This repo is still under construction.</b>
+To run ACDC, see `transformer_lens/main.py`. To see how we edit connections, see `notebooks/evaluating_subgraphs.py`. <b>This repo is still under construction.</b>
 
 # Automatic Circuit Discovery 
 
@@ -24,16 +24,24 @@ sudo apt-get update && sudo apt-get install ffmpeg libsm6 libxext6 graphviz
 
 in order to install graphics dependencies on linux.
 
-## Tests (not currently mantained!)
+## Tests
 
 From the root directory, run 
 
 ```bash
-pytest tests/acdc -vv
+pytest tests/acdc -vvv --ignore=subnetwork_probing/ --ignore=tests/subnetwork_probing/
 ```
+
+(currently working on getting these passing)
 
 ## TODO
 
 [ ] Neuron-level experiments
+
 [ ] Position-level experiments
+
 [ ] `tracr` and other dependencies better managed
+
+[ ] Make SP tests work
+
+[ ] Add 16H back

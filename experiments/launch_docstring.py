@@ -15,7 +15,7 @@ def main(testing: bool):
                 for threshold in [1.0] if testing else thresholds:
                     command = [
                         "python",
-                        "acdc/main.py" if testing else "/Automatic-Circuit-Discovery/acdc/main.py",
+                        "transformer_lens/main.py" if testing else "/Automatic-Circuit-Discovery/transformer_lens/main.py",
                         "--task=docstring",
                         f"--threshold={threshold:.5f}",
                         "--using-wandb",
