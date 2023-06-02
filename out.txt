@@ -1,0 +1,1072 @@
+============================= test session starts ==============================
+platform linux -- Python 3.10.11, pytest-7.3.1, pluggy-1.0.0 -- /opt/conda/bin/python
+cachedir: .pytest_cache
+hypothesis profile 'default' -> database=DirectoryBasedExampleDatabase('/root/Automatic-Circuit-Discovery/.hypothesis/examples')
+rootdir: /root/Automatic-Circuit-Discovery
+configfile: pyproject.toml
+plugins: hypothesis-6.75.2, jaxtyping-0.2.19, typeguard-3.0.2, torchtyping-0.1.4, anyio-3.6.2
+collecting ... collected 308 items
+
+tests/test_launch.py::test_acdc_docstring FAILED                         [  0%]
+tests/test_launch.py::test_acdc_induction FAILED                         [  0%]
+tests/acceptance/test_activation_cache.py::test_logit_attrs_matches_reference_code PASSED [  0%]
+tests/acceptance/test_activation_cache.py::test_logit_attrs_works_for_all_input_shapes PASSED [  1%]
+tests/acceptance/test_activation_cache.py::test_accumulated_resid_with_apply_ln PASSED [  1%]
+tests/acceptance/test_activation_cache.py::test_decompose_resid_with_apply_ln PASSED [  1%]
+tests/acceptance/test_activation_cache.py::test_stack_head_results_with_apply_ln PASSED [  2%]
+tests/acceptance/test_activation_cache.py::test_stack_neuron_results_with_apply_ln PASSED [  2%]
+tests/acceptance/test_evals.py::test_basic_ioi_eval PASSED               [  2%]
+tests/acceptance/test_evals.py::test_symmetric_samples PASSED            [  3%]
+tests/acceptance/test_evals.py::test_custom_dataset_ioi_eval PASSED      [  3%]
+tests/acceptance/test_evals.py::test_multitoken_names_ioi_eval PASSED    [  3%]
+tests/acceptance/test_evals.py::test_inverted_template PASSED            [  4%]
+tests/acceptance/test_hook_tokens.py::test_patch_tokens PASSED           [  4%]
+tests/acceptance/test_hooked_encoder.py::test_full_model FAILED          [  4%]
+tests/acceptance/test_hooked_encoder.py::test_embed_one_sentence PASSED  [  5%]
+tests/acceptance/test_hooked_encoder.py::test_embed_two_sentences PASSED [  5%]
+tests/acceptance/test_hooked_encoder.py::test_attention PASSED           [  5%]
+tests/acceptance/test_hooked_encoder.py::test_bert_block PASSED          [  6%]
+tests/acceptance/test_hooked_encoder.py::test_mlm_head PASSED            [  6%]
+tests/acceptance/test_hooked_encoder.py::test_unembed PASSED             [  6%]
+tests/acceptance/test_hooked_encoder.py::test_run_with_cache FAILED      [  7%]
+tests/acceptance/test_hooked_encoder.py::test_predictions FAILED         [  7%]
+tests/acceptance/test_hooked_transformer.py::test_model[attn-only-demo-5.701841354370117] PASSED [  7%]
+tests/acceptance/test_hooked_transformer.py::test_model[gpt2-small-5.331855773925781] PASSED [  8%]
+tests/acceptance/test_hooked_transformer.py::test_model[opt-125m-6.159054279327393] PASSED [  8%]
+tests/acceptance/test_hooked_transformer.py::test_model[gpt-neo-125M-4.900552272796631] PASSED [  8%]
+tests/acceptance/test_hooked_transformer.py::test_model[stanford-gpt2-small-a-5.652035713195801] PASSED [  9%]
+tests/acceptance/test_hooked_transformer.py::test_model[solu-4l-old-5.6021833419799805] PASSED [  9%]
+tests/acceptance/test_hooked_transformer.py::test_model[solu-6l-5.7042999267578125] PASSED [  9%]
+tests/acceptance/test_hooked_transformer.py::test_model[attn-only-3l-5.747507095336914] PASSED [ 10%]
+tests/acceptance/test_hooked_transformer.py::test_model[pythia-4.659344673156738] PASSED [ 10%]
+tests/acceptance/test_hooked_transformer.py::test_model[gelu-2l-6.501802444458008] PASSED [ 10%]
+tests/acceptance/test_hooked_transformer.py::test_model[redwood_attn_2l-10.530948638916016] PASSED [ 11%]
+tests/acceptance/test_hooked_transformer.py::test_model[solu-1l-5.256411552429199] PASSED [ 11%]
+tests/acceptance/test_hooked_transformer.py::test_model[tiny-stories-33M-12.203617095947266] PASSED [ 11%]
+tests/acceptance/test_hooked_transformer.py::test_othello_gpt PASSED     [ 12%]
+tests/acceptance/test_hooked_transformer.py::test_from_pretrained_no_processing[solu-1l-5.256411552429199] PASSED [ 12%]
+tests/acceptance/test_hooked_transformer.py::test_from_pretrained_no_processing[redwood_attn_2l-10.530948638916016] PASSED [ 12%]
+tests/acceptance/test_hooked_transformer.py::test_pos_embed_hook PASSED  [ 12%]
+tests/acceptance/test_multi_gpu.py::test_get_device_for_block_index SKIPPED (Requires at least 4 CUDA devices) [ 13%]
+tests/acceptance/test_multi_gpu.py::test_device_separation_and_cache[1] SKIPPED (Requires at least 4 CUDA devices) [ 13%]
+tests/acceptance/test_multi_gpu.py::test_device_separation_and_cache[2] SKIPPED (Requires at least 4 CUDA devices) [ 13%]
+tests/acceptance/test_multi_gpu.py::test_device_separation_and_cache[3] SKIPPED (Requires at least 4 CUDA devices) [ 14%]
+tests/acceptance/test_multi_gpu.py::test_device_separation_and_cache[4] SKIPPED (Requires at least 4 CUDA devices) [ 14%]
+tests/acceptance/test_multi_gpu.py::test_cache_device SKIPPED (Requires at least 2 CUDA devices) [ 14%]
+tests/acceptance/test_tokenizer_special_tokens.py::test_d_vocab_from_tokenizer PASSED [ 15%]
+tests/unit/test_cache_hook_names.py::test_cache_hook_names PASSED        [ 15%]
+tests/unit/test_config.py::test_hooked_transformer_config_object PASSED  [ 15%]
+tests/unit/test_config.py::test_hooked_transformer_config_dict PASSED    [ 16%]
+tests/unit/test_create_hooked_encoder.py::test_pass_tokenizer PASSED     [ 16%]
+tests/unit/test_create_hooked_encoder.py::test_load_tokenizer_from_config PASSED [ 16%]
+tests/unit/test_create_hooked_encoder.py::test_load_without_tokenizer PASSED [ 17%]
+tests/unit/test_create_hooked_encoder.py::test_cannot_load_without_tokenizer_or_d_vocab PASSED [ 17%]
+tests/unit/test_d_vocab.py::test_d_vocab_from_tokenizer PASSED           [ 17%]
+tests/unit/test_d_vocab.py::test_d_vocab_from_tokenizer_name PASSED      [ 18%]
+tests/unit/test_d_vocab.py::test_d_vocab_out_set PASSED                  [ 18%]
+tests/unit/test_d_vocab.py::test_d_vocab_out_set_d_vocab_infer PASSED    [ 18%]
+tests/unit/test_head_detector.py::Test_detect_head_successful::Test_mul::test_regular_sequence[previous_token_head-expected0] PASSED [ 19%]
+tests/unit/test_head_detector.py::Test_detect_head_successful::Test_mul::test_regular_sequence[duplicate_token_head-expected1] PASSED [ 19%]
+tests/unit/test_head_detector.py::Test_detect_head_successful::Test_mul::test_regular_sequence[induction_head-expected2] PASSED [ 19%]
+tests/unit/test_head_detector.py::Test_detect_head_successful::Test_mul::test_duplicated_sequence[previous_token_head-expected0] PASSED [ 20%]
+tests/unit/test_head_detector.py::Test_detect_head_successful::Test_mul::test_duplicated_sequence[duplicate_token_head-expected1] PASSED [ 20%]
+tests/unit/test_head_detector.py::Test_detect_head_successful::Test_mul::test_duplicated_sequence[induction_head-expected2] PASSED [ 20%]
+tests/unit/test_head_detector.py::Test_detect_head_successful::Test_abs::test_regular_sequence[previous_token_head-expected0] PASSED [ 21%]
+tests/unit/test_head_detector.py::Test_detect_head_successful::Test_abs::test_regular_sequence[duplicate_token_head-expected1] PASSED [ 21%]
+tests/unit/test_head_detector.py::Test_detect_head_successful::Test_abs::test_regular_sequence[induction_head-expected2] PASSED [ 21%]
+tests/unit/test_head_detector.py::Test_detect_head_successful::Test_abs::test_duplicated_sequence[previous_token_head-expected0] PASSED [ 22%]
+tests/unit/test_head_detector.py::Test_detect_head_successful::Test_abs::test_duplicated_sequence[duplicate_token_head-expected1] PASSED [ 22%]
+tests/unit/test_head_detector.py::Test_detect_head_successful::Test_abs::test_duplicated_sequence[induction_head-expected2] PASSED [ 22%]
+tests/unit/test_head_detector.py::test_batched_equal_lengths[previous_token_head] PASSED [ 23%]
+tests/unit/test_head_detector.py::test_batched_equal_lengths[duplicate_token_head] PASSED [ 23%]
+tests/unit/test_head_detector.py::test_batched_equal_lengths[induction_head] PASSED [ 23%]
+tests/unit/test_head_detector.py::test_batched_unequal_lengths PASSED    [ 24%]
+tests/unit/test_head_detector.py::test_detect_head_exclude_bos[mul-expected0] PASSED [ 24%]
+tests/unit/test_head_detector.py::test_detect_head_exclude_bos[abs-expected1] PASSED [ 24%]
+tests/unit/test_head_detector.py::test_detect_head_exclude_current_token[mul-expected0] PASSED [ 25%]
+tests/unit/test_head_detector.py::test_detect_head_exclude_current_token[abs-expected1] PASSED [ 25%]
+tests/unit/test_head_detector.py::test_detect_head_exclude_bos_and_current_token[mul-expected0] PASSED [ 25%]
+tests/unit/test_head_detector.py::test_detect_head_exclude_bos_and_current_token[abs-expected1] PASSED [ 25%]
+tests/unit/test_head_detector.py::test_detect_head_with_cache[mul-expected0] PASSED [ 26%]
+tests/unit/test_head_detector.py::test_detect_head_with_cache[abs-expected1] PASSED [ 26%]
+tests/unit/test_head_detector.py::test_detect_head_with_invalid_head_name PASSED [ 26%]
+tests/unit/test_head_detector.py::test_detect_head_with_zero_sequence_length PASSED [ 27%]
+tests/unit/test_head_detector.py::test_detect_head_with_sequence_length_outside_context_window PASSED [ 27%]
+tests/unit/test_head_detector.py::test_detect_head_with_invalid_detection_pattern PASSED [ 27%]
+tests/unit/test_head_detector.py::Test_detect_head_non_lower_triangular_detection_pattern::test_no_error PASSED [ 28%]
+tests/unit/test_head_detector.py::Test_detect_head_non_lower_triangular_detection_pattern::test_raises_error PASSED [ 28%]
+tests/unit/test_head_detector.py::Test_specific_heads::Test_regular_sentence_previous_token_head::test_allclose_mul PASSED [ 28%]
+tests/unit/test_head_detector.py::Test_specific_heads::Test_regular_sentence_previous_token_head::test_allclose_abs PASSED [ 29%]
+tests/unit/test_head_detector.py::Test_specific_heads::Test_regular_sentence_previous_token_head::test_isclose_mul PASSED [ 29%]
+tests/unit/test_head_detector.py::Test_specific_heads::Test_regular_sentence_previous_token_head::test_isclose_abs PASSED [ 29%]
+tests/unit/test_head_detector.py::Test_specific_heads::Test_duplicated_sentence_previous_token_head::test_allclose_mul PASSED [ 30%]
+tests/unit/test_head_detector.py::Test_specific_heads::Test_duplicated_sentence_previous_token_head::test_allclose_abs PASSED [ 30%]
+tests/unit/test_head_detector.py::Test_specific_heads::Test_duplicated_sentence_previous_token_head::test_isclose_mul PASSED [ 30%]
+tests/unit/test_head_detector.py::Test_specific_heads::Test_duplicated_sentence_previous_token_head::test_isclose_abs PASSED [ 31%]
+tests/unit/test_head_detector.py::Test_specific_heads::Test_duplicated_sentence_duplicate_token_head::test_allclose_mul PASSED [ 31%]
+tests/unit/test_head_detector.py::Test_specific_heads::Test_duplicated_sentence_duplicate_token_head::test_allclose_abs PASSED [ 31%]
+tests/unit/test_head_detector.py::Test_specific_heads::Test_duplicated_sentence_duplicate_token_head::test_isclose_mul PASSED [ 32%]
+tests/unit/test_head_detector.py::Test_specific_heads::Test_duplicated_sentence_duplicate_token_head::test_isclose_abs PASSED [ 32%]
+tests/unit/test_head_detector.py::Test_specific_heads::Test_duplicated_sentence_induction_head::test_allclose_mul PASSED [ 32%]
+tests/unit/test_head_detector.py::Test_specific_heads::Test_duplicated_sentence_induction_head::test_allclose_abs PASSED [ 33%]
+tests/unit/test_head_detector.py::Test_specific_heads::Test_duplicated_sentence_induction_head::test_isclose_mul PASSED [ 33%]
+tests/unit/test_head_detector.py::Test_specific_heads::Test_duplicated_sentence_induction_head::test_isclose_abs PASSED [ 33%]
+tests/unit/test_head_detector.py::Test_previous_token_head::test_regular_detection_pattern1 PASSED [ 34%]
+tests/unit/test_head_detector.py::Test_previous_token_head::test_regular_detection_pattern2 PASSED [ 34%]
+tests/unit/test_head_detector.py::Test_previous_token_head::test_regular_detection_pattern3 PASSED [ 34%]
+tests/unit/test_head_detector.py::Test_previous_token_head::test_duplicate_detection_pattern1 PASSED [ 35%]
+tests/unit/test_head_detector.py::Test_previous_token_head::test_duplicate_detection_pattern2 PASSED [ 35%]
+tests/unit/test_head_detector.py::Test_previous_token_head::test_duplicate_detection_pattern3 PASSED [ 35%]
+tests/unit/test_head_detector.py::Test_duplicate_token_head::test1 PASSED [ 36%]
+tests/unit/test_head_detector.py::Test_duplicate_token_head::test2 PASSED [ 36%]
+tests/unit/test_head_detector.py::Test_duplicate_token_head::test3 PASSED [ 36%]
+tests/unit/test_head_detector.py::Test_duplicate_token_head::test4 PASSED [ 37%]
+tests/unit/test_head_detector.py::Test_induction_head_detection::test1 PASSED [ 37%]
+tests/unit/test_head_detector.py::Test_induction_head_detection::test2 PASSED [ 37%]
+tests/unit/test_head_detector.py::Test_induction_head_detection::test3 PASSED [ 37%]
+tests/unit/test_head_detector.py::Test_induction_head_detection::test4 PASSED [ 38%]
+tests/unit/test_hooks.py::test_hook_attaches_normally PASSED             [ 38%]
+tests/unit/test_hooks.py::test_perma_hook_attaches_normally PASSED       [ 38%]
+tests/unit/test_hooks.py::test_hook_context_manager PASSED               [ 39%]
+tests/unit/test_hooks.py::test_nested_hook_context_manager PASSED        [ 39%]
+tests/unit/test_hooks.py::test_context_manager_run_with_cache PASSED     [ 39%]
+tests/unit/test_hooks.py::test_hook_context_manager_with_permanent_hook PASSED [ 40%]
+tests/unit/test_hooks.py::test_nested_context_manager_with_failure PASSED [ 40%]
+tests/unit/test_hooks.py::test_reset_hooks_in_context_manager PASSED     [ 40%]
+tests/unit/test_hooks.py::test_remove_hook PASSED                        [ 41%]
+tests/unit/test_hooks.py::test_conditional_hooks PASSED                  [ 41%]
+tests/unit/test_stop_at_layer.py::test_stop_at_embed PASSED              [ 41%]
+tests/unit/test_stop_at_layer.py::test_run_with_hooks PASSED             [ 42%]
+tests/unit/test_stop_at_layer.py::test_manual_hooks PASSED               [ 42%]
+tests/unit/test_stop_at_layer.py::test_stop_at_layer_1 PASSED            [ 42%]
+tests/unit/test_stop_at_layer.py::test_stop_at_final PASSED              [ 43%]
+tests/unit/test_stop_at_layer.py::test_no_stop_logit_output PASSED       [ 43%]
+tests/unit/test_stop_at_layer.py::test_no_stop_no_output PASSED          [ 43%]
+tests/unit/test_tokenization_methods.py::test_set_tokenizer_during_initialization PASSED [ 44%]
+tests/unit/test_tokenization_methods.py::test_set_tokenizer_lazy PASSED  [ 44%]
+tests/unit/test_tokenization_methods.py::test_to_tokens_default FAILED   [ 44%]
+tests/unit/test_tokenization_methods.py::test_to_tokens_without_bos FAILED [ 45%]
+tests/unit/test_tokenization_methods.py::test_to_tokens_device FAILED    [ 45%]
+tests/unit/test_tokenization_methods.py::test_to_tokens_truncate PASSED  [ 45%]
+tests/unit/test_tokenization_methods.py::test_to_string_from_to_tokens_without_bos PASSED [ 46%]
+tests/unit/test_tokenization_methods.py::test_to_string_multiple PASSED  [ 46%]
+tests/unit/test_tokenization_methods.py::test_to_str_tokens_default PASSED [ 46%]
+tests/unit/test_tokenization_methods.py::test_to_str_tokens_without_bos PASSED [ 47%]
+tests/unit/test_tokenization_methods.py::test_to_single_token PASSED     [ 47%]
+tests/unit/test_tokenization_methods.py::test_to_single_str_tokent PASSED [ 47%]
+tests/unit/test_tokenization_methods.py::test_get_token_position_not_found FAILED [ 48%]
+tests/unit/test_tokenization_methods.py::test_get_token_position_str FAILED [ 48%]
+tests/unit/test_tokenization_methods.py::test_get_token_position_str_without_bos FAILED [ 48%]
+tests/unit/test_tokenization_methods.py::test_get_token_position_int_pos PASSED [ 49%]
+tests/unit/test_tokenization_methods.py::test_get_token_position_int_pos_last PASSED [ 49%]
+tests/unit/test_tokenization_methods.py::test_get_token_position_int_1_pos PASSED [ 49%]
+tests/unit/test_tokenization_methods.py::test_tokens_to_residual_directions PASSED [ 50%]
+tests/unit/test_utils.py::TestSlice::test_modularity_shape[input_slice0-expected_shape0] PASSED [ 50%]
+tests/unit/test_utils.py::TestSlice::test_modularity_shape[input_slice1-expected_shape1] PASSED [ 50%]
+tests/unit/test_utils.py::TestSlice::test_modularity_shape[input_slice2-expected_shape2] PASSED [ 50%]
+tests/unit/test_utils.py::TestSlice::test_modularity_shape[input_slice3-expected_shape3] PASSED [ 51%]
+tests/unit/test_utils.py::TestSlice::test_modularity_shape[0-expected_shape4] PASSED [ 51%]
+tests/unit/test_utils.py::TestSlice::test_modularity_shape[input_slice5-expected_shape5] PASSED [ 51%]
+tests/unit/test_utils.py::TestSlice::test_modularity_shape[None-expected_shape6] PASSED [ 52%]
+tests/unit/test_utils.py::TestSlice::test_modularity_tensor[input_slice0-expected_tensor0] PASSED [ 52%]
+tests/unit/test_utils.py::TestSlice::test_modularity_tensor[input_slice1-expected_tensor1] PASSED [ 52%]
+tests/unit/test_utils.py::TestSlice::test_modularity_tensor[input_slice2-expected_tensor2] PASSED [ 53%]
+tests/unit/test_utils.py::TestSlice::test_modularity_tensor[0-expected_tensor3] PASSED [ 53%]
+tests/unit/test_utils.py::TestSlice::test_modularity_tensor[input_slice4-expected_tensor4] PASSED [ 53%]
+tests/unit/test_utils.py::TestSlice::test_modularity_tensor[None-expected_tensor5] PASSED [ 54%]
+tests/unit/test_utils.py::TestSlice::test_indices[input_slice0-expected_indices0] PASSED [ 54%]
+tests/unit/test_utils.py::TestSlice::test_indices[0-expected_indices1] PASSED [ 54%]
+tests/unit/test_utils.py::TestSlice::test_indices[input_slice2-expected_indices2] PASSED [ 55%]
+tests/unit/test_utils.py::TestSlice::test_indices_error PASSED           [ 55%]
+tests/unit/test_utils.py::test_to_str_tokens PASSED                      [ 55%]
+tests/unit/test_utils.py::Test_is_square::test_pass[x0] PASSED           [ 56%]
+tests/unit/test_utils.py::Test_is_square::test_pass[x1] PASSED           [ 56%]
+tests/unit/test_utils.py::Test_is_square::test_fail[x0] PASSED           [ 56%]
+tests/unit/test_utils.py::Test_is_square::test_fail[x1] PASSED           [ 57%]
+tests/unit/test_utils.py::Test_is_square::test_fail[x2] PASSED           [ 57%]
+tests/unit/test_utils.py::Test_is_square::test_fail[x3] PASSED           [ 57%]
+tests/unit/test_utils.py::Test_is_square::test_fail[x4] PASSED           [ 58%]
+tests/unit/test_utils.py::Test_is_square::test_fail[x5] PASSED           [ 58%]
+tests/unit/test_utils.py::Test_lower_triangular::test_pass[x0] PASSED    [ 58%]
+tests/unit/test_utils.py::Test_lower_triangular::test_pass[x1] PASSED    [ 59%]
+tests/unit/test_utils.py::Test_lower_triangular::test_pass[x2] PASSED    [ 59%]
+tests/unit/test_utils.py::Test_lower_triangular::test_pass[x3] PASSED    [ 59%]
+tests/unit/test_utils.py::Test_lower_triangular::test_fail[x0] PASSED    [ 60%]
+tests/unit/test_utils.py::Test_lower_triangular::test_fail[x1] PASSED    [ 60%]
+tests/unit/test_utils.py::Test_lower_triangular::test_fail[x2] PASSED    [ 60%]
+tests/unit/test_utils.py::Test_lower_triangular::test_fail[x3] PASSED    [ 61%]
+tests/unit/test_utils.py::Test_lower_triangular::test_fail[x4] PASSED    [ 61%]
+tests/unit/test_utils.py::Test_lower_triangular::test_fail[x5] PASSED    [ 61%]
+tests/unit/test_utils.py::Test_lower_triangular::test_fail[x6] PASSED    [ 62%]
+tests/unit/test_utils.py::Test_lower_triangular::test_fail[x7] PASSED    [ 62%]
+tests/unit/test_utils.py::Test_lower_triangular::test_fail[x8] PASSED    [ 62%]
+tests/unit/factored_matrix/test_constructor.py::test_factored_matrix PASSED [ 62%]
+tests/unit/factored_matrix/test_constructor.py::test_factored_matrix_b_leading_dims PASSED [ 63%]
+tests/unit/factored_matrix/test_constructor.py::test_factored_matrix_a_b_leading_dims PASSED [ 63%]
+tests/unit/factored_matrix/test_constructor.py::test_factored_matrix_broadcast_mismatch PASSED [ 63%]
+tests/unit/factored_matrix/test_constructor.py::test_factored_matrix_inner_mismatch SKIPPED (
+    AssertionError will not be reached due to jaxtyping argument consistency
+    checks, which are enabled at test time but not run time.
+
+    See https://github.com/neelnanda-io/TransformerLens/issues/190)      [ 64%]
+tests/unit/factored_matrix/test_get_item.py::test_getitem_int PASSED     [ 64%]
+tests/unit/factored_matrix/test_get_item.py::test_getitem_tuple PASSED   [ 64%]
+tests/unit/factored_matrix/test_get_item.py::test_getitem_slice PASSED   [ 65%]
+tests/unit/factored_matrix/test_get_item.py::test_getitem_error PASSED   [ 65%]
+tests/unit/factored_matrix/test_get_item.py::test_getitem_multiple_slices PASSED [ 65%]
+tests/unit/factored_matrix/test_get_item.py::test_index_dimension_get_line PASSED [ 66%]
+tests/unit/factored_matrix/test_get_item.py::test_index_dimension_get_element PASSED [ 66%]
+tests/unit/factored_matrix/test_get_item.py::test_index_dimension_too_big PASSED [ 66%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_two_factored_matrices[both have ldim == mdim == rdim] PASSED [ 67%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_two_factored_matrices[both have ldim == mdim == rdim == 1] PASSED [ 67%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_two_factored_matrices[both have ldim == rdim == 1 != mdim] PASSED [ 67%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_two_factored_matrices[A has ldim == mdim == rdim == 1] PASSED [ 68%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_two_factored_matrices[B has ldim == mdim == rdim == 1] PASSED [ 68%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_two_factored_matrices[A has ldim == 1] PASSED [ 68%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_two_factored_matrices[B has ldim == 1] PASSED [ 69%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_two_factored_matrices[A has ldim == 1 and B has rdim == 1] PASSED [ 69%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_two_factored_matrices[both have rdim > mdim] PASSED [ 69%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_two_factored_matrices[both have rdim < mdim] PASSED [ 70%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_two_factored_matrices[both have rdim == mdim] PASSED [ 70%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_two_factored_matrices[A has rdim < mdim and B has rdim > mdim] PASSED [ 70%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_A_has_leading_dim[both have ldim == mdim == rdim] PASSED [ 71%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_A_has_leading_dim[both have ldim == mdim == rdim == 1] PASSED [ 71%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_A_has_leading_dim[both have ldim == rdim == 1 != mdim] PASSED [ 71%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_A_has_leading_dim[A has ldim == mdim == rdim == 1] PASSED [ 72%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_A_has_leading_dim[B has ldim == mdim == rdim == 1] PASSED [ 72%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_A_has_leading_dim[A has ldim == 1] PASSED [ 72%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_A_has_leading_dim[B has ldim == 1] PASSED [ 73%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_A_has_leading_dim[A has ldim == 1 and B has rdim == 1] PASSED [ 73%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_A_has_leading_dim[both have rdim > mdim] PASSED [ 73%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_A_has_leading_dim[both have rdim < mdim] PASSED [ 74%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_A_has_leading_dim[both have rdim == mdim] PASSED [ 74%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_A_has_leading_dim[A has rdim < mdim and B has rdim > mdim] PASSED [ 74%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_B_has_leading_dim[both have ldim == mdim == rdim] PASSED [ 75%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_B_has_leading_dim[both have ldim == mdim == rdim == 1] PASSED [ 75%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_B_has_leading_dim[both have ldim == rdim == 1 != mdim] PASSED [ 75%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_B_has_leading_dim[A has ldim == mdim == rdim == 1] PASSED [ 75%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_B_has_leading_dim[B has ldim == mdim == rdim == 1] PASSED [ 76%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_B_has_leading_dim[A has ldim == 1] PASSED [ 76%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_B_has_leading_dim[B has ldim == 1] PASSED [ 76%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_B_has_leading_dim[A has ldim == 1 and B has rdim == 1] PASSED [ 77%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_B_has_leading_dim[both have rdim > mdim] PASSED [ 77%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_B_has_leading_dim[both have rdim < mdim] PASSED [ 77%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_B_has_leading_dim[both have rdim == mdim] PASSED [ 78%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_B_has_leading_dim[A has rdim < mdim and B has rdim > mdim] PASSED [ 78%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_both_have_leading_dim[both have ldim == mdim == rdim] PASSED [ 78%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_both_have_leading_dim[both have ldim == mdim == rdim == 1] PASSED [ 79%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_both_have_leading_dim[both have ldim == rdim == 1 != mdim] PASSED [ 79%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_both_have_leading_dim[A has ldim == mdim == rdim == 1] PASSED [ 79%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_both_have_leading_dim[B has ldim == mdim == rdim == 1] PASSED [ 80%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_both_have_leading_dim[A has ldim == 1] PASSED [ 80%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_both_have_leading_dim[B has ldim == 1] PASSED [ 80%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_both_have_leading_dim[A has ldim == 1 and B has rdim == 1] PASSED [ 81%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_both_have_leading_dim[both have rdim > mdim] PASSED [ 81%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_both_have_leading_dim[both have rdim < mdim] PASSED [ 81%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_both_have_leading_dim[both have rdim == mdim] PASSED [ 82%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::TestMultiplyByFactoredMatrix::test_multiply_when_both_have_leading_dim[A has rdim < mdim and B has rdim > mdim] PASSED [ 82%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::test_dimension_mismatch[Leading dim mismatch where each has one leading dim] PASSED [ 82%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::test_dimension_mismatch[Leading dim mismatch where A has two leading dims and B has one] PASSED [ 83%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::test_dimension_mismatch[Inner dimension mismatch] PASSED [ 83%]
+tests/unit/factored_matrix/test_multiply_by_factored_matrix.py::test_dimension_mismatch[Inner dimension mismatch with batch] PASSED [ 83%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::TestLeftMultiplyByMatrix::test_left_multiply_by_matrix[rdim > mdim] PASSED [ 84%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::TestLeftMultiplyByMatrix::test_left_multiply_by_matrix[rdim < mdim] PASSED [ 84%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::TestLeftMultiplyByMatrix::test_left_multiply_by_matrix[rdim == mdim] PASSED [ 84%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::TestLeftMultiplyByMatrix::test_left_multiply_when_factored_matrix_has_leading_dim[rdim > mdim] PASSED [ 85%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::TestLeftMultiplyByMatrix::test_left_multiply_when_factored_matrix_has_leading_dim[rdim < mdim] PASSED [ 85%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::TestLeftMultiplyByMatrix::test_left_multiply_when_factored_matrix_has_leading_dim[rdim == mdim] PASSED [ 85%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::TestLeftMultiplyByMatrix::test_left_multiply_when_matrix_has_leading_dims[rdim > mdim] PASSED [ 86%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::TestLeftMultiplyByMatrix::test_left_multiply_when_matrix_has_leading_dims[rdim < mdim] PASSED [ 86%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::TestLeftMultiplyByMatrix::test_left_multiply_when_matrix_has_leading_dims[rdim == mdim] PASSED [ 86%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::TestLeftMultiplyByMatrix::test_left_multiply_when_both_have_leading_dim[rdim > mdim] PASSED [ 87%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::TestLeftMultiplyByMatrix::test_left_multiply_when_both_have_leading_dim[rdim < mdim] PASSED [ 87%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::TestLeftMultiplyByMatrix::test_left_multiply_when_both_have_leading_dim[rdim == mdim] PASSED [ 87%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::TestRightMultiplyByMatrix::test_left_multiply_by_matrix[ldim > mdim] PASSED [ 87%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::TestRightMultiplyByMatrix::test_left_multiply_by_matrix[ldim < mdim] PASSED [ 88%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::TestRightMultiplyByMatrix::test_left_multiply_by_matrix[ldim == mdim] PASSED [ 88%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::TestRightMultiplyByMatrix::test_left_multiply_when_factored_matrix_has_leading_dim[ldim > mdim] PASSED [ 88%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::TestRightMultiplyByMatrix::test_left_multiply_when_factored_matrix_has_leading_dim[ldim < mdim] PASSED [ 89%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::TestRightMultiplyByMatrix::test_left_multiply_when_factored_matrix_has_leading_dim[ldim == mdim] PASSED [ 89%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::TestRightMultiplyByMatrix::test_left_multiply_when_matrix_has_leading_dims[ldim > mdim] PASSED [ 89%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::TestRightMultiplyByMatrix::test_left_multiply_when_matrix_has_leading_dims[ldim < mdim] PASSED [ 90%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::TestRightMultiplyByMatrix::test_left_multiply_when_matrix_has_leading_dims[ldim == mdim] PASSED [ 90%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::TestRightMultiplyByMatrix::test_left_multiply_when_both_have_leading_dim[ldim > mdim] PASSED [ 90%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::TestRightMultiplyByMatrix::test_left_multiply_when_both_have_leading_dim[ldim < mdim] PASSED [ 91%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::TestRightMultiplyByMatrix::test_left_multiply_when_both_have_leading_dim[ldim == mdim] PASSED [ 91%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::test_dimension_mismatch_left_multiply[Leading dim mismatch where each has one leading dim] PASSED [ 91%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::test_dimension_mismatch_left_multiply[Leading dim mismatch where FactoredMatrix has two leading dims and regular matrix has one] PASSED [ 92%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::test_dimension_mismatch_left_multiply[Inner dimension mismatch] PASSED [ 92%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::test_dimension_mismatch_left_multiply[Inner dimension mismatch with batch] PASSED [ 92%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::test_dimension_mismatch_right_multiply[Leading dim mismatch where each has one leading dim] PASSED [ 93%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::test_dimension_mismatch_right_multiply[Leading dim mismatch where FactoredMatrix has two leading dims and regular matrix has one] PASSED [ 93%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::test_dimension_mismatch_right_multiply[Inner dimension mismatch] PASSED [ 93%]
+tests/unit/factored_matrix/test_multiply_by_matrix.py::test_dimension_mismatch_right_multiply[Inner dimension mismatch with batch] PASSED [ 94%]
+tests/unit/factored_matrix/test_multiply_by_vector.py::test_left_matmul_by_vector_left PASSED [ 94%]
+tests/unit/factored_matrix/test_multiply_by_vector.py::test_left_matmul_by_vector_leading_dim PASSED [ 94%]
+tests/unit/factored_matrix/test_multiply_by_vector.py::test_right_matmul_by_vector PASSED [ 95%]
+tests/unit/factored_matrix/test_multiply_by_vector.py::test_right_matmul_by_vector_leading_dim PASSED [ 95%]
+tests/unit/factored_matrix/test_properties.py::TestFactoredMatrixProperties::test_AB_property PASSED [ 95%]
+tests/unit/factored_matrix/test_properties.py::TestFactoredMatrixProperties::test_BA_property PASSED [ 96%]
+tests/unit/factored_matrix/test_properties.py::TestFactoredMatrixProperties::test_transpose_property PASSED [ 96%]
+tests/unit/factored_matrix/test_properties.py::TestFactoredMatrixProperties::test_svd_property PASSED [ 96%]
+tests/unit/factored_matrix/test_properties.py::TestFactoredMatrixProperties::test_svd_property_leading_ones PASSED [ 97%]
+tests/unit/factored_matrix/test_properties.py::TestFactoredMatrixProperties::test_eigenvalues_property SKIPPED (
+        Jaxtyping throws a TypeError when this test is run.
+        TypeError: type of the return value must be jaxtyping.Float[Tensor, '*leading_dims mdim']; got torch.Tensor instead
+
+        I'm not sure why. The error is not very informative. When debugging the shape was equal to mdim, and *leading_dims should
+        match zero or more leading dims according to the [docs](https://github.com/google/jaxtyping/blob/main/API.md).
+
+        Sort of related to https://github.com/neelnanda-io/TransformerLens/issues/190 because jaxtyping
+        is only enabled at test time and not runtime.)                   [ 97%]
+tests/unit/factored_matrix/test_properties.py::TestFactoredMatrixProperties::test_ndim_property PASSED [ 97%]
+tests/unit/factored_matrix/test_properties.py::TestFactoredMatrixProperties::test_pair_property PASSED [ 98%]
+tests/unit/factored_matrix/test_properties.py::TestFactoredMatrixProperties::test_norm_property PASSED [ 98%]
+tests/unit/factored_matrix/test_properties.py::TestFactoredMatrixProperties::test_get_corner PASSED [ 98%]
+tests/unit/factored_matrix/test_properties.py::TestFactoredMatrixProperties::test_ndim PASSED [ 99%]
+tests/unit/factored_matrix/test_properties.py::TestFactoredMatrixProperties::test_collapse_l PASSED [ 99%]
+tests/unit/factored_matrix/test_properties.py::TestFactoredMatrixProperties::test_collapse_r PASSED [ 99%]
+tests/unit/factored_matrix/test_properties.py::TestFactoredMatrixProperties::test_unsqueeze PASSED [100%]
+
+=================================== FAILURES ===================================
+_____________________________ test_acdc_docstring ______________________________
+
+    def test_acdc_docstring():
+>       experiments.launch_docstring.main(testing=True)
+
+tests/test_launch.py:7: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+experiments/launch_docstring.py:38: in main
+    launch(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+commands = [['python', 'transformer_lens/main.py', '--task=docstring', '--threshold=1.00000', '--using-wandb', '--wandb-run-name=....py', '--task=docstring', '--threshold=1.00000', '--using-wandb', '--wandb-run-name=agarriga-docstring-005', ...], ...]
+name = 'acdc-docstring', job = None, check_wandb = None
+ids_for_worker = range(0, 10000000), synchronous = True
+just_print_commands = False
+
+    def launch(commands: List[List[str]], name: str, job: Optional[KubernetesJob] = None, check_wandb: Optional[WandbIdentifier]=None, ids_for_worker=range(0, 10000000), synchronous=True, just_print_commands=False):
+        to_wait: List[Tuple[str, subprocess.Popen, TextIO, TextIO]] = []
+    
+        assert len(commands) <= 100_000, "Too many commands for 5 digits"
+    
+        print(f"Launching {len(commands)} jobs")
+        for i, command in enumerate(commands):
+            if i not in ids_for_worker:
+                print(f"Skipping {name} because it's not my turn, {i} not in {ids_for_worker}")
+                continue
+    
+            command_str = shlex.join(command)
+    
+    
+            if check_wandb is not None:
+                # HACK this is pretty vulnerable to duplicating work if the same run is launched in close succession,
+                # it's more to be able to restart
+                # api = wandb.Api()
+                name = check_wandb.run_name.format(i=i)
+                # if name in existing_names:
+                #     print(f"Skipping {name} because it already exists")
+                #     continue
+    
+                # runs = api.runs(path=f"remix_school-of-rock/{check_wandb.project}", filters={"group": check_wandb.group_name})
+                # existing_names = existing_names.union({r.name for r in runs})
+                # print("Runs that exist: ", existing_names)
+                # if name in existing_names:
+                #     print(f"Run {name} already exists, skipping")
+                #     continue
+    
+            print("Launching", name, command_str)
+            if just_print_commands:
+                continue
+    
+            if job is None:
+                if synchronous:
+                    out = subprocess.run(command)
+>                   assert out.returncode == 0, f"Command return={out.returncode} != 0"
+E                   AssertionError: Command return=1 != 0
+
+experiments/launcher.py:59: AssertionError
+----------------------------- Captured stdout call -----------------------------
+Launching 10 jobs
+Launching acdc-docstring python transformer_lens/main.py --task=docstring --threshold=1.00000 --using-wandb --wandb-run-name=agarriga-docstring-000 --wandb-group-name=adria-docstring --device=cpu --reset-network=0 --seed=516626229 --metric=kl_div --torch-num-threads=4 --wandb-dir=/training/acdc --wandb-mode=offline --max-num-epochs=1
+Loaded pretrained model attn-only-4l into HookedTransformer
+Moving model to device:  cpu
+dict_keys(['blocks.3.hook_resid_post', 'blocks.3.attn.hook_result', 'blocks.3.attn.hook_q', 'blocks.3.hook_q_input', 'blocks.3.attn.hook_k', 'blocks.3.hook_k_input', 'blocks.3.attn.hook_v', 'blocks.3.hook_v_input', 'blocks.2.attn.hook_result', 'blocks.2.attn.hook_q', 'blocks.2.hook_q_input', 'blocks.2.attn.hook_k', 'blocks.2.hook_k_input', 'blocks.2.attn.hook_v', 'blocks.2.hook_v_input', 'blocks.1.attn.hook_result', 'blocks.1.attn.hook_q', 'blocks.1.hook_q_input', 'blocks.1.attn.hook_k', 'blocks.1.hook_k_input', 'blocks.1.attn.hook_v', 'blocks.1.hook_v_input', 'blocks.0.attn.hook_result', 'blocks.0.attn.hook_q', 'blocks.0.hook_q_input', 'blocks.0.attn.hook_k', 'blocks.0.hook_k_input', 'blocks.0.attn.hook_v', 'blocks.0.hook_v_input', 'blocks.0.hook_resid_pre'])
+ln_final.hook_normalized
+ln_final.hook_scale
+blocks.3.hook_resid_post
+blocks.3.hook_attn_out
+blocks.3.attn.hook_result
+blocks.3.attn.hook_z
+blocks.3.attn.hook_pattern
+blocks.3.attn.hook_attn_scores
+blocks.3.attn.hook_v
+blocks.3.attn.hook_k
+blocks.3.attn.hook_q
+blocks.3.ln1.hook_normalized
+blocks.3.ln1.hook_scale
+blocks.3.hook_v_input
+blocks.3.hook_k_input
+blocks.3.hook_q_input
+blocks.3.hook_resid_pre
+blocks.2.hook_resid_post
+blocks.2.hook_attn_out
+blocks.2.attn.hook_result
+blocks.2.attn.hook_z
+blocks.2.attn.hook_pattern
+blocks.2.attn.hook_attn_scores
+blocks.2.attn.hook_v
+blocks.2.attn.hook_k
+blocks.2.attn.hook_q
+blocks.2.ln1.hook_normalized
+blocks.2.ln1.hook_scale
+blocks.2.hook_v_input
+blocks.2.hook_k_input
+blocks.2.hook_q_input
+blocks.2.hook_resid_pre
+blocks.1.hook_resid_post
+blocks.1.hook_attn_out
+blocks.1.attn.hook_result
+blocks.1.attn.hook_z
+blocks.1.attn.hook_pattern
+blocks.1.attn.hook_attn_scores
+blocks.1.attn.hook_v
+blocks.1.attn.hook_k
+blocks.1.attn.hook_q
+blocks.1.ln1.hook_normalized
+blocks.1.ln1.hook_scale
+blocks.1.hook_v_input
+blocks.1.hook_k_input
+blocks.1.hook_q_input
+blocks.1.hook_resid_pre
+blocks.0.hook_resid_post
+blocks.0.hook_attn_out
+blocks.0.attn.hook_result
+blocks.0.attn.hook_z
+blocks.0.attn.hook_pattern
+blocks.0.attn.hook_attn_scores
+blocks.0.attn.hook_v
+blocks.0.attn.hook_k
+blocks.0.attn.hook_q
+blocks.0.ln1.hook_normalized
+blocks.0.ln1.hook_scale
+blocks.0.hook_v_input
+blocks.0.hook_k_input
+blocks.0.hook_q_input
+blocks.0.hook_resid_pre
+hook_pos_embed
+hook_embed
+self.current_node=TLACDCInterpNode(blocks.3.hook_resid_post, [:])
+Adding sender hooks...
+Now corrupting things..
+Done corrupting things
+Adding sender hooks...
+----------------------------- Captured stderr call -----------------------------
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+Traceback (most recent call last):
+  File "/root/Automatic-Circuit-Discovery/transformer_lens/main.py", line 217, in <module>
+    exp = TLACDCExperiment(
+  File "/root/Automatic-Circuit-Discovery/transformer_lens/TLACDCExperiment.py", line 125, in __init__
+    self.setup_model_hooks(
+  File "/root/Automatic-Circuit-Discovery/transformer_lens/TLACDCExperiment.py", line 398, in setup_model_hooks
+    self.add_all_sender_hooks(cache="first", skip_direct_computation=False, add_all_hooks=True) # when this is True, this is wrong I think
+  File "/root/Automatic-Circuit-Discovery/transformer_lens/TLACDCExperiment.py", line 349, in add_all_sender_hooks
+    for hook_func_maybe_partial in self.model.hook_dict[node.name].fwd_hook_functions:
+  File "/opt/conda/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1269, in __getattr__
+    raise AttributeError("'{}' object has no attribute '{}'".format(
+AttributeError: 'HookPoint' object has no attribute 'fwd_hook_functions'
+_____________________________ test_acdc_induction ______________________________
+
+    def test_acdc_induction():
+>       experiments.launch_induction.main(testing=True)
+
+tests/test_launch.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+experiments/launch_induction.py:37: in main
+    launch(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+commands = [['python', 'transformer_lens/main.py', '--task=induction', '--threshold=1.00000', '--using-wandb', '--wandb-run-name=.../main.py', '--task=induction', '--threshold=1.00000', '--using-wandb', '--wandb-run-name=agarriga-acdc-005', ...], ...]
+name = 'acdc-induction', job = None, check_wandb = None
+ids_for_worker = range(0, 10000000), synchronous = True
+just_print_commands = False
+
+    def launch(commands: List[List[str]], name: str, job: Optional[KubernetesJob] = None, check_wandb: Optional[WandbIdentifier]=None, ids_for_worker=range(0, 10000000), synchronous=True, just_print_commands=False):
+        to_wait: List[Tuple[str, subprocess.Popen, TextIO, TextIO]] = []
+    
+        assert len(commands) <= 100_000, "Too many commands for 5 digits"
+    
+        print(f"Launching {len(commands)} jobs")
+        for i, command in enumerate(commands):
+            if i not in ids_for_worker:
+                print(f"Skipping {name} because it's not my turn, {i} not in {ids_for_worker}")
+                continue
+    
+            command_str = shlex.join(command)
+    
+    
+            if check_wandb is not None:
+                # HACK this is pretty vulnerable to duplicating work if the same run is launched in close succession,
+                # it's more to be able to restart
+                # api = wandb.Api()
+                name = check_wandb.run_name.format(i=i)
+                # if name in existing_names:
+                #     print(f"Skipping {name} because it already exists")
+                #     continue
+    
+                # runs = api.runs(path=f"remix_school-of-rock/{check_wandb.project}", filters={"group": check_wandb.group_name})
+                # existing_names = existing_names.union({r.name for r in runs})
+                # print("Runs that exist: ", existing_names)
+                # if name in existing_names:
+                #     print(f"Run {name} already exists, skipping")
+                #     continue
+    
+            print("Launching", name, command_str)
+            if just_print_commands:
+                continue
+    
+            if job is None:
+                if synchronous:
+                    out = subprocess.run(command)
+>                   assert out.returncode == 0, f"Command return={out.returncode} != 0"
+E                   AssertionError: Command return=1 != 0
+
+experiments/launcher.py:59: AssertionError
+----------------------------- Captured stdout call -----------------------------
+Launching 12 jobs
+Launching acdc-induction python transformer_lens/main.py --task=induction --threshold=1.00000 --using-wandb --wandb-run-name=agarriga-acdc-000 --wandb-group-name=adria-induction-3 --device=cpu --reset-network=0 --seed=424671755 --metric=kl_div --torch-num-threads=4 --wandb-dir=/training/acdc --wandb-mode=offline
+Loaded pretrained model redwood_attn_2l into HookedTransformer
+dict_keys(['blocks.1.hook_resid_post', 'blocks.1.attn.hook_result', 'blocks.1.attn.hook_q', 'blocks.1.hook_q_input', 'blocks.1.attn.hook_k', 'blocks.1.hook_k_input', 'blocks.1.attn.hook_v', 'blocks.1.hook_v_input', 'blocks.0.attn.hook_result', 'blocks.0.attn.hook_q', 'blocks.0.hook_q_input', 'blocks.0.attn.hook_k', 'blocks.0.hook_k_input', 'blocks.0.attn.hook_v', 'blocks.0.hook_v_input', 'blocks.0.hook_resid_pre'])
+ln_final.hook_normalized
+ln_final.hook_scale
+blocks.1.hook_resid_post
+blocks.1.hook_attn_out
+blocks.1.attn.hook_result
+blocks.1.attn.hook_z
+blocks.1.attn.hook_pattern
+blocks.1.attn.hook_attn_scores
+blocks.1.attn.hook_v
+blocks.1.attn.hook_k
+blocks.1.attn.hook_q
+blocks.1.ln1.hook_normalized
+blocks.1.ln1.hook_scale
+blocks.1.hook_v_input
+blocks.1.hook_k_input
+blocks.1.hook_q_input
+blocks.1.hook_resid_pre
+blocks.0.hook_resid_post
+blocks.0.hook_attn_out
+blocks.0.attn.hook_result
+blocks.0.attn.hook_z
+blocks.0.attn.hook_pattern
+blocks.0.attn.hook_attn_scores
+blocks.0.attn.hook_v
+blocks.0.attn.hook_k
+blocks.0.attn.hook_q
+blocks.0.ln1.hook_normalized
+blocks.0.ln1.hook_scale
+blocks.0.hook_v_input
+blocks.0.hook_k_input
+blocks.0.hook_q_input
+blocks.0.hook_resid_pre
+hook_pos_embed
+hook_embed
+self.current_node=TLACDCInterpNode(blocks.1.hook_resid_post, [:])
+Adding sender hooks...
+Now corrupting things..
+Done corrupting things
+Adding sender hooks...
+----------------------------- Captured stderr call -----------------------------
+Special tokens have been added in the vocabulary, make sure the associated word embeddings are fine-tuned or trained.
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+Traceback (most recent call last):
+  File "/root/Automatic-Circuit-Discovery/transformer_lens/main.py", line 217, in <module>
+    exp = TLACDCExperiment(
+  File "/root/Automatic-Circuit-Discovery/transformer_lens/TLACDCExperiment.py", line 125, in __init__
+    self.setup_model_hooks(
+  File "/root/Automatic-Circuit-Discovery/transformer_lens/TLACDCExperiment.py", line 398, in setup_model_hooks
+    self.add_all_sender_hooks(cache="first", skip_direct_computation=False, add_all_hooks=True) # when this is True, this is wrong I think
+  File "/root/Automatic-Circuit-Discovery/transformer_lens/TLACDCExperiment.py", line 349, in add_all_sender_hooks
+    for hook_func_maybe_partial in self.model.hook_dict[node.name].fwd_hook_functions:
+  File "/opt/conda/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1269, in __getattr__
+    raise AttributeError("'{}' object has no attribute '{}'".format(
+AttributeError: 'HookPoint' object has no attribute 'fwd_hook_functions'
+_______________________________ test_full_model ________________________________
+
+our_bert = HookedEncoder(
+  (embed): BertEmbed(
+    (embed): Embed()
+    (pos_embed): PosEmbed()
+    (token_type_embed): TokenTyp...): HookPoint()
+      (hook_normalized): HookPoint()
+    )
+  )
+  (unembed): Unembed()
+  (hook_full_embed): HookPoint()
+)
+huggingface_bert = BertForMaskedLM(
+  (bert): BertModel(
+    (embeddings): BertEmbeddings(
+      (word_embeddings): Embedding(28996, 768,...2, elementwise_affine=True)
+      )
+      (decoder): Linear(in_features=768, out_features=28996, bias=True)
+    )
+  )
+)
+tokenizer = BertTokenizerFast(name_or_path='bert-base-cased', vocab_size=28996, model_max_length=512, is_fast=True, padding_side='...oken': '[SEP]', 'pad_token': '[PAD]', 'cls_token': '[CLS]', 'mask_token': '[MASK]'}, clean_up_tokenization_spaces=True)
+
+    def test_full_model(our_bert, huggingface_bert, tokenizer):
+        sequences = [
+            "Hello, world!",
+            "this is another sequence of tokens",
+        ]
+        tokenized = tokenizer(sequences, return_tensors="pt", padding=True)
+        input_ids = tokenized["input_ids"]
+        attention_mask = tokenized["attention_mask"]
+    
+        huggingface_bert_out = huggingface_bert(
+            input_ids, attention_mask=attention_mask
+        ).logits
+>       our_bert_out = our_bert(input_ids, one_zero_attention_mask=attention_mask)
+
+tests/acceptance/test_hooked_encoder.py:47: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/conda/lib/python3.10/site-packages/torch/nn/modules/module.py:1194: in _call_impl
+    return forward_call(*input, **kwargs)
+transformer_lens/HookedEncoder.py:121: in forward
+    resid = self.hook_full_embed(self.embed(tokens, token_type_ids))
+/opt/conda/lib/python3.10/site-packages/torch/nn/modules/module.py:1194: in _call_impl
+    return forward_call(*input, **kwargs)
+transformer_lens/components.py:142: in forward
+    word_embeddings_out = self.hook_embed(self.embed(input_ids))
+/opt/conda/lib/python3.10/site-packages/torch/nn/modules/module.py:1194: in _call_impl
+    return forward_call(*input, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = Embed()
+tokens = tensor([[  101,  8667,   117,  1362,   106,   102,     0,     0,     0],
+        [  101,  1142,  1110,  1330,  4954,  1104, 22559,  1116,   102]],
+       device='cuda:0')
+
+    def forward(
+        self, tokens: Int[torch.Tensor, "batch pos"]
+    ) -> Float[torch.Tensor, "batch pos d_model"]:
+        # If A has shape [a, b] and B has shape [c, d], then A[:, B] has shape [a, c, d]
+        # B acts as a tensor of indices into the second dimension (so >=0 and <b)
+>       return self.W_E[tokens, :]
+E       RuntimeError: indices should be either on cpu or on the same device as the indexed tensor (cpu)
+
+transformer_lens/components.py:37: RuntimeError
+---------------------------- Captured stdout setup -----------------------------
+Moving model to device:  cuda
+Loaded pretrained model bert-base-cased into HookedTransformer
+---------------------------- Captured stderr setup -----------------------------
+Some weights of the model checkpoint at bert-base-cased were not used when initializing BertForMaskedLM: ['cls.seq_relationship.weight', 'cls.seq_relationship.bias']
+- This IS expected if you are initializing BertForMaskedLM from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
+- This IS NOT expected if you are initializing BertForMaskedLM from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
+------------------------------ Captured log setup ------------------------------
+WARNING  root:HookedEncoder.py:203 Support for BERT in TransformerLens is currently experimental, until such a time when it has feature parity with HookedTransformer and has been tested on real research tasks. Until then, backward compatibility is not guaranteed. Please see the docs for information on the limitations of the current implementation.
+If using BERT for interpretability research, keep in mind that BERT has some significant architectural differences to GPT. For example, LayerNorms are applied *after* the attention and MLP components, meaning that the last LayerNorm in a block cannot be folded.
+_____________________________ test_run_with_cache ______________________________
+
+our_bert = HookedEncoder(
+  (embed): BertEmbed(
+    (embed): Embed()
+    (pos_embed): PosEmbed()
+    (token_type_embed): TokenTyp...): HookPoint()
+      (hook_normalized): HookPoint()
+    )
+  )
+  (unembed): Unembed()
+  (hook_full_embed): HookPoint()
+)
+huggingface_bert = BertForMaskedLM(
+  (bert): BertModel(
+    (embeddings): BertEmbeddings(
+      (word_embeddings): Embedding(28996, 768,...2, elementwise_affine=True)
+      )
+      (decoder): Linear(in_features=768, out_features=28996, bias=True)
+    )
+  )
+)
+hello_world_tokens = tensor([[ 101, 8667,  117, 1362,  106,  102]])
+
+    def test_run_with_cache(our_bert, huggingface_bert, hello_world_tokens):
+        model = HookedEncoder.from_pretrained("bert-base-cased")
+>       logits, cache = model.run_with_cache(hello_world_tokens)
+
+tests/acceptance/test_hooked_encoder.py:129: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+transformer_lens/HookedEncoder.py:166: in run_with_cache
+    out, cache_dict = super().run_with_cache(
+transformer_lens/hook_points.py:451: in run_with_cache
+    incl_bwd: bool = False,
+/opt/conda/lib/python3.10/site-packages/torch/nn/modules/module.py:1194: in _call_impl
+    return forward_call(*input, **kwargs)
+transformer_lens/HookedEncoder.py:121: in forward
+    resid = self.hook_full_embed(self.embed(tokens, token_type_ids))
+/opt/conda/lib/python3.10/site-packages/torch/nn/modules/module.py:1194: in _call_impl
+    return forward_call(*input, **kwargs)
+transformer_lens/components.py:142: in forward
+    word_embeddings_out = self.hook_embed(self.embed(input_ids))
+/opt/conda/lib/python3.10/site-packages/torch/nn/modules/module.py:1194: in _call_impl
+    return forward_call(*input, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = Embed()
+tokens = tensor([[ 101, 8667,  117, 1362,  106,  102]], device='cuda:0')
+
+    def forward(
+        self, tokens: Int[torch.Tensor, "batch pos"]
+    ) -> Float[torch.Tensor, "batch pos d_model"]:
+        # If A has shape [a, b] and B has shape [c, d], then A[:, B] has shape [a, c, d]
+        # B acts as a tensor of indices into the second dimension (so >=0 and <b)
+>       return self.W_E[tokens, :]
+E       RuntimeError: indices should be either on cpu or on the same device as the indexed tensor (cpu)
+
+transformer_lens/components.py:37: RuntimeError
+----------------------------- Captured stdout call -----------------------------
+Moving model to device:  cuda
+Loaded pretrained model bert-base-cased into HookedTransformer
+------------------------------ Captured log call -------------------------------
+WARNING  root:HookedEncoder.py:203 Support for BERT in TransformerLens is currently experimental, until such a time when it has feature parity with HookedTransformer and has been tested on real research tasks. Until then, backward compatibility is not guaranteed. Please see the docs for information on the limitations of the current implementation.
+If using BERT for interpretability research, keep in mind that BERT has some significant architectural differences to GPT. For example, LayerNorms are applied *after* the attention and MLP components, meaning that the last LayerNorm in a block cannot be folded.
+_______________________________ test_predictions _______________________________
+
+our_bert = HookedEncoder(
+  (embed): BertEmbed(
+    (embed): Embed()
+    (pos_embed): PosEmbed()
+    (token_type_embed): TokenTyp...): HookPoint()
+      (hook_normalized): HookPoint()
+    )
+  )
+  (unembed): Unembed()
+  (hook_full_embed): HookPoint()
+)
+huggingface_bert = BertForMaskedLM(
+  (bert): BertModel(
+    (embeddings): BertEmbeddings(
+      (word_embeddings): Embedding(28996, 768,...2, elementwise_affine=True)
+      )
+      (decoder): Linear(in_features=768, out_features=28996, bias=True)
+    )
+  )
+)
+tokenizer = BertTokenizerFast(name_or_path='bert-base-cased', vocab_size=28996, model_max_length=512, is_fast=True, padding_side='...oken': '[SEP]', 'pad_token': '[PAD]', 'cls_token': '[CLS]', 'mask_token': '[MASK]'}, clean_up_tokenization_spaces=True)
+
+    def test_predictions(our_bert, huggingface_bert, tokenizer):
+        input_ids = tokenizer("The [MASK] sat on the mat", return_tensors="pt")["input_ids"]
+    
+        def get_predictions(
+            logits: Float[torch.Tensor, "batch pos d_vocab"], positions: List[int]
+        ):
+            logits_at_position = logits.squeeze(0)[positions]
+            predicted_tokens = F.softmax(logits_at_position, dim=-1).argmax(dim=-1)
+            return tokenizer.batch_decode(predicted_tokens)
+    
+>       our_bert_out = our_bert(input_ids)
+
+tests/acceptance/test_hooked_encoder.py:149: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/conda/lib/python3.10/site-packages/torch/nn/modules/module.py:1194: in _call_impl
+    return forward_call(*input, **kwargs)
+transformer_lens/HookedEncoder.py:121: in forward
+    resid = self.hook_full_embed(self.embed(tokens, token_type_ids))
+/opt/conda/lib/python3.10/site-packages/torch/nn/modules/module.py:1194: in _call_impl
+    return forward_call(*input, **kwargs)
+transformer_lens/components.py:142: in forward
+    word_embeddings_out = self.hook_embed(self.embed(input_ids))
+/opt/conda/lib/python3.10/site-packages/torch/nn/modules/module.py:1194: in _call_impl
+    return forward_call(*input, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = Embed()
+tokens = tensor([[  101,  1109,   103,  2068,  1113,  1103, 22591,   102]],
+       device='cuda:0')
+
+    def forward(
+        self, tokens: Int[torch.Tensor, "batch pos"]
+    ) -> Float[torch.Tensor, "batch pos d_model"]:
+        # If A has shape [a, b] and B has shape [c, d], then A[:, B] has shape [a, c, d]
+        # B acts as a tensor of indices into the second dimension (so >=0 and <b)
+>       return self.W_E[tokens, :]
+E       RuntimeError: indices should be either on cpu or on the same device as the indexed tensor (cpu)
+
+transformer_lens/components.py:37: RuntimeError
+____________________________ test_to_tokens_default ____________________________
+
+    def test_to_tokens_default():
+        s = "Hello, world!"
+        tokens = model.to_tokens(s)
+>       assert equal(
+            tokens, tensor([[1, 11765, 14, 1499, 3]])
+        ), "creates a tensor of tokens with BOS"
+E       RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu! (when checking argument for argument other in method wrapper__equal)
+
+tests/unit/test_tokenization_methods.py:32: RuntimeError
+__________________________ test_to_tokens_without_bos __________________________
+
+    def test_to_tokens_without_bos():
+        s = "Hello, world!"
+        tokens = model.to_tokens(s, prepend_bos=False)
+>       assert equal(tokens, tensor([[11765, 14, 1499, 3]])), "creates a tensor without BOS"
+E       RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu! (when checking argument for argument other in method wrapper__equal)
+
+tests/unit/test_tokenization_methods.py:40: RuntimeError
+____________________________ test_to_tokens_device _____________________________
+
+    def test_to_tokens_device():
+        s = "Hello, world!"
+        tokens1 = model.to_tokens(s, move_to_device=False)
+        tokens2 = model.to_tokens(s, move_to_device=True)
+>       assert equal(
+            tokens1, tokens2
+        ), "move to device has no effect when running tests on CPU"
+E       RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cpu and cuda:0! (when checking argument for argument other in method wrapper__equal)
+
+tests/unit/test_tokenization_methods.py:47: RuntimeError
+______________________ test_get_token_position_not_found _______________________
+
+    def test_get_token_position_not_found():
+        single = "biomolecules"
+        input = "There were some biomolecules"
+        with pytest.raises(AssertionError) as exc_info:
+>           model.get_token_position(single, input)
+
+tests/unit/test_tokenization_methods.py:113: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = HookedTransformer(
+  (embed): Embed()
+  (hook_embed): HookPoint()
+  (pos_embed): PosEmbed()
+  (hook_pos_embed): HookPo...(ln_final): LayerNormPre(
+    (hook_scale): HookPoint()
+    (hook_normalized): HookPoint()
+  )
+  (unembed): Unembed()
+)
+single_token = 31847, input = 'There were some biomolecules', mode = 'first'
+prepend_bos = True
+
+        prepend_bos=True,
+    ):
+        """
+        Get the position of a single_token in a string or sequence of tokens. Raises an error if the token is not
+        present.
+    
+        Gotcha: If you're inputting a string, it'll automatically be tokenized. Be careful about prepend_bos is true or
+        false! When a string is input to the model, a BOS (beginning of sequence) token is prepended by default when the
+        string is tokenized. But this should only be done at the START of the input, not when inputting part of the
+        prompt. If you're getting weird off-by-one errors, check carefully for what the setting should be!
+    
+        Args:
+            single_token (Union[str, int]): The token to search for. Can
+                be a token index, or a string (but the string must correspond to a
+                single token)
+            input (Union[str, torch.Tensor]): The sequence to
+                search in. Can be a string or a rank 1 tensor of tokens or a rank 2 tensor of tokens with a dummy batch
+                dimension.
+            mode (str, optional): If there are multiple matches, which match to return. Supports "first" or "last".
+                Defaults to "first".
+            prepend_bos (bool): Prepends a BOS (beginning of sequence) token when tokenizing a string. Only matters when
+                inputting a string to the function, otherwise ignored.
+        """
+        if isinstance(input, str):
+            # If the input is a string, convert to tensor
+            tokens = self.to_tokens(input, prepend_bos=prepend_bos)
+        else:
+            tokens = input
+    
+        if len(tokens.shape) == 2:
+            # If the tokens have shape [1, seq_len], flatten to [seq_len]
+            assert (
+                tokens.shape[0] == 1
+            ), f"If tokens are rank two, they must have shape [1, seq_len], not {tokens.shape}"
+            tokens = tokens[0]
+    
+        if isinstance(single_token, str):
+            # If the single token is a string, convert to an integer
+            single_token = self.to_single_token(single_token)
+        elif isinstance(single_token, torch.Tensor):
+            single_token = single_token.item()
+    
+        indices = torch.arange(len(tokens))[tokens == single_token]
+        assert len(indices) > 0, f"The token does not occur in the prompt"
+        if mode == "first":
+            return indices[0].item()
+        elif mode == "last":
+            return indices[-1].item()
+        else:
+>           raise ValueError(f"mode must be 'first' or 'last', not {mode}")
+E           RuntimeError: indices should be either on cpu or on the same device as the indexed tensor (cpu)
+
+transformer_lens/HookedTransformer.py:720: RuntimeError
+_________________________ test_get_token_position_str __________________________
+
+    def test_get_token_position_str():
+        single = " some"
+        input = "There were some biomolecules"
+>       pos = model.get_token_position(single, input)
+
+tests/unit/test_tokenization_methods.py:122: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = HookedTransformer(
+  (embed): Embed()
+  (hook_embed): HookPoint()
+  (pos_embed): PosEmbed()
+  (hook_pos_embed): HookPo...(ln_final): LayerNormPre(
+    (hook_scale): HookPoint()
+    (hook_normalized): HookPoint()
+  )
+  (unembed): Unembed()
+)
+single_token = 688, input = 'There were some biomolecules', mode = 'first'
+prepend_bos = True
+
+        prepend_bos=True,
+    ):
+        """
+        Get the position of a single_token in a string or sequence of tokens. Raises an error if the token is not
+        present.
+    
+        Gotcha: If you're inputting a string, it'll automatically be tokenized. Be careful about prepend_bos is true or
+        false! When a string is input to the model, a BOS (beginning of sequence) token is prepended by default when the
+        string is tokenized. But this should only be done at the START of the input, not when inputting part of the
+        prompt. If you're getting weird off-by-one errors, check carefully for what the setting should be!
+    
+        Args:
+            single_token (Union[str, int]): The token to search for. Can
+                be a token index, or a string (but the string must correspond to a
+                single token)
+            input (Union[str, torch.Tensor]): The sequence to
+                search in. Can be a string or a rank 1 tensor of tokens or a rank 2 tensor of tokens with a dummy batch
+                dimension.
+            mode (str, optional): If there are multiple matches, which match to return. Supports "first" or "last".
+                Defaults to "first".
+            prepend_bos (bool): Prepends a BOS (beginning of sequence) token when tokenizing a string. Only matters when
+                inputting a string to the function, otherwise ignored.
+        """
+        if isinstance(input, str):
+            # If the input is a string, convert to tensor
+            tokens = self.to_tokens(input, prepend_bos=prepend_bos)
+        else:
+            tokens = input
+    
+        if len(tokens.shape) == 2:
+            # If the tokens have shape [1, seq_len], flatten to [seq_len]
+            assert (
+                tokens.shape[0] == 1
+            ), f"If tokens are rank two, they must have shape [1, seq_len], not {tokens.shape}"
+            tokens = tokens[0]
+    
+        if isinstance(single_token, str):
+            # If the single token is a string, convert to an integer
+            single_token = self.to_single_token(single_token)
+        elif isinstance(single_token, torch.Tensor):
+            single_token = single_token.item()
+    
+        indices = torch.arange(len(tokens))[tokens == single_token]
+        assert len(indices) > 0, f"The token does not occur in the prompt"
+        if mode == "first":
+            return indices[0].item()
+        elif mode == "last":
+            return indices[-1].item()
+        else:
+>           raise ValueError(f"mode must be 'first' or 'last', not {mode}")
+E           RuntimeError: indices should be either on cpu or on the same device as the indexed tensor (cpu)
+
+transformer_lens/HookedTransformer.py:720: RuntimeError
+___________________ test_get_token_position_str_without_bos ____________________
+
+    def test_get_token_position_str_without_bos():
+        single = " some"
+        input = "There were some biomolecules"
+>       pos = model.get_token_position(single, input, prepend_bos=False)
+
+tests/unit/test_tokenization_methods.py:129: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = HookedTransformer(
+  (embed): Embed()
+  (hook_embed): HookPoint()
+  (pos_embed): PosEmbed()
+  (hook_pos_embed): HookPo...(ln_final): LayerNormPre(
+    (hook_scale): HookPoint()
+    (hook_normalized): HookPoint()
+  )
+  (unembed): Unembed()
+)
+single_token = 688, input = 'There were some biomolecules', mode = 'first'
+prepend_bos = False
+
+        prepend_bos=True,
+    ):
+        """
+        Get the position of a single_token in a string or sequence of tokens. Raises an error if the token is not
+        present.
+    
+        Gotcha: If you're inputting a string, it'll automatically be tokenized. Be careful about prepend_bos is true or
+        false! When a string is input to the model, a BOS (beginning of sequence) token is prepended by default when the
+        string is tokenized. But this should only be done at the START of the input, not when inputting part of the
+        prompt. If you're getting weird off-by-one errors, check carefully for what the setting should be!
+    
+        Args:
+            single_token (Union[str, int]): The token to search for. Can
+                be a token index, or a string (but the string must correspond to a
+                single token)
+            input (Union[str, torch.Tensor]): The sequence to
+                search in. Can be a string or a rank 1 tensor of tokens or a rank 2 tensor of tokens with a dummy batch
+                dimension.
+            mode (str, optional): If there are multiple matches, which match to return. Supports "first" or "last".
+                Defaults to "first".
+            prepend_bos (bool): Prepends a BOS (beginning of sequence) token when tokenizing a string. Only matters when
+                inputting a string to the function, otherwise ignored.
+        """
+        if isinstance(input, str):
+            # If the input is a string, convert to tensor
+            tokens = self.to_tokens(input, prepend_bos=prepend_bos)
+        else:
+            tokens = input
+    
+        if len(tokens.shape) == 2:
+            # If the tokens have shape [1, seq_len], flatten to [seq_len]
+            assert (
+                tokens.shape[0] == 1
+            ), f"If tokens are rank two, they must have shape [1, seq_len], not {tokens.shape}"
+            tokens = tokens[0]
+    
+        if isinstance(single_token, str):
+            # If the single token is a string, convert to an integer
+            single_token = self.to_single_token(single_token)
+        elif isinstance(single_token, torch.Tensor):
+            single_token = single_token.item()
+    
+        indices = torch.arange(len(tokens))[tokens == single_token]
+        assert len(indices) > 0, f"The token does not occur in the prompt"
+        if mode == "first":
+            return indices[0].item()
+        elif mode == "last":
+            return indices[-1].item()
+        else:
+>           raise ValueError(f"mode must be 'first' or 'last', not {mode}")
+E           RuntimeError: indices should be either on cpu or on the same device as the indexed tensor (cpu)
+
+transformer_lens/HookedTransformer.py:720: RuntimeError
+=========================== short test summary info ============================
+FAILED tests/test_launch.py::test_acdc_docstring - AssertionError: Command re...
+FAILED tests/test_launch.py::test_acdc_induction - AssertionError: Command re...
+FAILED tests/acceptance/test_hooked_encoder.py::test_full_model - RuntimeErro...
+FAILED tests/acceptance/test_hooked_encoder.py::test_run_with_cache - Runtime...
+FAILED tests/acceptance/test_hooked_encoder.py::test_predictions - RuntimeErr...
+FAILED tests/unit/test_tokenization_methods.py::test_to_tokens_default - Runt...
+FAILED tests/unit/test_tokenization_methods.py::test_to_tokens_without_bos - ...
+FAILED tests/unit/test_tokenization_methods.py::test_to_tokens_device - Runti...
+FAILED tests/unit/test_tokenization_methods.py::test_get_token_position_not_found
+FAILED tests/unit/test_tokenization_methods.py::test_get_token_position_str
+FAILED tests/unit/test_tokenization_methods.py::test_get_token_position_str_without_bos
+============ 11 failed, 289 passed, 8 skipped in 135.38s (0:02:15) =============

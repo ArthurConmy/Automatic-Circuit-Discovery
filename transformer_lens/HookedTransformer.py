@@ -1,54 +1,47 @@
-"""TODO: we should i) remove global cache dependencies for ACDC 
-ii) make most of this file (from HookedTransformer class down) the same as Neel's main"""
+import logging
+from functools import lru_cache
+from typing import Dict, List, NamedTuple, Optional, Tuple, Union, overload
 
-from typing import Callable, Union, List, Tuple, Dict, Optional, NamedTuple, overload
-from typing_extensions import Literal
-from torchtyping import TensorType as TT
-
-import transformer_lens.utils as utils
-
+import einops
+import numpy as np
 import torch
 import torch.nn as nn
-import warnings
-import torch.nn.functional as F
-import numpy as np
-import einops
-import logging
 import tqdm.auto as tqdm
-import re
-from huggingface_hub import HfApi
-from functools import partial, lru_cache
-from collections import namedtuple
-from dataclasses import dataclass
+from fancy_einsum import einsum
+from jaxtyping import Float, Int
+from transformers import AutoTokenizer, PreTrainedTokenizerBase
+from typeguard import typeguard_ignore
+from typing_extensions import Literal
 
-from transformers import (
-    AutoTokenizer,
-    PreTrainedTokenizer,
-    PreTrainedTokenizerBase,
-)
-from datasets.load import load_dataset
-
-from transformer_lens.utilities import devices
-from transformer_lens.hook_points import HookedRootModule, HookPoint
+import transformer_lens.loading_from_pretrained as loading
+import transformer_lens.utils as utils
 from transformer_lens import HookedTransformerConfig
 from transformer_lens.ActivationCache import ActivationCache
+from transformer_lens.components import (
+    Embed,
+    LayerNorm,
+    LayerNormPre,
+    PosEmbed,
+    RMSNorm,
+    RMSNormPre,
+    TransformerBlock,
+    Unembed,
+)
 from transformer_lens.FactoredMatrix import FactoredMatrix
+from transformer_lens.hook_points import HookedRootModule, HookPoint
 
 # Note - activation cache is used with run_with_cache, past_key_value_caching is used for generation.
 from transformer_lens.past_key_value_caching import HookedTransformerKeyValueCache
+from transformer_lens.utilities import devices
 
-from transformer_lens.components import *
-import transformer_lens.loading_from_pretrained as loading
-from transformer_lens.torchtyping_helper import T
-from collections import OrderedDict
-
-SingleLoss = TT[()]  # Type alias for a single element tensor
-LossPerToken = TT["batch", "position - 1"]
+SingleLoss = Float[torch.Tensor, ""]  # Type alias for a single element tensor
+LossPerToken = Float[torch.Tensor, "batch pos-1"]
 Loss = Union[SingleLoss, LossPerToken]
+
 
 # Named tuple object for if we want to output both logits and loss
 class Output(NamedTuple):
-    logits: TT[T.batch, T.pos, T.d_vocab]
+    logits: Float[torch.Tensor, "batch pos d_vocab"]
     loss: Loss
 
 class GlobalCache: # this dict stores the activations from the forward pass

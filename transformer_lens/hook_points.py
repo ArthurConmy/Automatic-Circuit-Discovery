@@ -41,26 +41,17 @@ class HookPoint(nn.Module):
     intermediate activation in a HookPoint, it provides a convenient way to add PyTorch hooks.
     """
 
-    def __init__(self, global_cache=None):
+    def __init__(self):
         super().__init__()
         self.fwd_hooks: List[LensHandle] = []
         self.bwd_hooks: List[LensHandle] = []
-        self.fwd_hook_functions = [] # Added for ACDC...
 
         self.ctx = {}
-
-        if global_cache is not None:
-            self.global_cache = global_cache
 
         # A variable giving the hook's name (from the perspective of the root
         # module) - this is set by the root module at setup.
 
         self.name = None
-
-    def add_xi_parameter(self, shape=[]):
-        """Add parameter for 16 Heads"""
-
-        self.xi = torch.nn.Parameter(torch.ones(size=shape)) # empty list implies scalar
 
     def add_perma_hook(self, hook, dir="fwd") -> None:
         self.add_hook(hook, dir=dir, is_permanent=True)
@@ -131,15 +122,15 @@ class HookPoint(nn.Module):
         del self.ctx
         self.ctx = {}
 
+    def forward(self, x):
+        return x
+
     def layer(self):
         # Returns the layer index if the name has the form 'blocks.{layer}.{...}'
         # Helper function that's mainly useful on HookedTransformer
         # If it doesn't have this form, raises an error -
         split_name = self.name.split(".")
         return int(split_name[1])
-
-    def forward(self, x):
-        return x
 
 
 # %%
