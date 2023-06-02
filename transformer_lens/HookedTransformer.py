@@ -27,6 +27,7 @@ from transformers import (
 )
 from datasets.load import load_dataset
 
+from transformer_lens.utilities import devices
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 from transformer_lens import HookedTransformerConfig
 from transformer_lens.ActivationCache import ActivationCache

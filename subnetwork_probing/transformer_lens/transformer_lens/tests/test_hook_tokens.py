@@ -1,6 +1,6 @@
 # %%
 
-from typeguard.importhook import install_import_hook
+from typeguard.importhook import install_import_hook # typeguard.importhook seems wrong for typeguard version 2.12.1 that we're  using
 
 install_import_hook("transformer_lens")
 

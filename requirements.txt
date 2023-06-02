@@ -113,7 +113,7 @@ transformers==4.27.4
 Twisted==22.10.0
 txaio==23.1.1
 txtorcon==23.0.0
-typeguard==3.0.2
+typeguard==2.13.3
 typing_extensions==4.5.0
 urllib3==1.26.15
 wandb==0.13.11
