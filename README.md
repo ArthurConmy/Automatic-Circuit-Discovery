@@ -44,4 +44,4 @@ pytest tests/acdc -vvv --ignore=subnetwork_probing/ --ignore=tests/subnetwork_pr
 
 [ ] Make SP tests work
 
-[ ] Run two-step induction on beefier machine
+[ ] Need to fix OOM with new global cache
