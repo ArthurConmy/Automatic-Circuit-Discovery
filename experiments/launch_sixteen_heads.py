@@ -125,7 +125,7 @@ else:
 
 # %% load the model into a Subnetwork-Probing model.
 # We don't use the sixteen_heads=True argument any more, because we want to keep QKV separated.
-# Deleted the 16H true argument from the kwargs
+# Deleted the 16H true argument altogether...
 
 
 kwargs = dict(**things.tl_model.cfg.__dict__)

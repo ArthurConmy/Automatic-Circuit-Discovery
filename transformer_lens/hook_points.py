@@ -212,12 +212,13 @@ class HookedRootModule(nn.Module):
         dir="fwd",
         is_permanent=False,
         level=None,
+        prepend=False,
     ) -> None:
         """Runs checks on the hook, and then adds it to the hook point"""
         self.check_hooks_to_add(
-            hook_point, hook_point_name, hook, dir=dir, is_permanent=is_permanent
+            hook_point, hook_point_name, hook, dir=dir, is_permanent=is_permanent, prepend=prepend,
         )
-        hook_point.add_hook(hook, dir=dir, is_permanent=is_permanent, level=level)
+        hook_point.add_hook(hook, dir=dir, is_permanent=is_permanent, level=level, prepend=prepend)
 
     def check_hooks_to_add(
         self, hook_point, hook_point_name, hook, dir="fwd", is_permanent=False
@@ -225,7 +226,7 @@ class HookedRootModule(nn.Module):
         """Override this function to add checks on which hooks should be added"""
         pass
 
-    def add_hook(self, name, hook, dir="fwd", is_permanent=False, level=None) -> None:
+    def add_hook(self, name, hook, dir="fwd", is_permanent=False, level=None, prepend=False) -> None:
         if type(name) == str:
             self.check_and_add_hook(
                 self.mod_dict[name],
@@ -234,6 +235,7 @@ class HookedRootModule(nn.Module):
                 dir=dir,
                 is_permanent=is_permanent,
                 level=level,
+                prepend=prepend,
             )
         else:
             # Otherwise, name is a Boolean function on names
@@ -246,6 +248,7 @@ class HookedRootModule(nn.Module):
                         dir=dir,
                         is_permanent=is_permanent,
                         level=level,
+                        prepend=prepend,
                     )
 
     def add_perma_hook(self, name, hook, dir="fwd") -> None:

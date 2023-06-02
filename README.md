@@ -43,5 +43,3 @@ pytest tests/acdc -vvv --ignore=subnetwork_probing/ --ignore=tests/subnetwork_pr
 [ ] `tracr` and other dependencies better managed
 
 [ ] Make SP tests work
-
-[ ] Add 16H back

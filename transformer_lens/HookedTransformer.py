@@ -24,6 +24,7 @@ from dataclasses import dataclass
 from transformers import (
     AutoTokenizer,
     PreTrainedTokenizer,
+    PreTrainedTokenizerBase,
 )
 from datasets.load import load_dataset
 
@@ -97,20 +98,25 @@ class GlobalCache: # this dict stores the activations from the forward pass
                     cache[k].to(device) #  = cache[name].to(device)
 
         return self
-
 class HookedTransformer(HookedRootModule):
     """
     This class implements a full Transformer using the components in ./components.py, with
     HookPoints on every interesting activation. It inherits from HookedRootModule.
 
-    It can have a pretrained Transformer's weights automatically loaded in via the HookedTransformer.from_pretrained class method. It can also be instantiated with randomly initialized weights via __init__ and being passed a dict or HookedTransformerConfig object.
+    It can have a pretrained Transformer's weights automatically loaded in via the HookedTransformer.from_pretrained
+    class method. It can also be instantiated with randomly initialized weights via __init__ and being passed a dict or
+    HookedTransformerConfig object.
     """
 
     def __init__(
-        self, cfg, tokenizer=None, move_to_device=True,
+        self,
+        cfg,
+        tokenizer=None,
+        move_to_device=True,
     ):
         """
-        Model initialization. Note that if you want to load the model from pretrained weights, you should use the HookedTransformer.from_pretrained() class method instead of this one.
+        Model initialization. Note that if you want to load the model from pretrained weights, you should use the
+        HookedTransformer.from_pretrained() class method instead of this one.
 
         cfg Union[HookedTransformerConfig, Dict]: The config to use for the
             model.
@@ -118,39 +124,41 @@ class HookedTransformer(HookedRootModule):
             provided, it is inferred from cfg.tokenizer_name or initialized to None.
             If None, then the model cannot be passed strings, and d_vocab must be explicitly set.
         move_to_device (bool): Whether to move the model to the device specified in cfg.
-            device.
+            device. Must be true if `n_devices` in the config is greater than 1, since the model's layers
+            will be split across multiple devices.
         """
         super().__init__()
         if isinstance(cfg, Dict):
             cfg = HookedTransformerConfig(**cfg)
         elif isinstance(cfg, str):
             raise ValueError(
-                "Please pass in a config dictionary or HookedTransformerConfig object. If you want to load a pretrained model, use HookedTransformer.from_pretrained() instead."
+                "Please pass in a config dictionary or HookedTransformerConfig object. If you want to load a "
+                "pretrained model, use HookedTransformer.from_pretrained() instead."
             )
         self.cfg = cfg
+
+        assert (
+            self.cfg.n_devices == 1 or move_to_device
+        ), "If n_devices > 1, must move_to_device"
+
         if tokenizer is not None:
-            self.tokenizer = tokenizer
+            self.set_tokenizer(tokenizer)
         elif self.cfg.tokenizer_name is not None:
             # If we have a tokenizer name, we can load it from HuggingFace
-            self.tokenizer = AutoTokenizer.from_pretrained(self.cfg.tokenizer_name)
-            if self.tokenizer.eos_token is None:
-                self.tokenizer.eos_token = "<|endoftext|>"
-            if self.tokenizer.pad_token is None:
-                self.tokenizer.pad_token = self.tokenizer.eos_token
-            if self.tokenizer.bos_token is None:
-                self.tokenizer.bos_token = self.tokenizer.eos_token
+            if "llama" in self.cfg.tokenizer_name:
+                # llama tokenizer requires special handling
+                print("Warning: LLaMA tokenizer not loaded. Please load manually.")
+            else:
+                self.set_tokenizer(
+                    AutoTokenizer.from_pretrained(self.cfg.tokenizer_name)
+                )
         else:
-            # If no tokenizer name is provided, we assume we're training on an algorithmic task and will pass in tokens directly. In this case, we don't need a tokenizer.
-            self.tokenizer = None
-
-        if self.cfg.d_vocab == -1:
-            # If we have a tokenizer, vocab size can be inferred from it.
+            # If no tokenizer name is provided, we assume we're training on an algorithmic task and will pass in tokens
+            # directly. In this case, we don't need a tokenizer.
             assert (
-                self.tokenizer is not None
+                self.cfg.d_vocab != -1
             ), "Must provide a tokenizer if d_vocab is not provided"
-            self.cfg.d_vocab = max(self.tokenizer.vocab.values()) + 1
-        if self.cfg.d_vocab_out == -1:
-            self.cfg.d_vocab_out = self.cfg.d_vocab
+            self.tokenizer = None
 
         self.embed = Embed(self.cfg)
         self.hook_embed = HookPoint()  # [batch, pos, d_model]
@@ -169,7 +177,11 @@ class HookedTransformer(HookedRootModule):
             ]
         )
 
-        if self.cfg.normalization_type == "LN":
+        if self.cfg.normalization_type == "RMS":
+            self.ln_final = RMSNorm(self.cfg)
+        elif self.cfg.normalization_type == "RMSPre":
+            self.ln_final = RMSNormPre(self.cfg)
+        elif self.cfg.normalization_type == "LN":
             if self.cfg.final_rms:
                 self.ln_final = RMSNorm(self.cfg)
             else:
@@ -193,26 +205,23 @@ class HookedTransformer(HookedRootModule):
             self.init_weights()
 
         if move_to_device:
-            # Move the model to the relevant device, suppress the logging message
-            self.to(self.cfg.device, print_details=False)
+            # We load the devices in a pipeline manner - the first device gets the embed and pos_embed layers and the
+            # first n_layers // n_devices blocks,
+            # the second gets the next n_layers // n_devices blocks ... the last gets the last n_layers // n_devices
+            # blocks, the final
+            # normalization layer (if it exists) and the unembed layer
+            HookedTransformer.move_model_modules_to_device(self)
 
-        # Helper variable to store a small (10K-20K) dataset of training data. Empty by default, can be loaded with load_sample_training_dataset
+        # Helper variable to store a small (10K-20K) dataset of training data. Empty by default, can be loaded with
+        # load_sample_training_dataset
         self.dataset = None
 
-        # ffs
         # Gives each module a parameter with its name (relative to this root module)
         # Needed for HookPoints to work
         self.setup()
-        self.is_caching = False
-
-    def xis_to_device(self, device):
-        for hook_point in self.hook_dict.values():
-            if "xi" in dir(hook_point):
-                hook_point.xi.to(device)
-
 
     def check_hooks_to_add(
-        self, hook_point, hook_point_name, hook, dir="fwd", is_permanent=False
+        self, hook_point, hook_point_name, hook, dir="fwd", is_permanent=False, prepend=False,
     ) -> None:
         if hook_point_name.endswith("attn.hook_result"):
             assert (

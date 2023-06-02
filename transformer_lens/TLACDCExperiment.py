@@ -227,9 +227,9 @@ class TLACDCExperiment:
                 tens = tens.to(device)
 
         if cache == "second":
-            hook.global_cache.second_cache[hook.name] = tens
+            self.global_cache.second_cache[hook.name] = tens
         elif cache == "first":
-            hook.global_cache.cache[hook.name] = tens
+            self.global_cache.cache[hook.name] = tens
         else:
             raise ValueError(f"Unknown cache type {cache}")
 
@@ -299,15 +299,15 @@ class TLACDCExperiment:
                         print("-------")
                         if edge.edge_type == EdgeType.ADDITION:
                             print(
-                                hook.global_cache.cache[sender_node_name].shape,
+                                self.global_cache.cache[sender_node_name].shape,
                                 sender_node_index,
                             )
                     
                     if edge.edge_type == EdgeType.ADDITION:
-                        z[receiver_node_index.as_index] += hook.global_cache.cache[
+                        z[receiver_node_index.as_index] += self.global_cache.cache[
                             sender_node_name
                         ][sender_node_index.as_index].to(z.device)
-                        z[receiver_node_index.as_index] -= hook.global_cache.second_cache[
+                        z[receiver_node_index.as_index] -= self.global_cache.second_cache[
                             sender_node_name
                         ][sender_node_index.as_index].to(z.device)
 
