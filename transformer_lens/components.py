@@ -27,7 +27,7 @@ from torchtyping import TensorType as TT
 
 # Embed & Unembed
 class Embed(nn.Module):
-    def __init__(self, cfg: Union[Dict, HookedTransformerConfig], global_cache=None):
+    def __init__(self, cfg: Union[Dict, HookedTransformerConfig]):
         super().__init__()
         if isinstance(cfg, Dict):
             cfg = HookedTransformerConfig.from_dict(cfg)
@@ -43,7 +43,7 @@ class Embed(nn.Module):
 
 
 class Unembed(nn.Module):
-    def __init__(self, cfg: Union[Dict, HookedTransformerConfig], global_cache=None):
+    def __init__(self, cfg: Union[Dict, HookedTransformerConfig]):
         super().__init__()
         if isinstance(cfg, Dict):
             cfg = HookedTransformerConfig.from_dict(cfg)
@@ -69,7 +69,7 @@ class Unembed(nn.Module):
 
 # Positional Embeddings
 class PosEmbed(nn.Module):
-    def __init__(self, cfg: Union[Dict, HookedTransformerConfig], global_cache=None):
+    def __init__(self, cfg: Union[Dict, HookedTransformerConfig]):
         super().__init__()
         if isinstance(cfg, Dict):
             cfg = HookedTransformerConfig.from_dict(cfg)
@@ -190,7 +190,7 @@ class BertMLMHead(nn.Module):
 # and is equivalent to centering the weight matrices of everything writing to the residual stream
 # Normalising is a funkier non-linear operation, that projects the residual stream onto the unit hypersphere
 class LayerNormPre(nn.Module):
-    def __init__(self, cfg: Union[Dict, HookedTransformerConfig], global_cache=None):
+    def __init__(self, cfg: Union[Dict, HookedTransformerConfig]):
         """LayerNormPre - the 'center and normalise' part of LayerNorm. Length is
         normally d_model, but is d_mlp for softmax. Not needed as a parameter. This
         should only be used in inference mode after folding in LayerNorm weights"""
@@ -201,9 +201,9 @@ class LayerNormPre(nn.Module):
         self.eps = self.cfg.eps
 
         # Adds a hook point for the normalisation scale factor
-        self.hook_scale = HookPoint(global_cache=global_cache)  # [batch, pos]
+        self.hook_scale = HookPoint()  # [batch, pos]
         # Hook Normalized captures LN output - here it's a vector with std 1 and mean 0
-        self.hook_normalized = HookPoint(global_cache=global_cache)  # [batch, pos, length]
+        self.hook_normalized = HookPoint()  # [batch, pos, length]
 
     def forward(self, x: TT[T.batch, T.pos, T.length]) -> TT[T.batch, T.pos, T.length]: # WARNING: Arthur didn't update the signatures for a bunch of these, will be wrong, see the changes here and apply them https://github.com/neelnanda-io/TransformerLens/commit/47f98959adc2fdf5fc18ee37257c310d6de752f4
         x = x - x.mean(axis=-1, keepdim=True)  # [batch, pos, length]
@@ -215,7 +215,7 @@ class LayerNormPre(nn.Module):
 
 class LayerNorm(nn.Module):
     def __init__(
-        self, cfg: Union[Dict, HookedTransformerConfig], length: Optional[int] = None, global_cache=None,
+        self, cfg: Union[Dict, HookedTransformerConfig], length: Optional[int] = None,
     ):
 
         """
@@ -237,9 +237,9 @@ class LayerNorm(nn.Module):
         self.b = nn.Parameter(torch.zeros(self.length))
 
         # Adds a hook point for the normalisation scale factor
-        self.hook_scale = HookPoint(global_cache=global_cache)  # [batch, pos, 1]
+        self.hook_scale = HookPoint()  # [batch, pos, 1]
         # Hook_normalized is on the LN output
-        self.hook_normalized = HookPoint(global_cache=global_cache)  # [batch, pos, length]
+        self.hook_normalized = HookPoint()  # [batch, pos, length]
 
     def forward(self, x: TT[T.batch, T.pos, T.length]) -> TT[T.batch, T.pos, T.length]:
         x = x - x.mean(axis=-1, keepdim=True)  # [batch, pos, length]
@@ -251,7 +251,7 @@ class LayerNorm(nn.Module):
 
 
 class RMSNormPre(nn.Module):
-    def __init__(self, cfg: Union[Dict, HookedTransformerConfig], global_cache = None):
+    def __init__(self, cfg: Union[Dict, HookedTransformerConfig]):
         """RMSNormPre - LayerNormPre without the centering and bias (RMS = Root Mean Square)"""
         super().__init__()
         if isinstance(cfg, Dict):
@@ -260,8 +260,8 @@ class RMSNormPre(nn.Module):
         self.eps = self.cfg.eps
 
         # Adds a hook point for the normalisation scale factor
-        self.hook_scale = HookPoint(global_cache=global_cache)  # [batch, pos]
-        self.hook_normalized = HookPoint(global_cache=global_cache)  # [batch, pos, length]
+        self.hook_scale = HookPoint()  # [batch, pos]
+        self.hook_normalized = HookPoint()  # [batch, pos, length]
 
     def forward(self, x: TT[T.batch, T.pos, T.length]) -> TT[T.batch, T.pos, T.length]:
         scale: TT[T.batch, T.pos, 1] = self.hook_scale(
@@ -272,7 +272,7 @@ class RMSNormPre(nn.Module):
 
 class RMSNorm(nn.Module):
     def __init__(
-        self, cfg: Union[Dict, HookedTransformerConfig], length: Optional[int] = None, global_cache=None,
+        self, cfg: Union[Dict, HookedTransformerConfig], length: Optional[int] = None,
     ):
 
         """
@@ -293,8 +293,8 @@ class RMSNorm(nn.Module):
         self.w = nn.Parameter(torch.ones(self.length))
 
         # Adds a hook point for the normalisation scale factor
-        self.hook_scale = HookPoint(global_cache=global_cache)  # [batch, pos, 1]
-        self.hook_normalized = HookPoint(global_cache=global_cache)  # [batch, pos, length]
+        self.hook_scale = HookPoint()  # [batch, pos, 1]
+        self.hook_normalized = HookPoint()  # [batch, pos, length]
 
     def forward(self, x: TT[T.batch, T.pos, T.length]) -> TT[T.batch, T.pos, T.length]:
         scale: TT[T.batch, T.pos, 1] = self.hook_scale(
@@ -311,7 +311,6 @@ class Attention(nn.Module):
         cfg: Union[Dict, HookedTransformerConfig],
         attn_type: str = "global",
         layer_id: Optional[int] = None,
-        global_cache=None,
     ):
         """Attention Block - params have shape [head_index, d_model, d_head] (or [head_index, d_head, d_model] for W_O) and multiply on the right. attn_scores refers to query key dot product immediately before attention softmax
 
@@ -371,22 +370,22 @@ class Attention(nn.Module):
         if self.cfg.scale_attn_by_inverse_layer_idx:
             self.attn_scale *= self.layer_id + 1
 
-        self.hook_k = HookPoint(global_cache=global_cache)
-        self.hook_q = HookPoint(global_cache=global_cache)
-        self.hook_v = HookPoint(global_cache=global_cache)
-        self.hook_z = HookPoint(global_cache=global_cache)  # [batch, pos, head_index, d_head]
-        self.hook_attn_scores = HookPoint(global_cache=global_cache)  # [batch, head_index, query_pos, key_pos]
-        self.hook_pattern = HookPoint(global_cache=global_cache)  # [batch, head_index, query_pos, key_pos]
-        self.hook_result = HookPoint(global_cache=global_cache)  # [batch, head_index, head_index, d_model]
+        self.hook_k = HookPoint()
+        self.hook_q = HookPoint()
+        self.hook_v = HookPoint()
+        self.hook_z = HookPoint()  # [batch, pos, head_index, d_head]
+        self.hook_attn_scores = HookPoint()  # [batch, head_index, query_pos, key_pos]
+        self.hook_pattern = HookPoint()  # [batch, head_index, query_pos, key_pos]
+        self.hook_result = HookPoint()  # [batch, head_index, head_index, d_model]
 
         # See HookedTransformerConfig for more details.
         if self.cfg.positional_embedding_type == "shortformer":
             # This tracks the input to the keys and queries, which is resid_pre + pos_embeds
-            self.hook_attn_input = HookPoint(global_cache=global_cache)  # [batch, pos, d_model]
+            self.hook_attn_input = HookPoint()  # [batch, pos, d_model]
         elif self.cfg.positional_embedding_type == "rotary":
             # Applies a rotation to each two-element chunk of keys and queries pre dot producting to bake in relative position. See HookedTransformerConfig for details
-            self.hook_rot_k = HookPoint(global_cache=global_cache)
-            self.hook_rot_q = HookPoint(global_cache=global_cache)
+            self.hook_rot_k = HookPoint()
+            self.hook_rot_q = HookPoint()
             sin, cos = self.calculate_sin_cos_rotary(
                 self.cfg.rotary_dim, self.cfg.n_ctx
             )
@@ -647,7 +646,7 @@ class Attention(nn.Module):
 
 # MLP Layers
 class MLP(nn.Module):
-    def __init__(self, cfg: Union[Dict, HookedTransformerConfig], global_cache=None):
+    def __init__(self, cfg: Union[Dict, HookedTransformerConfig]):
         super().__init__()
         if isinstance(cfg, Dict):
             cfg = HookedTransformerConfig.from_dict(cfg)
@@ -657,8 +656,8 @@ class MLP(nn.Module):
         self.W_out = nn.Parameter(torch.empty(self.cfg.d_mlp, self.cfg.d_model))
         self.b_out = nn.Parameter(torch.zeros(self.cfg.d_model))
 
-        self.hook_pre = HookPoint(global_cache=global_cache)  # [batch, pos, d_mlp]
-        self.hook_post = HookPoint(global_cache=global_cache)  # [batch, pos, d_mlp]
+        self.hook_pre = HookPoint()  # [batch, pos, d_mlp]
+        self.hook_post = HookPoint()  # [batch, pos, d_mlp]
 
         if self.cfg.act_fn == "relu":
             self.act_fn = F.relu
@@ -673,11 +672,11 @@ class MLP(nn.Module):
         elif self.cfg.act_fn == "solu_ln":
             self.act_fn = solu
             # Hook taken between activation and layer norm
-            self.hook_mid = HookPoint(global_cache=global_cache)  # [batch, pos, d_mlp]
+            self.hook_mid = HookPoint()  # [batch, pos, d_mlp]
             if self.cfg.normalization_type == "LN":
-                self.ln = LayerNorm(self.cfg, self.cfg.d_mlp, global_cache=global_cache)
+                self.ln = LayerNorm(self.cfg, self.cfg.d_mlp, )
             else:
-                self.ln = LayerNormPre(self.cfg, global_cache=global_cache)
+                self.ln = LayerNormPre(self.cfg, )
 
         else:
             raise ValueError(f"Invalid activation function name: {self.cfg.act_fn}")
@@ -708,21 +707,21 @@ class MLP(nn.Module):
 # Transformer Block
 class TransformerBlock(nn.Module):
     def __init__(
-        self, cfg: Union[Dict, HookedTransformerConfig], block_index, global_cache = None,
+        self, cfg: Union[Dict, HookedTransformerConfig], block_index,
     ):
         super().__init__()
         if isinstance(cfg, Dict):
             cfg = HookedTransformerConfig.from_dict(cfg)
         self.cfg = cfg
         if self.cfg.normalization_type == "LN":
-            self.ln1 = LayerNorm(cfg, global_cache = global_cache)
+            self.ln1 = LayerNorm(cfg)
             if not self.cfg.attn_only:
-                self.ln2 = LayerNorm(cfg, global_cache = global_cache)
+                self.ln2 = LayerNorm(cfg)
         elif self.cfg.normalization_type == "LNPre":
             # We've folded in LayerNorm weights, so just need the center + scale parts
-            self.ln1 = LayerNormPre(cfg, global_cache = global_cache)
+            self.ln1 = LayerNormPre(cfg)
             if not self.cfg.attn_only:
-                self.ln2 = LayerNormPre(cfg, global_cache = global_cache)
+                self.ln2 = LayerNormPre(cfg)
         elif self.cfg.normalization_type is None:
             self.ln1 = nn.Identity()
             if not self.cfg.attn_only:
@@ -733,25 +732,25 @@ class TransformerBlock(nn.Module):
             )
 
         if not self.cfg.use_local_attn:
-            self.attn = Attention(cfg, "global", block_index, global_cache = global_cache)
+            self.attn = Attention(cfg, "global", block_index)
         else:
             assert self.cfg.attn_types is not None
             attn_type = self.cfg.attn_types[block_index]
-            self.attn = Attention(cfg, attn_type, block_index, global_cache = global_cache)
+            self.attn = Attention(cfg, attn_type, block_index)
         if not self.cfg.attn_only:
-            self.mlp = MLP(cfg, global_cache = global_cache)
+            self.mlp = MLP(cfg)
 
-        self.hook_q_input = HookPoint(global_cache=global_cache)  # [batch, pos, d_model]
-        self.hook_k_input = HookPoint(global_cache=global_cache)  # [batch, pos, d_model]
-        self.hook_v_input = HookPoint(global_cache=global_cache)  # [batch, pos, d_model]
-        self.hook_mlp_input = HookPoint(global_cache=global_cache)  # [batch, pos, d_model]
+        self.hook_q_input = HookPoint()  # [batch, pos, d_model]
+        self.hook_k_input = HookPoint()  # [batch, pos, d_model]
+        self.hook_v_input = HookPoint()  # [batch, pos, d_model]
+        self.hook_mlp_input = HookPoint()  # [batch, pos, d_model]
 
-        self.hook_attn_out = HookPoint(global_cache=global_cache)  # [batch, pos, d_model]
-        self.hook_mlp_out = HookPoint(global_cache=global_cache)  # [batch, pos, d_model]
-        self.hook_resid_pre = HookPoint(global_cache=global_cache)  # [batch, pos, d_model]
+        self.hook_attn_out = HookPoint()  # [batch, pos, d_model]
+        self.hook_mlp_out = HookPoint()  # [batch, pos, d_model]
+        self.hook_resid_pre = HookPoint()  # [batch, pos, d_model]
         if not self.cfg.attn_only and not self.cfg.parallel_attn_mlp:
-            self.hook_resid_mid = HookPoint(global_cache=global_cache)  # [batch, pos, d_model]
-        self.hook_resid_post = HookPoint(global_cache=global_cache)  # [batch, pos, d_model]
+            self.hook_resid_mid = HookPoint()  # [batch, pos, d_model]
+        self.hook_resid_post = HookPoint()  # [batch, pos, d_model]
 
     def forward(
         self,

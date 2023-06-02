@@ -163,34 +163,34 @@ class HookedTransformer(HookedRootModule):
         else:
             self.global_cache = global_cache = None
 
-        self.embed = Embed(self.cfg, global_cache=self.global_cache)
-        self.hook_embed = HookPoint(global_cache=global_cache)  # [batch, pos, d_model]
+        self.embed = Embed(self.cfg)
+        self.hook_embed = HookPoint()  # [batch, pos, d_model]
 
         if self.cfg.positional_embedding_type != "rotary":
             self.pos_embed = PosEmbed(self.cfg)
-            self.hook_pos_embed = HookPoint(global_cache=global_cache)  # [batch, pos, d__dictmodel]
+            self.hook_pos_embed = HookPoint()  # [batch, pos, d__dictmodel]
 
         if self.cfg.use_hook_tokens:
-            self.hook_tokens = HookPoint(global_cache=global_cache)  # [batch, pos]
+            self.hook_tokens = HookPoint()  # [batch, pos]
 
         self.blocks = nn.ModuleList(
             [
-                TransformerBlock(self.cfg, block_index, global_cache=global_cache)
+                TransformerBlock(self.cfg, block_index)
                 for block_index in range(self.cfg.n_layers)
             ]
         )
 
         if self.cfg.normalization_type == "LN":
             if self.cfg.final_rms:
-                self.ln_final = RMSNorm(self.cfg, global_cache=global_cache)
+                self.ln_final = RMSNorm(self.cfg)
             else:
-                self.ln_final = LayerNorm(self.cfg, global_cache=global_cache)
+                self.ln_final = LayerNorm(self.cfg)
         elif self.cfg.normalization_type == "LNPre":
             # We've folded in LayerNorm weights, so just need the center + scale parts
             if self.cfg.final_rms:
-                self.ln_final = RMSNormPre(self.cfg, global_cache=global_cache)
+                self.ln_final = RMSNormPre(self.cfg)
             else:
-                self.ln_final = LayerNormPre(self.cfg, global_cache=global_cache)
+                self.ln_final = LayerNormPre(self.cfg)
         elif self.cfg.normalization_type is None:
             # If it's None, don't create either layer
             pass
@@ -198,7 +198,7 @@ class HookedTransformer(HookedRootModule):
             logging.warning(
                 f"Invalid normalization_type passed in {self.cfg.normalization_type}"
             )
-        self.unembed = Unembed(self.cfg, global_cache=global_cache)
+        self.unembed = Unembed(self.cfg)
 
         if self.cfg.init_weights:
             self.init_weights()
@@ -693,9 +693,6 @@ class HookedTransformer(HookedRootModule):
             if print_details:
                 print("Changing model dtype to", device_or_dtype)
         
-        if self.global_cache is not None:
-            self.global_cache.to(device_or_dtype)
-
         if self.cfg.sixteen_heads: 
             if "hook_dict" in dir(self): # some lazy init is brutal
                 self.xis_to_device(device_or_dtype)
@@ -725,7 +722,6 @@ class HookedTransformer(HookedRootModule):
         hf_model=None,
         device=None,
         move_state_dict_to_device=True,
-        use_global_cache=False,
         sixteen_heads=False,
         **model_kwargs,
     ):
@@ -781,10 +777,9 @@ class HookedTransformer(HookedRootModule):
             device=device,
         )
 
-        if use_global_cache:
-            cfg.use_global_cache = True
         if sixteen_heads:
-            assert use_global_cache # needed to propagate information through model...            
+            raise NotImplementedError("Find way to assert global_caches are on all hooks...")
+            # assert use_global_cache # needed to propagate information through model...            
             cfg.sixteen_heads = True
 
         # Get the state dict of the model (ie a mapping of parameter names to tensors), processed to match the HookedTransformer parameter names.
