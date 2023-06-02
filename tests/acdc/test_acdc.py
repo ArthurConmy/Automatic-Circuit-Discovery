@@ -73,12 +73,14 @@ from transformer_lens.graphics import (
     show,
 )
 
-def test_induction_several_steps():
+def test_induction_several_steps(): # OOM on RTX - but maybe internally I'm doing dumb things?
     # get induction task stuff
     num_examples = 400
     seq_len = 30
     # TODO initialize the `tl_model` with the right model
-    tl_model, toks_int_values, toks_int_values_other, metric = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device="cuda", randomize_data=False)
+    all_induction_things = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device="cuda") # removed some randomize seq_len thing - hopefully unimportant
+
+    tl_model, toks_int_values, toks_int_values_other, metric = all_induction_things.tl_model, all_induction_things.validation_data, all_induction_things.validation_patch_data, all_induction_things.validation_metric
 
     # initialise object
     exp = TLACDCExperiment(
