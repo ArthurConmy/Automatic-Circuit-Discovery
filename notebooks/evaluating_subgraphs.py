@@ -16,6 +16,8 @@ if get_ipython() is not None:
 from transformer_lens.HookedTransformer import HookedTransformer
 from transformer_lens.TLACDCExperiment import TLACDCExperiment
 from transformer_lens.induction.utils import get_all_induction_things
+import torch
+import gc
 
 # %%
 
@@ -29,7 +31,14 @@ all_induction_things = get_all_induction_things(
 
 tl_model, toks_int_values, toks_int_values_other, metric, mask_rep = all_induction_things.tl_model, all_induction_things.validation_data, all_induction_things.validation_patch_data, all_induction_things.validation_metric, all_induction_things.validation_mask
 
+
 # You should read the get_model function from that file to see what the Redwood model is : ) 
+
+#%%
+
+# ensure we stay under mem limit on small machines
+gc.collect()
+torch.cuda.empty_cache()
 
 #%%
 

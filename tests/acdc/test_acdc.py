@@ -36,6 +36,7 @@ import numpy as np
 import einops
 from tqdm import tqdm
 import yaml
+import gc
 from transformers import AutoModelForCausalLM, AutoConfig, AutoTokenizer
 
 import matplotlib.pyplot as plt
@@ -72,15 +73,19 @@ from transformer_lens.graphics import (
     build_colorscheme,
     show,
 )
+import pytest
 
-def test_induction_several_steps(): # OOM on RTX - but maybe internally I'm doing dumb things?
+@pytest.mark.skip(reason="OOM on small machine - worth unchecking!!!")
+def test_induction_several_steps():
     # get induction task stuff
     num_examples = 400
     seq_len = 30
     # TODO initialize the `tl_model` with the right model
     all_induction_things = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device="cuda") # removed some randomize seq_len thing - hopefully unimportant
-
     tl_model, toks_int_values, toks_int_values_other, metric = all_induction_things.tl_model, all_induction_things.validation_data, all_induction_things.validation_patch_data, all_induction_things.validation_metric
+
+    gc.collect()
+    torch.cuda.empty_cache()
 
     # initialise object
     exp = TLACDCExperiment(
