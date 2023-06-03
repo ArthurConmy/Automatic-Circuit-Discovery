@@ -10,38 +10,16 @@ if IPython.get_ipython() is not None:
     IPython.get_ipython().run_line_magic("load_ext", "autoreload")  # type: ignore
     IPython.get_ipython().run_line_magic("autoreload", "2")  # type: ignore
 
-from copy import deepcopy
-from typing import (
-    List,
-    Tuple,
-    Dict,
-    Any,
-    Optional,
-    Union,
-    Callable,
-    TypeVar,
-    Iterable,
-    Set,
-)
-import pickle
 import wandb
 import IPython
 import torch
-from pathlib import Path
 import gc
 from tqdm import tqdm
-import random
-from functools import partial
-import json
-import pathlib
-import warnings
-import time
 import networkx as nx
 import os
 import torch
 import huggingface_hub
 import graphviz
-from enum import Enum
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -79,7 +57,6 @@ from transformer_lens.TLACDCCorrespondence import TLACDCCorrespondence
 from transformer_lens.TLACDCInterpNode import TLACDCInterpNode
 from transformer_lens.TLACDCExperiment import TLACDCExperiment
 
-from collections import defaultdict, deque, OrderedDict
 from transformer_lens.acdc_utils import (
     kl_divergence,
 )

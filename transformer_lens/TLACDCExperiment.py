@@ -345,9 +345,12 @@ class TLACDCExperiment:
                 raise ValueError(f"{str(big_tuple)} {str(edge)} failed")
 
             for node in nodes:
-                if len(self.model.hook_dict[node.name].fwd_hooks) > 0:
-                    for hook_func_maybe_partial in self.model.hook_dict[node.name].fwd_hook_functions:
-                        hook_func_name = hook_func_maybe_partial.func.__name__ if isinstance(hook_func_maybe_partial, partial) else hook_func_maybe_partial.__name__
+                fwd_hooks = self.model.hook_dict[node.name].fwd_hooks
+                if len(fwd_hooks) > 0:
+                    resolved_hooks_dicts = [fwd_hook.hook.hooks_dict_ref() for fwd_hook in fwd_hooks]
+                    assert all([resolved_hooks_dict == resolved_hooks_dicts[0] for resolved_hooks_dict in resolved_hooks_dicts]), f"{resolved_hooks_dicts}\nUnexpected behavior: different hook dict for different hooks on the same HookPoint?! https://github.com/neelnanda-io/TransformerLens/issues/297"
+                    for fwd_hook in resolved_hooks_dicts[0].values():
+                        hook_func_name = str(fwd_hook.__wrapped__.func) if isinstance(fwd_hook, partial) else str(fwd_hook.__wrapped__)
                         assert "sender_hook" in hook_func_name, f"You should only add sender hooks to {node.name}, and this: {hook_func_name} doesn't look like a sender hook"
                     continue
 
@@ -422,10 +425,14 @@ class TLACDCExperiment:
 
     def add_sender_hook(self, node, override=False):
         if not override and len(self.model.hook_dict[node.name].fwd_hooks) > 0:
-            for hook_func_maybe_partial in self.model.hook_dict[node.name].fwd_hook_functions:
-                hook_func_name = hook_func_maybe_partial.func.__name__ if isinstance(hook_func_maybe_partial, partial) else hook_func_maybe_partial.__name__
-                assert "sender_hook" in hook_func_name, f"You should only add sender hooks to {node.name}, and this: {hook_func_name} doesn't look like a sender hook"
-            return False # already added, whatever move on
+            fwd_hooks = self.model.hook_dict[node.name].fwd_hooks
+            if len(fwd_hooks) > 0:
+                resolved_hooks_dicts = [fwd_hook.hook.hooks_dict_ref() for fwd_hook in fwd_hooks]
+                assert all([resolved_hooks_dict == resolved_hooks_dicts[0] for resolved_hooks_dict in resolved_hooks_dicts]), f"{resolved_hooks_dicts}\nUnexpected behavior: different hook dict for different hooks on the same HookPoint?! https://github.com/neelnanda-io/TransformerLens/issues/297"
+                for fwd_hook in resolved_hooks_dicts[0].values():
+                    hook_func_name = str(fwd_hook.__wrapped__.func) if isinstance(fwd_hook, partial) else str(fwd_hook.__wrapped__)
+                    assert "sender_hook" in hook_func_name, f"You should only add sender hooks to {node.name}, and this: {hook_func_name} doesn't look like a sender hook"
+            return False # already added, move on
 
         self.model.add_hook(
             name=node.name, 
@@ -436,10 +443,14 @@ class TLACDCExperiment:
 
     def add_receiver_hook(self, node, override=False, prepend=False):
         if not override and len(self.model.hook_dict[node.name].fwd_hooks) > 0: # repeating code from add_sender_hooks
-            for hook_func_maybe_partial in self.model.hook_dict[node.name].fwd_hook_functions:
-                hook_func_name = hook_func_maybe_partial.func.__name__ if isinstance(hook_func_maybe_partial, partial) else hook_func_maybe_partial.__name__
-                assert "receiver_hook" in hook_func_name, f"You should only add receiver hooks to {node.name}, and this: {hook_func_name} doesn't look like a receiver hook"
-            return False # already added, whatever move on
+            fwd_hooks = self.model.hook_dict[node.name].fwd_hooks
+            if len(fwd_hooks) > 0:
+                resolved_hooks_dicts = [fwd_hook.hook.hooks_dict_ref() for fwd_hook in fwd_hooks]
+                assert all([resolved_hooks_dict == resolved_hooks_dicts[0] for resolved_hooks_dict in resolved_hooks_dicts]), f"{resolved_hooks_dicts}\nUnexpected behavior: different hook dict for different hooks on the same HookPoint?! https://github.com/neelnanda-io/TransformerLens/issues/297"
+                for fwd_hook in resolved_hooks_dicts[0].values():
+                    hook_func_name = str(fwd_hook.__wrapped__.func) if isinstance(fwd_hook, partial) else str(fwd_hook.__wrapped__)
+                    assert "receiver_hook" in hook_func_name, f"You should only add receiver hooks to {node.name}, and this: {hook_func_name} doesn't look like a receiver hook"
+            return False # already added, move on
 
         self.model.add_hook(
             name=node.name,

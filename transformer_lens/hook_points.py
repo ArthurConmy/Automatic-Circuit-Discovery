@@ -4,6 +4,7 @@ import logging
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
+from functools import wraps
 
 import torch.nn as nn
 import torch.utils.hooks as hooks
@@ -67,6 +68,7 @@ class HookPoint(nn.Module):
         """
         if dir == "fwd":
 
+            @wraps(hook) # addition to ACDC; allows names of hooks to be visible: see https://github.com/neelnanda-io/TransformerLens/issues/297
             def full_hook(module, module_input, module_output):
                 return hook(module_output, hook=self)
 
@@ -80,8 +82,11 @@ class HookPoint(nn.Module):
 
             else:
                 self.fwd_hooks.append(handle)
+
         elif dir == "bwd":
             # For a backwards hook, module_output is a tuple of (grad,) - I don't know why.
+
+            @wraps(hook) # addition to ACDC; allows names of hooks to be visible: see https://github.com/neelnanda-io/TransformerLens/issues/297
             def full_hook(module, module_input, module_output):
                 return hook(module_output[0], hook=self)
 
