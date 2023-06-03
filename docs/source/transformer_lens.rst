@@ -92,13 +92,6 @@ transformer\_lens.patching module
    :undoc-members:
    :show-inheritance:
 
-transformer\_lens.torchtyping\_helper module
---------------------------------------------
-
-.. automodule:: transformer_lens.torchtyping_helper
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
 transformer\_lens.train module
 ------------------------------
@@ -112,14 +105,6 @@ transformer\_lens.utils module
 ------------------------------
 
 .. automodule:: transformer_lens.utils
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: transformer_lens
    :members:
    :undoc-members:
    :show-inheritance:

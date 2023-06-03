@@ -1,4 +1,4 @@
-<!-- :warning: This codebase is still under construction :warning: -->
+:warning: This codebase is still under construction :warning:
 
 This is the accompanying code to the arXiv paper "Towards Automated Circuit Discovery for Mechanistic Interpretability".
 
@@ -43,5 +43,3 @@ pytest tests/acdc -vvv --ignore=subnetwork_probing/ --ignore=tests/subnetwork_pr
 [ ] `tracr` and other dependencies better managed
 
 [ ] Make SP tests work
-
-[ ] Need to fix OOM with new global cache
