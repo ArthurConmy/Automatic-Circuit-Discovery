@@ -1,9 +1,8 @@
 :warning: This codebase is still under construction :warning:
 
-[![Python](https://img.shields.io/pypi/pyversions/tensorflow.svg)](https://badge.fury.io/py/tensorflow)
+[![Python](https://img.shields.io/badge/python-3.7%2B-blue)](https://badge.fury.io/py/tensorflow)
 <!-- This should be >= 3.7 -->
-[![Feature Requests](https://img.shields.io/github/issues/microsoft/vscode/feature-request.svg)](https://github.com/ArthurConmy/Automatic-Circuit-Discovery/issues?q=is%3Aopen+is%3Aissue+label%3Afeature-request+sort%3Areactions-%2B1-desc)
-<!-- Check this works... -->
+[![Open Pull Requests](https://img.shields.io/github/issues-pr/ArthurConmy/Automatic-Circuit-Discovery.svg)](https://github.com/ArthurConmy/Automatic-Circuit-Discovery/pulls)
 
 This is the accompanying code to the arXiv paper "Towards Automated Circuit Discovery for Mechanistic Interpretability".
 
