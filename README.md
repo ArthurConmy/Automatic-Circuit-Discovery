@@ -1,14 +1,12 @@
 :warning: This codebase is still under construction :warning:
 
-[![Python](https://img.shields.io/badge/python-3.7%2B-blue)](https://badge.fury.io/py/tensorflow)
-<!-- This should be >= 3.7 -->
-[![Open Pull Requests](https://img.shields.io/github/issues-pr/ArthurConmy/Automatic-Circuit-Discovery.svg)](https://github.com/ArthurConmy/Automatic-Circuit-Discovery/pulls)
+[![Python](https://img.shields.io/badge/python-3.7%2B-blue)](https://badge.fury.io/py/tensorflow) [![Open Pull Requests](https://img.shields.io/github/issues-pr/ArthurConmy/Automatic-Circuit-Discovery.svg)](https://github.com/ArthurConmy/Automatic-Circuit-Discovery/pulls)
+
+# Automatic Circuit Discovery 
 
 This is the accompanying code to the arXiv paper "Towards Automated Circuit Discovery for Mechanistic Interpretability".
 
 To run ACDC, see `transformer_lens/main.py`. To see how we edit connections, see `notebooks/evaluating_subgraphs.py`. <b>This repo is still under construction.</b>
-
-# Automatic Circuit Discovery 
 
 ## Installation:
 
