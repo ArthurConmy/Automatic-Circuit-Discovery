@@ -2,14 +2,14 @@
 
 [![Python](https://img.shields.io/badge/python-3.7%2B-blue)]() [![Open Pull Requests](https://img.shields.io/github/issues-pr/ArthurConmy/Automatic-Circuit-Discovery.svg)](https://github.com/ArthurConmy/Automatic-Circuit-Discovery/pulls)
 
-# Automatic Circuit Discovery 
+# Automated Circuit DisCovery 
 
 This is the accompanying code to the paper "Towards Automated Circuit Discovery for Mechanistic Interpretability".
 
 * :zap: To run ACDC, see `transformer_lens/main.py`, or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/arthur-try-merge-tl/notebooks/colabs/ACDC_Main_Demo.ipynb#scrollTo=njv8l86QSPka">this Colab notebook</a>
 * :wrench: To see how edit edges in computational graphs in models, see `notebooks/editing_edges.py` or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/arthur-try-merge-tl/notebooks/colabs/ACDC_Editing_Edges_Demo.ipynb">this Colab notebook</a>
 
-## Installation:
+## Local installation:
 
 ```bash
 git clone https://github.com/ArthurConmy/Automatic-Circuit-Discovery

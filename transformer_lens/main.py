@@ -21,10 +21,13 @@ try:
         "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@arthur-try-merge-tl",
     )
     ipython.run_line_magic("pip", "install torchtyping")
-    ipython.run_line_magic(
-        "pip",
-        "install git+https://github.com/deepmind/tracr.git@e75ecdaec12bf2d831a60e54d4270e8fa31fb537#egg=tracr",
-    )
+    try:
+        ipython.run_line_magic(
+            "pip",
+            "install git+https://github.com/deepmind/tracr.git@e75ecdaec12bf2d831a60e54d4270e8fa31fb537#egg=tracr",
+        )
+    except Exception as e:
+        print(f"Could not import `tracr` because {e}; the rest of the file should work but you cannot use the tracr tasks")
     ipython.run_line_magic("pip", "install cmapy")
 
 except Exception as e:
@@ -78,10 +81,13 @@ from transformer_lens.acdc_graphics import show
 from transformer_lens.HookedTransformer import (
     HookedTransformer,
 )
-from transformer_lens.tracr.utils import (
-    get_all_tracr_things,
-    get_tracr_model_input_and_tl_model,
-)
+try:
+    from transformer_lens.tracr.utils import (
+        get_all_tracr_things,
+        get_tracr_model_input_and_tl_model,
+    )
+except Exception as e:
+    print(f"Could not import `tracr` because {e}; the rest of the file should work but you cannot use the tracr tasks")
 from transformer_lens.docstring.utils import get_all_docstring_things
 from transformer_lens.acdc_utils import (
     make_nd_dict,
@@ -153,12 +159,13 @@ parser.add_argument('--single-step', action='store_true', help='Use single step,
 if ipython is not None:
     # we are in a notebook
     args = parser.parse_args(
-        [line.strip() for line in r"""--task=tracr-proportion\
+        [line.strip() for line in r"""--task=induction\
 --zero-ablation\
 --threshold=0.005\
 --indices-mode=reverse\
 --first-cache-cpu=False\
---second-cache-cpu=False""".split("\\\n")]
+--second-cache-cpu=False\
+--max-num-epochs=3""".split("\\\n")]
     )
 else:
     # read from command line
