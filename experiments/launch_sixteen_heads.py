@@ -38,9 +38,8 @@ from transformer_lens.induction.utils import (
     get_validation_data,
 )
 from transformer_lens.ioi.utils import get_all_ioi_things
-from transformer_lens.munging_utils import heads_to_nodes_to_mask
 from transformer_lens.TLACDCExperiment import TLACDCExperiment
-from transformer_lens.TLACDCInterpNode import TLACDCInterpNode
+from transformer_lens.TLACDCInterpNode import TLACDCInterpNode, heads_to_nodes_to_mask
 from transformer_lens.tracr.utils import get_all_tracr_things
 from subnetwork_probing.train import correspondence_from_mask
 from notebooks.emacs_plotly_render import set_plotly_renderer

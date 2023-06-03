@@ -48,13 +48,10 @@ from typing import (
     Set,
 )
 import requests
-from transformer_lens.munging_utils import parse_interpnode
+from transformer_lens.TLACDCInterpNode import parse_interpnode, heads_to_nodes_to_mask
 import pickle
 import wandb
 import IPython
-from transformer_lens.munging_utils import heads_to_nodes_to_mask
-import torch
-
 from tqdm import tqdm
 import random
 from functools import partial
@@ -117,7 +114,7 @@ from transformer_lens.induction.utils import (
     get_good_induction_candidates,
     get_mask_repeat_candidates,
 )
-from transformer_lens.graphics import (
+from transformer_lens.acdc_graphics import (
     build_colorscheme,
     show,
 )

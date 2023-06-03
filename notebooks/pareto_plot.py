@@ -19,7 +19,7 @@ import numpy as np
 from transformer_lens.acdc_utils import ct
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
-from transformer_lens.munging_utils import get_nonan, get_corresponding_element, get_first_element, get_longest_float, process_nan, get_threshold_zero
+from transformer_lens.acdc_utils import get_nonan, get_corresponding_element, get_first_element, get_longest_float, process_nan, get_threshold_zero
 
 #%%
 

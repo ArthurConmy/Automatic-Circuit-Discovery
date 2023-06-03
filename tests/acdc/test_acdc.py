@@ -69,7 +69,7 @@ from transformer_lens.induction.utils import (
     get_mask_repeat_candidates,
 )
 from transformer_lens.tracr.utils import get_tracr_model_input_and_tl_model
-from transformer_lens.graphics import (
+from transformer_lens.acdc_graphics import (
     build_colorscheme,
     show,
 )

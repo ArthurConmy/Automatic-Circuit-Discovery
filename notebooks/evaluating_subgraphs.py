@@ -4,7 +4,7 @@
 # <p>If you are interested in models that are >10x the size of GPT-2 small, this library currently may be too slow and we would recommend you look at the path patching implementations in `TransformerLens` (forthcoming)</p>
 
 # %% [markdown]
-# <h2> Imports etc</h2>
+# <h2> Imports etc (TODO: make this like transformer_lens/main.py !!!)</h2>
 
 from IPython import get_ipython
 

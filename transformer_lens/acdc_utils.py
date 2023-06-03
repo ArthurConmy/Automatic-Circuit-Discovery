@@ -1,18 +1,18 @@
+import ast
+import re
 import sys
-import wandb
-from functools import partial
-from copy import deepcopy
-import warnings
-import collections
-import random
+import time
 from collections import defaultdict
 from enum import Enum
-from typing import Any, Literal, Dict, Tuple, Union, List, Optional, Callable, TypeVar, Generic, Iterable, Set, Type, cast, Sequence, Mapping, overload
+from typing import Any, Optional, Tuple, Union, List
+from huggingface_hub import hf_hub_download
+
+import numpy as np
 import torch
-import time
 import torch.nn.functional as F
+import wandb
+
 from transformer_lens.HookedTransformer import HookedTransformer
-from collections import OrderedDict
 
 TorchIndexHashableTuple = Tuple[Union[None, slice], ...]
 
@@ -286,8 +286,6 @@ def frac_correct_metric(logits, correct_labels, wrong_labels, return_one_element
 # Random helpers for scraping
 # ----------------------------------
 
-import re
-import ast
 
 def extract_info(string):
     """Thanks GPT-4 for writing all this..."""
@@ -382,50 +380,119 @@ def reset_network(task: str, device, model: torch.nn.Module) -> None:
     model.load_state_dict(reset_state_dict, strict=False)
 
 # ----------------------------------
-# Typing
+# Munging utils
 # ----------------------------------
 
-class T:
-    """Helper class to get mypy to work with TorchTyping and solidify naming conventions as a byproduct.
+def get_col_from_df(df, col_name):
+    return df[col_name].values
 
-    Examples:
-    - `TT[T.batch, T.pos, T.d_model]`
-    - `TT[T.num_components, T.batch_and_pos_dims:...]`
-    """
+def df_to_np(df):
+    return df.values
 
-    batch: str = "batch"
-    pos: str = "pos"
-    head_index: str = "head_index"
-    length: str = "length"
-    rotary_dim: str = "rotary_dim"
-    new_tokens: str = "new_tokens"
-    batch_and_pos_dims: str = "batch_and_pos_dims"
-    layers_accumulated_over: str = "layers_accumulated_over"
-    layers_covered: str = "layers_covered"
-    past_kv_pos_offset: str = "past_kv_pos_offset"
-    num_components: str = "num_components"
-    num_neurons: str = "num_neurons"
-    pos_so_far: str = "pos_so_far"
-    n_ctx: str = "n_ctx"
-    n_heads: str = "n_heads"
-    n_layers: str = "n_layers"
-    d_vocab: str = "d_vocab"
-    d_vocab_out: str = "d_vocab_out"
-    d_head: str = "d_head"
-    d_mlp: str = "d_mlp"
-    d_model: str = "d_model"
+def get_time_diff(run_name):
+    """Get the difference between first log and last log of a WANBB run"""
+    api = wandb.Api()    
+    run = api.run(run_name)
+    df = run.history()["_timestamp"]
+    arr = df_to_np(df)
+    n = len(arr)
+    for i in range(n-1):
+        assert arr[i].item() < arr[i+1].item()
+    print(arr[-1].item() - arr[0].item())
 
-    ldim: str = "ldim"
-    rdim: str = "rdim"
-    new_rdim: str = "new_rdim"
-    mdim: str = "mdim"
-    leading_dims: str = "leading_dims"
-    leading_dims_left: str = "leading_dims_left"
-    leading_dims_right: str = "leading_dims_right"
+def get_nonan(arr, last=True):
+    """Get last non nan by default (or first if last=False)"""
+    
+    indices = list(range(len(arr)-1, -1, -1)) if last else list(range(len(arr)))
 
-    a: str = "a"
-    b: str = "b"
+    for i in indices: # range(len(arr)-1, -1, -1):
+        if not np.isnan(arr[i]):
+            return arr[i]
 
-    pos_plus_past_kv_pos_offset = "pos + past_kv_pos_offset"
-    d_vocab_plus_n_ctx = "d_vocab + n_ctx"
-    pos_plus_new_tokens = "pos + new_tokens"
+    return np.nan
+
+def get_corresponding_element(
+    df,
+    col1_name,
+    col1_value,
+    col2_name, 
+):
+    """Get the corresponding element of col2_name for a given element of col1_name"""
+    col1 = get_col_from_df(df, col1_name)
+    col2 = get_col_from_df(df, col2_name)
+    for i in range(len(col1)):
+        if col1[i] == col1_value and not np.isnan(col2[i]):
+            return col2[i]
+    assert False, "No corresponding element found"
+
+def get_first_element(
+    df,
+    col,
+    last=False,
+):
+    col1 = get_col_from_df(df, "_step")
+    col2 = get_col_from_df(df, col)
+
+    cur_step = 1e30 if not last else -1e30
+    cur_ans = None
+
+    for i in range(len(col1)):
+        if not last:
+            if col1[i] < cur_step and not np.isnan(col2[i]):
+                cur_step = col1[i]
+                cur_ans = col2[i]
+        else:
+            if col1[i] > cur_step and not np.isnan(col2[i]):
+                cur_step = col1[i]
+                cur_ans = col2[i]
+
+    assert cur_ans is not None
+    return cur_ans
+
+def get_longest_float(s, end_cutoff=None):
+    ans = None
+    if end_cutoff is None:
+        end_cutoff = len(s)
+    else:
+        assert end_cutoff < 0, "Do -1 or -2 etc mate"
+
+    for i in range(len(s)-1, -1, -1):
+        try:
+            ans = float(s[i:end_cutoff])
+        except:
+            pass
+        else:
+            ans = float(s[i:end_cutoff])
+    assert ans is not None
+    return ans
+
+def get_threshold_zero(s, num=3, char="_"):
+    return float(s.split(char)[num])
+
+def process_nan(tens, reverse=False):
+    # turn nans into -1s
+    assert isinstance(tens, np.ndarray)
+    assert len(tens.shape) == 1, tens.shape
+    tens[np.isnan(tens)] = -1
+    tens[0] = tens.max()
+    
+    # turn -1s into the minimum value
+    tens[np.where(tens == -1)] = 1000
+
+    if reverse:
+        for i in range(len(tens)-2, -1, -1):
+            tens[i] = min(tens[i], tens[i+1])
+        
+        for i in range(1, len(tens)):
+            if tens[i] == 1000:
+                tens[i] = tens[i-1]
+
+    else:    
+        for i in range(1, len(tens)):
+            tens[i] = min(tens[i], tens[i-1])
+
+        for i in range(1, len(tens)):
+            if tens[i] == 1000:
+                tens[i] = tens[i-1]
+
+    return tens

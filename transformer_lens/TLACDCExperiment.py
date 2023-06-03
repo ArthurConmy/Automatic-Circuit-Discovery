@@ -7,13 +7,14 @@ from typing import Callable, Optional, Literal, List, Dict, Any, Tuple, Union, S
 import random
 from dataclasses import dataclass
 import torch
-from transformer_lens.graphics import show
+from transformer_lens.acdc_graphics import show
 from torch import nn
 from torch.nn import functional as F
 from transformer_lens.TLACDCInterpNode import TLACDCInterpNode
 from transformer_lens.TLACDCCorrespondence import TLACDCCorrespondence, TLACDCCorrespondenceFast
-from transformer_lens.HookedTransformer import HookedTransformer, GlobalCache
-from transformer_lens.graphics import log_metrics_to_wandb
+from transformer_lens.HookedTransformer import HookedTransformer
+from transformer_lens.global_cache import GlobalCache
+from transformer_lens.acdc_graphics import log_metrics_to_wandb
 import warnings
 import wandb
 from transformer_lens.acdc_utils import TorchIndex, Edge, EdgeType, extract_info, shuffle_tensor

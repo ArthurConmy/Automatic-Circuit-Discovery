@@ -66,7 +66,7 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
 from transformer_lens.hook_points import HookedRootModule, HookPoint
-from transformer_lens.graphics import show
+from transformer_lens.acdc_graphics import show
 from transformer_lens.HookedTransformer import (
     HookedTransformer,
 )
@@ -101,7 +101,7 @@ from transformer_lens.induction.utils import (
     get_mask_repeat_candidates,
 )
 from transformer_lens.greaterthan.utils import get_all_greaterthan_things
-from transformer_lens.graphics import (
+from transformer_lens.acdc_graphics import (
     build_colorscheme,
     show,
 )
