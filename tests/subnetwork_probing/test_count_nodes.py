@@ -8,7 +8,7 @@ from transformer_lens.acdc_graphics import show
 import tempfile
 import os
 
-from subnetwork_probing.transformer_lens.HookedTransformer import HookedTransformer
+from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformer import HookedTransformer
 
 from pathlib import Path
 import sys

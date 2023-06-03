@@ -28,6 +28,7 @@ setup(
         "rich",
         "accelerate",
         "typing-extensions",
+        "pydot",
     ],
     extras_require={
         "dev": ["pytest", "mypy", "pytest-cov"],

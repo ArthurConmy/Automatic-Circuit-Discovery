@@ -486,6 +486,8 @@ if __name__ == "__main__":
     kwargs = dict(**all_task_things.tl_model.cfg.__dict__)
     for kwarg_string in [
         "use_split_qkv_input",
+        "n_devices",
+        "gated_mlp",
     ]:
         if kwarg_string in kwargs:
             del kwargs[kwarg_string]
