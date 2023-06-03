@@ -34,10 +34,8 @@ in order to install graphics dependencies on linux.
 From the root directory, run 
 
 ```bash
-pytest tests/acdc -vvv --ignore=subnetwork_probing/ --ignore=tests/subnetwork_probing/
+pytest -vvv --ignore=tests/subnetwork_probing/
 ```
-
-(currently working on getting these passing)
 
 ## TODO
 
@@ -48,3 +46,5 @@ pytest tests/acdc -vvv --ignore=subnetwork_probing/ --ignore=tests/subnetwork_pr
 [ ] `tracr` and other dependencies better managed
 
 [ ] Make SP tests work
+
+[ ] Make the 9 tests also failing on TransformerLens main pass
