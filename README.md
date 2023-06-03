@@ -1,12 +1,13 @@
 :warning: This codebase is still under construction :warning:
 
-[![Python](https://img.shields.io/badge/python-3.7%2B-blue)](https://badge.fury.io/py/tensorflow) [![Open Pull Requests](https://img.shields.io/github/issues-pr/ArthurConmy/Automatic-Circuit-Discovery.svg)](https://github.com/ArthurConmy/Automatic-Circuit-Discovery/pulls)
+[![Python](https://img.shields.io/badge/python-3.7%2B-blue)]() [![Open Pull Requests](https://img.shields.io/github/issues-pr/ArthurConmy/Automatic-Circuit-Discovery.svg)](https://github.com/ArthurConmy/Automatic-Circuit-Discovery/pulls)
 
 # Automatic Circuit Discovery 
 
-This is the accompanying code to the arXiv paper "Towards Automated Circuit Discovery for Mechanistic Interpretability".
+This is the accompanying code to the paper "Towards Automated Circuit Discovery for Mechanistic Interpretability".
 
-To run ACDC, see `transformer_lens/main.py`. To see how we edit connections, see `notebooks/evaluating_subgraphs.py`. <b>This repo is still under construction.</b>
+* :zap: To run ACDC, see `transformer_lens/main.py`, or <a>href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/arthur-try-merge-tl/notebooks/colabs/ACDC_Main_Demo.ipynb#scrollTo=njv8l86QSPka">this Colab notebook</a>
+* :wrench: To see how we in models' computational subgraphs, see `notebooks/editing_edges.py` or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/arthur-try-merge-tl/notebooks/ACDC_Editing_Edges_Demo.ipynb">this Colab notebook</a>
 
 ## Installation:
 
@@ -31,10 +32,27 @@ in order to install graphics dependencies on linux.
 From the root directory, run 
 
 ```bash
-pytest -vvv --ignore=tests/subnetwork_probing/
+pytest -vvv
+```
+
+## Citing ACDC
+
+If you use ACDC, please reach out! You can reference the work as follows:
+
+```
+@misc{conmy2023automated,
+      title={Towards Automated Circuit Discovery for Mechanistic Interpretability}, 
+      author={Arthur Conmy and Augustine N. Mavor-Parker and Aengus Lynch and Stefan Heimersheim and Adrià Garriga-Alonso},
+      year={2023},
+      eprint={2304.14997},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG}
+}
 ```
 
 ## TODO
+
+[ ] Delete `arthur-try-merge-tl` references from the repo
 
 [ ] Neuron-level experiments
 
@@ -42,6 +60,6 @@ pytest -vvv --ignore=tests/subnetwork_probing/
 
 [ ] `tracr` and other dependencies better managed
 
-[ ] Make SP tests work
+[ ] Make SP tests work (lots outdated so skipped)
 
-[ ] Make the 9 tests also failing on TransformerLens main pass
+[ ] Make the 9 tests also failing on TransformerLens-main pass

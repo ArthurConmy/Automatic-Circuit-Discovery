@@ -1,21 +1,48 @@
-# %% [markdown]
+#%% [markdown]
 # <h1>General tutorial</h1>
 # <p>This notebook gives a high-level overview of the main abstractions used in the ACDC codebase.</p>
 # <p>If you are interested in models that are >10x the size of GPT-2 small, this library currently may be too slow and we would recommend you look at the path patching implementations in `TransformerLens` (forthcoming)</p>
 
+#%% [markdown]
+# <h2>Setup</h2>
+
+# Setup:
+# Janky code to do different setup when run in a Colab notebook vs VSCode (adapted from e.g <a href="https://github.com/neelnanda-io/TransformerLens/blob/5c89b7583e73ce96db5e46ef86a14b15f303dde6/demos/Activation_Patching_in_TL_Demo.ipynb">this notebook</a>)
+try:
+    import google.colab
+    IN_COLAB = True
+    print("Running as a Colab notebook")
+
+    from IPython import get_ipython
+    ipython = get_ipython()
+    ipython.run_line_magic("pip", "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@arthur-try-merge-tl")
+    ipython.run_line_magic("pip", "install torchtyping")
+    ipython.run_line_magic("pip", "install git+https://github.com/deepmind/tracr.git@e75ecdaec12bf2d831a60e54d4270e8fa31fb537#egg=tracr")
+    ipython.run_line_magic("pip", "install cmapy")
+
+except Exception as e:
+    print(f"The error looks like {e}")
+    IN_COLAB = False
+    print("Running as a Jupyter notebook - intended for development only! (This is also used for automatically generating notebook outputs)")
+
+    import plotly
+    plotly.io.renderers.default = "colab" # added by Arthur so running as a .py notebook with #%% generates .ipynb notebooks that display in colab
+    # disable this option when developing rather than generating notebook outputs
+
+    from IPython import get_ipython
+    ipython = get_ipython()
+    if ipython is not None:
+        ipython.run_line_magic("load_ext", "autoreload")  # type: ignore
+        ipython.run_line_magic("autoreload", "2")  # type: ignore
+
+
 # %% [markdown]
-# <h2> Imports etc (TODO: make this like transformer_lens/main.py !!!)</h2>
-
-from IPython import get_ipython
-
-from transformer_lens.acdc_utils import TorchIndex
-if get_ipython() is not None:
-    get_ipython().run_line_magic("load_ext", "autoreload")
-    get_ipython().run_line_magic("autoreload", "2")
+# <h2>Imports etc</h2>
 
 from transformer_lens.HookedTransformer import HookedTransformer
 from transformer_lens.TLACDCExperiment import TLACDCExperiment
 from transformer_lens.induction.utils import get_all_induction_things
+from transformer_lens.acdc_utils import TorchIndex
 import torch
 import gc
 
@@ -36,7 +63,7 @@ tl_model, toks_int_values, toks_int_values_other, metric, mask_rep = all_inducti
 
 #%%
 
-# ensure we stay under mem limit on small machines
+# Ensure we stay under mem limit on small machines
 gc.collect()
 torch.cuda.empty_cache()
 

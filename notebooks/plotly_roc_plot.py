@@ -1,5 +1,7 @@
 # %%
 
+"""Script to turn data into plotly plots"""
+
 from IPython import get_ipython
 if get_ipython() is not None:
     get_ipython().magic('load_ext autoreload')

@@ -1,10 +1,10 @@
-# %% [markdown]
-# This notebook / script shows several use cases of ACDC
+#%% [markdown]
+# This notebook (which doubles as a script) shows several use cases of ACDC
 # 
-# (The code relies on our modification of the TransformerLens codebase, 
-# mainly giving all HookPoints access to a global cache)
+# This codebase is a fork of https://github.com/neelnanda-io/TransformerLens with changes that will hopefully be merged soon :pray:
 
-# Janky code to do different setup when run in a Colab notebook vs VSCode (cribbed from e.g https://github.com/neelnanda-io/TransformerLens/blob/5c89b7583e73ce96db5e46ef86a14b15f303dde6/demos/Activation_Patching_in_TL_Demo.ipynb)
+# Setup:
+# Janky code to do different setup when run in a Colab notebook vs VSCode (adapted from e.g https://github.com/neelnanda-io/TransformerLens/blob/5c89b7583e73ce96db5e46ef86a14b15f303dde6/demos/Activation_Patching_in_TL_Demo.ipynb)
 try:
     import google.colab
     IN_COLAB = True
@@ -12,16 +12,10 @@ try:
 
     from IPython import get_ipython
     ipython = get_ipython()
-
     ipython.run_line_magic("pip", "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@arthur-try-merge-tl")
     ipython.run_line_magic("pip", "install torchtyping")
     ipython.run_line_magic("pip", "install git+https://github.com/deepmind/tracr.git@e75ecdaec12bf2d831a60e54d4270e8fa31fb537#egg=tracr")
     ipython.run_line_magic("pip", "install cmapy")
-
-    # PySvelte is an unmaintained visualization library, use it as a backup if circuitsvis isn't working
-    # # Install another version of node that makes PySvelte work way faster
-    # !curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -; sudo apt-get install -y nodejs
-    # %pip install git+https://github.com/neelnanda-io/PySvelte.git
 
 except Exception as e:
     print(f"The error looks like {e}")

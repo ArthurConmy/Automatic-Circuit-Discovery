@@ -158,68 +158,6 @@ def show(
     if show:
         return g
 
-# def get_connection_strengths(
-#     self,
-#     parent: ACDCInterpNode,
-#     child: ACDCInterpNode,
-#     minimum_penwidth: float = 0.1,
-# ) -> str:
-#     potential_key = str(parent.name) + "->" + str(child.name)
-#     if potential_key in self.connection_strengths.keys():
-#         penwidth = self.connection_strengths[potential_key]
-#         list_of_connection_strengths = [
-#             i for i in self.connection_strengths.values()
-#         ]
-#         penwidth = (
-#             10
-#             * (penwidth - min(list_of_connection_strengths))
-#             / (
-#                 1e-5
-#                 + (
-#                     max(list_of_connection_strengths)
-#                     - min(list_of_connection_strengths)
-#                 )
-#             )
-#         )
-#         if penwidth < minimum_penwidth:
-#             penwidth = minimum_penwidth
-#     else:
-#         warnings.warn(
-#             "A potential key is not in connection strength keys"
-#         )  # f"{potential_key} not in f{self.connection_strengths.keys()}")
-#         penwidth = 1
-#     return str(float(penwidth))
-
-# def build_networkx_graph(self):
-#     # create all nodes
-#     import networkx as nx
-
-#     g = nx.DiGraph()
-
-#     for index, child in enumerate(self.corr):
-#         parent: ACDCInterpNode
-#         comp_type: str
-#         child = typing.cast(ACDCInterpNode, child)
-#         if len(child.parents) > 0 or index == 0:
-#             g.add_node(child.name)
-
-#     # connect the nodes
-#     for child in self.corr:
-#         parent: ACDCInterpNode
-#         child = typing.cast(ACDCInterpNode, child)
-#         for parent in child.parents:
-#             g.add_edge(
-#                 child.name, parent.name,
-#             )
-#     return g
-
-# def extract_connection_strengths(self, a_node):
-#     connection_strengths = []
-#     for a_key in self.connection_strengths.keys():
-#         if a_node in a_key.split("->")[1]:
-#             connection_strengths.append(self.connection_strengths[a_key])
-#     return connection_strengths
-
 # -------------------------------------------
 # WANDB
 # -------------------------------------------
