@@ -28,7 +28,7 @@ def shuffle_tensor(tens, seed=42):
 
 class OrderedDefaultdict(defaultdict):
     def __init__(self, *args, **kwargs):
-        if sys.version_info < (3,7):
+        if sys.version_info < (3, 7):
             raise Exception("You need Python >= 3.7 so dict is ordered by default. You could revert to the old implementation https://github.com/ArthurConmy/Automatic-Circuit-Discovery/commit/65301ec57c31534bd34383c243c782e3ccb7ed82")
         super().__init__(*args, **kwargs)
 

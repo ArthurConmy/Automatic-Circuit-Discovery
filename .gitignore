@@ -1,6 +1,7 @@
 out.txt
 out2.txt
 out1.txt
+*.sage.py
 *.pt
 *.pkl
 better*.json
