@@ -1,11 +1,14 @@
 # Import stuff
+import warnings
 import logging
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
+from functools import wraps
 
 import torch.nn as nn
 import torch.utils.hooks as hooks
+import numpy as np
 
 
 @dataclass
@@ -43,35 +46,59 @@ class HookPoint(nn.Module):
         super().__init__()
         self.fwd_hooks: List[LensHandle] = []
         self.bwd_hooks: List[LensHandle] = []
+
         self.ctx = {}
 
         # A variable giving the hook's name (from the perspective of the root
         # module) - this is set by the root module at setup.
+
         self.name = None
 
     def add_perma_hook(self, hook, dir="fwd") -> None:
         self.add_hook(hook, dir=dir, is_permanent=True)
 
-    def add_hook(self, hook, dir="fwd", is_permanent=False, level=None) -> None:
-        # Hook format is fn(activation, hook_name)
-        # Change it into PyTorch hook format (this includes input and output,
-        # which are the same for a HookPoint)
+
+    def add_hook(self, hook, dir="fwd", is_permanent=False, level=None, prepend=False) -> None:
+        """
+        Hook format is fn(activation, hook_name)
+        Change it into PyTorch hook format (this includes input and output,
+        which are the same for a HookPoint)
+        
+        ACDC adds the `prepend` argument
+        """
         if dir == "fwd":
 
+            @wraps(hook) # addition to ACDC; allows names of hooks to be visible: see https://github.com/neelnanda-io/TransformerLens/issues/297
             def full_hook(module, module_input, module_output):
                 return hook(module_output, hook=self)
 
             handle = self.register_forward_hook(full_hook)
             handle = LensHandle(handle, is_permanent, level)
-            self.fwd_hooks.append(handle)
+
+            if prepend:
+                # we could just pass this as an argument in PyTorch 2.0, but for now we manually do this...
+                self._forward_hooks.move_to_end(handle.hook.id, last=False)
+                self.fwd_hooks.insert(0, handle)
+
+            else:
+                self.fwd_hooks.append(handle)
+
         elif dir == "bwd":
             # For a backwards hook, module_output is a tuple of (grad,) - I don't know why.
+
+            @wraps(hook) # addition to ACDC; allows names of hooks to be visible: see https://github.com/neelnanda-io/TransformerLens/issues/297
             def full_hook(module, module_input, module_output):
                 return hook(module_output[0], hook=self)
 
             handle = self.register_full_backward_hook(full_hook)
             handle = LensHandle(handle, is_permanent, level)
-            self.bwd_hooks.append(handle)
+
+            if prepend:
+                # we could just pass this as an argument in PyTorch 2.0, but for now we manually do this...
+                self._backward_hooks.move_to_end(handle.hook.id, last=False)
+                self.bwd_hooks.insert(0, handle)
+            else:
+                self.bwd_hooks.append(handle)
         else:
             raise ValueError(f"Invalid direction {dir}")
 
@@ -144,6 +171,8 @@ class HookedRootModule(nn.Module):
             if "HookPoint" in str(type(module)):
                 self.hook_dict[name] = module
 
+        
+
     def hook_points(self):
         return self.hook_dict.values()
 
@@ -179,12 +208,13 @@ class HookedRootModule(nn.Module):
         dir="fwd",
         is_permanent=False,
         level=None,
+        prepend=False,
     ) -> None:
         """Runs checks on the hook, and then adds it to the hook point"""
         self.check_hooks_to_add(
-            hook_point, hook_point_name, hook, dir=dir, is_permanent=is_permanent
+            hook_point, hook_point_name, hook, dir=dir, is_permanent=is_permanent, prepend=prepend,
         )
-        hook_point.add_hook(hook, dir=dir, is_permanent=is_permanent, level=level)
+        hook_point.add_hook(hook, dir=dir, is_permanent=is_permanent, level=level, prepend=prepend)
 
     def check_hooks_to_add(
         self, hook_point, hook_point_name, hook, dir="fwd", is_permanent=False
@@ -192,7 +222,7 @@ class HookedRootModule(nn.Module):
         """Override this function to add checks on which hooks should be added"""
         pass
 
-    def add_hook(self, name, hook, dir="fwd", is_permanent=False, level=None) -> None:
+    def add_hook(self, name, hook, dir="fwd", is_permanent=False, level=None, prepend=False) -> None:
         if type(name) == str:
             self.check_and_add_hook(
                 self.mod_dict[name],
@@ -201,6 +231,7 @@ class HookedRootModule(nn.Module):
                 dir=dir,
                 is_permanent=is_permanent,
                 level=level,
+                prepend=prepend,
             )
         else:
             # Otherwise, name is a Boolean function on names
@@ -213,6 +244,7 @@ class HookedRootModule(nn.Module):
                         dir=dir,
                         is_permanent=is_permanent,
                         level=level,
+                        prepend=prepend,
                     )
 
     def add_perma_hook(self, name, hook, dir="fwd") -> None:
