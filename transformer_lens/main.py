@@ -9,16 +9,25 @@ try:
     import google.colab
     IN_COLAB = True
     print("Running as a Colab notebook")
+
+    from IPython import get_ipython
+    ipython = get_ipython()
+
+    ipython.run_line_magic("pip", "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@arthur-try-merge-tl")
+    ipython 
+
     %pip install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@arthur-try-merge-tl # TODO update to remove the specific branch install when we finish merging!
-    %pip install circuitsvis
-    %cd Automatic-Circuit-Discovery
-    %pip install -e .
+    %pip install torchtyping
+    %pip install git+https://github.com/deepmind/tracr.git@e75ecdaec12bf2d831a60e54d4270e8fa31fb537#egg=tracr
+    %pip install cmapy
 
     # PySvelte is an unmaintained visualization library, use it as a backup if circuitsvis isn't working
     # # Install another version of node that makes PySvelte work way faster
     # !curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -; sudo apt-get install -y nodejs
     # %pip install git+https://github.com/neelnanda-io/PySvelte.git
-except:
+
+except Exception as e:
+    print(f"The error looks like {e}")
     IN_COLAB = False
     print("Running as a Jupyter notebook - intended for development only! (This is also used for automatically generating notebook outputs)")
 
@@ -201,8 +210,11 @@ if RESET_NETWORK:
 
 #%%
 
-with open(__file__, "r") as f:
-    notes = f.read()
+if IN_COLAB:
+    notes = "No notes; using colab"
+else:
+    with open(__file__, "r") as f:
+        notes = f.read()
 
 tl_model.reset_hooks()
 

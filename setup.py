@@ -18,9 +18,9 @@ setup(
         "datasets",
         "wandb",
         "fancy_einsum",
-        "torchtyping",
+        "torchtyping", # TODO doesn't install?
         "huggingface_hub",
-        "cmapy",
+        "cmapy", # TODO doesn't install?
         "graphviz", 
         "networkx",
         "rich",
