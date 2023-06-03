@@ -343,6 +343,8 @@ if USING_WANDB:
 # %% [markdown]
 # <h2> Save the final subgraph of the model</h2>
 
+# TODO explain that there are some edges missing from this list (I think?)
+
 exp.save_subgraph(
     return_it=True,
-)
+) 
