@@ -14,12 +14,9 @@ try:
     ipython = get_ipython()
 
     ipython.run_line_magic("pip", "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@arthur-try-merge-tl")
-    ipython 
-
-    %pip install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@arthur-try-merge-tl # TODO update to remove the specific branch install when we finish merging!
-    %pip install torchtyping
-    %pip install git+https://github.com/deepmind/tracr.git@e75ecdaec12bf2d831a60e54d4270e8fa31fb537#egg=tracr
-    %pip install cmapy
+    ipython.run_line_magic("pip", "install torchtyping")
+    ipython.run_line_magic("pip", "install git+https://github.com/deepmind/tracr.git@e75ecdaec12bf2d831a60e54d4270e8fa31fb537#egg=tracr")
+    ipython.run_line_magic("pip", "install cmapy")
 
     # PySvelte is an unmaintained visualization library, use it as a backup if circuitsvis isn't working
     # # Install another version of node that makes PySvelte work way faster
