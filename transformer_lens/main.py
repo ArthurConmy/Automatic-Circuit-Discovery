@@ -5,14 +5,15 @@
 # mainly giving all HookPoints access to a global cache)
 
 # Janky code to do different setup when run in a Colab notebook vs VSCode (cribbed from e.g https://github.com/neelnanda-io/TransformerLens/blob/5c89b7583e73ce96db5e46ef86a14b15f303dde6/demos/Activation_Patching_in_TL_Demo.ipynb)
-DEVELOPMENT_MODE = False
 try:
     import google.colab
     IN_COLAB = True
     print("Running as a Colab notebook")
-    %pip install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git
+    %pip install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@arthur-try-merge-tl # TODO update to remove the specific branch install when we finish merging!
     %pip install circuitsvis
-    
+    %cd Automatic-Circuit-Discovery
+    %pip install -e .
+
     # PySvelte is an unmaintained visualization library, use it as a backup if circuitsvis isn't working
     # # Install another version of node that makes PySvelte work way faster
     # !curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -; sudo apt-get install -y nodejs
@@ -22,7 +23,7 @@ except:
     print("Running as a Jupyter notebook - intended for development only! (This is also used for automatically generating notebook outputs)")
 
     import plotly
-    plotly.io.renderers.default = "colab" # added by Arthur so running as a .py notebook with #%% generates colab notebooks that display in colab
+    plotly.io.renderers.default = "colab" # added by Arthur so running as a .py notebook with #%% generates .ipynb notebooks that display in colab
     # disable this option when developing rather than generating notebook outputs
 
     from IPython import get_ipython
