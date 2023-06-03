@@ -24,7 +24,7 @@ setup(
         "graphviz", 
         "networkx",
         "rich",
-        # "git+https://github.com/deepmind/tracr.git", # sad does not work; pip deprecated
+        # "git+https://github.com/deepmind/tracr.git", # sad does not work; from setup.py : (
         "rich",
         "accelerate",
         "typing-extensions",

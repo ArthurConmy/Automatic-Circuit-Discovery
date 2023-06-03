@@ -139,7 +139,7 @@ torch.autograd.set_grad_enabled(False)
 #%% [markdown]
 
 parser = argparse.ArgumentParser(description="Used to control ROC plot scripts (for standardisation with other files...)")
-parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr (WIPs)')
+parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr-reverse, tracr-proportion, greaterthan')
 parser.add_argument("--mode", type=str, required=False, choices=["edges", "nodes"], help="Choose a mode from the available options: edges, nodes", default="edges") # TODO implement nodes
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
 parser.add_argument('--metric', type=str, default="kl_div", help="Which metric to use for the experiment")

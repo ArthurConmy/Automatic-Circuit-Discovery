@@ -139,5 +139,5 @@ def test_main_script():
     for task in ["induction", "ioi", "tracr", "docstring"]:
         subprocess.run(["python", "../../transformer_lens/main.py", "--task", task, "--threshold", "123456789", "--single-step"])
 
-def test_evaluating_subgraphs_notebook():
-    import notebooks.evaluating_subgraphs
+def test_editing_edges_notebook():
+    import notebooks.editing_edges

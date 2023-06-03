@@ -11,7 +11,7 @@ from transformer_lens.acdc_graphics import show
 from torch import nn
 from torch.nn import functional as F
 from transformer_lens.TLACDCInterpNode import TLACDCInterpNode
-from transformer_lens.TLACDCCorrespondence import TLACDCCorrespondence, TLACDCCorrespondenceFast
+from transformer_lens.TLACDCCorrespondence import TLACDCCorrespondence
 from transformer_lens.HookedTransformer import HookedTransformer
 from transformer_lens.global_cache import GlobalCache
 from transformer_lens.acdc_graphics import log_metrics_to_wandb

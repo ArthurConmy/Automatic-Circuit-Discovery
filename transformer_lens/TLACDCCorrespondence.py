@@ -235,11 +235,3 @@ class TLACDCCorrespondence:
         if verbose:
             print("No edge", cnt)
         return cnt
-        
-
-class TLACDCCorrespondenceFast:
-    """This only stores the edges in the ACDC graph picture, for speed"""
-
-    @classmethod
-    def setup_from_model(cls):
-        raise NotImplementedError("Don't create fast correspondences from the whole subgraph!")

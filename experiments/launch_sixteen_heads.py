@@ -54,7 +54,7 @@ set_plotly_renderer("emacs")
 #%%
 
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
-parser.add_argument('--task', type=str, required=True, help='Choose a task from the available options: ioi, docstring, induction, tracr (no guarentee I implement all...)')
+parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr-reverse, tracr-proportion, greaterthan')
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
 parser.add_argument('--wandb-entity', type=str, required=False, default="remix_school-of-rock", help='Value for WANDB_ENTITY_NAME')
 parser.add_argument('--wandb-group', type=str, required=False, default="default", help='Value for WANDB_GROUP_NAME')
@@ -110,7 +110,6 @@ elif args.task == "induction":
     seq_len = 300
     # TODO initialize the `tl_model` with the right model
     things = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=args.device, metric=args.metric)
-
 elif args.task == "docstring":
     num_examples = 50
     seq_len = 41
