@@ -13,7 +13,10 @@ profile*.json
 *.gv
 __pycache__
 Testing_Notebook.ipynb
+
+scratch.py
 transformer_lens/scratch.py
+
 .vscode/
 .idea/
 wandb*
@@ -50,6 +53,12 @@ profile.json
 profile2.json
 profile_trash.json
 pts/
+<<<<<<< HEAD
 .coverage*
 .Ds_Store
 .pylintrc
+=======
+
+
+**/.DS_Store
+>>>>>>> origin/adria/offline-tracr

@@ -18,10 +18,17 @@ setup(
         "datasets",
         "wandb",
         "fancy_einsum",
+<<<<<<< HEAD
         "torchtyping", # TODO doesn't install?
+=======
+>>>>>>> origin/adria/offline-tracr
         "huggingface_hub",
         "cmapy", # TODO doesn't install?
         "graphviz", 
+        "kaleido",
+        "plotly",
+        "torchtyping",
+        "cmapy",
         "networkx",
         "rich",
         # "git+https://github.com/deepmind/tracr.git", # sad does not work; from setup.py : (

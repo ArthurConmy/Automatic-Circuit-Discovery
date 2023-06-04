@@ -5,21 +5,23 @@ from typing import List
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
-    "tracr-reverse": ["kl_div"],
+    "tracr-reverse": ["l2"],
     "tracr-proportion": ["kl_div", "l2"],
     "induction": ["kl_div", "nll"],
     "docstring": ["kl_div", "docstring_metric"],
-    "greaterthan": ["kl_div", "greaterthan"],
+    "greaterthan": ["greaterthan"],  # "kl_div",
 }
 
 
-def main(TASKS: list[str], job: KubernetesJob, name: str):
+CPU = 2
+
+def main(TASKS: list[str], job: KubernetesJob, name: str, group_name: str):
     seed = 1259281515
     random.seed(seed)
 
     wandb_identifier = WandbIdentifier(
         run_name=f"{name}-{{i:05d}}",
-        group_name="sixteen-heads",
+        group_name=group_name,
         project="acdc")
 
     commands: List[List[str]] = []
@@ -44,7 +46,8 @@ def main(TASKS: list[str], job: KubernetesJob, name: str):
                         f"--reset-network={reset_network}",
                         f"--seed={random.randint(0, 2**32 - 1)}",
                         f"--metric={metric}",
-                        "--wandb-dir=/training/16heads",  # If it doesn't exist wandb will use /tmp
+                        f"--torch-num-threads={CPU}",
+                        "--wandb-dir=/root/.cache/huggingface/tracr-training/16heads",  # If it doesn't exist wandb will use /tmp
                         f"--wandb-mode=online",
                     ]
                     if zero_ablation:
@@ -53,17 +56,26 @@ def main(TASKS: list[str], job: KubernetesJob, name: str):
                     commands.append(command)
 
 
-    launch(commands, name=wandb_identifier.run_name, job=job, check_wandb=wandb_identifier, just_print_commands=False)
+    launch(
+        commands,
+        name=wandb_identifier.run_name,
+        job=job,
+        check_wandb=wandb_identifier,
+        just_print_commands=False,
+        synchronous=True,
+    )
 
 
 if __name__ == "__main__":
     main(
-        ["ioi", "greaterthan", "induction", "docstring"],
-        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=2, gpu=1),
-        "16h-gpu",
+        # ["ioi", "greaterthan", "induction", "docstring"],
+        ["tracr-reverse"],
+        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.7.1", cpu=CPU, gpu=0),
+        "16h-redo",
+        group_name="sixteen-heads",
     )
-    main(
-        ["tracr-reverse", "tracr-proportion"],
-        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=4, gpu=0),
-        "16h-tracr",
-    )
+    # main(
+    #     ["tracr-reverse", "tracr-proportion"],
+    #     KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=4, gpu=0),
+    #     "16h-tracr",
+    # )

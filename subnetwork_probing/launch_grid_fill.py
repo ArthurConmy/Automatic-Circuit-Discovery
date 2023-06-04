@@ -5,7 +5,7 @@ from typing import List
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
-    "tracr-reverse": ["kl_div"],
+    "tracr-reverse": ["l2"],
     "tracr-proportion": ["kl_div", "l2"],
     "induction": ["kl_div", "nll"],
     "docstring": ["kl_div", "docstring_metric"],
@@ -29,8 +29,8 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool, reset_n
         base_regularization_params = expensive_base_regularization_params
 
     wandb_identifier = WandbIdentifier(
-        run_name=f"{name}-{{i:05d}}",
-        group_name="reset-networks3",
+        run_name=f"{name}-res{int(reset_networks)}-{{i:05d}}",
+        group_name="tracr-shuffled-redo",
         project="induction-sp-replicate")
 
 
@@ -121,14 +121,15 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool, reset_n
                             f"--num-examples={6 if testing else num_examples}",
                             f"--seq-len={seq_len}",
                             f"--n-loss-average-runs={1 if testing else 20}",
-                            "--wandb-dir=./tracr_anew",  # If it doesn't exist wandb will use /tmp
-                            f"--wandb-mode={'offline' if testing else 'online'}",
+                            "--wandb-dir=/training",  # If it doesn't exist wandb will use /tmp
+                            f"--wandb-mode=online",
+                            f"--torch-num-threads={job.cpu}",
                         ]
                         commands.append(command)
 
     launch(
         commands,
-        name="complete-spreadsheet",
+        name=name,
         job=job,
         synchronous=True,
         check_wandb=wandb_identifier,
@@ -136,17 +137,17 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool, reset_n
     )
 
 if __name__ == "__main__":
-    main(
-        ["ioi", "greaterthan", "induction", "docstring"],
-        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=2, gpu=1),
-        "sp-gpu",
-        testing=False,
-        reset_networks=True,
-    )
-    main(
-        ["tracr-reverse", "tracr-proportion"],
-        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.6.1", cpu=4, gpu=0),
-        "sp-tracr",
-        testing=False,
-        reset_networks=True,
-    )
+    for reset_networks in [False, True]:
+        for task in ["tracr-reverse"]:
+            main(
+                [task],
+                KubernetesJob(
+                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.7.2",
+                    cpu=4,
+                    gpu=0 if task.startswith("tracr") else 1,
+                    mount_training=False,
+                ),
+                name=f"sp-{task}",
+                testing=False,
+                reset_networks=reset_networks,
+            )
