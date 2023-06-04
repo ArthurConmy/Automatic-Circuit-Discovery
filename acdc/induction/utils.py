@@ -1,6 +1,6 @@
 import dataclasses
 from functools import partial
-from transformer_lens.docstring.utils import AllDataThings
+from acdc.docstring.utils import AllDataThings
 import wandb
 import os
 from collections import defaultdict
@@ -22,7 +22,7 @@ from typing import (
 )
 import warnings
 import networkx as nx
-from transformer_lens.acdc_utils import (
+from acdc.acdc_utils import (
     MatchNLLMetric,
     make_nd_dict,
     TorchIndex,
@@ -31,7 +31,7 @@ from transformer_lens.acdc_utils import (
     shuffle_tensor,
 )  # these introduce several important classes !!!
 from transformer_lens import HookedTransformer
-from transformer_lens.acdc_utils import kl_divergence, negative_log_probs
+from acdc.acdc_utils import kl_divergence, negative_log_probs
 
 def get_model(device):
     tl_model = HookedTransformer.from_pretrained(

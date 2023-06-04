@@ -22,8 +22,8 @@ from typing import (
 )
 import warnings
 import networkx as nx
-import transformer_lens.docstring.prompts as prompts
-from transformer_lens.acdc_utils import (
+import acdc.docstring.prompts as prompts
+from acdc.acdc_utils import (
     MatchNLLMetric,
     make_nd_dict,
     TorchIndex,
@@ -33,7 +33,7 @@ from transformer_lens.acdc_utils import (
     shuffle_tensor,
 )  # these introduce several important classes !!!
 from transformer_lens import HookedTransformer
-from transformer_lens.acdc_utils import kl_divergence
+from acdc.acdc_utils import kl_divergence
 
 
 @dataclasses.dataclass(frozen=False)

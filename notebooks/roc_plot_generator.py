@@ -30,7 +30,7 @@ if IPython.get_ipython() is not None:
 
 from copy import deepcopy
 from subnetwork_probing.train import correspondence_from_mask
-from transformer_lens.acdc_utils import false_positive_rate, false_negative_rate, true_positive_stat
+from acdc.acdc_utils import false_positive_rate, false_negative_rate, true_positive_stat
 import pandas as pd
 import math
 import sys
@@ -48,7 +48,7 @@ from typing import (
     Set,
 )
 import requests
-from transformer_lens.TLACDCInterpNode import parse_interpnode, heads_to_nodes_to_mask
+from acdc.TLACDCInterpNode import parse_interpnode, heads_to_nodes_to_mask
 import pickle
 import wandb
 import IPython
@@ -84,9 +84,9 @@ from transformer_lens.hook_points import HookedRootModule, HookPoint
 from transformer_lens.HookedTransformer import (
     HookedTransformer,
 )
-from transformer_lens.tracr.utils import get_tracr_model_input_and_tl_model, get_tracr_proportion_edges, get_tracr_reverse_edges, get_all_tracr_things
-from transformer_lens.docstring.utils import get_all_docstring_things, get_docstring_model, get_docstring_subgraph_true_edges
-from transformer_lens.acdc_utils import (
+from acdc.tracr.utils import get_tracr_model_input_and_tl_model, get_tracr_proportion_edges, get_tracr_reverse_edges, get_all_tracr_things
+from acdc.docstring.utils import get_all_docstring_things, get_docstring_model, get_docstring_subgraph_true_edges
+from acdc.acdc_utils import (
     make_nd_dict,
     shuffle_tensor,
     cleanup,
@@ -96,34 +96,34 @@ from transformer_lens.acdc_utils import (
     EdgeType,
 )  # these introduce several important classes !!!
 
-from transformer_lens.TLACDCCorrespondence import TLACDCCorrespondence
-from transformer_lens.TLACDCInterpNode import TLACDCInterpNode
-from transformer_lens.TLACDCExperiment import TLACDCExperiment
+from acdc.TLACDCCorrespondence import TLACDCCorrespondence
+from acdc.TLACDCInterpNode import TLACDCInterpNode
+from acdc.TLACDCExperiment import TLACDCExperiment
 
 from collections import defaultdict, deque, OrderedDict
-from transformer_lens.acdc_utils import (
+from acdc.acdc_utils import (
     kl_divergence,
 )
-from transformer_lens.ioi.utils import (
+from acdc.ioi.utils import (
     get_ioi_true_edges,
     get_gpt2_small,
 )
-from transformer_lens.induction.utils import (
+from acdc.induction.utils import (
     get_all_induction_things,
     get_validation_data,
     get_good_induction_candidates,
     get_mask_repeat_candidates,
 )
-from transformer_lens.acdc_graphics import (
+from acdc.acdc_graphics import (
     build_colorscheme,
     show,
 )
-from transformer_lens.ioi.utils import (
+from acdc.ioi.utils import (
     get_all_ioi_things,
     get_gpt2_small,
 )
 import argparse
-from transformer_lens.greaterthan.utils import get_all_greaterthan_things, get_greaterthan_true_edges
+from acdc.greaterthan.utils import get_all_greaterthan_things, get_greaterthan_true_edges
 from pathlib import Path
 
 from notebooks.emacs_plotly_render import set_plotly_renderer

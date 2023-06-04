@@ -9,27 +9,27 @@ from functools import partial
 from pathlib import Path
 from typing import Dict, List, Tuple
 import collections
-from transformer_lens.greaterthan.utils import get_all_greaterthan_things
-from transformer_lens.ioi.utils import get_all_ioi_things
+from acdc.greaterthan.utils import get_all_greaterthan_things
+from acdc.ioi.utils import get_all_ioi_things
 import huggingface_hub
 import gc
 
 import networkx as nx
 import numpy as np
-from transformer_lens.docstring.utils import AllDataThings, get_all_docstring_things
+from acdc.docstring.utils import AllDataThings, get_all_docstring_things
 import pandas as pd
 import torch
 import torch.nn.functional as F
 import subnetwork_probing.transformer_lens.transformer_lens.utils as utils
-from transformer_lens.tracr.utils import get_all_tracr_things
-from transformer_lens.acdc_utils import EdgeType, TorchIndex, reset_network
-from transformer_lens.TLACDCCorrespondence import TLACDCCorrespondence
-from transformer_lens.TLACDCInterpNode import TLACDCInterpNode
-from transformer_lens.induction.utils import get_all_induction_things, get_mask_repeat_candidates
+from acdc.tracr.utils import get_all_tracr_things
+from acdc.acdc_utils import EdgeType, TorchIndex, reset_network
+from acdc.TLACDCCorrespondence import TLACDCCorrespondence
+from acdc.TLACDCInterpNode import TLACDCInterpNode
+from acdc.induction.utils import get_all_induction_things, get_mask_repeat_candidates
 from tqdm import tqdm
 from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformer import HookedTransformer
 from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformerConfig import HookedTransformerConfig
-from subnetwork_probing.transformer_lens.transformer_lens.ioi_dataset import IOIDataset
+from subnetwork_probing.transformer_lens.acdc.ioi_dataset import IOIDataset
 
 import wandb
 

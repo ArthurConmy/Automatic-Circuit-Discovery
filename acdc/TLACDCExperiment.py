@@ -7,21 +7,21 @@ from typing import Callable, Optional, Literal, List, Dict, Any, Tuple, Union, S
 import random
 from dataclasses import dataclass
 import torch
-from transformer_lens.acdc_graphics import show
+from acdc.acdc_graphics import show
 from torch import nn
 from torch.nn import functional as F
-from transformer_lens.TLACDCInterpNode import TLACDCInterpNode
-from transformer_lens.TLACDCCorrespondence import TLACDCCorrespondence
+from acdc.TLACDCInterpNode import TLACDCInterpNode
+from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from transformer_lens.HookedTransformer import HookedTransformer
-from transformer_lens.global_cache import GlobalCache
-from transformer_lens.acdc_graphics import log_metrics_to_wandb
+from acdc.globalcache import GlobalCache
+from acdc.acdc_graphics import log_metrics_to_wandb
 import warnings
 import wandb
-from transformer_lens.acdc_utils import TorchIndex, Edge, EdgeType, extract_info, shuffle_tensor
+from acdc.acdc_utils import TorchIndex, Edge, EdgeType, extract_info, shuffle_tensor
 from collections import OrderedDict
 from functools import partial
 import time
-from transformer_lens.acdc_utils import TorchIndexHashableTuple
+from acdc.acdc_utils import TorchIndexHashableTuple
 
 Subgraph = Dict[Tuple[str, TorchIndexHashableTuple, str, TorchIndexHashableTuple], bool] # an alias for loading and saving from WANDB (primarily)
 

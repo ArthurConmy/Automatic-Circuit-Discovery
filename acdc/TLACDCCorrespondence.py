@@ -1,6 +1,6 @@
-from transformer_lens.TLACDCInterpNode import TLACDCInterpNode
+from acdc.TLACDCInterpNode import TLACDCInterpNode
 from collections import OrderedDict
-from transformer_lens.acdc_utils import TorchIndex, Edge, EdgeType, OrderedDefaultdict, make_nd_dict
+from acdc.acdc_utils import TorchIndex, Edge, EdgeType, OrderedDefaultdict, make_nd_dict
 from typing import List, Dict, Optional, Tuple, Union, Set, Callable, TypeVar, Iterable, Any
 
 

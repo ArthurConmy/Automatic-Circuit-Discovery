@@ -1,6 +1,6 @@
 from collections import OrderedDict
-from transformer_lens.acdc_utils import Edge, TorchIndex, EdgeType
-from transformer_lens.TLACDCInterpNode import TLACDCInterpNode
+from acdc.acdc_utils import Edge, TorchIndex, EdgeType
+from acdc.TLACDCInterpNode import TLACDCInterpNode
 import warnings
 from functools import partial
 from copy import deepcopy
@@ -8,10 +8,10 @@ import torch.nn.functional as F
 from typing import List
 import click
 import IPython
-from transformer_lens.acdc_utils import MatchNLLMetric, frac_correct_metric, logit_diff_metric, kl_divergence, negative_log_probs
+from acdc.acdc_utils import MatchNLLMetric, frac_correct_metric, logit_diff_metric, kl_divergence, negative_log_probs
 import torch
-from transformer_lens.docstring.utils import AllDataThings
-from transformer_lens.ioi.ioi_dataset import IOIDataset  # NOTE: we now import this LOCALLY so it is deterministic
+from acdc.docstring.utils import AllDataThings
+from acdc.ioi.ioi_dataset import IOIDataset  # NOTE: we now import this LOCALLY so it is deterministic
 from tqdm import tqdm
 import wandb
 from transformer_lens.HookedTransformer import HookedTransformer

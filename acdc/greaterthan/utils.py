@@ -1,6 +1,6 @@
 from collections import OrderedDict
-from transformer_lens.acdc_utils import Edge, TorchIndex, EdgeType
-from transformer_lens.TLACDCInterpNode import TLACDCInterpNode
+from acdc.acdc_utils import Edge, TorchIndex, EdgeType
+from acdc.TLACDCInterpNode import TLACDCInterpNode
 import warnings
 from functools import partial
 from copy import deepcopy
@@ -8,9 +8,9 @@ import torch.nn.functional as F
 from typing import List
 import click
 import IPython
-from transformer_lens.acdc_utils import kl_divergence
+from acdc.acdc_utils import kl_divergence
 import torch
-from transformer_lens.ioi.ioi_dataset import IOIDataset  # NOTE: we now import this LOCALLY so it is deterministic
+from acdc.ioi.ioi_dataset import IOIDataset  # NOTE: we now import this LOCALLY so it is deterministic
 from tqdm import tqdm
 import wandb
 from transformer_lens.HookedTransformer import HookedTransformer
@@ -21,9 +21,9 @@ from typing import ClassVar, Optional
 import torch
 import torch.nn.functional as F
 
-from transformer_lens.acdc_utils import kl_divergence, TorchIndex
-from transformer_lens.docstring.utils import AllDataThings
-from transformer_lens.ioi.utils import get_gpt2_small
+from acdc.acdc_utils import kl_divergence, TorchIndex
+from acdc.docstring.utils import AllDataThings
+from acdc.ioi.utils import get_gpt2_small
 from collections import OrderedDict
 
 NOUNS = [

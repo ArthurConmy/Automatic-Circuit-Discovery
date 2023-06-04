@@ -48,7 +48,7 @@ from transformer_lens.hook_points import HookedRootModule, HookPoint
 from transformer_lens.HookedTransformer import (
     HookedTransformer,
 )
-from transformer_lens.acdc_utils import (
+from acdc.acdc_utils import (
     make_nd_dict,
     shuffle_tensor,
     ct,
@@ -58,18 +58,18 @@ from transformer_lens.acdc_utils import (
 )  # these introduce several important classes !!!
 
 from acdc.TLACDCCorrespondence import TLACDCCorrespondence
-from transformer_lens.TLACDCInterpNode import TLACDCInterpNode
-from transformer_lens.TLACDCExperiment import TLACDCExperiment
+from acdc.TLACDCInterpNode import TLACDCInterpNode
+from acdc.TLACDCExperiment import TLACDCExperiment
 
 from collections import defaultdict, deque, OrderedDict
-from transformer_lens.induction.utils import (
+from acdc.induction.utils import (
     get_all_induction_things,
     get_validation_data,
     get_good_induction_candidates,
     get_mask_repeat_candidates,
 )
-from transformer_lens.tracr.utils import get_tracr_model_input_and_tl_model
-from transformer_lens.acdc_graphics import (
+from acdc.tracr.utils import get_tracr_model_input_and_tl_model
+from acdc.acdc_graphics import (
     build_colorscheme,
     show,
 )

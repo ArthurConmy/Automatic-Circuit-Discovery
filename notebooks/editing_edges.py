@@ -46,9 +46,9 @@ except Exception as e:
 # <h2>Imports etc</h2>
 
 from transformer_lens.HookedTransformer import HookedTransformer
-from transformer_lens.TLACDCExperiment import TLACDCExperiment
-from transformer_lens.induction.utils import get_all_induction_things
-from transformer_lens.acdc_utils import TorchIndex
+from acdc.TLACDCExperiment import TLACDCExperiment
+from acdc.induction.utils import get_all_induction_things
+from acdc.acdc_utils import TorchIndex
 import torch
 import gc
 

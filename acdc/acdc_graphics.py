@@ -16,8 +16,8 @@ from typing import List, Optional
 import warnings
 import networkx as nx
 import graphviz
-from transformer_lens.TLACDCCorrespondence import TLACDCCorrespondence
-from transformer_lens.TLACDCInterpNode import TLACDCInterpNode
+from acdc.TLACDCCorrespondence import TLACDCCorrespondence
+from acdc.TLACDCInterpNode import TLACDCInterpNode
 
 # # I hope that it's reasonable...
 # from transformer_lens.utils import (

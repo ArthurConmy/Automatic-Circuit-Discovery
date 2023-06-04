@@ -77,19 +77,19 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
 from transformer_lens.hook_points import HookedRootModule, HookPoint
-from transformer_lens.acdc_graphics import show
+from acdc.acdc_graphics import show
 from transformer_lens.HookedTransformer import (
     HookedTransformer,
 )
 try:
-    from transformer_lens.tracr.utils import (
+    from acdc.tracr.utils import (
         get_all_tracr_things,
         get_tracr_model_input_and_tl_model,
     )
 except Exception as e:
     print(f"Could not import `tracr` because {e}; the rest of the file should work but you cannot use the tracr tasks")
-from transformer_lens.docstring.utils import get_all_docstring_things
-from transformer_lens.acdc_utils import (
+from acdc.docstring.utils import get_all_docstring_things
+from acdc.acdc_utils import (
     make_nd_dict,
     reset_network,
     shuffle_tensor,
@@ -101,24 +101,24 @@ from transformer_lens.acdc_utils import (
 )  # these introduce several important classes !!!
 
 from acdc.TLACDCCorrespondence import TLACDCCorrespondence
-from transformer_lens.TLACDCInterpNode import TLACDCInterpNode
-from transformer_lens.TLACDCExperiment import TLACDCExperiment
+from acdc.TLACDCInterpNode import TLACDCInterpNode
+from acdc.TLACDCExperiment import TLACDCExperiment
 
-from transformer_lens.acdc_utils import (
+from acdc.acdc_utils import (
     kl_divergence,
 )
-from transformer_lens.ioi.utils import (
+from acdc.ioi.utils import (
     get_all_ioi_things,
     get_gpt2_small,
 )
-from transformer_lens.induction.utils import (
+from acdc.induction.utils import (
     get_all_induction_things,
     get_validation_data,
     get_good_induction_candidates,
     get_mask_repeat_candidates,
 )
-from transformer_lens.greaterthan.utils import get_all_greaterthan_things
-from transformer_lens.acdc_graphics import (
+from acdc.greaterthan.utils import get_all_greaterthan_things
+from acdc.acdc_graphics import (
     build_colorscheme,
     show,
 )

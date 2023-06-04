@@ -3,11 +3,11 @@ import torch
 from pprint import pprint
 import gc
 
-from transformer_lens.greaterthan.utils import get_all_greaterthan_things
-from transformer_lens.induction.utils import get_all_induction_things
-from transformer_lens.ioi.utils import get_all_ioi_things
-from transformer_lens.tracr.utils import get_all_tracr_things, get_tracr_model_input_and_tl_model
-from transformer_lens.docstring.utils import get_all_docstring_things, AllDataThings
+from acdc.greaterthan.utils import get_all_greaterthan_things
+from acdc.induction.utils import get_all_induction_things
+from acdc.ioi.utils import get_all_ioi_things
+from acdc.tracr.utils import get_all_tracr_things, get_tracr_model_input_and_tl_model
+from acdc.docstring.utils import get_all_docstring_things, AllDataThings
 
 torch.set_grad_enabled(False)
 

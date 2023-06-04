@@ -1,5 +1,5 @@
 import IPython
-from transformer_lens.docstring.utils import AllDataThings
+from acdc.docstring.utils import AllDataThings
 if IPython.get_ipython() is not None:
     IPython.get_ipython().magic('load_ext autoreload')
     IPython.get_ipython().magic('autoreload 2')
@@ -12,7 +12,7 @@ import einops
 import torch
 import numpy as np
 from functools import partial
-from transformer_lens.acdc_utils import kl_divergence
+from acdc.acdc_utils import kl_divergence
 from tracr.rasp import rasp
 from tracr.compiler import compiling
 import torch.nn.functional as F
