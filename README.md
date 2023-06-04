@@ -62,7 +62,7 @@ If you use ACDC, please reach out! You can reference the work as follows:
 
 ## TODO
 
-[ ] Make `TransformerLens` install be Neel's code not my PR
+[ :white_check_mark: ] Make `TransformerLens` install be Neel's code not my PR
 
 [ ] Delete `arthur-try-merge-tl` references from the repo
 

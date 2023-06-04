@@ -34,7 +34,16 @@ Subgraph = Dict[Tuple[str, TorchIndexHashableTuple, str, TorchIndexHashableTuple
 
 class TLACDCExperiment:
     """Manages an ACDC experiment, including the computational graph, the model, the data etc.
-    Based off of ACDCExperiment from rust_circuit code"""
+
+    The *key method* is the .step() method which processes one node (and all the connections into that node)
+    It's also helpful to understand what's going on in the def sender_hook(...) and def receiver_hook(...) methods - these are attached to the model to do path patching
+    (see https://github.com/redwoodresearch/Easy-Transformer for a gentler introduction to path patching)
+
+    You could also read __init__ for what's going on in this class. 
+
+    A lot of the other methods are not important apart from specific evals and things.
+
+    Based off of ACDCExperiment from old rust_circuit code"""
 
     def __init__(
         self,
@@ -75,7 +84,7 @@ class TLACDCExperiment:
         """Initialize the ACDC experiment"""
 
         if zero_ablation and remove_redundant:
-            raise ValueError("It's not possible to do zero ablation with remove redundant, talk to Arthur about a bizarre special case!")
+            raise ValueError("It's not possible to do zero ablation with remove redundant, talk to Arthur about this bizarre special case if curious!")
 
         model.reset_hooks()
 
@@ -152,7 +161,7 @@ class TLACDCExperiment:
 
         self.parallel_hypotheses = parallel_hypotheses
         if self.parallel_hypotheses != 1:
-            raise NotImplementedError("Parallel hypotheses not implemented yet") # TODO?
+            raise NotImplementedError("Parallel hypotheses not implemented yet")
 
         if self.using_wandb:
             # TODO?
