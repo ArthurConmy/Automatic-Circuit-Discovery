@@ -3,6 +3,7 @@ import os
 from collections import defaultdict
 import pickle
 import torch
+import numpy as np
 import huggingface_hub
 import datetime
 from typing import Dict
@@ -18,6 +19,7 @@ import networkx as nx
 import graphviz
 from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from acdc.TLACDCInterpNode import TLACDCInterpNode
+from acdc.acdc_utils import EdgeType
 
 # # I hope that it's reasonable...
 # from acdc.utils import (
@@ -106,7 +108,7 @@ def build_colorscheme(correspondence, colorscheme: str = "Pastel2", show_full_in
 def show(
     correspondence: TLACDCCorrespondence,
     fname=None,
-    colorscheme: str = "Pastel2",
+    colorscheme: dict | str = "Pastel2",
     minimum_penwidth: float = 0.3,
     show: bool = True,
     show_full_index: bool = True,
@@ -114,9 +116,16 @@ def show(
     """
     takes matplotlib colormaps
     """
-    g = graphviz.Digraph(format="png")
+    if fname is None:
+        format = "png"
+    else:
+        format = fname.split(".")[-1]
+    g = graphviz.Digraph(format=format)
 
-    colors = build_colorscheme(correspondence, colorscheme, show_full_index=show_full_index)
+    if isinstance(colorscheme, dict):
+        colors = colorscheme
+    else:
+        colors = build_colorscheme(correspondence, colorscheme, show_full_index=show_full_index)
 
     # create all nodes
     for child_hook_name in correspondence.edges:
@@ -131,7 +140,7 @@ def show(
                     parent_name = get_node_name(parent, show_full_index=show_full_index)
                     child_name = get_node_name(child, show_full_index=show_full_index)
 
-                    if edge.present and edge.effect_size is not None:
+                    if edge.present and edge.effect_size is not None and edge.edge_type != EdgeType.PLACEHOLDER:
                         for node_name in [parent_name, child_name]:
                             g.node(
                                 node_name,
@@ -150,10 +159,7 @@ def show(
                         )
 
     if fname is not None:
-        assert fname.endswith(
-            ".png"
-        ), "Must save as png (... or you can take this g object and read the graphviz docs)"
-        g.render(outfile=fname, format="png")
+        g.render(outfile=fname, format=format)
 
     if show:
         return g
@@ -313,3 +319,47 @@ def log_metrics_to_wandb(
             wandb.log(
                 {"acdc_graph": wandb.Image(picture_fname),}
             )
+
+# -------------------------------------------
+# utilities for ROC and AUC
+# -------------------------------------------
+
+def pessimistic_auc(xs, ys):
+    
+    # Sort indices based on 'x' and 'y'
+    i = np.lexsort((ys, xs)) # lexsort sorts by the last column first, then the second last, etc., i.e we firstly sort by x and then y to break ties
+
+    xs = np.array(xs, dtype=np.float64)[i]
+    ys = np.array(ys, dtype=np.float64)[i]
+
+    dys = np.diff(ys)
+    assert np.all(np.diff(xs) >= 0), "not sorted"
+    assert np.all(dys >= 0), "not monotonically increasing"
+
+    # The slabs of the stairs
+    area = np.sum((1 - xs)[1:] * dys)
+    return area
+
+assert pessimistic_auc([0, 1], [0, 1]) == 0.0
+assert pessimistic_auc([0, 0.5, 1], [0, 0.5, 1]) == 0.5**2
+assert pessimistic_auc([0, 0.25, 1], [0, 0.25, 1]) == .25 * .75
+assert pessimistic_auc([0, 0.25, 0.5, 1], [0, 0.25, 0.5, 1]) == 5/16
+assert pessimistic_auc([0, 0.25, 0.75, 1], [0, 0.25, 0.5, 1]) == 4/16
+
+def dict_merge(dct, merge_dct):
+    """ Recursive dict merge. Inspired by :meth:``dict.update()``, instead of
+    updating only top-level keys, dict_merge recurses down into dicts nested
+    to an arbitrary depth, updating keys. The ``merge_dct`` is merged into
+    ``dct``.
+
+    Copyright 2016-2022 Paul Durivage, licensed under Apache License https://gist.github.com/angstwad/bf22d1822c38a92ec0a9
+
+    :param dct: dict onto which the merge is executed
+    :param merge_dct: dct merged into dct
+    :return: None
+    """
+    for k in merge_dct.keys():
+        if (k in dct and isinstance(dct[k], dict) and isinstance(merge_dct[k], dict)):  #noqa
+            dict_merge(dct[k], merge_dct[k])
+        else:
+            dct[k] = merge_dct[k]

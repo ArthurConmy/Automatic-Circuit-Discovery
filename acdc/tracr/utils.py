@@ -238,6 +238,19 @@ def get_perm(n, no_fp=True):
         perm = torch.randperm(n)
     return perm
 
+def l2_metric(  # this is for proportion... it's unclear how to format this tbh sad
+    logits: torch.Tensor,
+    model_out: torch.Tensor,
+    return_one_element: bool = True,
+    take_element_zero: bool = True,
+):
+    proc = logits[:, 1:]
+    if take_element_zero:
+        proc = proc[:, :, 0] # output 0 contains the proportion of the token "x" (== 3)
+    if return_one_element:
+        return ((proc - model_out) ** 2).mean()
+    else:
+        return ((proc - model_out) ** 2).flatten()
 
 def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: str, num_examples: int, device):
     _, tl_model = get_tracr_model_input_and_tl_model(task=task, device=device)
@@ -260,16 +273,29 @@ def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: st
         warnings.warn("Test that this only considers the relevant part of the sequence...")
 
         patch_data_tens = data_tens[patch_data_indices]
-        with torch.no_grad():
-            base_model_logprobs = F.log_softmax(tl_model(data_tens), dim=-1)
 
-        if metric_name == "kl_div":
-            metric = partial(
+        with torch.no_grad():
+            model_out = tl_model(data_tens)
+            base_model_logprobs = F.log_softmax(model_out, dim=-1) # oh no...
+
+        test_metrics = {
+            "kl_div": partial(
                 kl_divergence,
                 base_model_logprobs=base_model_logprobs,
                 mask_repeat_candidates=None,
                 last_seq_element_only=False,
-            )
+            ),
+            "l2": partial(
+                l2_metric,
+                model_out = model_out[:, 1:,],
+                take_element_zero=False,
+            ),
+        }
+
+        if metric_name == "kl_div":
+            raise Exception("This is wrong-tracr outputs one-hot distributions and taking KL divergences between distributions of different supports is not well-defined")
+        elif metric_name == "l2":
+            metric = test_metrics["l2"]
         else:
             raise ValueError(f"Metric {metric_name} not recognized")
 
@@ -280,7 +306,7 @@ def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: st
             validation_labels=None,
             validation_mask=None,
             validation_patch_data=patch_data_tens,
-            test_metrics={"kl_div": metric},
+            test_metrics=test_metrics,
             test_data=data_tens,
             test_labels=None,
             test_mask=None,
@@ -317,18 +343,6 @@ def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: st
         with torch.no_grad():
             validation_outputs = tl_model(validation_data)
             test_outputs = tl_model(test_data)
-
-        def l2_metric(  # this is for proportion... it's unclear how to format this tbh sad
-            logits: torch.Tensor,
-            model_out: torch.Tensor,
-            return_one_element: bool = True,
-        ):
-            # output 0 contains the proportion of the token "x" (== 3)
-            proc = logits[:, 1:, 0]
-            if return_one_element:
-                return ((proc - model_out) ** 2).mean()
-            else:
-                return ((proc - model_out) ** 2).flatten()
 
         if metric_name == "l2":
             metric = partial(l2_metric, model_out=validation_outputs[:, 1:, 0])

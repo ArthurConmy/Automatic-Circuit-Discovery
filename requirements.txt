@@ -123,7 +123,7 @@ yarl==1.8.2
 zope.interface==6.0
 
 pygraphviz==1.10
-kaleido
+kaleido==0.2.1
 
 jupyter==1.0.0
 jupyter-console==6.4.4

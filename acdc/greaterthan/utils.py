@@ -6,13 +6,10 @@ from functools import partial
 from copy import deepcopy
 import torch.nn.functional as F
 from typing import List
-import click
-import IPython
 from acdc.acdc_utils import kl_divergence
 import torch
 from acdc.ioi.ioi_dataset import IOIDataset  # NOTE: we now import this LOCALLY so it is deterministic
 from tqdm import tqdm
-import wandb
 from acdc.HookedTransformer import HookedTransformer
 import warnings
 from functools import partial
@@ -291,6 +288,18 @@ def get_greaterthan_true_edges(model):
                 for ii, jj in tuple_to_hooks(i1, j1, outp=True):
                     for iii, jjj in tuple_to_hooks(i2, j2, outp=False): # oh god I am so sorry poor code reade
                         corr.edges[iii][jjj][ii][jj].present = True
+
+    # Connect qkv to heads
+    for (layer, head) in sum(CIRCUIT.values(), start=[]):
+        if head is None: continue
+        for letter in "qkv":
+            e = corr.edges[f"blocks.{layer}.attn.hook_{letter}"][TorchIndex([None, None, head])][f"blocks.{layer}.hook_{letter}_input"][TorchIndex([None, None, head])]
+            e.present = True
+            # print(e.edge_type)
+            e = corr.edges[f"blocks.{layer}.attn.hook_result"][TorchIndex([None, None, head])][f"blocks.{layer}.attn.hook_{letter}"][TorchIndex([None, None, head])]
+            e.present = True
+            # print(e.edge_type)
+
 
     ret =  OrderedDict({(t[0], t[1].hashable_tuple, t[2], t[3].hashable_tuple): e.present for t, e in corr.all_edges().items() if e.present})
     return ret

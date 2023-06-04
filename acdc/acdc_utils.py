@@ -326,39 +326,125 @@ if __name__ == "__main__":
 # Precision and recall etc metrics
 # ----------------------------------
 
-def get_stat(ground_truth, recovered, mode, verbose=False):
-    assert mode in ["true positive", "false positive", "false negative"]
+def get_present_nodes(graph) -> tuple[set[tuple[str, TorchIndex]], set[tuple[str, TorchIndex]]]:
+    present_nodes = set()
+    all_nodes = set()
+
+    for t, e in graph.all_edges().items():
+        all_nodes.add((t[0], t[1]))
+        all_nodes.add((t[2], t[3]))
+
+        if e.present and e.edge_type != EdgeType.PLACEHOLDER:
+            present_nodes.add((t[0], t[1]))
+            present_nodes.add((t[2], t[3]))
+
+    return present_nodes, all_nodes
+
+def filter_nodes(nodes: set[tuple[str, TorchIndex]]) -> set[tuple[str, TorchIndex]]:
+    all_nodes = nodes.copy()
+
+    # combine MLP things
+    for node in nodes:
+        if "resid_mid" in node[0]:
+            try:
+                all_nodes.add((f"blocks.{node[0].split()[1]}.hook_mlp_out", node[1])) # assume that we're not doing any neuron or positional stuff
+            except:
+                a = 1
+            all_nodes.remove(node)
+        for letter in "qkv":
+            hook_name = f"hook_{letter}_input"
+            if hook_name in node[0]:
+                all_nodes.add((node[0].replace(hook_name, f"hook_{letter}"), node[1]))
+                all_nodes.remove(node)
+    return all_nodes
+
+
+def get_node_stats(ground_truth, recovered) -> dict[str, int]:
+    assert set(ground_truth.all_edges().keys()) == set(recovered.all_edges().keys()), "There is a mismatch between the keys we're cmparing here"
+
+    ground_truth_nodes, all_nodes = get_present_nodes(ground_truth)
+
+    recovered_nodes, all_rec_nodes = get_present_nodes(recovered)
+    assert all_nodes == all_rec_nodes
+    del all_rec_nodes
+
+    # filter
+    all_nodes = filter_nodes(all_nodes)
+    ground_truth_nodes = filter_nodes(ground_truth_nodes)
+    recovered_nodes = filter_nodes(recovered_nodes)
+
+    counts = {
+        "true positive": 0,
+        "false positive": 0,
+        "true negative": 0,
+        "false negative": 0,
+    }
+
+    for node in all_nodes:
+        if node in ground_truth_nodes:
+            if node in recovered_nodes:
+                counts["true positive"] += 1
+            else:
+                counts["false negative"] += 1
+        else:
+            if node in recovered_nodes:
+                counts["false positive"] += 1
+            else:
+                counts["true negative"] += 1
+
+    counts["all"] = len(all_nodes)
+    counts["ground truth"] = len(ground_truth_nodes)
+    counts["recovered"] = len(recovered_nodes)
+
+
+    assert counts["all"] == counts["true positive"] + counts["false positive"] + counts["true negative"] + counts["false negative"]
+    assert counts["ground truth"] == counts["true positive"] + counts["false negative"]
+    assert counts["recovered"] == counts["true positive"] + counts["false positive"]
+
+    # Idk if this one is any constraint
+    assert counts["all"] == counts["ground truth"] + counts["recovered"] - counts["true positive"] + counts["true negative"]
+
+    return counts
+
+
+def get_edge_stats(ground_truth, recovered):
     assert set(ground_truth.all_edges().keys()) == set(recovered.all_edges().keys()), "There is a mismatch between the keys we're comparing here"
 
     ground_truth_all_edges = ground_truth.all_edges()
     recovered_all_edges = recovered.all_edges()
 
-    cnt = 0
+    counts = {
+        "true positive": 0,
+        "false positive": 0,
+        "true negative": 0,
+        "false negative": 0,
+    }
+
     for tupl, edge in ground_truth_all_edges.items():
         if edge.edge_type == EdgeType.PLACEHOLDER:
             continue
-        if mode == "false positive": 
-            if recovered_all_edges[tupl].present and not edge.present:
-                cnt += 1
-                if verbose:
-                    print(tupl)
-        elif mode == "false negative":
-            if not recovered_all_edges[tupl].present and edge.present:
-                cnt += 1
-        elif mode == "true positive":
-            if recovered_all_edges[tupl].present and edge.present:
-                cnt += 1
-        elif mode == "true negative":
-            if not recovered_all_edges[tupl].present and not edge.present:
-                cnt += 1
+        if recovered_all_edges[tupl].present:
+            if edge.present:
+                counts["true positive"] += 1
+            else:
+                counts["false positive"] += 1
+        else:
+            if edge.present:
+                counts["false negative"] += 1
+            else:
+                counts["true negative"] += 1
+            
 
-    return cnt
+    counts["all"] = len([e for e in ground_truth_all_edges.values() if e.edge_type != EdgeType.PLACEHOLDER])
+    counts["ground truth"] = len([e for e in ground_truth_all_edges.values() if e.edge_type != EdgeType.PLACEHOLDER and e.present])
+    counts["recovered"] = len([e for e in recovered_all_edges.values() if e.edge_type != EdgeType.PLACEHOLDER and e.present])
 
-def false_positive_rate(ground_truth, recovered, verbose=False):
-    return get_stat(ground_truth, recovered, mode="false positive", verbose=verbose)
 
-def false_negative_rate(ground_truth, recovered, verbose=False):
-    return get_stat(ground_truth, recovered, mode="false negative", verbose=verbose)
+    assert counts["all"] == counts["true positive"] + counts["false positive"] + counts["true negative"] + counts["false negative"]
+    assert counts["ground truth"] == counts["true positive"] + counts["false negative"]
+    assert counts["recovered"] == counts["true positive"] + counts["false positive"]
 
-def true_positive_stat(ground_truth, recovered, verbose=False):
-    return get_stat(ground_truth, recovered, mode="true positive", verbose=verbose)
+    # Idk if this one is any constraint
+    assert counts["all"] == counts["ground truth"] + counts["recovered"] - counts["true positive"] + counts["true negative"]
+
+    return counts
