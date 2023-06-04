@@ -100,7 +100,7 @@ from transformer_lens.acdc_utils import (
     EdgeType,
 )  # these introduce several important classes !!!
 
-from transformer_lens.TLACDCCorrespondence import TLACDCCorrespondence
+from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from transformer_lens.TLACDCInterpNode import TLACDCInterpNode
 from transformer_lens.TLACDCExperiment import TLACDCExperiment
 
