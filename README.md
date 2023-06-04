@@ -6,7 +6,7 @@
 
 This is the accompanying code to the paper "Towards Automated Circuit Discovery for Mechanistic Interpretability".
 
-* :zap: To run ACDC, see `transformer_lens/main.py`, or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/arthur-try-merge-tl/notebooks/colabs/ACDC_Main_Demo.ipynb#scrollTo=njv8l86QSPka">this Colab notebook</a>
+* :zap: To run ACDC, see `acdc/main.py`, or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/arthur-try-merge-tl/notebooks/colabs/ACDC_Main_Demo.ipynb#scrollTo=njv8l86QSPka">this Colab notebook</a>
 * :wrench: To see how edit edges in computational graphs in models, see `notebooks/editing_edges.py` or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/arthur-try-merge-tl/notebooks/colabs/ACDC_Editing_Edges_Demo.ipynb">this Colab notebook</a>
 
 ## Local installation:

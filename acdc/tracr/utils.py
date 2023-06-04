@@ -368,7 +368,7 @@ def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: st
 
 
 def get_tracr_proportion_edges():
-    # generated from transformer_lens/main.py commit 3a3770bb7
+    # generated from acdc/main.py commit 3a3770bb7
 
     return OrderedDict(
         [
