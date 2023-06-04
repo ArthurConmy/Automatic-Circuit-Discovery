@@ -54,6 +54,8 @@ If you use ACDC, please reach out! You can reference the work as follows:
 
 ## TODO
 
+[ ] Make `TransformerLens` install be Neel's code not my PR
+
 [ ] Delete `arthur-try-merge-tl` references from the repo
 
 [ ] Neuron-level experiments
@@ -62,6 +64,6 @@ If you use ACDC, please reach out! You can reference the work as follows:
 
 [ ] `tracr` and other dependencies better managed
 
-[ ] Make SP tests work (lots outdated so skipped)
+[ ] Make SP tests work (lots outdated so skipped) - and check they install (no __init__.pys !!!)
 
 [ ] Make the 9 tests also failing on TransformerLens-main pass
