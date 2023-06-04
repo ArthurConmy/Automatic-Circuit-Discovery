@@ -324,9 +324,12 @@ class TLACDCExperiment:
                             )
                     
                     if edge.edge_type == EdgeType.ADDITION:
-                        z[receiver_node_index.as_index] += self.global_cache.cache[
-                            sender_node_name
-                        ][sender_node_index.as_index].to(z.device)
+                        try:
+                            z[receiver_node_index.as_index] += self.global_cache.cache[
+                                sender_node_name
+                            ][sender_node_index.as_index].to(z.device)
+                        except: 
+                            a=1
                         z[receiver_node_index.as_index] -= self.global_cache.second_cache[
                             sender_node_name
                         ][sender_node_index.as_index].to(z.device)

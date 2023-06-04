@@ -163,6 +163,7 @@ parser.add_argument('--torch-num-threads', type=int, default=0, help="How many t
 parser.add_argument('--seed', type=int, default=1234)
 parser.add_argument("--max-num-epochs",type=int, default=100_000)
 parser.add_argument('--single-step', action='store_true', help='Use single step, mostly for testing')
+parser.add_argument('--use-positions', action='store_true', help='Use positions in the transformer')
 
 if ipython is not None:
     # we are in a notebook
@@ -174,7 +175,7 @@ if ipython is not None:
 --indices-mode=reverse\
 --first-cache-cpu=False\
 --second-cache-cpu=False\
---use-positions=True\
+--use-positions\
 --max-num-epochs=100000""".split("\\\n")]
     )
 else:
@@ -318,10 +319,10 @@ exp = TLACDCExperiment(
     add_receiver_hooks=False,
     remove_redundant=False,
     show_full_index=use_pos_embed,
-    positions=list() else None, 
+    positions=list(range(toks_int_values.shape[-1])) if USE_POSITIONS else [None],
 )
 
-# %% [markdown]
+# %%markdown] # TODO revert
 # <h2>Run steps of ACDC: iterate over a NODE in the model's computational graph</h2>
 # <p>WARNING! This will take a few minutes to run, but there should be rolling nice pictures too : )</p>
 

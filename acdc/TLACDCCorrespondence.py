@@ -104,7 +104,7 @@ class TLACDCCorrespondence:
         logits_node = TLACDCInterpNode(
             name=f"blocks.{model.cfg.n_layers-1}.hook_resid_post",
             index=TorchIndex([None]),
-            incoming_edge_type = EdgeType.ADDITION,
+            incoming_edge_type = EdgeType.PLACEHOLDER,
         )
         correspondence.add_node(logits_node)
 
@@ -115,6 +115,12 @@ class TLACDCCorrespondence:
                 incoming_edge_type = EdgeType.ADDITION,
             )
             correspondence.add_node(logits_pos_node)
+            correspondence.add_edge(
+                parent_node=cur_mlp,
+                child_node=residual_stream_node,
+                edge=Edge(edge_type=EdgeType.PLACEHOLDER),
+                safe=False,
+            )
             downstream_residual_nodes[position].append(logits_pos_node)
 
         new_downstream_residual_nodes: Dict[Optional[int], TLACDCInterpNode] = OrderedDefaultdict(list)
@@ -208,7 +214,7 @@ class TLACDCCorrespondence:
 
                         new_downstream_residual_nodes[position].append(hook_letter_input_node)
 
-            for position in set(downstream_residual_nodes.keys()) + set(new_downstream_residual_nodes.keys()): 
+            for position in set(list(downstream_residual_nodes.keys()) + list(new_downstream_residual_nodes.keys())): 
                 downstream_residual_nodes[position].extend(new_downstream_residual_nodes[position])
 
         for position in positions:
