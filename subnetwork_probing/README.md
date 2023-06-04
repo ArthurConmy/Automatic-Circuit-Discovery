@@ -1,27 +1,23 @@
 # Setup
 
-```
-pip install pytorch-transformers==1.2.0
-cd subnetwork-probing/transformer_lens
-pip install -e .
-```
+This implementation of Subnetwork Probing (and also HISP) should install by default when installing the ACDC code.
 
 # TODO
 
 [ ] Sort out `transformer_lens` as a submodule for code release.
 [ ] Tune learning rate
-[ ] tests for initialisation
+[ ] Tests for initialisation
 [ ] MLP masked hook points
-[ ] tests for Gumbel 
+[ ] Tests for Gumbel 
 
-# subnetwork-probing
-This is code for the paper:  
+# Subnetwork Probing
+
 [Low-Complexity Probing via Finding Subnetworks](https://github.com/stevenxcao/subnetwork-probing)  
 Steven Cao, Victor Sanh, Alexander M. Rush  
 NAACL-HLT 2021  
-### Dependencies
-This code was tested with `python 3.6`, `pytorch 1.1`, and `pytorch-transformers 1.2`.
-### Data
-This paper uses the [Universal Dependencies](https://universaldependencies.org/) dataset for dependencies and part-of-speech tagging, and the [CoNLL 2003 NER Shared Task](https://www.clips.uantwerpen.be/conll2003/ner/) for named entity recognition. 
-### Running the code
-To run the main experiment in the paper, run `python main.py PATH_TO_SAVE_DIRECTORY`.
+
+# HISP 
+
+[Are Sixteen Heads Really Better than One?](https://arxiv.org/abs/1905.10650)
+Michel et al
+2019
