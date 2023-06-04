@@ -1,4 +1,5 @@
 -f https://download.pytorch.org/whl/cu117
+git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@arthur-try-merge-tl#egg=tracr # my PR with an extra 
 absl-py==1.4.0
 aiohttp==3.8.4
 aiosignal==1.3.1
