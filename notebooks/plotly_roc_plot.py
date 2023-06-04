@@ -6,7 +6,7 @@ if get_ipython() is not None:
     get_ipython().magic('load_ext autoreload')
     get_ipython().magic('autoreload 2')
 
-    __file__ = os.path.join(get_ipython().run_line_magic('pwd', ''), "notebooks", "plotly_roc_plot.py")
+    __file__ = os.path.join(get_ipython().run_line_magic('pwd', ''), "notebooks", "plotly_roc_plot.py") # this script may need be run from the command line
 
 import plotly
 import numpy as np

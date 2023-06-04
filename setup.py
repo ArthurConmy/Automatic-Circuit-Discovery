@@ -18,10 +18,7 @@ setup(
         "datasets",
         "wandb",
         "fancy_einsum",
-<<<<<<< HEAD
         "torchtyping", # TODO doesn't install?
-=======
->>>>>>> origin/adria/offline-tracr
         "huggingface_hub",
         "cmapy", # TODO doesn't install?
         "graphviz", 

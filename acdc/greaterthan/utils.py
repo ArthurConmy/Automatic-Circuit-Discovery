@@ -10,12 +10,8 @@ from acdc.acdc_utils import kl_divergence
 import torch
 from acdc.ioi.ioi_dataset import IOIDataset  # NOTE: we now import this LOCALLY so it is deterministic
 from tqdm import tqdm
-<<<<<<< HEAD
 import wandb
 from transformer_lens.HookedTransformer import HookedTransformer
-=======
-from acdc.HookedTransformer import HookedTransformer
->>>>>>> origin/adria/offline-tracr
 import warnings
 from functools import partial
 from typing import ClassVar, Optional

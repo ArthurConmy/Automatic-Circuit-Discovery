@@ -53,12 +53,7 @@ profile.json
 profile2.json
 profile_trash.json
 pts/
-<<<<<<< HEAD
 .coverage*
 .Ds_Store
 .pylintrc
-=======
-
-
 **/.DS_Store
->>>>>>> origin/adria/offline-tracr

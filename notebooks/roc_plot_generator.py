@@ -369,25 +369,6 @@ if RESET_NETWORK:
 #%% [markdown]
 # Setup the experiment for wrapping functionality nicely
 
-<<<<<<< HEAD
-if things is not None:
-    things.tl_model.reset_hooks()
-    exp = TLACDCExperiment(
-        model=things.tl_model,
-        threshold=100_000,
-        early_exit=True,
-        using_wandb=False,
-        zero_ablation=False,
-        ds=things.validation_data,
-        ref_ds=things.validation_patch_data,
-        metric=things.validation_metric,
-        second_metric=None,
-        verbose=True,
-        use_pos_embed=USE_POS_EMBED,
-    )
-
-    max_subgraph_size = exp.corr.count_no_edges()
-=======
 things.tl_model.global_cache.clear()
 things.tl_model.reset_hooks()
 exp = TLACDCExperiment(
@@ -409,7 +390,6 @@ if not SKIP_ACDC and not ONLY_SAVE_CANONICAL:
     exp.setup_second_cache()
 
 max_subgraph_size = exp.corr.count_no_edges()
->>>>>>> origin/adria/offline-tracr
 
 #%% [markdown]
 # Load the *canonical* circuit
