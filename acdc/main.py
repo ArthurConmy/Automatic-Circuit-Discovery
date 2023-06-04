@@ -88,7 +88,7 @@ from transformer_lens.HookedTransformer import (
     HookedTransformer,
 )
 try:
-    from acdc.tracr.utils import (
+    from acdc.tracr_task.utils import (
         get_all_tracr_things,
         get_tracr_model_input_and_tl_model,
     )
