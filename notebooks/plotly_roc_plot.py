@@ -1,16 +1,12 @@
-# %%
-
+import os
 from IPython import get_ipython
 if get_ipython() is not None:
     get_ipython().magic('load_ext autoreload')
     get_ipython().magic('autoreload 2')
-    if "arthur" not in __file__:
-        __file__ = '/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/plotly_roc_plot.py'
-        from notebooks.emacs_plotly_render import set_plotly_renderer
-        set_plotly_renderer("emacs")
+
+    __file__ = os.path.join(get_ipython().run_line_magic('pwd', ''), "notebooks", "plotly_roc_plot.py")
 
 import plotly
-import os
 import numpy as np
 import json
 import wandb
@@ -18,6 +14,7 @@ from acdc.graphics import dict_merge, pessimistic_auc
 import time
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
+import plotly.colors as pc
 from pathlib import Path
 import plotly.express as px
 import pandas as pd
@@ -49,7 +46,7 @@ for fname in os.listdir(DATA_DIR):
 
 fig=px.scatter(x=[0, 1, 2, 3, 4], y=[0, 1, 4, 9, 16])
 fig.write_image("/tmp/discard.pdf", format="pdf")
-# time.sleep(1)
+time.sleep(1)
 
 # %%
 
@@ -89,16 +86,34 @@ METRICS_FOR_TASK = {
 
 
 methods = ["ACDC", "SP", "HISP"]
-colors = {
-    "ACDC": "purple",  
-    "SP": "green",
-    "HISP": "yellow",
+
+
+colorscale_names = {
+    "ACDC": "Blues_r",
+    "SP": "Greens_r",
+    "HISP": "Reds_r",
 }
+
+colorscales = {}
+for methodof, name in colorscale_names.items():
+    color_list = pc.get_colorscale(name)
+    # Add black to the minimum
+    colorscales[methodof] = [[0.0, "rgb(0, 0, 0)"],
+                             [1e-6, color_list[0][1]],
+                             *color_list[1:]]
+
+colors = {k: pc.sample_colorscale(v, 0.2)[0] for k, v in colorscales.items()}
 
 symbol = {
     "ACDC": "circle",
     "SP": "x",
     "HISP": "diamond",
+}
+
+score_name = {
+    "ACDC": "threshold",
+    "SP": "lambda",
+    "HISP": "score",
 }
 
 
@@ -107,33 +122,32 @@ x_names = {
     "node_fpr": "False positive rate (nodes)",
     "edge_tpr": "True positive rate (edges)",
     "node_tpr": "True positive rate (nodes)",
-    "precision": "Precision (edges)",
+    "edge_precision": "Precision (edges)",
+    "node_precision": "Precision (nodes)",
     "n_edges": "Number of edges",
+    "n_nodes": "Number of nodes",
     "test_kl_div": "KL(model, ablated)",
     "test_loss": "test loss",
 }
 
-def discard_non_pareto_optimal(points, cmp="gt"):
+def discard_non_pareto_optimal(points, auxiliary, cmp="gt"):
     ret = []
-    for x, y in points:
+    for (x, y), aux in zip(points, auxiliary):
         for x1, y1 in points:
             if x1 < x and getattr(y1, f"__{cmp}__")(y) and (x1, y1) != (x, y):
                 break
         else:
-            ret.append((x, y))
+            ret.append(((x, y), aux))
     return list(sorted(ret))
 
 #%%
 
-def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="trained", ablation_type="random_ablation", plot_type="roc_nodes"):
-# metric_idx=1
-# x_key="edge_fpr"
-# y_key="edge_tpr"
-# weights_type="trained"
-# ablation_type="random_ablation"
-# plot_type="roc_nodes"
-# if True:
+def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="trained", ablation_type="random_ablation", plot_type="roc_nodes", scale_min=0.0, scale_max=0.8):
     this_data = all_data[weights_type][ablation_type]
+
+    TOP_MARGIN = 0.24
+    LEFT_MARGIN = -0.02
+    RIGHT_MARGIN = 0.02 if y_key in ["edge_tpr", "node_tpr"] else 0.00
     if plot_type in ["roc_nodes", "roc_edges", "precision_recall"]:
         rows_cols_task_idx = [
             ((1, 1), "ioi"),
@@ -142,7 +156,8 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
             ((2, 3), "docstring"),
             ((2, 4), "greaterthan"),
         ]
-        specs=[[{"rowspan": 2, "colspan": 2}, None, {}, {}], [None, None, {}, {}]]
+        specs=[[{"rowspan": 2, "colspan": 2}, None, {}, {}, {"rowspan": 2, "colspan": 1, "t": TOP_MARGIN, "l": LEFT_MARGIN, "r": RIGHT_MARGIN}], [None, None, {}, {}, None]]
+        column_widths = [0.24, 0.24, 0.24, 0.24, 0.04]
     else:
         rows_cols_task_idx = [
             ((1, 1), "ioi"),
@@ -152,19 +167,22 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
             ((2, 2), "docstring"),
             ((2, 3), "greaterthan"),
         ]
-        specs = [[{}]*3]*2
+        # t: top padding
+        specs = [[{}, {}, {}, {"rowspan": 2, "colspan": 1, "t": TOP_MARGIN, "l": LEFT_MARGIN, "r": RIGHT_MARGIN}], [{}, {}, {}, None]]
+        column_widths = [0.32, 0.32, 0.32, 0.04]
 
     rows_and_cols, task_idxs = list(zip(*rows_cols_task_idx))
     task_names = [TASK_NAMES[i] for i in task_idxs]
 
     fig = make_subplots(
-        rows=2,
-        cols=4 if plot_type in ["roc_nodes", "roc_edges", "precision_recall"] else 3,
+        rows=len(specs),
+        cols=len(specs[0]),
         # specs parameter is really cool, this argument needs to have same dimenions as the rows and cols
         specs=specs,
+        column_widths=column_widths,
         print_grid=False,
         # subplot_titles=("First Subplot", "Second Subplot", "Third Subplot", "Fourth Subplot", "Fifth Subplot"),
-        subplot_titles=tuple(task_names),
+        subplot_titles=(*task_names[:3], r"$\tau$", *task_names[3:]),
         x_title=x_names[x_key],
         y_title=x_names[y_key],
         # title_font=dict(size=8),
@@ -172,35 +190,82 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
 
     fig.update_annotations(font_size=12)
 
-    min_score = 1e90
-    max_score = -1e90
-    for task_idx in task_idxs:
-        for metric_name in METRICS_FOR_TASK[task_idx]:
-            try:
-                x_data = this_data[task_idx][metric_name]["ACDC"]["score"]
-            except KeyError:
-                continue
-            if len(x_data) > 0:
-                finites = [x for x in x_data if np.isfinite(x)]
-                min_score = min(min_score, min(finites))
-                max_score = max(max_score, max(finites))
-
-
-
     all_series = []
-    for (row, col), task_idx in rows_cols_task_idx:
-        for alg_idx, methodof in alg_names.items():
+    bounds_for_alg = {}
+    for alg_idx, methodof in alg_names.items():
+        min_log_score = 1e90
+        max_log_score = -1e90
+
+        for (row, col), task_idx in rows_cols_task_idx:
+            metric_name = METRICS_FOR_TASK[task_idx][metric_idx]
+            scores = this_data[task_idx][metric_name][alg_idx]["score"]
+            log_scores = np.log10(scores)
+            log_scores = np.nan_to_num(log_scores, nan=0.0, neginf=0.0, posinf=0.0)
+
+            min_log_score = min(np.min(log_scores), min_log_score)
+            max_log_score = max(np.max(log_scores), max_log_score)
+        bounds_for_alg[methodof] = (min_log_score, max_log_score)
+
+
+    all_algs_min = min(v for (v, _) in bounds_for_alg.values())
+    all_algs_max = max(v for (_, v) in bounds_for_alg.values())
+    heatmap_ys = np.linspace(all_algs_min, all_algs_max, 300)
+
+    def normalize(x, x_min, x_max):
+        if (x_max - x_min) < 1e-8:
+            out = np.ones_like(x)
+        else:
+            out = (x - x_min) / (x_max - x_min) * (scale_max - scale_min)  + scale_min
+        return out
+
+    if y_key in ["node_tpr", "edge_tpr"]:
+        HEATMAP_ALGS = ["ACDC", "SP"]
+    else:
+        HEATMAP_ALGS = ["ACDC", "SP", "HISP"]
+    for i, methodof in enumerate(HEATMAP_ALGS):
+        alg_min, alg_max = bounds_for_alg[methodof]
+        # nums = normalize(heatmap_ys, alg_min, alg_max)
+        # nums[nums < scale_min] = np.nan
+        # nums[nums > 1] = np.nan
+        alg_ys = np.linspace(alg_min, alg_max, 100)
+        nums = np.linspace(scale_min, scale_max, len(alg_ys))
+        assert heatmap_ys[0] == -5.0
+        fig.add_trace(
+            go.Heatmap(
+                x=[i, i+0.95],
+                y=alg_ys,
+                z=nums[:, None],
+                colorscale=colorscales[methodof],
+                showscale=False,
+                zmin=0.0,
+                zmax=1.0,
+            ),
+            row=1,
+            col=len(specs[0]),
+        )
+    fig.update_xaxes(showline=False, zeroline=False, showgrid=False, row=1, col=len(specs[0]), showticklabels=False, ticks="")
+    tickvals = list(range(int(np.floor(all_algs_min)), int(np.ceil(all_algs_max))))
+    ticktext = [f"$10^{{{v}}}$" for v in tickvals]
+    fig.update_yaxes(showline=False, zeroline=False, showgrid=False, row=1, col=len(specs[0]), side="right",
+                     range=[all_algs_min, all_algs_max], tickvals=tickvals, ticktext=ticktext)
+
+
+    for alg_idx, methodof in alg_names.items():
+        min_log_score, max_log_score = bounds_for_alg[methodof]
+        for (row, col), task_idx in rows_cols_task_idx:
             metric_name = METRICS_FOR_TASK[task_idx][metric_idx]
             if plot_type == "metric_edges":
                 y_key = "test_" + metric_name
-            try:
-                x_data = this_data[task_idx][metric_name][alg_idx][x_key]
-                y_data = this_data[task_idx][metric_name][alg_idx][y_key]
-                scores = this_data[task_idx][metric_name][alg_idx]["score"]
-            except KeyError:
-                x_data = []
-                y_data = []
-                scores = []
+
+            x_data = this_data[task_idx][metric_name][alg_idx][x_key]
+            y_data = this_data[task_idx][metric_name][alg_idx][y_key]
+            scores = this_data[task_idx][metric_name][alg_idx]["score"]
+
+            log_scores = np.log10(scores)
+            # if alg_idx == "16H" and task_idx == "tracr-reverse":
+            #     import pdb; pdb.set_trace()
+            log_scores = np.nan_to_num(log_scores, nan=np.nan, neginf=-1e90, posinf=1e90)
+            normalized_log_scores = normalize(log_scores, min_log_score, max_log_score)
 
             if alg_idx == "SP":
                 # Divide by number of loss runs. Fix earlier bug.
@@ -215,10 +280,13 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
             if y_key not in ["node_tpr", "edge_tpr"]:
                 pareto_optimal = [] # list(sorted(points))  # Not actually pareto optimal but we want to plot all of them
                 print("Yep")
+                pareto_log_scores = []
+                pareto_scores = []
             else:
                 print("Hehe", y_key)
-                pareto_optimal = discard_non_pareto_optimal(points)
-            others = [p for p in points if p not in pareto_optimal]
+                pareto_optimal_aux = discard_non_pareto_optimal(points, zip(log_scores, scores))
+                pareto_optimal, aux = zip(*pareto_optimal_aux)
+                pareto_log_scores, pareto_scores = zip(*aux)
 
             auc = None
             if len(pareto_optimal):
@@ -239,7 +307,8 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
                         name=methodof,
                         mode="lines",
                         line=dict(shape="hv", color=colors[methodof]),
-                        showlegend = False,
+                        showlegend=False,
+                        hovertext=[f"{score_name[methodof]}={t:e}" for t in pareto_scores],
                     ),
                     row=row,
                     col=col,
@@ -289,41 +358,78 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
                 }))
 
 
+            others = [(*p, *aux) for (p, *aux) in sorted(zip(points, log_scores, normalized_log_scores, scores), key=lambda x: -x[-1]) if p not in pareto_optimal]
+
             if others:
-                x_data, y_data = zip(*others)
+                x_data, y_data, log_scores, normalized_log_scores, scores = zip(*others)
                 if not (np.isfinite(x_data[0]) and np.isfinite(y_data[0])):
                     x_data = x_data[1:]
                     y_data = y_data[1:]
+                    log_scores = log_scores[1:]
+                    normalized_log_scores = normalized_log_scores[1:]
+                    scores = scores[1:]
                 if not (np.isfinite(x_data[-1]) and np.isfinite(y_data[-1])):
                     x_data = x_data[:-1]
                     y_data = y_data[:-1]
+                    log_scores = log_scores[:-1]
+                    normalized_log_scores = normalized_log_scores[:-1]
+                    scores = scores[:-1]
 
                 assert not np.any(~np.isfinite(x_data))
                 assert not np.any(~np.isfinite(y_data))
+
+                color = normalized_log_scores
             else:
                 x_data, y_data = [None], [None]
+                log_scores = [np.nan]
+
+                color = colors[methodof]
 
             # print(task_idx, alg_idx, metric_name, len(x_data), len(y_data), plot_type)
 
-            colorscale = px.colors.get_colorscale("Purples")
             fig.add_trace(
                 go.Scatter(
                     x=x_data,
                     y=y_data,
                     name=methodof,
                     mode="markers",
-                    line=dict(shape="hv", color=colors[methodof]),
-                    showlegend = (row, col) == rows_and_cols[-2],
+                    showlegend = False,
                     marker=dict(
                         size=7,
-                        color=colors[methodof], # if alg_idx != "ACDC" else plotly.colors.sample_colorscale(colorscale, (np.clip(scores, min_score, max_score) - min_score)/(2*(max_score-min_score)) + 0.5),
+                        color=color,
                         symbol=symbol[methodof],
+                        colorscale=colorscales[methodof],
+                        cmin=0.0,
+                        cmax=1.0,
                     ),
-
+                    hovertext=[f"{score_name[methodof]}={t:e}" for t in scores],
                 ),
                 row=row,
                 col=col,
             )
+            # for l in log_scores:
+            #     if np.allclose(l, -2):
+            #         import pdb; pdb.set_trace()
+
+
+            # Just add the legend
+            if (row, col) == (1, len(specs[0])-1):
+                fig.add_trace(
+                    go.Scatter(
+                        x=[None],
+                        y=[None],
+                        name=methodof,
+                        mode="markers",
+                        showlegend=True,
+                        marker=dict(
+                            size=7,
+                            color=colors[methodof],
+                            symbol=symbol[methodof],
+                        ),
+                    ),
+                    row=row,
+                    col=col,
+                )
 
             # fig.update_layout(
             #     title_font=dict(size=20),
@@ -426,9 +532,9 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
         legend=dict(
             orientation="v",
             yanchor="top",
-            y=1,
-            xanchor="right",
-            x=1.12,
+            y=1.1,
+            xanchor="left",
+            x=0.92,
             font=dict(size=8),
             bgcolor="rgba(0,0,0,0)",  # Set the background color to transparent
         ),
@@ -438,16 +544,18 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
     scale = 1.2
 
     # No title,
-    fig.update_layout(
-        height=250*scale, 
-        width=scale*scale*500,
-        margin=dict(l=55, r=70, t=20, b=50),                  
-    )
-    ret = [fig, pd.concat(all_series, axis=1) if all_series else pd.DataFrame()]
-    return ret[0], ret[1]
+    fig.update_layout(height=250*scale, width=scale*scale*500,
+                      margin=dict(l=55, r=70, t=20, b=50)
+                      )
+    # MEGA HACK: add space between tau and colorbar
+    anno = fig.layout.annotations[3]
+    assert anno["text"] == r"$\tau$"
+    anno["y"] += 0.02
+    ret = (fig, pd.concat(all_series, axis=1) if all_series else pd.DataFrame())
+    return ret
 
 plot_type_keys = {
-    "precision_recall": ("node_tpr", "precision"),
+    "precision_recall": ("edge_tpr", "edge_precision"),
     "roc_nodes": ("node_fpr", "node_tpr"),
     "roc_edges": ("edge_fpr", "edge_tpr"),
     "kl_edges": ("n_edges", "test_kl_div"),
@@ -471,6 +579,7 @@ for metric_idx in [0, 1]:
                     print(all_dfs[-1])
                 metric = "kl" if metric_idx == 0 else "other"
                 fig.write_image(PLOT_DIR / ("--".join([metric, weights_type, ablation_type, plot_type]) + ".pdf"))
+                # fig.show()
 
 pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
 

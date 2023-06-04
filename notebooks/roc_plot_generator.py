@@ -534,7 +534,8 @@ def get_acdc_runs(
             try:
                 if latest_file is None:
                     raise wandb.CommError("a")
-                with latest_file.download(ROOT / run.name, replace=True, exist_ok=True) as f:
+                # replace=False because these files are never modified. Save them in a unique location, ROOT/run.id
+                with latest_file.download(ROOT / run.id, replace=False, exist_ok=True) as f:
                     d = json.load(f)
 
                 data = d["data"][0]
@@ -572,7 +573,7 @@ def get_acdc_runs(
             except (wandb.CommError, requests.exceptions.HTTPError) as e:
                 print(f"Error {e}, falling back to parsing output.log")
                 try:
-                    with run.file("output.log").download(root=ROOT / run.name, replace=True, exist_ok=True) as f:
+                    with run.file("output.log").download(root=ROOT / run.id, replace=False, exist_ok=True) as f:
                         log_text = f.read()
                     experiment.load_from_wandb_run(log_text)
                     corrs.append((deepcopy(experiment.corr), score_d))
