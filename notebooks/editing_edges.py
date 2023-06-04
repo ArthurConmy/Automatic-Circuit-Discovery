@@ -21,11 +21,11 @@ try:
         "pip",
         "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@arthur-acdc-feature-prepend",
     )
+    ipython.run_line_magic("pip", "install torchtyping cmapy")
     ipython.run_line_magic(
         "pip",
         "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@arthur-try-merge-tl",
     )
-    ipython.run_line_magic("pip", "install torchtyping")
 
 except Exception as e:
     IN_COLAB = False

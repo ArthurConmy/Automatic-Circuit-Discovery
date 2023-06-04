@@ -25,6 +25,7 @@ try:
         "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@arthur-try-merge-tl",
     )
     ipython.run_line_magic("pip", "install torchtyping")
+    ipython.run_line_magic("pip", "install cmapy")
     try:
         ipython.run_line_magic(
             "pip",
@@ -32,7 +33,7 @@ try:
         )
     except Exception as e:
         print(f"Could not import `tracr` because {e}; the rest of the file should work but you cannot use the tracr tasks")
-    ipython.run_line_magic("pip", "install cmapy")
+
 
 except Exception as e:
     IN_COLAB = False
@@ -166,7 +167,7 @@ parser.add_argument('--single-step', action='store_true', help='Use single step,
 if ipython is not None:
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
-    args = parser.parse_args(
+    args = parser.parse_args( # TODO add back zero ablation
         [line.strip() for line in r"""--task=induction\
 --zero-ablation\
 --threshold=0.5623\
@@ -319,7 +320,7 @@ exp = TLACDCExperiment(
 
 # %% [markdown]
 # <h2>Run steps of ACDC: iterate over a NODE in the model's computational graph</h2>
-# <p>WARNING! This should take a few minutes to run, but there should be rolling nice pictures too : )</p>
+# <p>WARNING! This will take a few minutes to run, but there should be rolling nice pictures too : )</p>
 
 for i in range(args.max_num_epochs):
     exp.step(testing=False)

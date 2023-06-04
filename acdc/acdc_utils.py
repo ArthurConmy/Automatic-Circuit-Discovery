@@ -14,17 +14,11 @@ import wandb
 
 from transformer_lens.HookedTransformer import HookedTransformer
 
+# -------------------------
+# Essential ACDC utils
+# -------------------------
+
 TorchIndexHashableTuple = Tuple[Union[None, slice], ...]
-
-def cleanup():
-    import gc
-    gc.collect()
-    torch.cuda.empty_cache()
-
-def shuffle_tensor(tens, seed=42):
-    """Shuffle tensor along first dimension"""
-    torch.random.manual_seed(seed)
-    return tens[torch.randperm(tens.shape[0])]
 
 class OrderedDefaultdict(defaultdict):
     def __init__(self, *args, **kwargs):
@@ -125,26 +119,6 @@ class TorchIndex:
     def graphviz_index(self) -> str:
         return self.__repr__(graphviz_index=True)
 
-    # @classmethod
-    # def from_index(cls, hashable_tuples: tuple) -> "TorchIndex":
-    #     assert isinstance(index, tuple), type(index)
-    #     assert all([i==slice(None) or isinstance(i, int) for i in index]), f"{index=} does not have support: in future ACDC may have spicier indexing"
-    #     return cls([None if i==slice(None) else i for i in index])
-
-def make_nd_dict(end_type, n = 3) -> Any:
-    """Make biiig default dicts : ) : )"""
-
-    if n not in [3, 4]:
-        raise NotImplementedError("Only implemented for 3/4")
-        
-    if n == 3:
-        return OrderedDefaultdict(lambda: defaultdict(lambda: defaultdict(end_type)))
-
-    if n == 4:
-        return OrderedDefaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(end_type))))
-
-def ct():
-    return time.ctime().replace(" ", "_").replace(":", "_").replace("__", "_")
 
 def kl_divergence(
     logits: torch.Tensor,
@@ -278,9 +252,34 @@ def frac_correct_metric(logits, correct_labels, wrong_labels, return_one_element
     else:
         return -(correct_logits > incorrect_logits).float().view(-1)
 
+# -----------
+# Utils of secondary importance
+# -----------
 
+def make_nd_dict(end_type, n = 3) -> Any:
+    """Make biiig default dicts : ) : )"""
 
+    if n not in [3, 4]:
+        raise NotImplementedError("Only implemented for 3/4")
+        
+    if n == 3:
+        return OrderedDefaultdict(lambda: defaultdict(lambda: defaultdict(end_type)))
 
+    if n == 4:
+        return OrderedDefaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(end_type))))
+
+def cleanup():
+    import gc
+    gc.collect()
+    torch.cuda.empty_cache()
+
+def shuffle_tensor(tens, seed=42):
+    """Shuffle tensor along first dimension"""
+    torch.random.manual_seed(seed)
+    return tens[torch.randperm(tens.shape[0])]
+
+def ct():
+    return time.ctime().replace(" ", "_").replace(":", "_").replace("__", "_")
 
 # ----------------------------------
 # Random helpers for scraping
