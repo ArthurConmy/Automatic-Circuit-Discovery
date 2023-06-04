@@ -134,7 +134,9 @@ torch.autograd.set_grad_enabled(False)
 # %% [markdown]
 # <h2>ACDC Experiment Setup</h2>
 # <p>We use a `parser to set all the options for the ACDC experiment.
-# This is still usable in notebooks! We can pass a string to the parser, see below</p>
+# This is still usable in notebooks! We can pass a string to the parser, see below.
+# We'll reproduce </p>
+
 
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
 
@@ -163,14 +165,15 @@ parser.add_argument('--single-step', action='store_true', help='Use single step,
 
 if ipython is not None:
     # we are in a notebook
+    # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
         [line.strip() for line in r"""--task=induction\
 --zero-ablation\
---threshold=0.005\
+--threshold=0.5623\
 --indices-mode=reverse\
 --first-cache-cpu=False\
 --second-cache-cpu=False\
---max-num-epochs=3""".split("\\\n")]
+--max-num-epochs=100000""".split("\\\n")]
     )
 else:
     # read from command line
@@ -316,6 +319,7 @@ exp = TLACDCExperiment(
 
 # %% [markdown]
 # <h2>Run steps of ACDC: iterate over a NODE in the model's computational graph</h2>
+# <p>WARNING! This should take a few minutes to run, but there should be rolling nice pictures too : )</p>
 
 for i in range(args.max_num_epochs):
     exp.step(testing=False)
@@ -353,6 +357,8 @@ if USING_WANDB:
 # %% [markdown]
 # <h2>Save the final subgraph of the model</h2>
 # <p>There are more than `exp.count_no_edges()` here because we include some "placeholder" edges needed to make ACDC work that don't actually matter</p>
+# <p>Also note that the final image has more than 12 edges, because the edges from a0.0_q and a0.0_k are not connected to the input</p>
+# <p>We recover minimal induction machinery! `embed -> a0.0_v -> a1.6k`</p>
 
 exp.save_subgraph(
     return_it=True,
