@@ -4,9 +4,7 @@ from collections import OrderedDict
 
 
 class GlobalCache: # this dict stores the activations from the forward pass
-    """Class for managing several caches for passing activations around
-    
-    Also has flags that are relevant for whether we're doing 16 Heads things or not"""
+    """Class for managing several caches for passing activations around"""
 
     def __init__(self, device: Union[str, Tuple[str, str]] = "cuda"):
         # TODO find a way to make the device propagate when we to .to on the p
