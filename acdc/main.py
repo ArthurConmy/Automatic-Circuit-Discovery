@@ -168,12 +168,13 @@ if ipython is not None:
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args( # TODO add back zero ablation
-        [line.strip() for line in r"""--task=induction\
+        [line.strip() for line in r"""--task=tracr-proportion\
 --zero-ablation\
 --threshold=0.5623\
 --indices-mode=reverse\
 --first-cache-cpu=False\
 --second-cache-cpu=False\
+--use-positions=True\
 --max-num-epochs=100000""".split("\\\n")]
     )
 else:
@@ -201,6 +202,7 @@ NAMES_MODE = args.names_mode
 DEVICE = args.device
 RESET_NETWORK = args.reset_network
 SINGLE_STEP = True if args.single_step else False
+USE_POSITIONS = True if args.use_positions else False
 
 #%% [markdown] 
 # <h2>Setup Task</h2>
@@ -316,6 +318,7 @@ exp = TLACDCExperiment(
     add_receiver_hooks=False,
     remove_redundant=False,
     show_full_index=use_pos_embed,
+    positions=list() else None, 
 )
 
 # %% [markdown]
