@@ -17,6 +17,8 @@ cd Automatic-Circuit-Discovery
 pip install -e .
 ```
 
+This codebase currently works on top of the TransformerLens main branch (as of 4th June 2023), so probably `transformer_lens==1.2.3` or later (for now, install TransformerLens from source).
+
 You may need to install DeepMind's `tracr` if you're dealing with that (e.g <a href="https://github.com/deepmind/tracr/commit/e75ecdaec12bf2d831a60e54d4270e8fa31fb537">this commit</a>). This seems to be bugged on Windows. 
 
 You may also need do this
