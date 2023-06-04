@@ -89,7 +89,7 @@ for fname in os.listdir(DATA_DIR):
 
 fig=px.scatter(x=[0, 1, 2, 3, 4], y=[0, 1, 4, 9, 16])
 fig.write_image("/tmp/discard.pdf", format="pdf")
-# time.sleep(1)
+time.sleep(1)
 
 # %%
 
@@ -131,18 +131,32 @@ METRICS_FOR_TASK = {
 methods = ["ACDC", "SP", "HISP"]
 
 
-colorscales = {
-    "ACDC": "Blues",
-    "SP": "Reds",
-    "HISP": "Greens",
+colorscale_names = {
+    "ACDC": "Blues_r",
+    "SP": "Greens_r",
+    "HISP": "Reds_r",
 }
 
-colors = {k: pc.sample_colorscale(pc.get_colorscale(v), 0.8)[0] for k, v in colorscales.items()}
+colorscales = {}
+for methodof, name in colorscale_names.items():
+    color_list = pc.get_colorscale(name)
+    # Add black to the minimum
+    colorscales[methodof] = [[0.0, "rgb(0, 0, 0)"],
+                             [1e-6, color_list[0][1]],
+                             *color_list[1:]]
+
+colors = {k: pc.sample_colorscale(v, 0.2)[0] for k, v in colorscales.items()}
 
 symbol = {
     "ACDC": "circle",
     "SP": "x",
     "HISP": "diamond",
+}
+
+score_name = {
+    "ACDC": "threshold",
+    "SP": "lambda",
+    "HISP": "score",
 }
 
 
@@ -170,7 +184,7 @@ def discard_non_pareto_optimal(points, auxiliary, cmp="gt"):
     return list(sorted(ret))
 
 
-def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="trained", ablation_type="random_ablation", plot_type="roc_nodes", scale_min=0.05):
+def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="trained", ablation_type="random_ablation", plot_type="roc_nodes", scale_min=0.0, scale_max=0.8):
     this_data = all_data[weights_type][ablation_type]
 
     TOP_MARGIN = 0.24
@@ -240,7 +254,11 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
     heatmap_ys = np.linspace(all_algs_min, all_algs_max, 300)
 
     def normalize(x, x_min, x_max):
-        return (x - x_min) / (x_max - x_min) * (1 - scale_min)  + scale_min
+        if (x_max - x_min) < 1e-8:
+            out = np.ones_like(x)
+        else:
+            out = (x - x_min) / (x_max - x_min) * (scale_max - scale_min)  + scale_min
+        return out
 
     if y_key in ["node_tpr", "edge_tpr"]:
         HEATMAP_ALGS = ["ACDC", "SP"]
@@ -248,14 +266,16 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
         HEATMAP_ALGS = ["ACDC", "SP", "HISP"]
     for i, methodof in enumerate(HEATMAP_ALGS):
         alg_min, alg_max = bounds_for_alg[methodof]
-        nums = normalize(heatmap_ys, alg_min, alg_max)
-        nums[nums < scale_min] = np.nan
-        nums[nums > 1] = np.nan
+        # nums = normalize(heatmap_ys, alg_min, alg_max)
+        # nums[nums < scale_min] = np.nan
+        # nums[nums > 1] = np.nan
+        alg_ys = np.linspace(alg_min, alg_max, 100)
+        nums = np.linspace(scale_min, scale_max, len(alg_ys))
         assert heatmap_ys[0] == -5.0
         fig.add_trace(
             go.Heatmap(
                 x=[i, i+0.95],
-                y=heatmap_ys,
+                y=alg_ys,
                 z=nums[:, None],
                 colorscale=colorscales[methodof],
                 showscale=False,
@@ -284,8 +304,10 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
             scores = this_data[task_idx][metric_name][alg_idx]["score"]
 
             log_scores = np.log10(scores)
+            # if alg_idx == "16H" and task_idx == "tracr-reverse":
+            #     import pdb; pdb.set_trace()
+            log_scores = np.nan_to_num(log_scores, nan=np.nan, neginf=-1e90, posinf=1e90)
             normalized_log_scores = normalize(log_scores, min_log_score, max_log_score)
-            normalized_log_scores[~np.isfinite(normalized_log_scores)] = np.nan
 
             if alg_idx == "SP":
                 # Divide by number of loss runs. Fix earlier bug.
@@ -301,12 +323,12 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
                 pareto_optimal = [] # list(sorted(points))  # Not actually pareto optimal but we want to plot all of them
                 print("Yep")
                 pareto_log_scores = []
-                pareto_normalized_log_scores = []
+                pareto_scores = []
             else:
                 print("Hehe", y_key)
-                pareto_optimal_aux = discard_non_pareto_optimal(points, zip(log_scores, normalized_log_scores))
-                pareto_optimal, pareto_log_scores = zip(*pareto_optimal_aux)
-                pareto_log_scores, pareto_normalized_log_scores = zip(*pareto_log_scores)
+                pareto_optimal_aux = discard_non_pareto_optimal(points, zip(log_scores, scores))
+                pareto_optimal, aux = zip(*pareto_optimal_aux)
+                pareto_log_scores, pareto_scores = zip(*aux)
 
             auc = None
             if len(pareto_optimal):
@@ -327,7 +349,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
                         mode="lines",
                         line=dict(shape="hv", color=colors[methodof]),
                         showlegend=False,
-                        hovertext=[f"threshold={10**l:e}" for l in pareto_log_scores],
+                        hovertext=[f"{score_name[methodof]}={t:e}" for t in pareto_scores],
                     ),
                     row=row,
                     col=col,
@@ -375,20 +397,22 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
                 }))
 
 
-            others = [(*p, *aux) for (p, *aux) in zip(points, log_scores, normalized_log_scores) if p not in pareto_optimal]
+            others = [(*p, *aux) for (p, *aux) in sorted(zip(points, log_scores, normalized_log_scores, scores), key=lambda x: -x[-1]) if p not in pareto_optimal]
 
             if others:
-                x_data, y_data, log_scores, normalized_log_scores = zip(*others)
+                x_data, y_data, log_scores, normalized_log_scores, scores = zip(*others)
                 if not (np.isfinite(x_data[0]) and np.isfinite(y_data[0])):
                     x_data = x_data[1:]
                     y_data = y_data[1:]
                     log_scores = log_scores[1:]
                     normalized_log_scores = normalized_log_scores[1:]
+                    scores = scores[1:]
                 if not (np.isfinite(x_data[-1]) and np.isfinite(y_data[-1])):
                     x_data = x_data[:-1]
                     y_data = y_data[:-1]
                     log_scores = log_scores[:-1]
                     normalized_log_scores = normalized_log_scores[:-1]
+                    scores = scores[:-1]
 
                 assert not np.any(~np.isfinite(x_data))
                 assert not np.any(~np.isfinite(y_data))
@@ -417,7 +441,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
                         cmin=0.0,
                         cmax=1.0,
                     ),
-                    hovertext=[f"threshold={l}" for l in normalized_log_scores],
+                    hovertext=[f"{score_name[methodof]}={t:e}" for t in scores],
                 ),
                 row=row,
                 col=col,
@@ -581,20 +605,20 @@ PLOT_DIR = DATA_DIR.parent / "plots"
 PLOT_DIR.mkdir(exist_ok=True)
 
 all_dfs = []
-for metric_idx in [0]: #, 1]:
-    for ablation_type in ["random_ablation"]: # , "zero_ablation"]:
-        for weights_type in ["trained"]: # , "reset"]:  # Didn't scramble the weights enough it seems
-            for plot_type in ["precision_recall"]: # ["precision_recall", "roc_nodes", "roc_edges", "kl_edges", "metric_edges"]:
+for metric_idx in [0, 1]:
+    for ablation_type in ["random_ablation", "zero_ablation"]:
+        for weights_type in ["trained", "reset"]:  # Didn't scramble the weights enough it seems
+            for plot_type in ["precision_recall", "roc_nodes", "roc_edges", "kl_edges", "metric_edges"]:
                 x_key, y_key = plot_type_keys[plot_type]
                 fig, df = make_fig(metric_idx=metric_idx, weights_type=weights_type, ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type)
                 if len(df):
                     all_dfs.append(df.T)
                     print(all_dfs[-1])
                 metric = "kl" if metric_idx == 0 else "other"
-                # fig.write_image(PLOT_DIR / ("--".join([metric, weights_type, ablation_type, plot_type]) + ".pdf"))
-                fig.show()
+                fig.write_image(PLOT_DIR / ("--".join([metric, weights_type, ablation_type, plot_type]) + ".pdf"))
+                # fig.show()
 
-# pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
+pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
 # %%
 
 # Stefan
