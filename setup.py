@@ -1,9 +1,9 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name="acdc",
     version="0.1.0",
-    packages=["acdc", "subnetwork_probing"],
+    packages=find_packages(),
     license="LICENSE",
     description="ACDC: built on top of TransformerLens: an implementation of transformers tailored for mechanistic interpretability.",
     long_description=open("README.md").read(),
