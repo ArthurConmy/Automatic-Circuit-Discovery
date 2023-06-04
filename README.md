@@ -9,13 +9,21 @@ This is the accompanying code to the paper "Towards Automated Circuit Discovery 
 * :zap: To run ACDC, see `acdc/main.py`, or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/arthur-try-merge-tl/notebooks/colabs/ACDC_Main_Demo.ipynb#scrollTo=njv8l86QSPka">this Colab notebook</a>
 * :wrench: To see how edit edges in computational graphs in models, see `notebooks/editing_edges.py` or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/arthur-try-merge-tl/notebooks/colabs/ACDC_Editing_Edges_Demo.ipynb">this Colab notebook</a>
 
-## Local installation:
+## Installation:
 
 ```bash
-git clone https://github.com/ArthurConmy/Automatic-Circuit-Discovery
+pip install git@https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@arthur-acdc-feature-prepend git@https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@arthur-try-merge-tl 
+```
+
+### Dev installation:
+
+```bash
+git clone git@github.com:ArthurConmy/Automatic-Circuit-Discovery.git
 cd Automatic-Circuit-Discovery
 pip install -e .
 ```
+
+### Details
 
 This codebase currently works on top of the TransformerLens main branch (as of 4th June 2023), so probably `transformer_lens==1.2.3` or later (for now, install TransformerLens from source).
 

@@ -57,6 +57,7 @@ except Exception as e:
 
 import wandb
 import IPython
+from IPython.display import Image, display
 import torch
 import gc
 from tqdm import tqdm
@@ -324,6 +325,11 @@ for i in range(args.max_num_epochs):
         f"ims/img_new_{i+1}.png",
         show_full_index=use_pos_embed,
     )
+
+    if IN_COLAB or ipython is not None:
+        # so long as we're not running this as a script, show the image!
+        display(Image(f"ims/img_new_{i+1}.png"))
+
     print(i, "-" * 50)
     print(exp.count_no_edges())
 
