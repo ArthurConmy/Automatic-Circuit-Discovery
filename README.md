@@ -64,7 +64,7 @@ If you use ACDC, please reach out! You can reference the work as follows:
 
 [ :white_check_mark: ] Make `TransformerLens` install be Neel's code not my PR
 
-[ ] add hook_mlp_in to `TransformerLens`
+[ ] Add `hook_mlp_in` to `TransformerLens` and delete `hook_resid_mid`
 
 [ ] Delete `arthur-try-merge-tl` references from the repo
 
