@@ -116,8 +116,8 @@ def get_loss(model, data, mask):
 
 print(f"Loss: {get_loss(tl_model, toks_int_values, mask_rep)}")
 
-# %% [markdown]
-# <p>We will now wrap ACDC things inside an `experiment`for further experiments</p>
+#%%[markdownkj # TODO change back to just [markdown]
+#<p>We will now wrap ACDC things inside an `experiment`for further experiments</p>
 # <p>For more advanced usage of the `TLACDCExperiment` object (the main object in this codebase), see the README for links to the `main.py` and its demos</p>
 
 experiment = TLACDCExperiment(

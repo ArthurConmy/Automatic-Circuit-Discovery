@@ -13,7 +13,7 @@ from torch.nn import functional as F
 from acdc.TLACDCInterpNode import TLACDCInterpNode
 from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from transformer_lens.HookedTransformer import HookedTransformer
-from acdc.globalcache import GlobalCache
+from acdc.global_cache import GlobalCache
 from acdc.acdc_graphics import log_metrics_to_wandb
 import warnings
 import wandb
@@ -351,7 +351,9 @@ class TLACDCExperiment:
                     resolved_hooks_dicts = [fwd_hook.hook.hooks_dict_ref() for fwd_hook in fwd_hooks]
                     assert all([resolved_hooks_dict == resolved_hooks_dicts[0] for resolved_hooks_dict in resolved_hooks_dicts]), f"{resolved_hooks_dicts}\nUnexpected behavior: different hook dict for different hooks on the same HookPoint?! https://github.com/neelnanda-io/TransformerLens/issues/297"
                     for fwd_hook in resolved_hooks_dicts[0].values():
-                        hook_func_name = str(fwd_hook.__wrapped__.func) if isinstance(fwd_hook, partial) else str(fwd_hook.__wrapped__)
+                        if isinstance(fwd_hook, partial):
+                            print("Hello!") # TODO remove
+                        hook_func_name = fwd_hook.__wrapped__.__name__ if isinstance(fwd_hook, partial) else fwd_hook.__name__
                         assert "sender_hook" in hook_func_name, f"You should only add sender hooks to {node.name}, and this: {hook_func_name} doesn't look like a sender hook"
                     continue
 
@@ -431,7 +433,7 @@ class TLACDCExperiment:
                 resolved_hooks_dicts = [fwd_hook.hook.hooks_dict_ref() for fwd_hook in fwd_hooks]
                 assert all([resolved_hooks_dict == resolved_hooks_dicts[0] for resolved_hooks_dict in resolved_hooks_dicts]), f"{resolved_hooks_dicts}\nUnexpected behavior: different hook dict for different hooks on the same HookPoint?! https://github.com/neelnanda-io/TransformerLens/issues/297"
                 for fwd_hook in resolved_hooks_dicts[0].values():
-                    hook_func_name = str(fwd_hook.__wrapped__.func) if isinstance(fwd_hook, partial) else str(fwd_hook.__wrapped__)
+                    hook_func_name = fwd_hook.__wrapped__.__name__ if isinstance(fwd_hook, partial) else fwd_hook.__name__
                     assert "sender_hook" in hook_func_name, f"You should only add sender hooks to {node.name}, and this: {hook_func_name} doesn't look like a sender hook"
             return False # already added, move on
 
@@ -449,7 +451,7 @@ class TLACDCExperiment:
                 resolved_hooks_dicts = [fwd_hook.hook.hooks_dict_ref() for fwd_hook in fwd_hooks]
                 assert all([resolved_hooks_dict == resolved_hooks_dicts[0] for resolved_hooks_dict in resolved_hooks_dicts]), f"{resolved_hooks_dicts}\nUnexpected behavior: different hook dict for different hooks on the same HookPoint?! https://github.com/neelnanda-io/TransformerLens/issues/297"
                 for fwd_hook in resolved_hooks_dicts[0].values():
-                    hook_func_name = str(fwd_hook.__wrapped__.func) if isinstance(fwd_hook, partial) else str(fwd_hook.__wrapped__)
+                    hook_func_name = fwd_hook.__wrapped__.__name__ if isinstance(fwd_hook, partial) else fwd_hook.__name__
                     assert "receiver_hook" in hook_func_name, f"You should only add receiver hooks to {node.name}, and this: {hook_func_name} doesn't look like a receiver hook"
             return False # already added, move on
 
