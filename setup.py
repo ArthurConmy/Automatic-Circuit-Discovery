@@ -5,7 +5,7 @@ setup(
     version="0.1.0",
     packages=find_packages(),
     license="LICENSE",
-    description="ACDC: built on top of TransformerLens: an implementation of transformers tailored for mechanistic interpretability.",
+    description="ACDC: Automatic Circuit DisCovery implementation on top of TransformerLens",
     long_description=open("README.md").read(),
     install_requires=[
         "einops",

@@ -345,9 +345,8 @@ if USING_WANDB:
     wandb.finish()
 
 # %% [markdown]
-# <h2> Save the final subgraph of the model</h2>
-
-# TODO explain that there are some edges missing from this list (I think?)
+# <h2>Save the final subgraph of the model</h2>
+# <p>There are more than `exp.count_no_edges()` here because we include some "placeholder" edges needed to make ACDC work that don't actually matter</p>
 
 exp.save_subgraph(
     return_it=True,

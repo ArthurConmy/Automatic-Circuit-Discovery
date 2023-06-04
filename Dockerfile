@@ -2,6 +2,8 @@ FROM nvidia/cuda:11.7.1-cudnn8-devel-ubuntu22.04
 LABEL org.opencontainers.image.source=https://github.com/rhaps0dy/Automatic-Circuit-Discovery
 ENV DEBIAN_FRONTEND noninteractive
 
+# TODO left this in from Adria's code, check if it is reasonable
+
 RUN apt-get update -q \
     && apt-get install -y --no-install-recommends \
     wget git git-lfs \

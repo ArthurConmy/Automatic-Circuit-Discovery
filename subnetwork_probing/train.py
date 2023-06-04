@@ -29,7 +29,7 @@ from acdc.induction.utils import get_all_induction_things, get_mask_repeat_candi
 from tqdm import tqdm
 from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformer import HookedTransformer
 from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformerConfig import HookedTransformerConfig
-from subnetwork_probing.transformer_lens.acdc.ioi_dataset import IOIDataset
+from subnetwork_probing.transformer_lens.transformer_lens.ioi_dataset import IOIDataset
 
 import wandb
 
