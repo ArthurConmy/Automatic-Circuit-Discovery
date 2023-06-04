@@ -13,6 +13,7 @@ import plotly.express as px
 import pandas as pd
 import argparse
 import plotly.colors as pc
+from acdc.graphics import dict_merge, pessimistic_auc
 
 from notebooks.emacs_plotly_render import set_plotly_renderer
 
@@ -24,26 +25,6 @@ set_plotly_renderer("emacs")
 DATA_DIR = Path("acdc") / "media" / "plots_data"
 
 all_data = {}
-
-
-def dict_merge(dct, merge_dct):
-    """Recursive dict merge. Inspired by :meth:``dict.update()``, instead of
-    updating only top-level keys, dict_merge recurses down into dicts nested
-    to an arbitrary depth, updating keys. The ``merge_dct`` is merged into
-    ``dct``.
-
-    Copyright 2016-2022 Paul Durivage, licensed under Apache License https://gist.github.com/angstwad/bf22d1822c38a92ec0a9
-
-    :param dct: dict onto which the merge is executed
-    :param merge_dct: dct merged into dct
-    :return: None
-    """
-    for k in merge_dct.keys():
-        if k in dct and isinstance(dct[k], dict) and isinstance(merge_dct[k], dict):  # noqa
-            dict_merge(dct[k], merge_dct[k])
-        else:
-            dct[k] = merge_dct[k]
-
 
 for fname in os.listdir(DATA_DIR):
     if fname.endswith(".json"):

@@ -165,7 +165,7 @@ parser.add_argument("--only-save-canonical", action="store_true", help="Only sav
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task=ioi --metric=logit_diff --alg=acdc".split())
+    args = parser.parse_args("--task=tracr-reverse --metric=l2 --alg=acdc".split())
     if "arthur" not in __file__:
         __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
 else:
@@ -412,11 +412,16 @@ if TASK != "induction":
 
     for k in d_trues:
         d[k] = True
+
     exp.load_subgraph(d)
     canonical_circuit_subgraph = deepcopy(exp.corr)
     for t in exp.corr.all_edges().keys():
         exp.corr.edges[t[0]][t[1]][t[2]][t[3]].present = True
     canonical_circuit_subgraph_size = canonical_circuit_subgraph.count_no_edges()
+
+    # and reset the sugbgraph...
+    for t, e in exp.corr.all_edges().items():
+        exp.corr.edges[t[0]][t[1]][t[2]][t[3]].present = True
 
     for edge in canonical_circuit_subgraph.all_edges().values():
         edge.effect_size = 1.0   # make it visible
@@ -458,7 +463,15 @@ def get_acdc_runs(
     pre_run_filter: dict = ACDC_PRE_RUN_FILTER,
     run_filter: Optional[Callable[[Any], bool]] = ACDC_RUN_FILTER,
     clip: Optional[int] = None,
+    return_ids: bool = False,
 ):
+# experiment = exp
+# project_name = ACDC_PROJECT_NAME
+# pre_run_filter = ACDC_PRE_RUN_FILTER
+# run_filter = ACDC_RUN_FILTER
+# clip = None
+# return_ids = False
+# if True:
     if clip is None:
         clip = 100_000 # so we don't clip anything
 
@@ -471,6 +484,7 @@ def get_acdc_runs(
     print(f"loading {len(filtered_runs)} runs with filter {pre_run_filter} and {run_filter}")
 
     corrs = []
+    ids = []
     for run in filtered_runs:
         score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
         try:
@@ -506,6 +520,7 @@ def get_acdc_runs(
             # Find latest plotly file which contains the `result` for all edges
             files = run.files(per_page=100_000)
             regexp = re.compile(r"^media/plotly/results_([0-9]+)_[^.]+\.plotly\.json$")
+            assert len(files)>0
 
             latest_file = None
             latest_fname_step = -1
@@ -519,7 +534,8 @@ def get_acdc_runs(
             try:
                 if latest_file is None:
                     raise wandb.CommError("a")
-                with latest_file.download(ROOT / run.name, replace=False, exist_ok=True) as f:
+                # replace=False because these files are never modified. Save them in a unique location, ROOT/run.id
+                with latest_file.download(ROOT / run.id, replace=False, exist_ok=True) as f:
                     d = json.load(f)
 
                 data = d["data"][0]
@@ -552,14 +568,16 @@ def get_acdc_runs(
                 print("After copying: n_edges=", corr_to_copy.count_no_edges())
 
                 corrs.append((corr_to_copy, score_d))
+                ids.append(run.id)
 
             except (wandb.CommError, requests.exceptions.HTTPError) as e:
                 print(f"Error {e}, falling back to parsing output.log")
                 try:
-                    with run.file("output.log").download(root=ROOT / run.name, replace=False, exist_ok=True) as f:
+                    with run.file("output.log").download(root=ROOT / run.id, replace=False, exist_ok=True) as f:
                         log_text = f.read()
                     experiment.load_from_wandb_run(log_text)
                     corrs.append((deepcopy(experiment.corr), score_d))
+                    ids.append(run.id)
                 except Exception:
                     print(f"Loading run {run.name} with state={run.state} config={run.config} totally failed.")
                     continue
@@ -573,7 +591,7 @@ def get_acdc_runs(
             this_root = ROOT / edges_artifact.name
             # Load the edges
             for f in edges_artifact.files():
-                with f.download(root=this_root, replace=False, exist_ok=True) as fopen:
+                with f.download(root=this_root, replace=True, exist_ok=True) as fopen:
                     # Sadly f.download opens in text mode
                     with open(fopen.name, "rb") as fopenb:
                         edges_pth = pickle.load(fopenb)
@@ -582,6 +600,7 @@ def get_acdc_runs(
                 all_edges[t].present = True
 
             corrs.append((corr, score_d))
+            ids.append(run.id)
         try:
             old_exp_corr = exp.corr
             exp.corr = corrs[-1][0]
@@ -596,10 +615,14 @@ def get_acdc_runs(
         finally:
             exp.corr = old_exp_corr
         print(f"Added run with threshold={score_d['score']}, n_edges={corrs[-1][0].count_no_edges()}")
+    if return_ids:
+        return corrs, ids
     return corrs
 
+#%%
+
 if not SKIP_ACDC: # this is slow, so run once
-    acdc_corrs = get_acdc_runs(None if things is None else exp, clip = 1 if TESTING else None)
+    acdc_corrs, ids = get_acdc_runs(None if things is None else exp, clip = 1 if TESTING else None, return_ids = True)
     assert len(acdc_corrs) > 1
     print("acdc_corrs", len(acdc_corrs))
 
@@ -645,6 +668,7 @@ def get_sp_corrs(
         score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
         score_d["score"] = run.config["lambda_reg"]
         corrs.append((corr, score_d))
+
     return corrs
 
 if not SKIP_SP: # this is slow, so run once
@@ -711,6 +735,9 @@ if not SKIP_SIXTEEN_HEADS: methods.append("16H")
 
 # get points from correspondence
 def get_points(corrs_and_scores, decreasing=True):
+# corrs_and_scores = corrs
+# decreasing = True
+# if True:
     keys = set()
     for _, s in corrs_and_scores:
         keys.update(s.keys())
@@ -741,7 +768,7 @@ def get_points(corrs_and_scores, decreasing=True):
 
     n_skipped = 0
 
-    for corr, score in tqdm(sorted(corrs_and_scores, key=lambda x: x[1]["score"], reverse=decreasing)):
+    for idx, (corr, score) in tqdm(enumerate(sorted(corrs_and_scores, key=lambda x: x[1]["score"], reverse=decreasing))):
         if set(score.keys()) != keys:
             a = init_point.copy()
             a.update(score)
@@ -793,6 +820,15 @@ points = {}
 if "ACDC" in methods:
     if "ACDC" not in points: points["ACDC"] = []
     points["ACDC"].extend(get_points(acdc_corrs))
+
+#%%
+
+if "shaved_points" not in locals():
+    shaved_points = points["ACDC"][1:-1]
+
+for idx, (p, idd) in enumerate(zip(shaved_points, ids)):
+    if p["edge_tpr"] == 1.0 and p["edge_fpr"] == 0.0:
+        print(idx, idd, p["n_edges"], p["n_nodes"], p["edge_tpr"], p["edge_fpr"])
 
 #%%
 
@@ -856,3 +892,5 @@ if OUT_FILE is not None:
 
     with open(OUT_FILE, "w") as f:
         json.dump(out_dict, f, indent=2)
+
+# %%
