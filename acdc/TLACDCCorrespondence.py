@@ -1,11 +1,18 @@
 from acdc.TLACDCInterpNode import TLACDCInterpNode
 from collections import OrderedDict
-from acdc.acdc_utils import TorchIndex, Edge, EdgeType, OrderedDefaultdict, make_nd_dict
+from acdc.TLACDCEdge import (
+    TorchIndex,
+    Edge, 
+    EdgeType,
+)  # these introduce several important classes !!!
+from acdc.acdc_utils import OrderedDefaultdict, make_nd_dict
 from typing import List, Dict, Optional, Tuple, Union, Set, Callable, TypeVar, Iterable, Any
 
 
 class TLACDCCorrespondence:
-    """Stores the full computational graph, similar to ACDCCorrespondence from the rust_circuit code"""
+    """Stores the full computational graph, similar to ACDCCorrespondence from the rust_circuit code
+    
+    The two attributes, self.graph and self.edges allow for efficiently looking up the nodes and edges in the graph: see `notebooks/editing_edges.py`"""
         
     def __init__(self):
         self.graph: OrderedDict[str, OrderedDict[TorchIndex, TLACDCInterpNode]] = OrderedDefaultdict(OrderedDict) # TODO rename "nodes?"
@@ -158,7 +165,6 @@ class TLACDCCorrespondence:
                         safe=False,
                     )
 
-                # TODO maybe this needs be moved out of this block??? IDK
                 for letter in "qkv":
                     hook_letter_name = f"blocks.{layer_idx}.attn.hook_{letter}"
                     hook_letter_slice = TorchIndex([None, None, head_idx])
@@ -193,12 +199,12 @@ class TLACDCCorrespondence:
             token_embed_node = TLACDCInterpNode(
                 name="hook_embed",
                 index=TorchIndex([None]),
-                incoming_edge_type=EdgeType.PLACEHOLDER, # TODO
+                incoming_edge_type=EdgeType.PLACEHOLDER,
             )
             pos_embed_node = TLACDCInterpNode(
                 name="hook_pos_embed",
                 index=TorchIndex([None]),
-                incoming_edge_type=EdgeType.PLACEHOLDER, # TODO
+                incoming_edge_type=EdgeType.PLACEHOLDER,
             )
             embed_nodes = [token_embed_node, pos_embed_node]
 

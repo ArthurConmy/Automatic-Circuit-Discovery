@@ -1,4 +1,5 @@
 import ast
+from collections import OrderedDict
 import re
 import sys
 import time
@@ -14,111 +15,21 @@ import wandb
 
 from transformer_lens.HookedTransformer import HookedTransformer
 
-# -------------------------
-# Essential ACDC utils
-# -------------------------
-
-TorchIndexHashableTuple = Tuple[Union[None, slice], ...]
+from acdc.TLACDCEdge import (
+    TorchIndex,
+    Edge, 
+    EdgeType,
+)  # these introduce several important classes !!!
 
 class OrderedDefaultdict(defaultdict):
     def __init__(self, *args, **kwargs):
         if sys.version_info < (3, 7):
-            raise Exception("You need Python >= 3.7 so dict is ordered by default. You could revert to the old implementation https://github.com/ArthurConmy/Automatic-Circuit-Discovery/commit/65301ec57c31534bd34383c243c782e3ccb7ed82")
+            raise Exception("You need Python >= 3.7 so dict is ordered by default. You could revert to the old unmantained implementation https://github.com/ArthurConmy/Automatic-Circuit-Discovery/commit/65301ec57c31534bd34383c243c782e3ccb7ed82")
         super().__init__(*args, **kwargs)
 
-class EdgeType(Enum):
-    """TODO Arthur explain this more clearly and use GPT-4 for clarity/coherence. Ping Arthur if you want a better explanation and this isn't done!!!
-    Property of edges in the computational graph - either 
-    
-    ADDITION: the child (hook_name, index) is a sum of the parent (hook_name, index)s
-    DIRECT_COMPUTATION The *single* child is a function of and only of the parent (e.g the value hooked by hook_q is a function of what hook_q_input saves).
-    PLACEHOLDER generally like 2. but where there are generally multiple parents. Here in ACDC we just include these edges by default when we find them. Explained below?
-    
-    Q: Why do we do this?
-
-    A: We need something inside TransformerLens to represent the edges of a computational graph.
-    The object we choose is pairs (hook_name, index). For example the output of Layer 11 Heads is a hook (blocks.11.attn.hook_result) and to sepcify the 3rd head we add the index [:, :, 3]. Then we can build a computational graph on these! 
-
-    However, when we do ACDC there turn out to be two conflicting things "removing edges" wants to do: 
-    i) for things in the residual stream, we want to remove the sum of the effects from previous hooks 
-    ii) for things that are not linear we want to *recompute* e.g the result inside the hook 
-    blocks.11.attn.hook_result from a corrupted Q and normal K and V
-
-    The easiest way I thought of of reconciling these different cases, while also having a connected computational graph, is to have three types of edges: addition for the residual case, direct computation for easy cases where we can just replace hook_q with a cached value when we e.g cut it off from hook_q_input, and placeholder to make the graph connected (when hook_result is connected to hook_q and hook_k and hook_v)"""
-
-    ADDITION = 0
-    DIRECT_COMPUTATION = 1
-    PLACEHOLDER = 2
-
-    def __eq__(self, other):
-        # TODO WTF? Why do I need this?? To busy to look into now, check the commit where we add this later
-        return self.value == other.value
-
-class Edge:
-    def __init__(
-        self,
-        edge_type: EdgeType,
-        present: bool = True,
-        effect_size: Optional[float] = None,
-    ):
-        self.edge_type = edge_type
-        self.present = present
-        self.effect_size = effect_size
-
-    def __repr__(self) -> str:
-        return f"Edge({self.edge_type}, {self.present})"
-
-# TODO attrs.frozen???
-class TorchIndex:
-    """There is not a clean bijection between things we 
-    want in the computational graph, and things that are hooked
-    (e.g hook_result covers all heads in a layer)
-    
-    `HookReference`s are essentially indices that say which part of the tensor is being affected. 
-    
-    E.g (slice(None), slice(None), 3) means index [:, :, 3]
-    
-    Also we want to be able to go my_dictionary[my_torch_index] hence the hashable tuple stuff
-    
-    EXAMPLES: Initialise [:, :, 3] with TorchIndex([None, None, 3]) and [:] with TorchIndex([None])"""
-
-    def __init__(
-        self, 
-        list_of_things_in_tuple
-    ):
-        for arg in list_of_things_in_tuple: # TODO write this less verbosely. Just typehint + check typeguard saves us??
-            if type(arg) in [type(None), int]:
-                continue
-            else:
-                assert isinstance(arg, list)
-                assert all([type(x) == int for x in arg])
-
-        self.as_index = tuple([slice(None) if x is None else x for x in list_of_things_in_tuple])
-        self.hashable_tuple = tuple(list_of_things_in_tuple)
-
-    def __hash__(self):
-        return hash(self.hashable_tuple)
-
-    def __eq__(self, other):
-        return self.hashable_tuple == other.hashable_tuple
-
-    def __repr__(self, graphviz_index=False) -> str:
-        ret = "["
-        for idx, x in enumerate(self.hashable_tuple):
-            if idx > 0:
-                ret += ", "
-            if x is None:
-                ret += ":" if not graphviz_index else "COLON"
-            elif type(x) == int:
-                ret += str(x)
-            else:
-                raise NotImplementedError(x)
-        ret += "]"
-        return ret
-
-    def graphviz_index(self) -> str:
-        return self.__repr__(graphviz_index=True)
-
+# -------------------------
+# Some ACDC metric utils
+# -------------------------
 
 def kl_divergence(
     logits: torch.Tensor,
@@ -256,6 +167,11 @@ def frac_correct_metric(logits, correct_labels, wrong_labels, return_one_element
 # Utils of secondary importance
 # -----------
 
+def next_key(ordered_dict: OrderedDict, current_key):
+    key_iterator = iter(ordered_dict)
+    next((key for key in key_iterator if key == current_key), None)
+    return next(key_iterator, None)
+
 def make_nd_dict(end_type, n = 3) -> Any:
     """Make biiig default dicts : ) : )"""
 
@@ -312,12 +228,6 @@ def extract_info(string):
         current_list = [ast.literal_eval(item if item != "COL" else "None") for item in current_list_items]
 
     return parent_name, parent_list, current_name, current_list
-
-if __name__ == "__main__":
-    string = "Node: cur_parent=TLACDCInterpNode(blocks.3.attn.hook_result, ['COL', 'COL', 1]) (self.current_node=TLACDCInterpNode(blocks.3.hook_resid_post, ['COL']))"
-    parent_name, parent_list, current_name, current_list = extract_info(string)
-
-    print(f"Parent Name: {parent_name}\nParent List: {parent_list}\nCurrent Name: {current_name}\nCurrent List: {current_list}")
 
 # ----------------------------------
 # Precision and recall etc metrics
@@ -590,3 +500,10 @@ def process_nan(tens, reverse=False):
                 tens[i] = tens[i-1]
 
     return tens
+
+if __name__ == "__main__":
+    # some quick test
+    string = "Node: cur_parent=TLACDCInterpNode(blocks.3.attn.hook_result, ['COL', 'COL', 1]) (self.current_node=TLACDCInterpNode(blocks.3.hook_resid_post, ['COL']))"
+    parent_name, parent_list, current_name, current_list = extract_info(string)
+
+    print(f"Parent Name: {parent_name}\nParent List: {parent_list}\nCurrent Name: {current_name}\nCurrent List: {current_list}")

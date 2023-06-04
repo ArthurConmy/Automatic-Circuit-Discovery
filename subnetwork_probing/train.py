@@ -22,7 +22,12 @@ import torch
 import torch.nn.functional as F
 import subnetwork_probing.transformer_lens.transformer_lens.utils as utils
 from acdc.tracr.utils import get_all_tracr_things
-from acdc.acdc_utils import EdgeType, TorchIndex, reset_network
+from acdc.acdc_utils import reset_network
+from acdc.TLACDCEdge import (
+    TorchIndex,
+    Edge,
+    EdgeType,
+)
 from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from acdc.TLACDCInterpNode import TLACDCInterpNode
 from acdc.induction.utils import get_all_induction_things, get_mask_repeat_candidates

@@ -17,18 +17,20 @@ from acdc.global_cache import GlobalCache
 from acdc.acdc_graphics import log_metrics_to_wandb
 import warnings
 import wandb
-from acdc.acdc_utils import TorchIndex, Edge, EdgeType, extract_info, shuffle_tensor
+from acdc.acdc_utils import extract_info, shuffle_tensor
+from acdc.TLACDCEdge import (
+    TorchIndex,
+    Edge, 
+    EdgeType,
+)  # these introduce several important classes !!!
 from collections import OrderedDict
 from functools import partial
 import time
-from acdc.acdc_utils import TorchIndexHashableTuple
+from acdc.acdc_utils import next_key
 
+# some types that will help
+TorchIndexHashableTuple = Tuple[Union[None, slice], ...]
 Subgraph = Dict[Tuple[str, TorchIndexHashableTuple, str, TorchIndexHashableTuple], bool] # an alias for loading and saving from WANDB (primarily)
-
-def next_key(ordered_dict: OrderedDict, current_key):
-    key_iterator = iter(ordered_dict)
-    next((key for key in key_iterator if key == current_key), None)
-    return next(key_iterator, None)
 
 class TLACDCExperiment:
     """Manages an ACDC experiment, including the computational graph, the model, the data etc.
@@ -582,11 +584,7 @@ class TLACDCExperiment:
             if testing:
                 break
 
-        # TODO find an efficient way to do this...
-        # if added_receiver_hook and not is_this_node_used:
-        #     assert self.model.hook_dict[self.current_node.name].fwd_hooks[-1] == added_receiver_hook, f"You should not have added additional hooks to {self.current_node.name}..."
-        #     added_receiver_hook = self.model.hook_dict[self.current_node.name].fwd_hooks.pop()
-        #     added_receiver_hook.hook.remove()
+        # TODO find an efficient way to do remove hooks sensibly
 
         if not is_this_node_used and self.remove_redundant:
             if self.verbose:

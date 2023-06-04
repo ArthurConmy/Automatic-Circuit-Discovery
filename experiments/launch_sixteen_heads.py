@@ -19,15 +19,19 @@ import tqdm
 
 from transformer_lens import HookedTransformer, TLACDCCorrespondence, TLACDCInterpNode
 from acdc.acdc_utils import (
-    Edge,
-    EdgeType,
-    TorchIndex,
     cleanup,
     ct,
     kl_divergence,
     make_nd_dict,
     shuffle_tensor,
 )
+
+from acdc.TLACDCEdge import (
+    Edge,
+    EdgeType,
+    TorchIndex,
+)
+
 from acdc.acdc_utils import reset_network
 from acdc.docstring.utils import get_all_docstring_things
 from acdc.greaterthan.utils import get_all_greaterthan_things

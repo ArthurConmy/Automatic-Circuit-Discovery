@@ -3,7 +3,7 @@
 import graphviz
 from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from acdc.TLACDCInterpNode import TLACDCInterpNode
-from acdc.acdc_utils import EdgeType, TorchIndex
+from acdc.TLACDCEdge import EdgeType, TorchIndex
 from acdc.acdc_graphics import show
 import tempfile
 import os

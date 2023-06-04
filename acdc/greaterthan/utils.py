@@ -1,5 +1,9 @@
 from collections import OrderedDict
-from acdc.acdc_utils import Edge, TorchIndex, EdgeType
+from acdc.TLACDCEdge import (
+    TorchIndex,
+    Edge, 
+    EdgeType,
+)  # these introduce several important classes !!!
 from acdc.TLACDCInterpNode import TLACDCInterpNode
 import warnings
 from functools import partial

@@ -1,4 +1,8 @@
-from acdc.acdc_utils import TorchIndex, Edge, EdgeType
+from acdc.TLACDCEdge import (
+    TorchIndex,
+    Edge, 
+    EdgeType,
+)  # these introduce several important classes !!!
 from typing import List, Dict, Optional, Tuple, Union, Set, Callable, TypeVar, Iterable, Any
 
 class TLACDCInterpNode:

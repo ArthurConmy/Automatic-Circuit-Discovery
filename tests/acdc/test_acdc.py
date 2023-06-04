@@ -52,10 +52,13 @@ from acdc.acdc_utils import (
     make_nd_dict,
     shuffle_tensor,
     ct,
+)  
+from acdc.TLACDCEdge import (
     TorchIndex,
     Edge,
     EdgeType,
-)  # these introduce several important classes !!!
+)
+# these introduce several important classes !!!
 
 from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from acdc.TLACDCInterpNode import TLACDCInterpNode

@@ -1,5 +1,10 @@
 from collections import OrderedDict
-from acdc.acdc_utils import Edge, TorchIndex, EdgeType, filter_nodes, get_present_nodes
+from acdc.TLACDCEdge import (
+    Edge,
+    EdgeType,
+    TorchIndex,
+)
+from acdc.acdc_utils import filter_nodes, get_present_nodes
 from acdc.TLACDCInterpNode import TLACDCInterpNode
 import warnings
 from functools import partial

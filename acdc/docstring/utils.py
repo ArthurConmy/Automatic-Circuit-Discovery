@@ -26,12 +26,16 @@ import acdc.docstring.prompts as prompts
 from acdc.acdc_utils import (
     MatchNLLMetric,
     make_nd_dict,
-    TorchIndex,
-    Edge,
-    EdgeType,
     negative_log_probs,
     shuffle_tensor,
 )  # these introduce several important classes !!!
+
+from acdc.TLACDCEdge import (
+    TorchIndex,
+    Edge, 
+    EdgeType,
+)  # these introduce several important classes !!!
+
 from transformer_lens import HookedTransformer
 from acdc.acdc_utils import kl_divergence
 

@@ -19,15 +19,8 @@ import networkx as nx
 import graphviz
 from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from acdc.TLACDCInterpNode import TLACDCInterpNode
-from acdc.acdc_utils import EdgeType
+from acdc.TLACDCEdge import EdgeType
 
-# # I hope that it's reasonable...
-# from transformer_lens.utils import (
-#     make_nd_dict,
-#     TorchIndex,
-#     Edge, 
-#     EdgeType,
-# )  # these introduce several important classes !!!
 
 # -------------------------------------------
 # SOME GRAPHICS

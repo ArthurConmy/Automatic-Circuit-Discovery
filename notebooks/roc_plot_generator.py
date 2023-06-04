@@ -93,6 +93,9 @@ from acdc.acdc_utils import (
     shuffle_tensor,
     cleanup,
     ct,
+)
+
+from acdc.TLACDCEdge import (
     TorchIndex,
     Edge,
     EdgeType,
