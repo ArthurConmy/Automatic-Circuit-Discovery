@@ -124,6 +124,7 @@ from acdc.induction.utils import (
     get_mask_repeat_candidates,
 )
 from acdc.greaterthan.utils import get_all_greaterthan_things
+from acdc.gendered_pronouns.utils import get_all_gendered_pronouns_things
 from acdc.acdc_graphics import (
     build_colorscheme,
     show,
@@ -256,7 +257,7 @@ elif TASK == "greaterthan":
         num_examples=num_examples, metric_name=args.metric, device=DEVICE
     )
 elif TASK == 'gendered-pronouns':
-    
+
     pass
 else:
     raise ValueError(f"Unknown task {TASK}")
