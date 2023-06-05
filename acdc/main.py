@@ -18,11 +18,11 @@ try:
     ipython = get_ipython()
     ipython.run_line_magic(
         "pip",
-        "install git@https://github.com/neelnanda-io/TransformerLens.git",
+        "install git@https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@parthur-patch-resid-mid", # install a patched TL
     )
     ipython.run_line_magic(
         "pip",
-        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@arthur-try-merge-tl",
+        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git", # install ACDC
     )
     ipython.run_line_magic("pip", "install torchtyping")
     ipython.run_line_magic("pip", "install cmapy")
