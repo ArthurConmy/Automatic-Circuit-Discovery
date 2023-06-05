@@ -7,10 +7,10 @@ import shlex
 import random
 
 IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root")
-print(IS_ADRIA)
+print("is adria:", IS_ADRIA)
 
 #TASKS = ["ioi", "docstring", "greaterthan", "tracr-reverse", "tracr-proportion", "induction"]
-TASKS = ["ioi", "docstring", "greaterthan", "tracr-reverse", "tracr-proportion", "induction"]
+TASKS = ["ioi", "docstring", "greaterthan", "induction"]
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
@@ -106,13 +106,13 @@ mod_idx = parser.parse_args().i
 num_processes = parser.parse_args().n
 
 if __name__ == "__main__":
-    for alg in ["acdc"]:
+    for alg in ["acdc", "16h", "sp"]:
         for task in tasks_for[alg]:
             main(
                 alg,
                 task,
                 KubernetesJob(
-                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.8.0",
+                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.9.0",
                     cpu=4,
                     gpu=0 if not IS_ADRIA or task.startswith("tracr") or alg != "acdc" else 1,
                     mount_training=False,
