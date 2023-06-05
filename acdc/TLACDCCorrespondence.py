@@ -167,11 +167,12 @@ class TLACDCCorrespondence:
 
                     downstream_residual_nodes[position].append(cur_mlp_input)
 
+
             # connect attention heads
             for head_idx in range(model.cfg.n_heads - 1, -1, -1):
-                ### START MAYBE INDENT
                 # this head writes to all future residual stream things
-                for position in positions:
+                head_at_current_and_future_positions = []
+                for position in reversed(positions): # positions is in increasing order
                     cur_head_name = f"blocks.{layer_idx}.attn.hook_result"
                     cur_head_slice = TorchIndex([None, position, head_idx])
                     cur_head = TLACDCInterpNode(
@@ -179,6 +180,7 @@ class TLACDCCorrespondence:
                         index=cur_head_slice,
                         incoming_edge_type=EdgeType.PLACEHOLDER,
                     )
+                    head_at_current_and_future_positions.append(cur_head)
                     correspondence.add_node(cur_head)
                     for residual_stream_node in downstream_residual_nodes[position]:
                         correspondence.add_edge(
@@ -197,7 +199,9 @@ class TLACDCCorrespondence:
                         hook_letter_input_name = f"blocks.{layer_idx}.hook_{letter}_input"
                         hook_letter_input_slice = TorchIndex([None, position, head_idx])
                         hook_letter_input_node = TLACDCInterpNode(
-                            name=hook_letter_input_name, index=hook_letter_input_slice, incoming_edge_type=EdgeType.ADDITION
+                            name=hook_letter_input_name, 
+                            index=hook_letter_input_slice, 
+                            incoming_edge_type=EdgeType.ADDITION,
                         )
                         correspondence.add_node(hook_letter_input_node)
 
@@ -207,6 +211,15 @@ class TLACDCCorrespondence:
                             edge = Edge(edge_type=EdgeType.PLACEHOLDER),
                             safe = False,
                         )
+
+                        if letter in "kv":
+                            for head in head_at_current_and_future_positions[:-1]: # don't include head at current position
+                                correspondence.add_edge(
+                                    parent_node=hook_letter_node,
+                                    child_node=head,
+                                    edge=Edge(edge_type=EdgeType.PLACEHOLDER),
+                                    safe=False,
+                                )
 
                         correspondence.add_edge(
                             parent_node=hook_letter_input_node,

@@ -96,6 +96,7 @@ class TLACDCExperiment:
         self.positions = positions
         if self.positions != [None]: 
             assert self.positions == list(range(seq_len)), (self.positions, list(range(seq_len)), "for now, we only support either no positional splitting or splitting by every position")
+            # TODO enforce that positions is strictly increasing when we get round to this
 
         self.remove_redundant = remove_redundant
         self.indices_mode = indices_mode
@@ -535,7 +536,7 @@ class TLACDCExperiment:
                 if edge.edge_type == EdgeType.PLACEHOLDER:
 
                     if self.positions != [None]:
-                        edge.effect_size = 240.0 # show is currently broken, currently a dumb fix of that
+                        edge.effect_size = 0.42 # show is currently broken, currently a dumb fix of that
 
                     is_this_node_used = True
                     continue # include by default
