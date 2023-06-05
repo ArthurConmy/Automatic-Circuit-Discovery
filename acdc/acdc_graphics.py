@@ -6,7 +6,7 @@ import torch
 import numpy as np
 import huggingface_hub
 import datetime
-from typing import Dict
+from typing import Dict, Union
 import wandb
 import plotly.graph_objects as go
 import torch
@@ -101,7 +101,7 @@ def build_colorscheme(correspondence, colorscheme: str = "Pastel2", show_full_in
 def show(
     correspondence: TLACDCCorrespondence,
     fname=None,
-    colorscheme: dict | str = "Pastel2",
+    colorscheme: Union[dict, str] = "Pastel2",
     minimum_penwidth: float = 0.3,
     show: bool = True,
     show_full_index: bool = True,

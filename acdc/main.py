@@ -169,8 +169,9 @@ if ipython is not None:
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args( # TODO add back zero ablation
-        [line.strip() for line in r"""--task=induction\
---threshold=0.5623\
+        [line.strip() for line in r"""--task=tracr-proportion\
+--zero-ablation\
+--threshold=0.0001\
 --indices-mode=reverse\
 --first-cache-cpu=False\
 --second-cache-cpu=False\
@@ -346,6 +347,8 @@ for i in range(args.max_num_epochs):
 
     if exp.current_node is None or SINGLE_STEP:
         break
+
+    break # TODO remove
 
 exp.save_edges("another_final_edges.pkl")
 
