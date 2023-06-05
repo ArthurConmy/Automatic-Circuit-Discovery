@@ -828,15 +828,6 @@ if "ACDC" in methods:
 
 #%%
 
-if "shaved_points" not in locals():
-    shaved_points = points["ACDC"][1:-1]
-
-for idx, (p, idd) in enumerate(zip(shaved_points, ids)):
-    if p["edge_tpr"] == 1.0 and p["edge_fpr"] == 0.0:
-        print(idx, idd, p["n_edges"], p["n_nodes"], p["edge_tpr"], p["edge_fpr"])
-
-#%%
-
 if "SP" in methods:
     if "SP" not in points: points["SP"] = []
     points["SP"].extend(get_points(sp_corrs))
