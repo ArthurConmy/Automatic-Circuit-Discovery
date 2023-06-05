@@ -93,8 +93,9 @@ class TLACDCExperiment:
         if ref_ds is not None:
             assert ref_ds.shape==ds.shape, (ref_ds.shape, ds.shape)
 
-        if positions != [None]: 
-            assert positions == list(range(seq_len)), (positions, list(range(seq_len)), "for now, we only support either no positional splitting or splitting by every position")
+        self.positions = positions
+        if self.positions != [None]: 
+            assert self.positions == list(range(seq_len)), (self.positions, list(range(seq_len)), "for now, we only support either no positional splitting or splitting by every position")
 
         self.remove_redundant = remove_redundant
         self.indices_mode = indices_mode
@@ -114,7 +115,7 @@ class TLACDCExperiment:
             warnings.warn("Never skipping edges, for now")
             skip_edges = "no"
 
-        self.corr = TLACDCCorrespondence.setup_from_model(self.model, use_pos_embed=use_pos_embed, positions=positions, seq_len=seq_len)
+        self.corr = TLACDCCorrespondence.setup_from_model(self.model, use_pos_embed=use_pos_embed, positions=self.positions, seq_len=seq_len)
 
         if early_exit: 
             return
@@ -532,6 +533,10 @@ class TLACDCExperiment:
                 cur_parent = self.corr.graph[sender_name][sender_index]
 
                 if edge.edge_type == EdgeType.PLACEHOLDER:
+
+                    if self.positions != [None]:
+                        edge.effect_size = 240.0 # show is currently broken, currently a dumb fix of that
+
                     is_this_node_used = True
                     continue # include by default
 
