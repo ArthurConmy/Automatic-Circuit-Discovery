@@ -73,23 +73,23 @@ def main(
                     command.append("--ignore-missing-score")
                 commands.append(command)
 
-        if IS_ADRIA:
-            launch(
-                commands,
-                name="collect_data",
-                job=job,
-                synchronous=True,
-                just_print_commands=False,
-                check_wandb=WandbIdentifier(f"agarriga-collect-{alg}-{task[-5:]}-{{i:05d}}", "collect", "acdc"),
-            )
+    if IS_ADRIA:
+        launch(
+            commands,
+            name="collect_data",
+            job=job,
+            synchronous=True,
+            just_print_commands=False,
+            check_wandb=WandbIdentifier(f"agarriga-collect-{alg}-{task[-5:]}-{{i:05d}}", "collect", "acdc"),
+        )
 
-        else:
-            for command_idx in range(mod_idx, len(commands), num_processes): # commands:
-                # run 4 in parallel
-                command = commands[command_idx]
-                print(f"Running command {command_idx} / {len(commands)}")
-                print(" ".join(command))
-                subprocess.run(command)
+    else:
+        for command_idx in range(mod_idx, len(commands), num_processes): # commands:
+            # run 4 in parallel
+            command = commands[command_idx]
+            print(f"Running command {command_idx} / {len(commands)}")
+            print(" ".join(command))
+            subprocess.run(command)
 
 
 tasks_for = {
