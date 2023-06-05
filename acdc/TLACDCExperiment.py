@@ -304,10 +304,14 @@ class TLACDCExperiment:
         # answer: yes --- try and have hoooks for each individual (name, index)
 
         for receiver_node_index in self.corr.edges[hook.name]:
+
+            incoming_edge_type = self.corr.graph[hook.name][receiver_node_index].incoming_edge_type
+
             for sender_node_name in self.corr.edges[hook.name][receiver_node_index]:
                 for sender_node_index in self.corr.edges[hook.name][receiver_node_index][sender_node_name]:
 
                     edge = self.corr.edges[hook.name][receiver_node_index][sender_node_name][sender_node_index] # TODO maybe less crazy nested indexes ... just make local variables each time?
+                    assert edge.edge_type == incoming_edge_type, f"Edge type {edge.edge_type} should be the same as {incoming_edge_type}"
 
                     if not edge.present:
                         continue # don't do patching stuff, if it wastes time
@@ -329,13 +333,10 @@ class TLACDCExperiment:
                                 sender_node_name
                             ][sender_node_index.as_index].to(z.device)
                         except: 
-                            a=1
+                            raise ValueError(f"Error adding {sender_node_name} {sender_node_index} to {receiver_node_index} ... {edge}")
                         z[receiver_node_index.as_index] -= self.global_cache.second_cache[
                             sender_node_name
                         ][sender_node_index.as_index].to(z.device)
-
-                    else: 
-                        raise ValueError(f"Unknown edge type {edge.edge_type} ... {edge}")
 
         return z
 

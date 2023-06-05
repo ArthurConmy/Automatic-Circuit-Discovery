@@ -92,7 +92,10 @@ class TLACDCCorrespondence:
         parent = self.graph[parent_name][parent_index]
         child = self.graph[child_name][child_index]
 
-        parent.children.remove(child)
+        try:
+            parent.children.remove(child)
+        except Exception as e:
+            raise e
         child.parents.remove(parent)        
 
     @classmethod
@@ -111,13 +114,13 @@ class TLACDCCorrespondence:
         for position in positions:
             logits_pos_node = TLACDCInterpNode(
                 name=f"blocks.{model.cfg.n_layers-1}.hook_resid_post",
-                index=TorchIndex([None, position] if positions != None else [None]),
+                index=TorchIndex([None, position] if positions != [None] else [None]),
                 incoming_edge_type = EdgeType.ADDITION,
             )
             correspondence.add_node(logits_pos_node)
             correspondence.add_edge(
-                parent_node=cur_mlp,
-                child_node=residual_stream_node,
+                parent_node=logits_pos_node,
+                child_node=logits_node,
                 edge=Edge(edge_type=EdgeType.PLACEHOLDER),
                 safe=False,
             )
@@ -192,7 +195,7 @@ class TLACDCCorrespondence:
                         correspondence.add_node(hook_letter_node)
 
                         hook_letter_input_name = f"blocks.{layer_idx}.hook_{letter}_input"
-                        hook_letter_input_slice = TorchIndex([None, None, head_idx])
+                        hook_letter_input_slice = TorchIndex([None, position, head_idx])
                         hook_letter_input_node = TLACDCInterpNode(
                             name=hook_letter_input_name, index=hook_letter_input_slice, incoming_edge_type=EdgeType.ADDITION
                         )
@@ -221,12 +224,12 @@ class TLACDCCorrespondence:
             if use_pos_embed:
                 token_embed_node = TLACDCInterpNode(
                     name="hook_embed",
-                    index=TorchIndex([None, position]),
+                    index=TorchIndex([None, position] if positions != [None] else None),
                     incoming_edge_type=EdgeType.PLACEHOLDER,
                 )
                 pos_embed_node = TLACDCInterpNode(
                     name="hook_pos_embed",
-                    index=TorchIndex([None]),
+                    index=TorchIndex([None, position] if positions != [None] else None),
                     incoming_edge_type=EdgeType.PLACEHOLDER,
                 )
                 embed_nodes = [token_embed_node, pos_embed_node]
@@ -235,7 +238,7 @@ class TLACDCCorrespondence:
                 # add the embedding node
                 embedding_node = TLACDCInterpNode(
                     name="blocks.0.hook_resid_pre",
-                    index=TorchIndex([None, position]),
+                    index=TorchIndex([None, position] if positions != [None] else None),
                     incoming_edge_type=EdgeType.PLACEHOLDER, # TODO maybe add some NoneType or something???
                 )
                 embed_nodes = [embedding_node]

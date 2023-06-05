@@ -169,8 +169,7 @@ if ipython is not None:
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args( # TODO add back zero ablation
-        [line.strip() for line in r"""--task=tracr-proportion\
---zero-ablation\
+        [line.strip() for line in r"""--task=induction\
 --threshold=0.5623\
 --indices-mode=reverse\
 --first-cache-cpu=False\
@@ -268,7 +267,7 @@ tl_model = things.tl_model
 if RESET_NETWORK:
     reset_network(TASK, DEVICE, tl_model)
 
-#%% [markdown]
+#%%markdow # TODO fix
 # <h2>Setup ACDC Experiment</h2>
 
 # Make notes for potential wandb run
