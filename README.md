@@ -12,7 +12,7 @@ This is the accompanying code to the paper "Towards Automated Circuit Discovery 
 ## Fast installation:
 
 ```bash
-pip install git@https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@arthur-patch-resid-mid git@https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git cmapy torchtyping
+pip install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git+arthur-patch-resid-mid git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git cmapy torchtyping
 ```
 
 ### Details
