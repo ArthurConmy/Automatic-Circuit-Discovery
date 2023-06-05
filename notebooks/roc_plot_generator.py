@@ -299,9 +299,7 @@ elif TASK == "ioi":
     things = get_all_ioi_things(num_examples=num_examples, device=DEVICE, metric_name=METRIC)
 
     if METRIC == "kl_div" and not RESET_NETWORK:
-        ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_ioi_sweep"
-        del ACDC_PRE_RUN_FILTER["config.reset_network"]
-        ACDC_PRE_RUN_FILTER["group"] = "default"
+        ACDC_PRE_RUN_FILTER["group"] = "acdc-ioi-gt-redo2"
     else:
         try:
             del ACDC_PRE_RUN_FILTER["group"]
