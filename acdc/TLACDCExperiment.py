@@ -7,31 +7,43 @@ from typing import Callable, Optional, Literal, List, Dict, Any, Tuple, Union, S
 import random
 from dataclasses import dataclass
 import torch
-from acdc.graphics import show
+from acdc.acdc_graphics import show
 from torch import nn
 from torch.nn import functional as F
 from acdc.TLACDCInterpNode import TLACDCInterpNode
-from acdc.TLACDCCorrespondence import TLACDCCorrespondence, TLACDCCorrespondenceFast
-from acdc.HookedTransformer import HookedTransformer
-from acdc.graphics import log_metrics_to_wandb
+from acdc.TLACDCCorrespondence import TLACDCCorrespondence
+from transformer_lens.HookedTransformer import HookedTransformer
+from acdc.global_cache import GlobalCache
+from acdc.acdc_graphics import log_metrics_to_wandb
 import warnings
 import wandb
-from acdc.acdc_utils import TorchIndex, Edge, EdgeType, extract_info, shuffle_tensor
+from acdc.acdc_utils import extract_info, shuffle_tensor
+from acdc.TLACDCEdge import (
+    TorchIndex,
+    Edge, 
+    EdgeType,
+)  # these introduce several important classes !!!
 from collections import OrderedDict
 from functools import partial
 import time
-from acdc.acdc_utils import TorchIndexHashableTuple
+from acdc.acdc_utils import next_key
 
+# some types that will help
+TorchIndexHashableTuple = Tuple[Union[None, slice], ...]
 Subgraph = Dict[Tuple[str, TorchIndexHashableTuple, str, TorchIndexHashableTuple], bool] # an alias for loading and saving from WANDB (primarily)
-
-def next_key(ordered_dict: OrderedDict, current_key):
-    key_iterator = iter(ordered_dict)
-    next((key for key in key_iterator if key == current_key), None)
-    return next(key_iterator, None)
 
 class TLACDCExperiment:
     """Manages an ACDC experiment, including the computational graph, the model, the data etc.
-    Based off of ACDCExperiment from rust_circuit code"""
+
+    The *key method* is the .step() method which processes one node (and all the connections into that node)
+    It's also helpful to understand what's going on in the def sender_hook(...) and def receiver_hook(...) methods - these are attached to the model to do path patching
+    (see https://github.com/redwoodresearch/Easy-Transformer for a gentler introduction to path patching)
+
+    You could also read __init__ for what's going on in this class. 
+
+    A lot of the other methods are not important apart from specific evals and things.
+
+    Based off of ACDCExperiment from old rust_circuit code"""
 
     def __init__(
         self,
@@ -72,7 +84,7 @@ class TLACDCExperiment:
         """Initialize the ACDC experiment"""
 
         if zero_ablation and remove_redundant:
-            raise ValueError("It's not possible to do zero ablation with remove redundant, talk to Arthur about a bizarre special case!")
+            raise ValueError("It's not possible to do zero ablation with remove redundant, talk to Arthur about this bizarre special case if curious!")
 
         model.reset_hooks()
 
@@ -114,9 +126,13 @@ class TLACDCExperiment:
                 self.ref_ds = self.ds.clone()
             else:
                 warnings.warn("We shall overwrite the ref_ds with zeros.")
+        self.global_cache = GlobalCache(
+            device=("cpu" if self.first_cache_cpu else "cuda", "cpu" if self.second_cache_cpu else "cuda"),
+        )
+
         self.setup_second_cache()
         if self.second_cache_cpu:
-            self.model.global_cache.to("cpu", which_caches="second")
+            self.global_cache.to("cpu", which_caches="second")
 
         self.setup_model_hooks(
             add_sender_hooks=add_sender_hooks,
@@ -145,7 +161,7 @@ class TLACDCExperiment:
 
         self.parallel_hypotheses = parallel_hypotheses
         if self.parallel_hypotheses != 1:
-            raise NotImplementedError("Parallel hypotheses not implemented yet") # TODO?
+            raise NotImplementedError("Parallel hypotheses not implemented yet")
 
         if self.using_wandb:
             # TODO?
@@ -165,7 +181,6 @@ class TLACDCExperiment:
     def verify_model_setup(self):
         assert self.model.cfg.use_attn_result, "Need to be able to see split by head outputs"
         assert self.model.cfg.use_split_qkv_input, "Need to be able to see split by head QKV inputs"
-        assert self.model.cfg.use_global_cache, "Need to be able to use global cache to do ACDC"
 
     def update_cur_metric(self, recalc_metric=True, recalc_edges=True, initial=False):
         if recalc_metric:
@@ -224,9 +239,9 @@ class TLACDCExperiment:
                 tens = tens.to(device)
 
         if cache == "second":
-            hook.global_cache.second_cache[hook.name] = tens
+            self.global_cache.second_cache[hook.name] = tens
         elif cache == "first":
-            hook.global_cache.cache[hook.name] = tens
+            self.global_cache.cache[hook.name] = tens
         else:
             raise ValueError(f"Unknown cache type {cache}")
 
@@ -245,7 +260,7 @@ class TLACDCExperiment:
         if EdgeType.DIRECT_COMPUTATION in incoming_edge_types:
 
             old_z = z.clone()
-            z[:] = self.model.global_cache.second_cache[hook.name].to(z.device)
+            z[:] = self.global_cache.second_cache[hook.name].to(z.device)
 
             if verbose:
                 print("Overwrote to sec cache")
@@ -275,7 +290,7 @@ class TLACDCExperiment:
     
             return z
 
-        z[:] = self.model.global_cache.second_cache[hook.name].to(z.device)
+        z[:] = self.global_cache.second_cache[hook.name].to(z.device)
 
         # TODO - is this slow ???
         # answer: yes --- try and have hoooks for each individual (name, index)
@@ -296,15 +311,15 @@ class TLACDCExperiment:
                         print("-------")
                         if edge.edge_type == EdgeType.ADDITION:
                             print(
-                                hook.global_cache.cache[sender_node_name].shape,
+                                self.global_cache.cache[sender_node_name].shape,
                                 sender_node_index,
                             )
                     
                     if edge.edge_type == EdgeType.ADDITION:
-                        z[receiver_node_index.as_index] += hook.global_cache.cache[
+                        z[receiver_node_index.as_index] += self.global_cache.cache[
                             sender_node_name
                         ][sender_node_index.as_index].to(z.device)
-                        z[receiver_node_index.as_index] -= hook.global_cache.second_cache[
+                        z[receiver_node_index.as_index] -= self.global_cache.second_cache[
                             sender_node_name
                         ][sender_node_index.as_index].to(z.device)
 
@@ -342,9 +357,14 @@ class TLACDCExperiment:
                 raise ValueError(f"{str(big_tuple)} {str(edge)} failed")
 
             for node in nodes:
-                if len(self.model.hook_dict[node.name].fwd_hooks) > 0:
-                    for hook_func_maybe_partial in self.model.hook_dict[node.name].fwd_hook_functions:
-                        hook_func_name = hook_func_maybe_partial.func.__name__ if isinstance(hook_func_maybe_partial, partial) else hook_func_maybe_partial.__name__
+                fwd_hooks = self.model.hook_dict[node.name].fwd_hooks
+                if len(fwd_hooks) > 0:
+                    resolved_hooks_dicts = [fwd_hook.hook.hooks_dict_ref() for fwd_hook in fwd_hooks]
+                    assert all([resolved_hooks_dict == resolved_hooks_dicts[0] for resolved_hooks_dict in resolved_hooks_dicts]), f"{resolved_hooks_dicts}\nUnexpected behavior: different hook dict for different hooks on the same HookPoint?! https://github.com/neelnanda-io/TransformerLens/issues/297"
+                    for fwd_hook in resolved_hooks_dicts[0].values():
+                        if isinstance(fwd_hook, partial):
+                            print("Hello!") # TODO remove
+                        hook_func_name = fwd_hook.__wrapped__.__name__ if isinstance(fwd_hook, partial) else fwd_hook.__name__
                         assert "sender_hook" in hook_func_name, f"You should only add sender hooks to {node.name}, and this: {hook_func_name} doesn't look like a sender hook"
                     continue
 
@@ -358,7 +378,7 @@ class TLACDCExperiment:
             print("Adding sender hooks...")
         
         self.model.reset_hooks()
-        self.model.cache_all(self.model.global_cache.second_cache)
+        self.model.cache_all(self.global_cache.second_cache)
 
         if self.verbose:
             print("Now corrupting things..")
@@ -369,20 +389,19 @@ class TLACDCExperiment:
             print("Done corrupting things")
 
         if self.zero_ablation:
-            names = list(self.model.global_cache.second_cache.keys())
+            names = list(self.global_cache.second_cache.keys())
             assert len(names)>0, "No second cache names found"
-            print("WE NAAMING")
             for name in names:
-                self.model.global_cache.second_cache[name] = torch.zeros_like(
-                    self.model.global_cache.second_cache[name]
+                self.global_cache.second_cache[name] = torch.zeros_like(
+                    self.global_cache.second_cache[name]
                 )
                 torch.cuda.empty_cache()
 
         if self.second_cache_cpu:
-            self.model.global_cache.to("cpu", which_caches="second")
+            self.global_cache.to("cpu", which_caches="second")
 
         if self.use_pos_embed:
-            self.model.global_cache.second_cache["hook_pos_embed"][:] = shuffle_tensor(self.model.global_cache.second_cache["hook_pos_embed"][0], seed=49) # make all positions the same shuffled set of positions
+            self.global_cache.second_cache["hook_pos_embed"][:] = shuffle_tensor(self.global_cache.second_cache["hook_pos_embed"][0], seed=49) # make all positions the same shuffled set of positions
 
         self.model.reset_hooks()
 
@@ -420,12 +439,16 @@ class TLACDCExperiment:
 
     def add_sender_hook(self, node, override=False):
         if not override and len(self.model.hook_dict[node.name].fwd_hooks) > 0:
-            for hook_func_maybe_partial in self.model.hook_dict[node.name].fwd_hook_functions:
-                hook_func_name = hook_func_maybe_partial.func.__name__ if isinstance(hook_func_maybe_partial, partial) else hook_func_maybe_partial.__name__
-                assert "sender_hook" in hook_func_name, f"You should only add sender hooks to {node.name}, and this: {hook_func_name} doesn't look like a sender hook"
-            return False # already added, whatever move on
+            fwd_hooks = self.model.hook_dict[node.name].fwd_hooks
+            if len(fwd_hooks) > 0:
+                resolved_hooks_dicts = [fwd_hook.hook.hooks_dict_ref() for fwd_hook in fwd_hooks]
+                assert all([resolved_hooks_dict == resolved_hooks_dicts[0] for resolved_hooks_dict in resolved_hooks_dicts]), f"{resolved_hooks_dicts}\nUnexpected behavior: different hook dict for different hooks on the same HookPoint?! https://github.com/neelnanda-io/TransformerLens/issues/297"
+                for fwd_hook in resolved_hooks_dicts[0].values():
+                    hook_func_name = fwd_hook.__wrapped__.__name__ if isinstance(fwd_hook, partial) else fwd_hook.__name__
+                    assert "sender_hook" in hook_func_name, f"You should only add sender hooks to {node.name}, and this: {hook_func_name} doesn't look like a sender hook"
+            return False # already added, move on
 
-        handle = self.model.add_hook(
+        self.model.add_hook(
             name=node.name, 
             hook=partial(self.sender_hook, verbose=self.hook_verbose, cache="first", device="cpu" if self.first_cache_cpu else None),
         )
@@ -434,12 +457,16 @@ class TLACDCExperiment:
 
     def add_receiver_hook(self, node, override=False, prepend=False):
         if not override and len(self.model.hook_dict[node.name].fwd_hooks) > 0: # repeating code from add_sender_hooks
-            for hook_func_maybe_partial in self.model.hook_dict[node.name].fwd_hook_functions:
-                hook_func_name = hook_func_maybe_partial.func.__name__ if isinstance(hook_func_maybe_partial, partial) else hook_func_maybe_partial.__name__
-                assert "receiver_hook" in hook_func_name, f"You should only add receiver hooks to {node.name}, and this: {hook_func_name} doesn't look like a receiver hook"
-            return False # already added, whatever move on
+            fwd_hooks = self.model.hook_dict[node.name].fwd_hooks
+            if len(fwd_hooks) > 0:
+                resolved_hooks_dicts = [fwd_hook.hook.hooks_dict_ref() for fwd_hook in fwd_hooks]
+                assert all([resolved_hooks_dict == resolved_hooks_dicts[0] for resolved_hooks_dict in resolved_hooks_dicts]), f"{resolved_hooks_dicts}\nUnexpected behavior: different hook dict for different hooks on the same HookPoint?! https://github.com/neelnanda-io/TransformerLens/issues/297"
+                for fwd_hook in resolved_hooks_dicts[0].values():
+                    hook_func_name = fwd_hook.__wrapped__.__name__ if isinstance(fwd_hook, partial) else fwd_hook.__name__
+                    assert "receiver_hook" in hook_func_name, f"You should only add receiver hooks to {node.name}, and this: {hook_func_name} doesn't look like a receiver hook"
+            return False # already added, move on
 
-        handle = self.model.add_hook(
+        self.model.add_hook(
             name=node.name,
             hook=partial(self.receiver_hook, verbose=self.hook_verbose),
             prepend=prepend,
@@ -566,11 +593,7 @@ class TLACDCExperiment:
             if testing:
                 break
 
-        # TODO find an efficient way to do this...
-        # if added_receiver_hook and not is_this_node_used:
-        #     assert self.model.hook_dict[self.current_node.name].fwd_hooks[-1] == added_receiver_hook, f"You should not have added additional hooks to {self.current_node.name}..."
-        #     added_receiver_hook = self.model.hook_dict[self.current_node.name].fwd_hooks.pop()
-        #     added_receiver_hook.hook.remove()
+        # TODO find an efficient way to do remove hooks sensibly
 
         if not is_this_node_used and self.remove_redundant:
             if self.verbose:

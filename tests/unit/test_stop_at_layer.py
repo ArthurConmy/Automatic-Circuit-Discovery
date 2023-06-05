@@ -1,15 +1,10 @@
 """
 Tests for the stop_at_layer parameter in HookedTransformer
 """
-from typeguard.importhook import install_import_hook
 
-install_import_hook("transformer_lens")
-
-from transformer_lens import HookedTransformer, HookedTransformerConfig
-from torchtyping import TensorType as patch_typeguard
 import torch
 
-patch_typeguard()
+from transformer_lens import HookedTransformer, HookedTransformerConfig
 
 
 def test_stop_at_embed():

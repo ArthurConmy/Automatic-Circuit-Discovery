@@ -1,11 +1,11 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name="acdc",
     version="0.1.0",
-    packages=["acdc", "subnetwork_probing"],
+    packages=find_packages(),
     license="LICENSE",
-    description="ACDC: built on top of TransformerLens: an implementation of transformers tailored for mechanistic interpretability.",
+    description="ACDC: Automatic Circuit DisCovery implementation on top of TransformerLens",
     long_description=open("README.md").read(),
     install_requires=[
         "einops",
@@ -18,8 +18,9 @@ setup(
         "datasets",
         "wandb",
         "fancy_einsum",
+        "torchtyping", # TODO doesn't install?
         "huggingface_hub",
-        "cmapy",
+        "cmapy", # TODO doesn't install?
         "graphviz", 
         "kaleido",
         "plotly",
@@ -27,7 +28,11 @@ setup(
         "cmapy",
         "networkx",
         "rich",
-        # "git+https://github.com/deepmind/tracr.git", # sad does not work; pip deprecated
+        # "git+https://github.com/deepmind/tracr.git", # sad does not work; from setup.py : (
+        "rich",
+        "accelerate",
+        "typing-extensions",
+        "pydot",
     ],
     extras_require={
         "dev": ["pytest", "mypy", "pytest-cov"],

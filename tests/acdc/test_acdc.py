@@ -16,7 +16,6 @@ import wandb
 import IPython
 import torch
 
-# from easy_transformer.ioi_dataset import IOIDataset  # type: ignore
 from tqdm import tqdm
 import random
 from functools import *
@@ -37,6 +36,7 @@ import numpy as np
 import einops
 from tqdm import tqdm
 import yaml
+import gc
 from transformers import AutoModelForCausalLM, AutoConfig, AutoTokenizer
 
 import matplotlib.pyplot as plt
@@ -44,18 +44,21 @@ import plotly.express as px
 import plotly.io as pio
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
-from acdc.hook_points import HookedRootModule, HookPoint
-from acdc.HookedTransformer import (
+from transformer_lens.hook_points import HookedRootModule, HookPoint
+from transformer_lens.HookedTransformer import (
     HookedTransformer,
 )
 from acdc.acdc_utils import (
     make_nd_dict,
     shuffle_tensor,
     ct,
+)  
+from acdc.TLACDCEdge import (
     TorchIndex,
     Edge,
     EdgeType,
-)  # these introduce several important classes !!!
+)
+# these introduce several important classes !!!
 
 from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from acdc.TLACDCInterpNode import TLACDCInterpNode
@@ -64,23 +67,28 @@ from acdc.TLACDCExperiment import TLACDCExperiment
 from collections import defaultdict, deque, OrderedDict
 from acdc.induction.utils import (
     get_all_induction_things,
-    get_induction_model,
     get_validation_data,
     get_good_induction_candidates,
     get_mask_repeat_candidates,
 )
 from acdc.tracr.utils import get_tracr_model_input_and_tl_model
-from acdc.graphics import (
+from acdc.acdc_graphics import (
     build_colorscheme,
     show,
 )
+import pytest
 
+@pytest.mark.skip(reason="OOM on small machine - worth unchecking!!!")
 def test_induction_several_steps():
     # get induction task stuff
     num_examples = 400
     seq_len = 30
     # TODO initialize the `tl_model` with the right model
-    tl_model, toks_int_values, toks_int_values_other, metric = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device="cuda", randomize_data=False)
+    all_induction_things = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device="cuda") # removed some randomize seq_len thing - hopefully unimportant
+    tl_model, toks_int_values, toks_int_values_other, metric = all_induction_things.tl_model, all_induction_things.validation_data, all_induction_things.validation_patch_data, all_induction_things.validation_metric
+
+    gc.collect()
+    torch.cuda.empty_cache()
 
     # initialise object
     exp = TLACDCExperiment(
@@ -129,14 +137,10 @@ def test_induction_several_steps():
     for edge_tuple, edge in edges_to_consider.items():
         assert abs(edge.effect_size - EDGE_EFFECTS[edge_tuple]) < 1e-5, (edge_tuple, edge.effect_size, EDGE_EFFECTS[edge_tuple])
 
-#%%
-if True:
-# def test_main_script():
+def test_main_script():
     import subprocess
     for task in ["induction", "ioi", "tracr", "docstring"]:
         subprocess.run(["python", "../../acdc/main.py", "--task", task, "--threshold", "123456789", "--single-step"])
 
-def test_evaluating_subgraphs_notebook():
-    import notebooks.evaluating_subgraphs
-
-# %%
+def test_editing_edges_notebook():
+    import notebooks.editing_edges

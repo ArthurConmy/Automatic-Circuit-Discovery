@@ -1,12 +1,6 @@
-from typeguard.importhook import install_import_hook
-
-install_import_hook("transformer_lens")
-
-from transformer_lens import HookedTransformer, HookedTransformerConfig
-from torchtyping import TensorType as TT, patch_typeguard
 from transformers import AutoTokenizer
 
-patch_typeguard()
+from transformer_lens import HookedTransformer, HookedTransformerConfig
 
 
 def test_d_vocab_from_tokenizer():

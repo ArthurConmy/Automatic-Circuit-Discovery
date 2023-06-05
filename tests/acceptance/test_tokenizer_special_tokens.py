@@ -1,13 +1,7 @@
-from typeguard.importhook import install_import_hook
-
-install_import_hook("transformer_lens")
-
-from transformer_lens import HookedTransformer, HookedTransformerConfig
-from torchtyping import TensorType as TT, patch_typeguard
 from transformers import AutoTokenizer
-import acdc.loading_from_pretrained as loading
 
-patch_typeguard()
+import transformer_lens.loading_from_pretrained as loading
+from transformer_lens import HookedTransformer, HookedTransformerConfig
 
 # Get's tedious typing these out everytime I want to sweep over all the distinct small models
 MODEL_TESTING_LIST = [
@@ -36,14 +30,6 @@ def test_d_vocab_from_tokenizer():
         model = HookedTransformer(
             cfg=cfg, tokenizer=AutoTokenizer.from_pretrained(tokenizer_name)
         )
-        # Jank token setup
-        # Perhaps we should write a wrapper around the tokenizer
-        if model.tokenizer.eos_token is None:
-            model.tokenizer.eos_token = "<|endoftext|>"
-        if model.tokenizer.pad_token is None:
-            model.tokenizer.pad_token = model.tokenizer.eos_token
-        if model.tokenizer.bos_token is None:
-            model.tokenizer.bos_token = model.tokenizer.eos_token
 
         tokens_with_bos = model.to_tokens(test_string)
         tokens_without_bos = model.to_tokens(test_string, prepend_bos=False)

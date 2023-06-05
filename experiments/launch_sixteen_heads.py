@@ -17,18 +17,22 @@ import torch
 import wandb
 import tqdm
 
-from acdc import HookedTransformer, TLACDCCorrespondence, TLACDCInterpNode
+from transformer_lens import HookedTransformer, TLACDCCorrespondence, TLACDCInterpNode
 from acdc.acdc_utils import (
-    Edge,
-    EdgeType,
-    TorchIndex,
     cleanup,
     ct,
     kl_divergence,
     make_nd_dict,
     shuffle_tensor,
 )
-from acdc.utils import reset_network
+
+from acdc.TLACDCEdge import (
+    Edge,
+    EdgeType,
+    TorchIndex,
+)
+
+from acdc.acdc_utils import reset_network
 from acdc.docstring.utils import get_all_docstring_things
 from acdc.greaterthan.utils import get_all_greaterthan_things
 from acdc.induction.utils import (
@@ -38,9 +42,8 @@ from acdc.induction.utils import (
     get_validation_data,
 )
 from acdc.ioi.utils import get_all_ioi_things
-from acdc.munging_utils import heads_to_nodes_to_mask
 from acdc.TLACDCExperiment import TLACDCExperiment
-from acdc.TLACDCInterpNode import TLACDCInterpNode
+from acdc.TLACDCInterpNode import TLACDCInterpNode, heads_to_nodes_to_mask
 from acdc.tracr.utils import get_all_tracr_things
 from subnetwork_probing.train import correspondence_from_mask
 from notebooks.emacs_plotly_render import set_plotly_renderer
@@ -55,7 +58,7 @@ set_plotly_renderer("emacs")
 #%%
 
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
-parser.add_argument('--task', type=str, required=True, help='Choose a task from the available options: ioi, docstring, induction, tracr (no guarentee I implement all...)')
+parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr-reverse, tracr-proportion, greaterthan')
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
 parser.add_argument('--wandb-entity', type=str, required=False, default="remix_school-of-rock", help='Value for WANDB_ENTITY_NAME')
 parser.add_argument('--wandb-group', type=str, required=False, default="default", help='Value for WANDB_GROUP_NAME')
@@ -71,21 +74,21 @@ parser.add_argument('--torch-num-threads', type=int, default=0, help="How many t
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args([
-        "--task=tracr-proportion",
-        "--wandb-mode=offline",
-        "--wandb-dir=/tmp/wandb",
-        "--wandb-entity=remix_school-of-rock",
-        "--wandb-group=default",
-        "--wandb-project=acdc",
-        "--wandb-run-name=notebook-testing",
-        "--device=cpu",
-        "--reset-network=0",
-        "--metric=kl_div",
-    ])
+    args = parser.parse_args([line.strip() for line in r"""--task=tracr-proportion \
+--wandb-mode=offline \
+--wandb-dir=/tmp/wandb \
+--wandb-entity=remix_school-of-rock \
+--wandb-group=default \
+--wandb-project=acdc \
+--wandb-run-name=notebook-testing \
+--device=cpu \
+--reset-network=0 \
+--metric=kl_div""".split("\\\n")]) # so easy to copy and paste into terminal!!!
+
 else:
     args = parser.parse_args()
 
+torch.manual_seed(args.seed)
 
 if args.torch_num_threads > 0:
     torch.set_num_threads(args.torch_num_threads)
@@ -116,7 +119,6 @@ elif args.task == "induction":
     seq_len = 300
     # TODO initialize the `tl_model` with the right model
     things = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device=args.device, metric=args.metric)
-
 elif args.task == "docstring":
     num_examples = 50
     seq_len = 41
@@ -129,12 +131,19 @@ else:
     raise ValueError(f"Unknown task {args.task}")
 
 # %% load the model into a Subnetwork-Probing model.
-# We don't use the sixteen_heads=True argument any more, because we want to keep qkv separated.
+# We don't use the sixteen_heads=True argument any more, because we want to keep QKV separated.
+# Deleted the 16H true argument altogether...
 
 
 kwargs = dict(**things.tl_model.cfg.__dict__)
-del kwargs["use_split_qkv_input"]
-del kwargs["use_global_cache"]
+
+for extra_arg in [
+    "use_split_qkv_input",
+    "n_devices", # extra from new merge
+    "gated_mlp",
+]:
+    if extra_arg in kwargs:
+        del kwargs[extra_arg]
 
 cfg = SPHookedTransformerConfig(**kwargs)
 model = SPHookedTransformer(cfg, is_masked=True)

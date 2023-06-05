@@ -1,3 +1,8 @@
+out.txt
+out2.txt
+out1.txt
+acdc.egg-info/
+*.sage.py
 *.pt
 *.pkl
 better*.json
@@ -13,6 +18,7 @@ scratch.py
 transformer_lens/scratch.py
 
 .vscode/
+.idea/
 wandb*
 transformer_lens\.egg*
 MANIFEST.in
@@ -47,6 +53,7 @@ profile.json
 profile2.json
 profile_trash.json
 pts/
-
-
+.coverage*
+.Ds_Store
+.pylintrc
 **/.DS_Store

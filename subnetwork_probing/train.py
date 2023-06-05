@@ -22,8 +22,12 @@ import torch
 import torch.nn.functional as F
 import subnetwork_probing.transformer_lens.transformer_lens.utils as utils
 from acdc.tracr.utils import get_all_tracr_things
-from acdc.acdc_utils import EdgeType, TorchIndex
-from acdc.utils import reset_network
+from acdc.acdc_utils import reset_network
+from acdc.TLACDCEdge import (
+    TorchIndex,
+    Edge,
+    EdgeType,
+)
 from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from acdc.TLACDCInterpNode import TLACDCInterpNode
 from acdc.induction.utils import get_all_induction_things, get_mask_repeat_candidates
@@ -490,8 +494,14 @@ if __name__ == "__main__":
         raise ValueError(f"Unknown task {args.task}")
 
     kwargs = dict(**all_task_things.tl_model.cfg.__dict__)
-    del kwargs["use_split_qkv_input"]
-    del kwargs["use_global_cache"]
+    for kwarg_string in [
+        "use_split_qkv_input",
+        "n_devices",
+        "gated_mlp",
+    ]:
+        if kwarg_string in kwargs:
+            del kwargs[kwarg_string]
+
     cfg = HookedTransformerConfig(**kwargs)
     model = HookedTransformer(cfg, is_masked=True)
 

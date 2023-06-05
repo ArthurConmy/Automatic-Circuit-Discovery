@@ -1,21 +1,15 @@
 # %%
 
-from typeguard.importhook import install_import_hook
+import functools
 
-install_import_hook("transformer_lens")
+import torch as t
+from jaxtyping import Int
 
 from transformer_lens import HookedTransformer, HookedTransformerConfig
-from torchtyping import TensorType as TT, patch_typeguard
-from acdc.hook_points import HookPoint
-
-import functools
-import torch as t
-
-patch_typeguard()
+from transformer_lens.hook_points import HookPoint
 
 
 def test_patch_tokens():
-
     # Define small transformer
     cfg = HookedTransformerConfig(
         n_layers=1,
@@ -36,7 +30,9 @@ def test_patch_tokens():
     new_first_token = model.to_single_token("Hi")
 
     # Define hook function to alter the first token
-    def hook_fn(tokens: TT["batch", "seq"], hook: HookPoint, new_first_token: int):
+    def hook_fn(
+        tokens: Int[t.Tensor, "batch seq"], hook: HookPoint, new_first_token: int
+    ):
         assert (
             tokens[0, 0].item() != new_first_token
         )  # Need new_first_token to be different from original

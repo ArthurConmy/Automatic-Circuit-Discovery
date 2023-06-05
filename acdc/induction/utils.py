@@ -25,29 +25,29 @@ import networkx as nx
 from acdc.acdc_utils import (
     MatchNLLMetric,
     make_nd_dict,
+    shuffle_tensor,
+)
+
+from acdc.TLACDCEdge import (
     TorchIndex,
     Edge, 
     EdgeType,
-    shuffle_tensor,
 )  # these introduce several important classes !!!
-from acdc import HookedTransformer
+from transformer_lens import HookedTransformer
 from acdc.acdc_utils import kl_divergence, negative_log_probs
 
-def get_model(device, sixteen_heads=False):
+def get_model(device):
     tl_model = HookedTransformer.from_pretrained(
         "redwood_attn_2l",  # load Redwood's model
-        use_global_cache=True,  # use the global cache: this is needed for ACDC to work
         center_writing_weights=False,  # these are needed as this model is a Shortformer; this is a technical detail
         center_unembed=False,
         fold_ln=False,
         device=device,
-        sixteen_heads=sixteen_heads,
     )
 
     # standard ACDC options
     tl_model.set_use_attn_result(True)
-    if not sixteen_heads:
-        tl_model.set_use_split_qkv_input(True) 
+    tl_model.set_use_split_qkv_input(True) 
     return tl_model
 
 def get_validation_data(num_examples=None, seq_len=None, device=None):
@@ -86,8 +86,8 @@ def get_mask_repeat_candidates(num_examples=None, seq_len=None, device=None):
         return mask_repeat_candidates[:num_examples, :seq_len]
 
 
-def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric="kl_div", sixteen_heads=False, return_one_element=True) -> AllDataThings:
-    tl_model = get_model(device=device, sixteen_heads=sixteen_heads)
+def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric="kl_div", return_one_element=True) -> AllDataThings:
+    tl_model = get_model(device=device)
 
     validation_data_orig = get_validation_data(device=device)
     mask_orig = get_mask_repeat_candidates(num_examples=None, device=device) # None so we get all
@@ -170,7 +170,7 @@ def get_all_induction_things(num_examples, seq_len, device, data_seed=42, metric
     )
 
 
-def one_item_per_batch(toks_int_values, toks_int_values_other, mask_rep, base_model_logprobs, kl_take_mean=True, sixteen_heads=False):
+def one_item_per_batch(toks_int_values, toks_int_values_other, mask_rep, base_model_logprobs, kl_take_mean=True):
     """Returns each instance of induction as its own batch idx"""
 
     end_positions = []

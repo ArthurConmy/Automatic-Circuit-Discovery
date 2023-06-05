@@ -51,14 +51,10 @@ from typing import (
     Set,
 )
 import requests
-from acdc.munging_utils import parse_interpnode
+from acdc.TLACDCInterpNode import parse_interpnode, heads_to_nodes_to_mask
 import pickle
 import wandb
 import IPython
-from acdc.munging_utils import heads_to_nodes_to_mask
-import torch
-
-# from easy_transformer.ioi_dataset import IOIDataset  # type: ignore
 from tqdm import tqdm
 import random
 from functools import partial
@@ -87,8 +83,8 @@ import plotly.io as pio
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
-from acdc.hook_points import HookedRootModule, HookPoint
-from acdc.HookedTransformer import (
+from transformer_lens.hook_points import HookedRootModule, HookPoint
+from transformer_lens.HookedTransformer import (
     HookedTransformer,
 )
 from acdc.tracr.utils import get_tracr_model_input_and_tl_model, get_tracr_proportion_edges, get_tracr_reverse_edges, get_all_tracr_things
@@ -98,6 +94,9 @@ from acdc.acdc_utils import (
     shuffle_tensor,
     cleanup,
     ct,
+)
+
+from acdc.TLACDCEdge import (
     TorchIndex,
     Edge,
     EdgeType,
@@ -122,7 +121,7 @@ from acdc.induction.utils import (
     get_good_induction_candidates,
     get_mask_repeat_candidates,
 )
-from acdc.graphics import (
+from acdc.acdc_graphics import (
     build_colorscheme,
     get_node_name,
     show,
@@ -148,7 +147,7 @@ torch.autograd.set_grad_enabled(False)
 #%% [markdown]
 
 parser = argparse.ArgumentParser(description="Used to control ROC plot scripts (for standardisation with other files...)")
-parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr (WIPs)')
+parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr-reverse, tracr-proportion, greaterthan')
 parser.add_argument("--mode", type=str, required=False, choices=["edges", "nodes"], help="Choose a mode from the available options: edges, nodes", default="edges") # TODO implement nodes
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
 parser.add_argument('--metric', type=str, default="kl_div", help="Which metric to use for the experiment")
