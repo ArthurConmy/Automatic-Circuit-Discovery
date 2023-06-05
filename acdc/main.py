@@ -141,7 +141,7 @@ torch.autograd.set_grad_enabled(False)
 
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
 
-task_choices = ['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan']
+task_choices = ['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan', 'gendered-pronouns']
 parser.add_argument('--task', type=str, required=True, choices=task_choices, help=f'Choose a task from the available options: {task_choices}')
 parser.add_argument('--threshold', type=float, required=True, help='Value for THRESHOLD')
 parser.add_argument('--first-cache-cpu', type=bool, required=False, default=True, help='Value for FIRST_CACHE_CPU')
@@ -255,6 +255,9 @@ elif TASK == "greaterthan":
     things = get_all_greaterthan_things(
         num_examples=num_examples, metric_name=args.metric, device=DEVICE
     )
+elif TASK == 'gendered-pronouns':
+    
+    pass
 else:
     raise ValueError(f"Unknown task {TASK}")
 
