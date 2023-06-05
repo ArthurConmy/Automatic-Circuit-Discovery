@@ -18,7 +18,7 @@ try:
     ipython = get_ipython()
     ipython.run_line_magic(
         "pip",
-        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git+arthur-patch-resid-mid", # install a patched TL
+        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@arthur-patch-resid-mid", # install a patched TL
     )
     ipython.run_line_magic(
         "pip",
@@ -29,7 +29,7 @@ try:
     try:
         ipython.run_line_magic(
             "pip",
-            "install git+https://github.com/deepmind/tracr.git+e75ecdaec12bf2d831a60e54d4270e8fa31fb537#egg=tracr",
+            "install git+https://github.com/deepmind/tracr.git@e75ecdaec12bf2d831a60e54d4270e8fa31fb537#egg=tracr",
         )
     except Exception as e:
         print(f"Could not import `tracr` because {e}; the rest of the file should work but you cannot use the tracr tasks")
