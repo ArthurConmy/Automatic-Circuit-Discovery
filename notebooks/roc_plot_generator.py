@@ -22,6 +22,7 @@
 # SIXTEEN_HEADS_PROJECT_NAME
 # SIXTEEN_HEADS_RUN
 
+import collections
 import IPython
 
 if IPython.get_ipython() is not None:
@@ -131,7 +132,7 @@ from acdc.ioi.utils import (
     get_gpt2_small,
 )
 import argparse
-from acdc.greaterthan.utils import get_all_greaterthan_things, get_greaterthan_true_edges
+from acdc.greaterthan.utils import get_all_greaterthan_things, get_greaterthan_true_edges, greaterthan_group_colorscheme
 from pathlib import Path
 
 from notebooks.emacs_plotly_render import set_plotly_renderer
@@ -398,6 +399,11 @@ max_subgraph_size = exp.corr.count_no_edges()
 #%% [markdown]
 # Load the *canonical* circuit
 
+COLORSCHEME_FOR = collections.defaultdict(lambda: "Pastel2", {
+    "ioi": ioi_group_colorscheme,
+    "greaterthan": greaterthan_group_colorscheme,
+})
+
 if TASK != "induction":
     d = {(d[0], d[1].hashable_tuple, d[2], d[3].hashable_tuple): False for d in exp.corr.all_edges()}
     d_trues = get_true_edges()
@@ -426,31 +432,32 @@ if TASK != "induction":
     for edge in canonical_circuit_subgraph.all_edges().values():
         edge.effect_size = 1.0   # make it visible
 
-    if ONLY_SAVE_CANONICAL and TASK == "ioi":
-        g: graphviz.Digraph = show(canonical_circuit_subgraph, colorscheme=ioi_group_colorscheme(), show_full_index=False, show=True)
+    if ONLY_SAVE_CANONICAL:
+        g: graphviz.Digraph = show(canonical_circuit_subgraph, colorscheme=COLORSCHEME_FOR[TASK](), show_full_index=False, show=True)
         g.render(str(CANONICAL_OUT_DIR / TASK), view=False, cleanup=True, format="pdf")
 
-        def save(source, suffix):
-            seen_lines = {"}"}
-            # Don't add self-loops
-            for layer in range(12):
-                for head in range(12):
-                    seen_lines.add(f"\t<a{layer}.{head}> -> <a{layer}.{head}> ")
+        if TASK in ["ioi", "greaterthan"]:
+            def save(source, suffix):
+                seen_lines = {"}"}
+                # Don't add self-loops
+                for layer in range(12):
+                    for head in range(12):
+                        seen_lines.add(f"\t<a{layer}.{head}> -> <a{layer}.{head}> ")
 
-            out = []
-            for line in source.split("\n")[1:-1]:
-                if "<m" not in line:
-                    edge_info = line.split("[")[0]
-                    if edge_info not in seen_lines:
-                        out.append(line)
-                        seen_lines.add(edge_info)
+                out = []
+                for line in source.split("\n")[1:-1]:
+                    if "<m" not in line or TASK == "greaterthan":
+                        edge_info = line.split("[")[0]
+                        if edge_info not in seen_lines:
+                            out.append(line)
+                            seen_lines.add(edge_info)
 
-            source = "\n".join(sorted(out))
-            with open(CANONICAL_OUT_DIR / f"{TASK}_{suffix}.gv", "w") as f:
-                f.write("digraph {\n" + source + "\n}")
+                source = "\n".join(sorted(out))
+                with open(CANONICAL_OUT_DIR / f"{TASK}_{suffix}.gv", "w") as f:
+                    f.write("digraph {\n" + source + "\n}")
 
-        save(g.source, "heads_qkv")
-        save(g.source.replace("_q>", ">").replace("_k>", ">").replace("_v>", ">"), "heads")
+            save(g.source, "heads_qkv")
+            save(g.source.replace("_q>", ">").replace("_k>", ">").replace("_v>", ">"), "heads")
 
 
 if ONLY_SAVE_CANONICAL:

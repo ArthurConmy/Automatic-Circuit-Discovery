@@ -212,6 +212,17 @@ def get_all_greaterthan_things(num_examples, metric_name, device="cuda"):
         test_mask=None,
         test_patch_data=test_patch_data)
 
+
+CIRCUIT = {
+    # "input": [None], # special case input
+    "0305": [(0, 3), (0, 5)],
+    "01": [(0, 1)],
+    "MEARLY": [(0, None), (1, None), (2, None), (3, None)],
+    "AMID": [(5, 5), (6, 1), (6, 9), (7, 10), (8, 11), (9, 1)],
+    "MLATE": [(8, None), (9, None), (10, None), (11, None)],
+    # output special case
+}
+
 def get_greaterthan_true_edges(model):
     from subnetwork_probing.train import correspondence_from_mask
 
@@ -222,15 +233,6 @@ def get_greaterthan_true_edges(model):
     for t, e in corr.all_edges().items():
         e.present = False
 
-    CIRCUIT = {
-        # "input": [None], # special case input
-        "0305": [(0, 3), (0, 5)],
-        "01": [(0, 1)],
-        "MEARLY": [(0, None), (1, None), (2, None), (3, None)],
-        "AMID": [(5, 5), (6, 1), (7, 10), (8, 11), (9, 1)], 
-        "MLATE": [(8, None), (9, None), (10, None), (11, None)],
-        # output special case
-    }
     connected_pairs = [
         ("01", "MEARLY"),
         ("01", "AMID"),
@@ -303,3 +305,29 @@ def get_greaterthan_true_edges(model):
 
     ret =  OrderedDict({(t[0], t[1].hashable_tuple, t[2], t[3].hashable_tuple): e.present for t, e in corr.all_edges().items() if e.present})
     return ret
+
+
+GROUP_COLORS = {
+    "0305": "#d7f8ee",
+    "01": "#e7f2da",
+    "MEARLY": "#fee7d5",
+    "AMID": "#ececf5",
+    "MLATE": "#fff6db",
+}
+
+def greaterthan_group_colorscheme():
+    assert set(GROUP_COLORS.keys()) == set(CIRCUIT.keys())
+
+    scheme = {
+        "embed": "#cbd5e8",
+        "<resid_post>": "#fff2ae",
+    }
+
+    for k, heads in CIRCUIT.items():
+        for (layer, head) in heads:
+            if head is None:
+                scheme[f"<m{layer}>"] = GROUP_COLORS[k]
+            else:
+                for qkv in ["", "_q", "_k", "_v"]:
+                    scheme[f"<a{layer}.{head}{qkv}>"] = GROUP_COLORS[k]
+    return scheme
