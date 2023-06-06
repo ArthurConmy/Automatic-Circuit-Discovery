@@ -12,7 +12,7 @@ This is the accompanying code to the paper "Towards Automated Circuit Discovery 
 ## Fast installation:
 
 ```bash
-pip install git@https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@arthur-patch-resid-mid git@https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git cmapy torchtyping
+pip install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@arthur-patch-resid-mid git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git cmapy torchtyping
 ```
 
 ### Details
@@ -52,7 +52,7 @@ If you use ACDC, please reach out! You can reference the work as follows:
 
 ## TODO
 
-[ :white_check_mark: ] Make `TransformerLens` install be Neel's code not my PR
+[ ] Make `TransformerLens` install be Neel's code not my PR
 
 [ ] Add `hook_mlp_in` to `TransformerLens` and delete `hook_resid_mid` (and test to ensure no bad things?)
 
