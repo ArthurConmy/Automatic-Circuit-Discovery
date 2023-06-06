@@ -67,7 +67,7 @@ import gc
 
 #%%
 num_examples = 40
-seq_len = 300
+seq_len = 50
 
 # load in a tl_model and grab some data
 all_induction_things = get_all_induction_things(
