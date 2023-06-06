@@ -3,7 +3,7 @@
 #
 # <p>This notebook (which doubles as a script) shows several use cases of ACDC</p>
 #
-# <p>This codebase is a fork of https://github.com/neelnanda-io/TransformerLens with changes that will hopefully be merged soon</p>
+# <p>The codebase is built on top of https://github.com/neelnanda-io/TransformerLens (source version)</p>
 #
 # <h3>Setup:</h3>
 # <p>Janky code to do different setup when run in a Colab notebook vs VSCode (adapted from e.g <a href="https://github.com/neelnanda-io/TransformerLens/blob/5c89b7583e73ce96db5e46ef86a14b15f303dde6/demos/Activation_Patching_in_TL_Demo.ipynb">this notebook</a>)</p>
@@ -13,7 +13,7 @@ try:
     import google.colab
 
     IN_COLAB = True
-    print("Running as a Colab notebook")
+    print("Running as a Colab notebook. WARNING: you should switch to a High-RAM A100 (you can buy $10 of credits for this). We're working on a low-memory version")
 
     from IPython import get_ipython
 
@@ -172,9 +172,10 @@ if ipython is not None:
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args( # TODO add back zero ablation
-        [line.strip() for line in r"""--task=induction\
+        [line.strip() for line in r"""--task=tracr-reverse\
 --zero-ablation\
---threshold=0.5623\
+--metric=l2\
+--threshold=0.00005\
 --indices-mode=reverse\
 --first-cache-cpu=False\
 --second-cache-cpu=False\

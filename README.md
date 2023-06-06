@@ -9,15 +9,18 @@ This is the accompanying code to the paper "Towards Automated Circuit Discovery 
 * :zap: To run ACDC, see `acdc/main.py`, or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Main_Demo.ipynb">this Colab notebook</a>
 * :wrench: To see how edit edges in computational graphs in models, see `notebooks/editing_edges.py` or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Editing_Edges_Demo.ipynb">this Colab notebook</a>
 
-## Fast installation:
+## Installation:
 
 ```bash
-pip install git+https://github.com/neelnanda-io/TransformerLens.git git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git cmapy torchtyping
+pip install git+https://github.com/neelnanda-io/TransformerLens.git cmapy torchtyping
+git clone git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git
+cd Automatic-Circuit-Discovery
+pip install -e .
 ```
 
 ### Details
 
-This codebase currently works on top of the TransformerLens main branch (as of 4th June 2023), so probably `transformer_lens==1.2.3` or later (for now, install TransformerLens from source).
+This codebase currently works on top of the TransformerLens main branch (as of 6th June 2023), so probably `transformer_lens==1.2.3` or later (for now, you need to install TransformerLens from source, such as by using the above fast installation command).
 
 You may also need do this
 
@@ -40,12 +43,11 @@ pytest -vvv
 We welcome issues where the code is unclear!
 
 If you make a PR, make sure you run 
-
 ```bash
 chmod +x experiments/make_notebooks.sh
 ./experiments/make_notebooks.sh
 ```
-And check that no errors arise.
+And check that no errors arise. It is essential that the notebooks converted here consist only of `#%% [markdown]` markdown-only cells, and `#%%` cells with code.
 
 ## Citing ACDC
 
@@ -64,11 +66,13 @@ If you use ACDC, please reach out! You can reference the work as follows:
 
 ## TODO
 
-[ ] Make `TransformerLens` install be Neel's code not my PR
+[ x ] Make `TransformerLens` install be Neel's code not my PR
 
-[ ] Add `hook_mlp_in` to `TransformerLens` and delete `hook_resid_mid` (and test to ensure no bad things?)
+[ x ] Add `hook_mlp_in` to `TransformerLens` and delete `hook_resid_mid` (and test to ensure no bad things?)
 
-[ ] Delete `arthur-try-merge-tl` references from the repo
+[ x ] Delete `arthur-try-merge-tl` references from the repo
+
+[ ] Make version that works on low-memory Colab instances
 
 [ ] Neuron-level experiments
 

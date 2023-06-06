@@ -252,7 +252,7 @@ def filter_nodes(nodes: set[tuple[str, TorchIndex]]) -> set[tuple[str, TorchInde
 
     # combine MLP things
     for node in nodes:
-        if "resid_mid" in node[0]:
+        if "resid_mid" in node[0] or "mlp_in" in node[0]: # new and old names
             try:
                 all_nodes.add((f"blocks.{node[0].split()[1]}.hook_mlp_out", node[1])) # assume that we're not doing any neuron or positional stuff
             except:
