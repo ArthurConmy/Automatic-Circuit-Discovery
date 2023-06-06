@@ -1,21 +1,3 @@
-"""
-Rip, I deleted the good edits to 
-
-Changes not staged for commit:
-  (use "git add <file>..." to update what will be committed)
-  (use "git restore <file>..." to discard changes in working directory)
-        modified:   experiments/induction_results.py
-        modified:   experiments/launch_abstract.py
-        modified:   experiments/launch_sixteen_heads.py
-        modified:   experiments/launch_spreadsheet.py
-        modified:   notebooks/auc_tables.py
-
-Untracked files:
-  (use "git add <file>..." to include in what will be committed)
-        acdc/media/
-        ob-jupyter/
-"""
-
 import subprocess
 import argparse
 import os
@@ -55,7 +37,7 @@ def main(
         OUT_RELPATH = Path(".cache") / "plots_data"
         OUT_HOME_DIR = Path(os.environ["HOME"]) / OUT_RELPATH
     else:
-        OUT_RELPATH = Path("acdc/media/arthur_plots_data")
+        OUT_RELPATH = Path("experiments/media/arthur_plots_data") # trying to remove extra things from acdc/
         OUT_HOME_DIR = OUT_RELPATH
 
     assert OUT_HOME_DIR.exists()
