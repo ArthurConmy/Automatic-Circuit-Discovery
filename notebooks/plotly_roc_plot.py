@@ -16,7 +16,7 @@ from acdc.acdc_graphics import dict_merge, pessimistic_auc
 import time
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
-import plotly.colors as pcgit 
+import plotly.colors as pc
 from pathlib import Path
 import plotly.express as px
 import pandas as pd
@@ -231,7 +231,6 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
         # nums[nums > 1] = np.nan
         alg_ys = np.linspace(alg_min, alg_max, 100)
         nums = np.linspace(scale_min, scale_max, len(alg_ys))
-        assert heatmap_ys[0] == -5.0
         fig.add_trace(
             go.Heatmap(
                 x=[i, i+0.95],

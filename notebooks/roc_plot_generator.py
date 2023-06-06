@@ -31,8 +31,7 @@ if IPython.get_ipython() is not None:
 
 from copy import deepcopy
 from subnetwork_probing.train import correspondence_from_mask
-from acdc.acdc_utils import filter_nodes, get_edge_stats, get_node_stats, get_present_nodes
-from acdc.utils import reset_network
+from acdc.acdc_utils import filter_nodes, get_edge_stats, get_node_stats, get_present_nodes, reset_network
 import pandas as pd
 import gc
 import math
@@ -87,7 +86,7 @@ from transformer_lens.hook_points import HookedRootModule, HookPoint
 from transformer_lens.HookedTransformer import (
     HookedTransformer,
 )
-from acdc.tracr.utils import get_tracr_model_input_and_tl_model, get_tracr_proportion_edges, get_tracr_reverse_edges, get_all_tracr_things
+from acdc.tracr_task.utils import get_tracr_model_input_and_tl_model, get_tracr_proportion_edges, get_tracr_reverse_edges, get_all_tracr_things
 from acdc.docstring.utils import get_all_docstring_things, get_docstring_model, get_docstring_subgraph_true_edges
 from acdc.acdc_utils import (
     make_nd_dict,
@@ -371,7 +370,6 @@ if RESET_NETWORK:
 #%% [markdown]
 # Setup the experiment for wrapping functionality nicely
 
-things.tl_model.global_cache.clear()
 things.tl_model.reset_hooks()
 exp = TLACDCExperiment(
     model=things.tl_model,
@@ -389,6 +387,7 @@ exp = TLACDCExperiment(
     second_cache_cpu=False,
 )
 if not SKIP_ACDC and not ONLY_SAVE_CANONICAL:
+    exp.global_cache.clear()
     exp.setup_second_cache()
 
 max_subgraph_size = exp.corr.count_no_edges()

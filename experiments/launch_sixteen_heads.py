@@ -44,7 +44,7 @@ from acdc.induction.utils import (
 from acdc.ioi.utils import get_all_ioi_things
 from acdc.TLACDCExperiment import TLACDCExperiment
 from acdc.TLACDCInterpNode import TLACDCInterpNode, heads_to_nodes_to_mask
-from acdc.tracr.utils import get_all_tracr_things
+from acdc.tracr_task.utils import get_all_tracr_things
 from subnetwork_probing.train import correspondence_from_mask
 from notebooks.emacs_plotly_render import set_plotly_renderer
 

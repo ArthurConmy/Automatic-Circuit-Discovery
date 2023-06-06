@@ -71,7 +71,7 @@ from acdc.induction.utils import (
     get_good_induction_candidates,
     get_mask_repeat_candidates,
 )
-from acdc.tracr.utils import get_tracr_model_input_and_tl_model
+from acdc.tracr_task.utils import get_tracr_model_input_and_tl_model
 from acdc.acdc_graphics import (
     build_colorscheme,
     show,
