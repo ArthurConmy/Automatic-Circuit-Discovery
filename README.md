@@ -72,7 +72,7 @@ If you use ACDC, please reach out! You can reference the work as follows:
 
 [ x ] Delete `arthur-try-merge-tl` references from the repo
 
-[ ] Make version that works on low-memory Colab instances
+[ ] Fix huge edge sizes in Induction Main example
 
 [ ] Neuron-level experiments
 

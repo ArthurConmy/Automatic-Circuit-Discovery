@@ -174,7 +174,7 @@ if ipython is not None:
     args = parser.parse_args( # TODO add back zero ablation
         [line.strip() for line in r"""--task=induction\
 --zero-ablation\
---threshold=0.0.5623\
+--threshold=0.5623\
 --indices-mode=reverse\
 --first-cache-cpu=False\
 --second-cache-cpu=False\

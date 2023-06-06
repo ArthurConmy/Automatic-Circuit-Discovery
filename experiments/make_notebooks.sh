@@ -2,6 +2,15 @@
 
 set -e
 
+# Check for --skip-run flag
+skip_run=false
+for arg in "$@"
+do
+    if [ "$arg" == "--skip-run" ]; then
+        skip_run=true
+    fi
+done
+
 required_commands=("jupytext" "papermill" "python")
 
 # Loop over each required command
@@ -32,13 +41,18 @@ for in_path in "${!file_paths[@]}"; do
 
     # Run jupytext and papermill
     jupytext --to notebook "$in_path" -o "$middle_path"
-    papermill "$middle_path" "$final_out_path" --kernel=python
+    
+    if ! $skip_run; then
+        papermill "$middle_path" "$final_out_path" --kernel=python
 
-    python -c "
+        python -c "
 import nbformat
 nb = nbformat.read('$final_out_path', as_version=4)
 errors = [cell for cell in nb['cells'] if 'outputs' in cell and any(output.get('output_type') == 'error' for output in cell['outputs'])]
 if errors:
-    print(f'Error: The following cells failed in notebook $final_out_path:\n{errors}')
-    "
+    raise Exception(f'Error: The following cells failed in notebook $final_out_path:\n{errors}')
+"
+    else
+        cp "$middle_path" "$final_out_path"
+    fi
 done
