@@ -4,8 +4,6 @@ Rip, I deleted the good edits to
 Changes not staged for commit:
   (use "git add <file>..." to update what will be committed)
   (use "git restore <file>..." to discard changes in working directory)
-        modified:   experiments/all_roc_plots.py
-        modified:   experiments/collect_data.py
         modified:   experiments/induction_results.py
         modified:   experiments/launch_abstract.py
         modified:   experiments/launch_sixteen_heads.py
