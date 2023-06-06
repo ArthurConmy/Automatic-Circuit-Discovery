@@ -21,7 +21,7 @@ import pandas as pd
 import torch
 import torch.nn.functional as F
 import subnetwork_probing.transformer_lens.transformer_lens.utils as utils
-from acdc.tracr.utils import get_all_tracr_things
+from acdc.tracr_task.utils import get_all_tracr_things
 from acdc.acdc_utils import reset_network
 from acdc.TLACDCEdge import (
     TorchIndex,
