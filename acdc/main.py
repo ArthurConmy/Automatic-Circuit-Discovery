@@ -172,10 +172,9 @@ if ipython is not None:
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args( # TODO add back zero ablation
-        [line.strip() for line in r"""--task=tracr-reverse\
+        [line.strip() for line in r"""--task=induction\
 --zero-ablation\
---metric=l2\
---threshold=0.00005\
+--threshold=0.0.5623\
 --indices-mode=reverse\
 --first-cache-cpu=False\
 --second-cache-cpu=False\
@@ -236,7 +235,7 @@ elif TASK == "tracr-proportion":
         device=DEVICE,
     )
 elif TASK == "induction":
-    num_examples = 50
+    num_examples = 10 if IN_COLAB else 50
     seq_len = 300
     # TODO initialize the `tl_model` with the right model
     things = get_all_induction_things(
