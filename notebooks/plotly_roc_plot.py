@@ -21,6 +21,7 @@ from pathlib import Path
 import plotly.express as px
 import pandas as pd
 import argparse
+import plotly.colors as pc
 
 
 # %%
