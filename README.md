@@ -12,7 +12,7 @@ This is the accompanying code to the paper "Towards Automated Circuit Discovery 
 ## Fast installation:
 
 ```bash
-pip install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@arthur-patch-resid-mid git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git cmapy torchtyping
+pip install git+https://github.com/neelnanda-io/TransformerLens.git git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git cmapy torchtyping
 ```
 
 ### Details
@@ -34,6 +34,18 @@ From the root directory, run
 ```bash
 pytest -vvv
 ```
+
+## Contributing 
+
+We welcome issues where the code is unclear!
+
+If you make a PR, make sure you run 
+
+```bash
+chmod +x experiments/make_notebooks.sh
+./experiments/make_notebooks.sh
+```
+And check that no errors arise.
 
 ## Citing ACDC
 
