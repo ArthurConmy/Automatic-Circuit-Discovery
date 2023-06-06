@@ -74,12 +74,14 @@ If you use ACDC, please reach out! You can reference the work as follows:
 
 [ ] Fix huge edge sizes in Induction Main example
 
+[ ] Find a better way to deal with the versioning on the Colabs installs...
+
 [ ] Neuron-level experiments
 
 [ ] Position-level experiments
 
 [ ] `tracr` and other dependencies better managed
 
-[ ] Make SP tests work (lots outdated so skipped) - and check they install (no __init__.pys !!!)
+[ ] Make SP tests work (lots outdated so skipped) - and check SubnetworkProbing installs properly (no __init__.pys !!!)
 
 [ ] Make the 9 tests also failing on TransformerLens-main pass
