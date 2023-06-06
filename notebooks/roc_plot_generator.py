@@ -370,6 +370,10 @@ if RESET_NETWORK:
 #%% [markdown]
 # Setup the experiment for wrapping functionality nicely
 
+import gc
+gc.collect()
+torch.cuda.empty_cache()
+
 things.tl_model.reset_hooks()
 exp = TLACDCExperiment(
     model=things.tl_model,
