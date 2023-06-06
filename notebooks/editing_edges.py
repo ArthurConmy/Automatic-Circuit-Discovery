@@ -7,7 +7,10 @@
 #
 # <h3>Setup</h2>
 #
-# Janky code to do different setup when run in a Colab notebook vs VSCode (adapted from e.g <a href="https://github.com/neelnanda-io/TransformerLens/blob/5c89b7583e73ce96db5e46ef86a14b15f303dde6/demos/Activation_Patching_in_TL_Demo.ipynb">this notebook</a>)
+# <p>Janky code to do different setup when run in a Colab notebook vs VSCode (adapted from e.g <a href="https://github.com/neelnanda-io/TransformerLens/blob/5c89b7583e73ce96db5e46ef86a14b15f303dde6/demos/Activation_Patching_in_TL_Demo.ipynb">this notebook</a>)</p>
+
+#%%
+
 try:
     import google.colab
 
@@ -49,6 +52,8 @@ except Exception as e:
 # %% [markdown]
 # <h2>Imports etc</h2>
 
+#%%
+
 from transformer_lens.HookedTransformer import HookedTransformer
 from acdc.TLACDCExperiment import TLACDCExperiment
 from acdc.induction.utils import get_all_induction_things
@@ -59,6 +64,7 @@ import gc
 # %% [markdown]
 # <h2>Load in the model and data for the induction task
 
+#%%
 num_examples = 40
 seq_len = 300
 
@@ -82,6 +88,7 @@ tl_model, toks_int_values, toks_int_values_other, metric, mask_rep = (
 # %% [markdown]
 # <p>Ensure we stay under mem limit on small machines</p>
 
+#%%
 gc.collect()
 torch.cuda.empty_cache()
 
@@ -89,6 +96,7 @@ torch.cuda.empty_cache()
 # <p>Let's see an example from the dataset.</p>
 # <p> `|` separates tokens </p>
 
+#%%
 EXAMPLE_NO = 33
 EXAMPLE_LENGTH = 36
 
@@ -101,6 +109,7 @@ print(
 # <p>The `mask_rep` mask is a boolean mask of shape `(num_examples, seq_len)` that indicates where induction is present in the dataset</p>
 # <p> Let's see 
 
+#%%
 for i in range(EXAMPLE_LENGTH):
     if mask_rep[EXAMPLE_NO, i]:
         print(f"At position {i} there is induction")
@@ -109,6 +118,7 @@ for i in range(EXAMPLE_LENGTH):
 # %% [markdown]
 # <p>Let's get the initial loss on the induction examples</p>
 
+#%%
 def get_loss(model, data, mask):
     loss = model(
         data,
@@ -120,10 +130,11 @@ def get_loss(model, data, mask):
 
 print(f"Loss: {get_loss(tl_model, toks_int_values, mask_rep)}")
 
-#%%[markdownkj # TODO change back to just [markdown]
+#%% [markdown]
 #<p>We will now wrap ACDC things inside an `experiment`for further experiments</p>
 # <p>For more advanced usage of the `TLACDCExperiment` object (the main object in this codebase), see the README for links to the `main.py` and its demos</p>
 
+#%%
 experiment = TLACDCExperiment(
     model=tl_model,
     threshold=0.0,
@@ -139,6 +150,7 @@ experiment = TLACDCExperiment(
 # <p>Usually, the `TLACDCExperiment` efficiently add hooks to the model in order to do ACDC runs fast.</p>
 # <p>For this tutorial, we'll add <b>ALL</b> the hooks so you can edit connections in the model as easily as possible.</p>
 
+#%%
 experiment.model.reset_hooks()
 experiment.setup_model_hooks(
     add_sender_hooks=True,
@@ -147,8 +159,9 @@ experiment.setup_model_hooks(
 )
 
 # %% [markdown]
-
 # Let's take a look at the edges
+
+#%%
 for edge_indices, edge in experiment.corr.all_edges().items():
     # here's what's inside the edge
     receiver_name, receiver_index, sender_name, sender_index = edge_indices
@@ -160,7 +173,7 @@ for edge_indices, edge in experiment.corr.all_edges().items():
 # <p>Let's make a function that's able to turn off all the connections from the nodes to the output, except the induction head (1.5 and 1.6)</p>
 # <p>(we'll later turn ON all connections EXCEPT the induction heads)</p>
 
-
+#%%
 def change_direct_output_connections(exp, invert=False):
     residual_stream_end_name = "blocks.1.hook_resid_post"
     residual_stream_end_index = TorchIndex([None])
@@ -197,6 +210,7 @@ print(
 # %% [markdown]
 # <p>Let's turn ON all the connections EXCEPT the induction heads</p>
 
+#%%
 change_direct_output_connections(experiment, invert=True)
 print(
     "Loss without the induction head direct connections:",

@@ -7,6 +7,8 @@
 #
 # <h3>Setup:</h3>
 # <p>Janky code to do different setup when run in a Colab notebook vs VSCode (adapted from e.g <a href="https://github.com/neelnanda-io/TransformerLens/blob/5c89b7583e73ce96db5e46ef86a14b15f303dde6/demos/Activation_Patching_in_TL_Demo.ipynb">this notebook</a>)</p>
+
+#%%
 try:
     import google.colab
 
@@ -56,6 +58,7 @@ except Exception as e:
 # %% [markdown]
 # <h2>Imports etc</h2>
 
+#%%
 import wandb
 import IPython
 from IPython.display import Image, display
@@ -138,7 +141,7 @@ torch.autograd.set_grad_enabled(False)
 # This is still usable in notebooks! We can pass a string to the parser, see below.
 # We'll reproduce </p>
 
-
+#%%
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
 
 task_choices = ['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan']
@@ -205,6 +208,7 @@ SINGLE_STEP = True if args.single_step else False
 #%% [markdown] 
 # <h2>Setup Task</h2>
 
+#%%
 second_metric = None  # some tasks only have one metric
 use_pos_embed = TASK.startswith("tracr")
 
@@ -268,6 +272,7 @@ if RESET_NETWORK:
 #%% [markdown]
 # <h2>Setup ACDC Experiment</h2>
 
+#%%
 # Make notes for potential wandb run
 if IN_COLAB:
     notes = "No notes; using colab"
@@ -322,6 +327,7 @@ exp = TLACDCExperiment(
 # <h2>Run steps of ACDC: iterate over a NODE in the model's computational graph</h2>
 # <p>WARNING! This will take a few minutes to run, but there should be rolling nice pictures too : )</p>
 
+#%%
 for i in range(args.max_num_epochs):
     exp.step(testing=False)
 
@@ -361,6 +367,7 @@ if USING_WANDB:
 # <p>Also note that the final image has more than 12 edges, because the edges from a0.0_q and a0.0_k are not connected to the input</p>
 # <p>We recover minimal induction machinery! `embed -> a0.0_v -> a1.6k`</p>
 
+#%%
 exp.save_subgraph(
     return_it=True,
 ) 
