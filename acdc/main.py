@@ -43,6 +43,7 @@ except Exception as e:
         "Running as a Jupyter notebook - intended for development only! (This is also used for automatically generating notebook outputs)"
     )
 
+    import numpy # crucial to not get cursed error
     import plotly
 
     plotly.io.renderers.default = "colab"  # added by Arthur so running as a .py notebook with #%% generates .ipynb notebooks that display in colab
@@ -274,11 +275,11 @@ if RESET_NETWORK:
 
 #%%
 # Make notes for potential wandb run
-if IN_COLAB:
-    notes = "No notes; using colab"
-else:
+try:
     with open(__file__, "r") as f:
         notes = f.read()
+except:
+    notes = "No notes generated, expected when running in an .ipynb file"
 
 tl_model.reset_hooks()
 

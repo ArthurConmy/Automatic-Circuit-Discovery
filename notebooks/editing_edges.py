@@ -36,6 +36,7 @@ except Exception as e:
         "Running as a Jupyter notebook - intended for development only! (This is also used for automatically generating notebook outputs)"
     )
 
+    import numpy # crucial to not get cursed error
     import plotly
 
     plotly.io.renderers.default = "colab"  # added by Arthur so running as a .py notebook with #%% generates .ipynb notebooks that display in colab
@@ -142,7 +143,7 @@ experiment = TLACDCExperiment(
     ref_ds=None,  # This argument is the corrupted dataset from the ACDC paper. We're going to do zero ablation here so we omit this
     metric=metric,
     zero_ablation=True,
-    hook_verbose=True,
+    hook_verbose=False,
 )
 
 # %% [markdown]
