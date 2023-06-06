@@ -150,7 +150,11 @@ def test_conditional_hooks():
 
     model.reset_hooks()
     model.set_use_split_qkv_input(True)
-    model.add_hook("blocks.0.hook_q_input", identity_hook)
+    model.add_hook("blocks.0.hook_q_input", identity_hook) 
+
+    model.reset_hooks()
+    model.set_use_hook_mlp_in(True)
+    model.add_hook("blocks.0.hook_mlp_in", identity_hook)
 
     # check that things are the right shape
 
