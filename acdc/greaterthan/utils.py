@@ -347,6 +347,3 @@ def greaterthan_group_colorscheme():
                 for qkv in ["", "_q", "_k", "_v"]:
                     scheme[f"<a{layer}.{head}{qkv}>"] = GROUP_COLORS[k]
     return scheme
-
-if __name__ == "__main__":
-    print(get_greaterthan_true_edges(get_all_greaterthan_things(1, "greaterthan", device="cpu").tl_model))
