@@ -18,8 +18,6 @@ def check_transformer_lens_version():
     from transformer_lens.HookedTransformer import HookedTransformer
     mini_trans = HookedTransformer(cfg)
 
-    # try and access the hook_mlp_in
-    mini_trans.blocks[0].hook_mlp_in
-    # if this fails, your TL is not sufficiently up-to-date
+    mini_trans.blocks[0].hook_mlp_in # try and access the hook_mlp_in: if this fails, your TL is not sufficiently up-to-date
 
 check_transformer_lens_version()
