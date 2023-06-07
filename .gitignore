@@ -9,7 +9,7 @@ better*.json
 histories/
 transformer_lens/media/
 profile*.json
-*.png
+# *.png
 *.gv
 __pycache__
 Testing_Notebook.ipynb
