@@ -1,12 +1,14 @@
 import os
 import subprocess
 from pathlib import Path
-from experiments.launcher import KubernetesJob, launch
 import shlex
 import argparse
 
 IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root")
 print("is adria:", IS_ADRIA)
+
+if IS_ADRIA:
+    from experiments.launcher import KubernetesJob, launch
 
 TASKS = ["ioi", "docstring", "greaterthan", "tracr-reverse", "tracr-proportion", "induction"]
 
