@@ -244,7 +244,6 @@ def get_greaterthan_true_edges(model):
         ("0305", "AMID"),
         ("MEARLY", "AMID"),
         ("AMID", "MLATE"),
-        # ("AMID", )
     ]
 
     def tuple_to_hooks(layer_idx, head_idx, outp=False):
@@ -307,6 +306,18 @@ def get_greaterthan_true_edges(model):
             e.present = True
             # print(e.edge_type)
 
+    # Hanna et al have totally clean query inputs to AMID heads --- this is A LOT of edges so we add the MLP -> AMID Q edges
+
+    MAX_AMID_LAYER = max([layer_idx for layer_idx, head_idx in CIRCUIT["AMID"]])
+    # connect all MLPs before the AMID heads
+    for mlp_sender_layer in range(0, MAX_AMID_LAYER):
+        for mlp_receiver_layer in range(1+mlp_sender_layer, MAX_AMID_LAYER):
+            corr.edges[f"blocks.{mlp_receiver_layer}.hook_resid_mid"][TorchIndex([None])][f"blocks.{mlp_sender_layer}.hook_mlp_out"][TorchIndex([None])].present = True # TODO update to hook_mlp_in when merging main
+    
+    # connect all early MLPs to AMID heads
+    for layer_idx, head_idx in CIRCUIT["AMID"]:
+        for mlp_sender_layer in range(0, layer_idx):
+            corr.edges[f"blocks.{layer_idx}.hook_q_input"][TorchIndex([None, None, head_idx])][f"blocks.{mlp_sender_layer}.hook_mlp_out"][TorchIndex([None])].present = True
 
     ret =  OrderedDict({(t[0], t[1].hashable_tuple, t[2], t[3].hashable_tuple): e.present for t, e in corr.all_edges().items() if e.present})
     return ret
@@ -336,3 +347,6 @@ def greaterthan_group_colorscheme():
                 for qkv in ["", "_q", "_k", "_v"]:
                     scheme[f"<a{layer}.{head}{qkv}>"] = GROUP_COLORS[k]
     return scheme
+
+if __name__ == "__main__":
+    print(get_greaterthan_true_edges(get_all_greaterthan_things(1, "greaterthan", device="cpu").tl_model))
