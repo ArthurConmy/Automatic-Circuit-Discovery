@@ -254,7 +254,7 @@ def get_greaterthan_true_edges(model):
 
         else:
             if head_idx is None:
-                return [(f"blocks.{layer_idx}.hook_resid_mid", TorchIndex([None]))]
+                return [(f"blocks.{layer_idx}.hook_mlp_in", TorchIndex([None]))]
             else:
                 ret = []
                 for letter in "qkv":
@@ -282,7 +282,7 @@ def get_greaterthan_true_edges(model):
         for i1, j1 in CIRCUIT[GROUP]:
             for i2, j2 in CIRCUIT[GROUP]:
                 if i1 >= i2: continue
-                corr.edges[f"blocks.{i2}.hook_resid_mid"][TorchIndex([None])][f"blocks.{i1}.hook_mlp_out"][TorchIndex([None])].present = True
+                corr.edges[f"blocks.{i2}.hook_mlp_in"][TorchIndex([None])][f"blocks.{i1}.hook_mlp_out"][TorchIndex([None])].present = True
 
     # connected pairs  
     for GROUP1, GROUP2 in connected_pairs:

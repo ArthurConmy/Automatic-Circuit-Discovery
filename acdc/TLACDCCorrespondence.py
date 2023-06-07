@@ -129,7 +129,7 @@ class TLACDCCorrespondence:
                         safe=False,
                     )
 
-                cur_mlp_input_name = f"blocks.{layer_idx}.hook_resid_mid"
+                cur_mlp_input_name = f"blocks.{layer_idx}.hook_mlp_in"
                 cur_mlp_input_slice = TorchIndex([None])
                 cur_mlp_input = TLACDCInterpNode(
                     name=cur_mlp_input_name,
