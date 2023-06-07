@@ -191,8 +191,8 @@ TESTING = True if args.testing else False
 ONLY_SAVE_CANONICAL = True if args.only_save_canonical else False
 
 if args.out_dir == "DEFAULT":
-    OUT_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / f"{'arthur_' if 'arthur' in __file__ else ''}plots_data"
-    CANONICAL_OUT_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / "canonical_circuits"
+    OUT_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / f"{'arthur_' if 'arthur' in __file__ else ''}plots_data"
+    CANONICAL_OUT_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / "canonical_circuits"
 else:
     OUT_DIR = Path(args.out_dir)
     CANONICAL_OUT_DIR = Path(args.canonical_graph_save_dir)
@@ -428,31 +428,32 @@ if TASK != "induction":
     for edge in canonical_circuit_subgraph.all_edges().values():
         edge.effect_size = 1.0   # make it visible
 
-    if ONLY_SAVE_CANONICAL and TASK == "ioi":
-        g: pydot.Dot = show(canonical_circuit_subgraph, colorscheme=ioi_group_colorscheme(), show_full_index=False)
+    if ONLY_SAVE_CANONICAL:
+        g: pydot.Dot = show(canonical_circuit_subgraph, colorscheme=ioi_group_colorscheme() if TASK == "ioi" else "Pastel2", show_full_index=False)
         g.write(str(CANONICAL_OUT_DIR / f"{TASK}.pdf"), format="pdf")
 
-        def save(source, suffix):
-            seen_lines = {"}"}
-            # Don't add self-loops
-            for layer in range(12):
-                for head in range(12):
-                    seen_lines.add(f"\t<a{layer}.{head}> -> <a{layer}.{head}> ")
+        if TASK == "ioi":
+            def save(source, suffix):
+                seen_lines = {"}"}
+                # Don't add self-loops
+                for layer in range(12):
+                    for head in range(12):
+                        seen_lines.add(f"\t<a{layer}.{head}> -> <a{layer}.{head}> ")
 
-            out = []
-            for line in source.split("\n")[1:-1]:
-                if "<m" not in line:
-                    edge_info = line.split("[")[0]
-                    if edge_info not in seen_lines:
-                        out.append(line)
-                        seen_lines.add(edge_info)
+                out = []
+                for line in source.split("\n")[1:-1]:
+                    if "<m" not in line:
+                        edge_info = line.split("[")[0]
+                        if edge_info not in seen_lines:
+                            out.append(line)
+                            seen_lines.add(edge_info)
 
-            source = "\n".join(sorted(out))
-            with open(CANONICAL_OUT_DIR / f"{TASK}_{suffix}.gv", "w") as f:
-                f.write("digraph {\n" + source + "\n}")
+                source = "\n".join(sorted(out))
+                with open(CANONICAL_OUT_DIR / f"{TASK}_{suffix}.gv", "w") as f:
+                    f.write("digraph {\n" + source + "\n}")
 
-        save(g.to_string(), "heads_qkv")
-        save(g.to_string().replace("_q>", ">").replace("_k>", ">").replace("_v>", ">"), "heads")
+            save(g.to_string(), "heads_qkv")
+            save(g.to_string().replace("_q>", ">").replace("_k>", ">").replace("_v>", ">"), "heads")
 
 
 if ONLY_SAVE_CANONICAL:
