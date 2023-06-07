@@ -224,19 +224,24 @@ def get_ioi_true_edges(model):
         model = model,
     )
 
+    # For all heads...
     for layer_idx, head_idx in all_nodes:
-        # remove input -> all heads connections
-        # Remove MLP -> all heads connections
         for letter in "qkv":
+            # remove input -> head connection
             edge_to = corr.edges[f"blocks.{layer_idx}.hook_{letter}_input"][TorchIndex([None, None, head_idx])]
             edge_to[f"blocks.0.hook_resid_pre"][TorchIndex([None])].present = False
 
-            for mlp_layer_idx in range(layer_idx):
-                edge_to[f"blocks.{mlp_layer_idx}.hook_mlp_out"][TorchIndex([None])].present = False
+            # Remove all MLP -> head connections
+            # for mlp_layer_idx in range(layer_idx):
+            #     edge_to[f"blocks.{mlp_layer_idx}.hook_mlp_out"][TorchIndex([None])].present = False
 
+            # Remove all other_head->this_head connections in the circuit
             for layer_from in range(layer_idx):
                 for head_from in range(12):
                     edge_to[f"blocks.{layer_from}.attn.hook_result"][TorchIndex([None, None, head_from])].present = False
+
+            # Remove connection from this head to the output
+            corr.edges["blocks.11.hook_resid_post"][TorchIndex([None])][f"blocks.{layer_idx}.attn.hook_result"][TorchIndex([None, None, head_idx])].present = False
 
 
 
@@ -253,6 +258,9 @@ def get_ioi_true_edges(model):
         Conn("s2 inhibition", "negative", ("q",)),
         Conn("s2 inhibition", "name mover", ("q",)),
         Conn("s2 inhibition", "backup name mover", ("q",)),
+        Conn("negative", "OUTPUT", ()),
+        Conn("name mover", "OUTPUT", ()),
+        Conn("backup name mover", "OUTPUT", ()),
     }
 
     for conn in special_connections:
@@ -262,11 +270,22 @@ def get_ioi_true_edges(model):
                 idx_from.append((mlp_layer_idx, f"blocks.{mlp_layer_idx}.hook_mlp_out", TorchIndex([None])))
         else:
             idx_from = [(layer_idx, f"blocks.{layer_idx}.attn.hook_result", TorchIndex([None, None, head_idx])) for layer_idx, head_idx in IOI_CIRCUIT[conn.inp]]
+
+        if conn.out == "OUTPUT":
+            idx_to = [(13, "blocks.11.hook_resid_post", TorchIndex([None]))]
+            for mlp_layer_idx in range(12):
+                idx_to.append((mlp_layer_idx, f"blocks.{mlp_layer_idx}.hook_resid_mid", TorchIndex([None])))
+        else:
+            idx_to = [
+                (layer_idx, f"blocks.{layer_idx}.hook_{letter}_input", TorchIndex([None, None, head_idx]))
+                for layer_idx, head_idx in IOI_CIRCUIT[conn.out]
+                for letter in conn.qkv
+            ]
+
         for layer_from, layer_name_from, which_idx_from in idx_from:
-            for layer_to, head_to in IOI_CIRCUIT[conn.out]:
+            for layer_to, layer_name_to, which_idx_to in idx_to:
                 if layer_to > layer_from:
-                    for letter in conn.qkv:
-                        corr.edges[f"blocks.{layer_to}.hook_{letter}_input"][TorchIndex([None, None, head_to])][layer_name_from][which_idx_from].present = True
+                    corr.edges[layer_name_to][which_idx_to][layer_name_from][which_idx_from].present = True
 
     ret =  OrderedDict({(t[0], t[1].hashable_tuple, t[2], t[3].hashable_tuple): e.present for t, e in corr.all_edges().items() if e.present})
     return ret
