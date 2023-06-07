@@ -392,9 +392,6 @@ class TLACDCExperiment:
         add_receiver_hooks=False,
         doing_acdc_runs=True,
     ):
-        if add_sender_hooks:
-            self.add_all_sender_hooks(cache="first", skip_direct_computation=False, add_all_hooks=True) # when this is True, this is wrong I think
-
         if add_receiver_hooks:
             if doing_acdc_runs:
                 warnings.warn("Deprecating adding receiver hooks before launching into ACDC runs, this may be totally broke. Ignore this warning if you are not doing ACDC runs")
@@ -405,6 +402,10 @@ class TLACDCExperiment:
                     name=receiver_name,
                     hook=partial(self.receiver_hook, verbose=self.hook_verbose),
                 )
+
+        if add_sender_hooks:
+            self.add_all_sender_hooks(cache="first", skip_direct_computation=False, add_all_hooks=True) # when this is True, this is wrong I think
+
 
     def save_edges(self, fname):
         """Stefan's idea for fast saving!
