@@ -313,7 +313,7 @@ class TLACDCExperiment:
 
         return z
 
-    def add_all_sender_hooks(self, reset=True, cache="first", skip_direct_computation=False, add_all_hooks=False):
+    def add_all_sender_hooks(self, reset=True, cache="first", skip_direct_computation=False, add_all_hooks=False, override=False):
         """We use add_sender_hook for lazily adding *some* sender hooks"""
 
         if self.verbose:
@@ -342,7 +342,7 @@ class TLACDCExperiment:
                 raise ValueError(f"{str(big_tuple)} {str(edge)} failed")
 
             for node in nodes:
-                if len(self.model.hook_dict[node.name].fwd_hooks) > 0:
+                if len(self.model.hook_dict[node.name].fwd_hooks) > 0 and not override:
                     for hook_func_maybe_partial in self.model.hook_dict[node.name].fwd_hook_functions:
                         hook_func_name = hook_func_maybe_partial.func.__name__ if isinstance(hook_func_maybe_partial, partial) else hook_func_maybe_partial.__name__
                         assert "sender_hook" in hook_func_name, f"You should only add sender hooks to {node.name}, and this: {hook_func_name} doesn't look like a sender hook"
@@ -403,8 +403,8 @@ class TLACDCExperiment:
                     hook=partial(self.receiver_hook, verbose=self.hook_verbose),
                 )
 
-        if add_sender_hooks:
-            self.add_all_sender_hooks(cache="first", skip_direct_computation=False, add_all_hooks=True) # when this is True, this is wrong I think
+        if add_sender_hooks: # bug fixed; crucical to add sender hooks AFTER the 
+            self.add_all_sender_hooks(cache="first", skip_direct_computation=False, add_all_hooks=True, reset=False, override=True)
 
 
     def save_edges(self, fname):
