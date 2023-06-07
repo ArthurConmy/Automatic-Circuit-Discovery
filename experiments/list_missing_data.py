@@ -128,7 +128,7 @@ def main(return_files = False):
 
 
 
-def start_jobs(actual_files, possible_files):
+def start_jobs(actual_files, possible_files, just_tracr=False):
     print(actual_files - possible_files)
     assert len(actual_files - possible_files) == 0, "There are files that shouldn't be there"
 
@@ -137,6 +137,11 @@ def start_jobs(actual_files, possible_files):
     for missing_file in missing_files:
         print(missing_file)
 
+    if just_tracr: 
+        missing_files = [f for f in missing_files if "tracr" in f]
+        print("\n... but removed some files due to just making tracr files...\n")
+        for missing_file in missing_files:
+            print(missing_file)
 
     for name in missing_files:
         name = name.rstrip(".json")
@@ -171,9 +176,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--start-jobs", action="store_true")
+    parser.add_argument("--just-tracr", action="store_true")
     RUN_JOBS = parser.parse_args().start_jobs
+    JUST_TRACR = parser.parse_args().just_tracr
 
     output = main(return_files=RUN_JOBS)
 
     if RUN_JOBS: 
-        start_jobs(*output)
+        start_jobs(*output, just_tracr=JUST_TRACR)

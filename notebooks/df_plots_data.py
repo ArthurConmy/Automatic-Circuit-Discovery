@@ -65,5 +65,7 @@ df = pd.DataFrame(rows)
 
 # %% Print KL
 
-present = df[(df["alg"] == "CANONICAL") & (df["weights_type"] == "trained") & (df["score"] == 1.0)][["ablation_type", "task", "metric", "test_kl_div"]]
+present = df[(df["alg"] == "CANONICAL") & (df["weights_type"] == "trained") & (df["task"] == "tracr-reverse")][["ablation_type", "task", "metric", "test_kl_div"]]
 present.sort_values(["task", "ablation_type"])
+
+# %%
