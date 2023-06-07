@@ -1,0 +1,58 @@
+[tool.poetry]
+name = "acdc"
+version = "0.0.0" # This should automatically be set by the CD pipeline on release
+description = "ACDC: Automatic Circuit DisCovery implementation on top of TransformerLens"
+authors = ["Arthur Conmy, Adrià Garriga-Alonso"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "acdc"}, {include = "subnetwork_probing"}]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+einops = "^0.6.0"
+numpy = [{ version = "^1.21", python = "<3.10" },
+         { version = "^1.23", python = ">=3.10" }]
+torch = "^1.10"
+datasets = "^2.7.1"
+transformers = "^4.25.1"
+tqdm = "^4.64.1"
+pandas = "^1.1.5"
+wandb = "^0.13.5"
+torchtyping = "^0.1.4"
+huggingface-hub = "^0.15.1"
+cmapy = "^0.6.6"
+networkx = "^3.1"
+pydot = "^1.4.2"
+plotly = "^5.12.0"
+transformer-lens = {git = "https://github.com/neelnanda-io/TransformerLens.git", rev = "6983358"}
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.2.0"
+pytest-cov = "^4.0.0"
+
+[tool.poetry.group.jupyter.dependencies]
+jupyterlab = "^3.5.0"
+jupyter = "^1.0.0"
+
+
+[tool.poetry.group.tracr.dependencies]
+tracr = {git = "https://github.com/deepmind/tracr.git", rev = "e75ecda"}
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    # Ignore numpy.distutils deprecation warning caused by pandas
+    # More info: https://numpy.org/doc/stable/reference/distutils.html#module-numpy.distutils
+    "ignore:distutils Version classes are deprecated:DeprecationWarning"
+]
+
+[tool.black]
+line-length = 120
+
+[tool.isort]
+profile = "black"
+line_length = 120
+skip_gitignore = true
