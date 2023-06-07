@@ -8,8 +8,8 @@
 
 This is the accompanying code to the paper "Towards Automated Circuit Discovery for Mechanistic Interpretability".
 
-* :zap: To run ACDC, see `acdc/main.py`, or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Main_Demo.ipynb">this Colab notebook</a>
-* :wrench: To see how edit edges in computational graphs in models, see `notebooks/editing_edges.py` or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Editing_Edges_Demo.ipynb">this Colab notebook</a>
+* :zap: To run ACDC, see `acdc/main.py`, or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/update-to-new-tl/colabs/ACDC_Main_Demo.ipynb">this Colab notebook</a>
+* :wrench: To see how edit edges in computational graphs in models, see `notebooks/editing_edges.py` or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/update-to-new-tl/notebooks/colabs/ACDC_Editing_Edges_Demo.ipynb">this Colab notebook</a>
 
 ## Installation:
 
@@ -23,6 +23,7 @@ pip install -e .
 ### Details
 
 This codebase currently works on top of the TransformerLens main branch (as of 6th June 2023), so probably `transformer_lens==1.2.3` or later (for now, you need to install TransformerLens from source, such as by using the above fast installation command).
+
 
 You may also need do this
 
