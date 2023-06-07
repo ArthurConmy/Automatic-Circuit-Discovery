@@ -16,7 +16,6 @@ from acdc.acdc_graphics import dict_merge, pessimistic_auc
 import time
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
-import plotly.colors as pcgit 
 from pathlib import Path
 import plotly.express as px
 import pandas as pd

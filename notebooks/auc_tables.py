@@ -12,14 +12,14 @@ from tabulate import tabulate
 import argparse
 
 parser = argparse.ArgumentParser(
-    usage="Generate AUC tables from CSV files. Pass the data.csv file as an argument fname, e.g python notebooks/auc_tables.py --fname=acdc/media/plots/data.csv"
+    usage="Generate AUC tables from CSV files. Pass the data.csv file as an argument fname, e.g python notebooks/auc_tables.py --fname=experiments/results/plots/data.csv"
 )
-parser.add_argument('--fname', type=str, default="../acdc/media/plots/data.csv")
+parser.add_argument('--fname', type=str, default="../experiments/results/plots/data.csv")
     
 if ipython is None:
     args = parser.parse_args()
 else: # make parsing arguments work in jupyter notebook
-    args = parser.parse_args(args="""--fname=../acdc/media/plots/data.csv""".split())
+    args = parser.parse_args(args=[])
 
 fname = Path(args.fname)
 data = pd.read_csv(fname)
