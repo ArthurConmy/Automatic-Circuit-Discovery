@@ -4,6 +4,8 @@
 
 # Automated Circuit DisCovery 
 
+![](assets/acdc_finds_subgraph.png)
+
 This is the accompanying code to the paper "Towards Automated Circuit Discovery for Mechanistic Interpretability".
 
 * :zap: To run ACDC, see `acdc/main.py`, or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Main_Demo.ipynb">this Colab notebook</a>
