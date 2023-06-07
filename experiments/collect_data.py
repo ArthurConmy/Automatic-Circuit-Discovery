@@ -37,7 +37,7 @@ def main(
         OUT_RELPATH = Path(".cache") / "plots_data"
         OUT_HOME_DIR = Path(os.environ["HOME"]) / OUT_RELPATH
     else:
-        OUT_RELPATH = Path("acdc/media/arthur_plots_data")
+        OUT_RELPATH = Path("experiments/results/arthur_plots_data") # trying to remove extra things from acdc/
         OUT_HOME_DIR = OUT_RELPATH
 
     assert OUT_HOME_DIR.exists()

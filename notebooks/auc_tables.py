@@ -1,10 +1,27 @@
 #%%
 
+from IPython import get_ipython
+ipython = get_ipython()
+if ipython is not None:
+    ipython.run_line_magic('load_ext', 'autoreload')
+    ipython.run_line_magic('autoreload', '2')
+
 import pandas as pd
 from pathlib import Path
 from tabulate import tabulate
+import argparse
 
-fname = "../acdc/media/plots/data.csv"
+parser = argparse.ArgumentParser(
+    usage="Generate AUC tables from CSV files. Pass the data.csv file as an argument fname, e.g python notebooks/auc_tables.py --fname=experiments/results/plots/data.csv"
+)
+parser.add_argument('--fname', type=str, default="../experiments/results/plots/data.csv")
+    
+if ipython is None:
+    args = parser.parse_args()
+else: # make parsing arguments work in jupyter notebook
+    args = parser.parse_args(args=[])
+
+fname = Path(args.fname)
 data = pd.read_csv(fname)
 
 #%%

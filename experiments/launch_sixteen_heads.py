@@ -17,7 +17,9 @@ import torch
 import wandb
 import tqdm
 
-from transformer_lens import HookedTransformer, TLACDCCorrespondence, TLACDCInterpNode
+from transformer_lens import HookedTransformer 
+from acdc.TLACDCCorrespondence import TLACDCCorrespondence
+from acdc.TLACDCInterpNode import TLACDCInterpNode
 from acdc.acdc_utils import (
     cleanup,
     ct,

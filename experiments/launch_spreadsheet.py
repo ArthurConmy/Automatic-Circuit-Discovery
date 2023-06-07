@@ -96,7 +96,7 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
                     for threshold in [1.0] if testing else thresholds:
                         command = [
                             "python",
-                            "transformer_lens/main.py",
+                            "acdc/main.py",
                             f"--task={task}",
                             f"--threshold={threshold}",
                             "--using-wandb",
