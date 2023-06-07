@@ -403,7 +403,7 @@ class TLACDCExperiment:
                     hook=partial(self.receiver_hook, verbose=self.hook_verbose),
                 )
 
-        if add_sender_hooks: # bug fixed; crucical to add sender hooks AFTER the 
+        if add_sender_hooks: # bug fixed; crucical to add sender hooks AFTER the receivers
             self.add_all_sender_hooks(cache="first", skip_direct_computation=False, add_all_hooks=True, reset=False, override=True)
 
 
