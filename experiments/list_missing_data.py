@@ -1,14 +1,7 @@
 import os
-import subprocess
 from pathlib import Path
+from experiments.launcher import KubernetesJob, launch
 import shlex
-import argparse
-
-IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root")
-print("is adria:", IS_ADRIA)
-
-if IS_ADRIA:
-    from experiments.launcher import KubernetesJob, launch
 
 TASKS = ["ioi", "docstring", "greaterthan", "tracr-reverse", "tracr-proportion", "induction"]
 
@@ -22,7 +15,7 @@ METRICS_FOR_TASK = {
 }
 
 
-def main(return_files = False):
+def main():
     OUT_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / "plots_data"
 
     actual_files = set(os.listdir(OUT_DIR))
@@ -125,12 +118,9 @@ def main(return_files = False):
     for missing_file in missing_files:
         print(missing_file)
 
-    if return_files:
-        return actual_files, possible_files
 
 
-
-def start_jobs(actual_files, possible_files, just_tracr=False):
+def start_jobs(actual_files, possible_files):
     print(actual_files - possible_files)
     assert len(actual_files - possible_files) == 0, "There are files that shouldn't be there"
 
@@ -139,11 +129,6 @@ def start_jobs(actual_files, possible_files, just_tracr=False):
     for missing_file in missing_files:
         print(missing_file)
 
-    if just_tracr: 
-        missing_files = [f for f in missing_files if "tracr" in f]
-        print("\n... but removed some files due to just making tracr files...\n")
-        for missing_file in missing_files:
-            print(missing_file)
 
     for name in missing_files:
         name = name.rstrip(".json")
@@ -166,23 +151,10 @@ def start_jobs(actual_files, possible_files, just_tracr=False):
         if zero_ablation:
             command.append("--zero-ablation")
         try:
-            if IS_ADRIA:
-                launch([command], name="plots", job=None, synchronous=True)
-            else:
-                subprocess.run(command, check=True)
+            launch([command], name="plots", job=None, synchronous=True)
         except Exception as e:
             print(e)
 
 
 if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--start-jobs", action="store_true")
-    parser.add_argument("--just-tracr", action="store_true")
-    RUN_JOBS = parser.parse_args().start_jobs
-    JUST_TRACR = parser.parse_args().just_tracr
-
-    output = main(return_files=RUN_JOBS)
-
-    if RUN_JOBS: 
-        start_jobs(*output, just_tracr=JUST_TRACR)
+    main()

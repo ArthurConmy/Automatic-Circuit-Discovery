@@ -1,21 +1,16 @@
-#%%
-
 import os
 from warnings import warn
 import warnings
-
-IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root")
-print("is adria:", IS_ADRIA)
-
 from IPython import get_ipython
 if get_ipython() is not None:
     get_ipython().magic('load_ext autoreload')
     get_ipython().magic('autoreload 2')
 
+    __file__ = os.path.join(get_ipython().run_line_magic('pwd', ''), "notebooks", "df_plots_data.py")
+
     from notebooks.emacs_plotly_render import set_plotly_renderer
-    if IS_ADRIA:
-        __file__ = os.path.join(get_ipython().run_line_magic('pwd', ''), "notebooks", "df_plots_data.py") # warn adria of movement
-        set_plotly_renderer("emacs")        
+    if "adria" in __file__:
+        set_plotly_renderer("emacs")
 
 import plotly
 import numpy as np
@@ -64,8 +59,5 @@ for weights_type, v in all_data.items():
 df = pd.DataFrame(rows)
 
 # %% Print KL
-
-present = df[(df["alg"] == "CANONICAL") & (df["weights_type"] == "trained") & (df["task"] == "tracr-reverse")][["ablation_type", "task", "metric", "test_kl_div"]]
+present = df[(df["alg"] == "CANONICAL") & (df["weights_type"] == "trained") & (df["score"] == 1.0)][["ablation_type", "task", "metric", "test_kl_div"]]
 present.sort_values(["task", "ablation_type"])
-
-# %%

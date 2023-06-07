@@ -22,10 +22,6 @@
 # SIXTEEN_HEADS_PROJECT_NAME
 # SIXTEEN_HEADS_RUN
 
-IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root")
-print("is adria:", IS_ADRIA)
-
-import numpy as np # for cursed Intel MKL_THREADING_LAYER error...
 import collections
 import IPython
 
@@ -79,6 +75,7 @@ from enum import Enum
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import numpy as np
 import einops
 from tqdm import tqdm
 import yaml
@@ -169,11 +166,8 @@ parser.add_argument("--only-save-canonical", action="store_true", help="Only sav
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 
 if IPython.get_ipython() is not None:
-    # parse_str = "--task=tracr-reverse --metric=l2 --alg=acdc"
-    parse_str = "--task=docstring --alg=canonical --reset-network=0 --metric=docstring_metric"
-
-    args = parser.parse_args(parse_str.split())
-    if IS_ADRIA:
+    args = parser.parse_args("--task=tracr-reverse --metric=l2 --alg=acdc".split())
+    if "arthur" not in __file__:
         __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
 else:
     args = parser.parse_args()
@@ -213,11 +207,10 @@ if args.alg != "none":
     SKIP_SIXTEEN_HEADS = False if args.alg == "16h" else True
     SKIP_CANONICAL = False if args.alg == "canonical" else True
     OUT_FILE = OUT_DIR / f"{args.alg}-{args.task}-{args.metric}-{args.zero_ablation}-{args.reset_network}.json"
-    print(OUT_FILE, "is out file")
+
     if OUT_FILE.exists():
         print("File already exists, skipping")
         sys.exit(0)
-
 else:
     OUT_FILE = None
 
@@ -407,10 +400,6 @@ if not SKIP_ACDC or not SKIP_CANONICAL:
     exp.setup_second_cache()
 
 max_subgraph_size = exp.corr.count_no_edges()
-
-#%%
-
-exp.model(exp.ref_ds)
 
 #%% [markdown]
 # Load the *canonical* circuit
@@ -652,14 +641,10 @@ if not SKIP_ACDC: # this is slow, so run once
 
 # %%
 
-# # moved to utils so we can use debug cell
 def get_canonical_corrs(exp):
     all_present_corr = deepcopy(exp.corr)
-    all_present_all_edges = all_present_corr.all_edges()
-    keys = list(all_present_all_edges.keys())
-
-    for k in keys:
-        all_present_all_edges[k].present = True
+    for e in all_present_corr.all_edges().values():
+        e.present = True
 
     none_present_corr = deepcopy(exp.corr)
     for e in none_present_corr.all_edges().values():
@@ -683,7 +668,6 @@ def get_canonical_corrs(exp):
             )
             for name, fn in things.test_metrics.items():
                 score_d["test_"+name] = fn(exp.model(things.test_data)).item()
-            print(f"{score_d=}")
         finally:
             exp.corr = old_exp_corr
     return output
@@ -691,7 +675,7 @@ def get_canonical_corrs(exp):
 
 if not SKIP_CANONICAL:
     canonical_corrs = get_canonical_corrs(exp)
-    
+
 #%%
 
 # Do SP stuff
