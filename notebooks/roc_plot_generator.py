@@ -65,7 +65,7 @@ import networkx as nx
 import os
 import torch
 import huggingface_hub
-import graphviz
+import pydot
 from enum import Enum
 import torch.nn as nn
 import torch.nn.functional as F
@@ -429,8 +429,8 @@ if TASK != "induction":
         edge.effect_size = 1.0   # make it visible
 
     if ONLY_SAVE_CANONICAL and TASK == "ioi":
-        g: graphviz.Digraph = show(canonical_circuit_subgraph, colorscheme=ioi_group_colorscheme(), show_full_index=False, show=True)
-        g.render(str(CANONICAL_OUT_DIR / TASK), view=False, cleanup=True, format="pdf")
+        g: pydot.Dot = show(canonical_circuit_subgraph, colorscheme=ioi_group_colorscheme(), show_full_index=False)
+        g.write(str(CANONICAL_OUT_DIR / f"{TASK}.pdf"), format="pdf")
 
         def save(source, suffix):
             seen_lines = {"}"}
@@ -451,8 +451,8 @@ if TASK != "induction":
             with open(CANONICAL_OUT_DIR / f"{TASK}_{suffix}.gv", "w") as f:
                 f.write("digraph {\n" + source + "\n}")
 
-        save(g.source, "heads_qkv")
-        save(g.source.replace("_q>", ">").replace("_k>", ">").replace("_v>", ">"), "heads")
+        save(g.to_string(), "heads_qkv")
+        save(g.to_string().replace("_q>", ">").replace("_k>", ">").replace("_v>", ">"), "heads")
 
 
 if ONLY_SAVE_CANONICAL:

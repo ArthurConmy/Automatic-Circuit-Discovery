@@ -14,10 +14,9 @@ This is the accompanying code to the paper "Towards Automated Circuit Discovery 
 ## Installation:
 
 ```bash
-pip install git+https://github.com/neelnanda-io/TransformerLens.git cmapy torchtyping
 git clone git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git
 cd Automatic-Circuit-Discovery
-pip install -e .
+poetry install
 ```
 
 ### Details
@@ -27,10 +26,10 @@ This codebase currently works on top of the TransformerLens main branch (as of 6
 You may also need do this
 
 ```bash
-sudo apt-get update && sudo apt-get install ffmpeg libsm6 libxext6 graphviz
+sudo apt-get update && sudo apt-get install libgl1-mesa-glx graphviz
 ```
 
-in order to install graphics dependencies on linux.
+in order to install graphics dependencies on Ubuntu.
 
 ## Tests
 

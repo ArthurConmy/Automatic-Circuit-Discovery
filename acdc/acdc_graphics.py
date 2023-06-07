@@ -16,17 +16,10 @@ import torch.nn.functional as F
 from typing import List, Optional
 import warnings
 import networkx as nx
-import graphviz
 from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from acdc.TLACDCInterpNode import TLACDCInterpNode
-from acdc.TLACDCEdge import EdgeType
-
-
-# -------------------------------------------
-# SOME GRAPHICS
-# 
-# VERY CURSED, AND COULD BE IMPROVED A LOT
-# -------------------------------------------
+from acdc.acdc_utils import EdgeType
+import pydot
 
 def generate_random_color(colorscheme: str) -> str:
     """
@@ -42,11 +35,8 @@ def generate_random_color(colorscheme: str) -> str:
 
     return rgb2hex(cmapy.color("Pastel2", random.randrange(0, 256), rgb_order=True))
 
-# -------------------------------------------
-# GRAPHVIZ
-# -------------------------------------------
-
 def get_node_name(node: TLACDCInterpNode, show_full_index=True):
+    """Node name for use in pretty graphs"""
     name = ""
     qkv_substrings = [f"hook_{letter}" for letter in ["q", "k", "v"]]
     qkv_input_substrings = [f"hook_{letter}_input" for letter in ["q", "k", "v"]]
@@ -76,7 +66,7 @@ def get_node_name(node: TLACDCInterpNode, show_full_index=True):
         name = "a" + node.name.split(".")[1] + "." + str(node.index.hashable_tuple[2])
 
     # Handle MLPs
-    elif node.name.endswith("mlp_out") or "hook_resid_mid" in node.name or "hook_mlp_in" in node.name: # hook_resid_mid was the old name...
+    elif node.name.endswith("mlp_out") or "hook_resid_mid" in node.name:
         name = "m" + node.name.split(".")[1]
 
     # Handle resid_post
@@ -103,22 +93,17 @@ def show(
     fname=None,
     colorscheme: dict | str = "Pastel2",
     minimum_penwidth: float = 0.3,
-    show: bool = True,
     show_full_index: bool = True,
-):
+) -> pydot.Dot:
     """
-    takes matplotlib colormaps
+    Colorscheme: a color for each node name, or a string corresponding to a cmapy color scheme
     """
-    if fname is None:
-        format = "png"
-    else:
-        format = fname.split(".")[-1]
-    g = graphviz.Digraph(format=format)
+    g = pydot.Dot(graph_type="digraph", bgcolor="transparent", fontname="Helvetica")
 
-    if isinstance(colorscheme, dict):
-        colors = colorscheme
-    else:
+    if isinstance(colorscheme, str):
         colors = build_colorscheme(correspondence, colorscheme, show_full_index=show_full_index)
+    else:
+        colors = colorscheme
 
     # create all nodes
     for child_hook_name in correspondence.edges:
@@ -126,7 +111,7 @@ def show(
             for parent_hook_name in correspondence.edges[child_hook_name][child_index]:
                 for parent_index in correspondence.edges[child_hook_name][child_index][parent_hook_name]:
                     edge = correspondence.edges[child_hook_name][child_index][parent_hook_name][parent_index]
-                    
+
                     parent = correspondence.graph[parent_hook_name][parent_index]
                     child = correspondence.graph[child_hook_name][child_index]
 
@@ -135,27 +120,27 @@ def show(
 
                     if edge.present and edge.effect_size is not None and edge.edge_type != EdgeType.PLACEHOLDER:
                         for node_name in [parent_name, child_name]:
-                            g.node(
-                                node_name,
-                                fillcolor=colors[node_name],
-                                style="filled, rounded",
-                                shape="box",
-                                fontname="Helvetica",
+                            g.add_node(
+                                pydot.Node(
+                                    node_name,
+                                    fillcolor=colors[node_name],
+                                    style="filled, rounded",
+                                    shape="box",
+                                )
                             )
                         
-                        # TODO widths !!!
-                        g.edge(
-                            parent_name,
-                            child_name,
-                            penwidth=str(edge.effect_size),
-                            color=colors[parent_name],
+                        g.add_edge(
+                            pydot.Edge(
+                                parent_name,
+                                child_name,
+                                penwidth=str(max(minimum_penwidth, edge.effect_size)),
+                                color=colors[parent_name],
+                            )
                         )
 
     if fname is not None:
-        g.render(outfile=fname, format=format)
-
-    if show:
-        return g
+        format = fname.split(".")[-1]
+        g.write(path=fname, format=format)
 
 # -------------------------------------------
 # WANDB
