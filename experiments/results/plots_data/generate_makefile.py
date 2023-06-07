@@ -16,7 +16,7 @@ METRICS_FOR_TASK = {
 
 
 def main():
-    OUT_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / "plots_data"
+    OUT_DIR = Path(__file__).resolve().parent
 
     actual_files = set(os.listdir(OUT_DIR))
     trained_files = []
@@ -34,7 +34,7 @@ def main():
     induction_files = []
 
     with open(OUT_DIR/ "Makefile", "w") as f:
-        possible_files = {"analysis_of_rocs.py", "Makefile"}
+        possible_files = {"generate_makefile.py", "Makefile"}
 
         for alg in ["16h", "sp", "acdc"]:
             for reset_network in [0, 1]:
@@ -89,19 +89,19 @@ def main():
                                 induction_files.append(fname)
 
         f.write("all: " + " ".join(sorted(possible_files)) + "\n\n")
-        f.write("16h: " + " ".join(sixteenh_files) + "\n\n")
-        f.write("sp: " + " ".join(sp_files) + "\n\n")
-        f.write("acdc: " + " ".join(acdc_files) + "\n\n")
-        f.write("trained: " + " ".join(trained_files) + "\n\n")
-        f.write("reset: " + " ".join(reset_files) + "\n\n")
-        f.write("zero: " + " ".join(zero_files) + "\n\n")
-        f.write("random: " + " ".join(random_files) + "\n\n")
-        f.write("ioi: " + " ".join(ioi_files) + "\n\n")
-        f.write("docstring: " + " ".join(docstring_files) + "\n\n")
-        f.write("greaterthan: " + " ".join(greaterthan_files) + "\n\n")
-        f.write("tracr-reverse: " + " ".join(tracr_reverse_files) + "\n\n")
-        f.write("tracr-proportion: " + " ".join(tracr_proportion_files) + "\n\n")
-        f.write("induction: " + " ".join(induction_files) + "\n\n")
+        f.write("16h: " + " ".join(sorted(sixteenh_files)) + "\n\n")
+        f.write("sp: " + " ".join(sorted(sp_files)) + "\n\n")
+        f.write("acdc: " + " ".join(sorted(acdc_files)) + "\n\n")
+        f.write("trained: " + " ".join(sorted(trained_files)) + "\n\n")
+        f.write("reset: " + " ".join(sorted(reset_files)) + "\n\n")
+        f.write("zero: " + " ".join(sorted(zero_files)) + "\n\n")
+        f.write("random: " + " ".join(sorted(random_files)) + "\n\n")
+        f.write("ioi: " + " ".join(sorted(ioi_files)) + "\n\n")
+        f.write("docstring: " + " ".join(sorted(docstring_files)) + "\n\n")
+        f.write("greaterthan: " + " ".join(sorted(greaterthan_files)) + "\n\n")
+        f.write("tracr-reverse: " + " ".join(sorted(tracr_reverse_files)) + "\n\n")
+        f.write("tracr-proportion: " + " ".join(sorted(tracr_proportion_files)) + "\n\n")
+        f.write("induction: " + " ".join(sorted(induction_files)) + "\n\n")
 
     print(actual_files - possible_files)
     assert len(actual_files - possible_files) == 0, "There are files that shouldn't be there"
@@ -110,44 +110,6 @@ def main():
     print(f"Missing {len(missing_files)} files:")
     for missing_file in missing_files:
         print(missing_file)
-
-
-
-def start_jobs(actual_files, possible_files):
-    print(actual_files - possible_files)
-    assert len(actual_files - possible_files) == 0, "There are files that shouldn't be there"
-
-    missing_files = possible_files - actual_files
-    print(f"Missing {len(missing_files)} files:")
-    for missing_file in missing_files:
-        print(missing_file)
-
-
-    for name in missing_files:
-        name = name.rstrip(".json")
-        name = name.split("-")
-        reset_network = int(name[-1])
-        zero_ablation = bool(name[-2])
-        metric = name[-3]
-        task = name[1]
-        if task == "tracr":
-            task = f"tracr-{name[2]}"
-        alg = name[0]
-        command = [
-            "python",
-            "notebooks/roc_plot_generator.py",
-            f"--task={task}",
-            f"--reset-network={reset_network}",
-            f"--metric={metric}",
-            f"--alg={alg}",
-        ]
-        if zero_ablation:
-            command.append("--zero-ablation")
-        try:
-            launch([command], name="plots", job=None, synchronous=True)
-        except Exception as e:
-            print(e)
-
 
 if __name__ == "__main__":
     main()
