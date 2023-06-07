@@ -76,7 +76,7 @@ def get_node_name(node: TLACDCInterpNode, show_full_index=True):
         name = "a" + node.name.split(".")[1] + "." + str(node.index.hashable_tuple[2])
 
     # Handle MLPs
-    elif node.name.endswith("mlp_out") or "hook_resid_mid" in node.name:
+    elif node.name.endswith("mlp_out") or "hook_resid_mid" in node.name or "hook_mlp_in" in node.name: # hook_resid_mid was the old name...
         name = "m" + node.name.split(".")[1]
 
     # Handle resid_post
