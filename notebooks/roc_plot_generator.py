@@ -22,6 +22,10 @@
 # SIXTEEN_HEADS_PROJECT_NAME
 # SIXTEEN_HEADS_RUN
 
+IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root")
+print("is adria:", IS_ADRIA)
+
+import numpy as np # for cursed Intel MKL_THREADING_LAYER error...
 import collections
 import IPython
 
@@ -75,7 +79,6 @@ from enum import Enum
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import numpy as np
 import einops
 from tqdm import tqdm
 import yaml
@@ -167,7 +170,7 @@ parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore 
 
 if IPython.get_ipython() is not None:
     args = parser.parse_args("--task=tracr-reverse --metric=l2 --alg=acdc".split())
-    if "arthur" not in __file__:
+    if IS_ADRIA:
         __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
 else:
     args = parser.parse_args()

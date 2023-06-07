@@ -1,7 +1,12 @@
 import os
+import subprocess
 from pathlib import Path
 from experiments.launcher import KubernetesJob, launch
 import shlex
+import argparse
+
+IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root")
+print("is adria:", IS_ADRIA)
 
 TASKS = ["ioi", "docstring", "greaterthan", "tracr-reverse", "tracr-proportion", "induction"]
 
@@ -15,7 +20,7 @@ METRICS_FOR_TASK = {
 }
 
 
-def main():
+def main(return_files = False):
     OUT_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / "plots_data"
 
     actual_files = set(os.listdir(OUT_DIR))
@@ -118,6 +123,9 @@ def main():
     for missing_file in missing_files:
         print(missing_file)
 
+    if return_files:
+        return actual_files, possible_files
+
 
 
 def start_jobs(actual_files, possible_files):
@@ -151,10 +159,21 @@ def start_jobs(actual_files, possible_files):
         if zero_ablation:
             command.append("--zero-ablation")
         try:
-            launch([command], name="plots", job=None, synchronous=True)
+            if IS_ADRIA:
+                launch([command], name="plots", job=None, synchronous=True)
+            else:
+                subprocess.run(command, check=True)
         except Exception as e:
             print(e)
 
 
 if __name__ == "__main__":
-    main()
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--start-jobs", action="store_true")
+    RUN_JOBS = parser.parse_args().start_jobs
+
+    output = main(return_files=RUN_JOBS)
+
+    if RUN_JOBS: 
+        start_jobs(*output)
