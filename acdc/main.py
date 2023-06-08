@@ -15,13 +15,15 @@ try:
     IN_COLAB = True
     print("Running as a Colab notebook. WARNING: you should switch to a High-RAM A100 (you can buy $10 of credits for this). We're working on a low-memory version")
 
-    from IPython import get_ipython
-    from acdc.acdc_graphics import show # import graphics dependencies
+    import subprocess # to install graphviz
+    command = ['apt-get', 'install', 'graphviz-dev']
+    subprocess.run(command, check=True)
 
+    from IPython import get_ipython
     ipython = get_ipython()
     ipython.run_line_magic(
         "pip",
-        "install git+https://github.com/neelnanda-io/TransformerLens.git@6983358", 
+        "install git+https://github.com/neelnanda-io/TransformerLens.git@6983358",
     )
     ipython.run_line_magic(
         "pip",
