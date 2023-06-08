@@ -400,7 +400,7 @@ class TLACDCExperiment:
 
             self.model.add_hook(
                 name = hook_name_bool_function,
-                hook = lambda z, hook: torch.zeroslike(z),
+                hook = lambda z, hook: torch.zeros_like(z),
             )
 
         self.model.cache_all(self.global_cache.second_cache)

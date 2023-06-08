@@ -154,20 +154,11 @@ def test_editing_edges_notebook():
     import notebooks.editing_edges
 
 
-#%%
-# @pytest.mark.slow
-# @pytest.mark.parametrize("task", ["tracr-proportion", "tracr-reverse", "docstring", "induction", "ioi", "greaterthan"])
-# @pytest.mark.parametrize("zero_ablation", [False, True])
-# def test_full_correspondence_zero_kl(task, zero_ablation, device="cpu", metric_name="kl_div", num_examples=4, seq_len=10):
 
-task = "docstring"
-zero_ablation = False
-device = "cpu"
-metric_name = "kl_div"
-num_examples = 50
-seq_len = 41
-
-if True:
+@pytest.mark.slow
+@pytest.mark.parametrize("task", ["tracr-proportion", "tracr-reverse", "docstring", "induction", "ioi", "greaterthan"])
+@pytest.mark.parametrize("zero_ablation", [False, True])
+def test_full_correspondence_zero_kl(task, zero_ablation, device="cpu", metric_name="kl_div", num_examples=4, seq_len=10):
     if task == "tracr-proportion":
         things = get_all_tracr_things(task="proportion", num_examples=num_examples, device=device, metric_name="l2")
     elif task == "tracr-reverse":
@@ -196,23 +187,14 @@ if True:
         verbose=True,
         use_pos_embed=False,  # In the case that this is True, the KL should not be zero.
         first_cache_cpu=True,
-        hook_verbose=True,
         second_cache_cpu=True,
     )
     exp.setup_second_cache()
+
     corr = deepcopy(exp.corr)
     for e in corr.all_edges().values():
         e.present = True
 
-#%%
-
-exp.model.reset_hooks()
-cache1={}
-exp.model.cache_all(cache1)
-exp.model(things.test_data)
-v1 = cache1["blocks.0.hook_resid_pre"] + cache1["blocks.0.hook_attn_out"] # .sum(dim=-2) # sum over head dimension
-v2 = cache1["blocks.1.hook_q_input"][:, :, 0]
-
-assert torch.allclose(v1, v2) # how are these different???
-
-#%%
+    with torch.no_grad():
+        out = exp.call_metric_with_corr(corr, things.test_metrics["kl_div"], things.test_data)
+    assert abs(out) < 1e-6, f"{out} should be abs(out) < 1e-6"
