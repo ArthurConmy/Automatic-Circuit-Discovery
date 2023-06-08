@@ -35,7 +35,7 @@ else:
 
 # %%
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / "plots_data"
+DATA_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / "plots_data"
 all_data = {}
 
 for fname in os.listdir(DATA_DIR):
@@ -231,7 +231,6 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
         # nums[nums > 1] = np.nan
         alg_ys = np.linspace(alg_min, alg_max, 100)
         nums = np.linspace(scale_min, scale_max, len(alg_ys))
-        assert heatmap_ys[0] == -5.0
         fig.add_trace(
             go.Heatmap(
                 x=[i, i+0.95],

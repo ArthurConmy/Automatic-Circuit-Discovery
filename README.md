@@ -1,6 +1,6 @@
 :warning: This codebase is still under construction :warning:
 
-[![Python](https://img.shields.io/badge/python-3.7%2B-blue)]() [![Open Pull Requests](https://img.shields.io/github/issues-pr/ArthurConmy/Automatic-Circuit-Discovery.svg)](https://github.com/ArthurConmy/Automatic-Circuit-Discovery/pulls)
+[![Python](https://img.shields.io/badge/python-3.8%2B-blue)]() [![Open Pull Requests](https://img.shields.io/github/issues-pr/ArthurConmy/Automatic-Circuit-Discovery.svg)](https://github.com/ArthurConmy/Automatic-Circuit-Discovery/pulls)
 
 # Automated Circuit DisCovery 
 
@@ -13,32 +13,52 @@ This is the accompanying code to the paper "Towards Automated Circuit Discovery 
 
 ## Installation:
 
+You need Python 3.8+ and Poetry (https://python-poetry.org/docs/) to install ACDC, like so
+
 ```bash
-pip install git+https://github.com/neelnanda-io/TransformerLens.git cmapy torchtyping
 git clone git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git
 cd Automatic-Circuit-Discovery
-pip install -e .
+poetry env use 3.10 # Recommended Python 3.10, use whichever one you like
+poetry install
 ```
 
-### Details
+### System Dependencies
 
-This codebase currently works on top of the TransformerLens main branch (as of 6th June 2023), so probably `transformer_lens==1.2.3` or later (for now, you need to install TransformerLens from source, such as by using the above fast installation command).
+If you want to see the ACDC graphics in the notebooks (rather than just performance statistics in command line runs), you also need to install system dependencies:
 
-
-You may also need do this
+#### Ubuntu linux
 
 ```bash
-sudo apt-get update && sudo apt-get install ffmpeg libsm6 libxext6 graphviz
+sudo apt-get update && sudo apt-get install libgl1-mesa-glx graphviz build-essential graphviz-dev
 ```
 
-in order to install graphics dependencies on linux.
+See the [Dockerfile](./Dockerfile) for details.
+
+#### Mac OS X
+
+On Mac, you need to let `pip` (inside `poetry`) know about the path to the Graphviz libraries.
+
+``` bash
+brew install graphviz
+export CFLAGS="-I$(brew --prefix graphviz)/include
+export LDFLAGS="-L$(brew --prefix graphviz)/lib
+```
 
 ## Tests
 
 From the root directory, run 
 
 ```bash
-pytest -vvv
+pytest -vvv -m "not slow"
+```
+
+This will only select tests not marked as `slow`. These tests take a _long_ time, and are good to run occasionally, but
+not every time.
+
+You can run the slow tests with
+
+``` bash
+pytest -s -m slow
 ```
 
 ## Contributing 
@@ -59,7 +79,7 @@ If you use ACDC, please reach out! You can reference the work as follows:
 ```
 @misc{conmy2023automated,
       title={Towards Automated Circuit Discovery for Mechanistic Interpretability}, 
-      author={Arthur Conmy and Augustine N. Mavor-Parker and Aengus Lynch and Stefan Heimersheim and Adrià Garriga-Alonso},
+      author={Arthur Conmy and Augustine N. Mavor-Parker and Aengus Lynch and Stefan Heimersheim and Adri{\`a} Garriga-Alonso},
       year={2023},
       eprint={2304.14997},
       archivePrefix={arXiv},
