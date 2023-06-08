@@ -13,7 +13,7 @@ This is the accompanying code to the paper "Towards Automated Circuit Discovery 
 
 ## Installation:
 
-You need Python 3.8+ and Poetry to install ACDC. You also need to install system dependencies.
+You need Python 3.8+ and Poetry (https://python-poetry.org/docs/) to install ACDC. You also need to install system dependencies.
 
 ### System Dependencies
 
