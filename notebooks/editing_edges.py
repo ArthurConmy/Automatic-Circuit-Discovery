@@ -21,9 +21,6 @@ try:
     command = ['apt-get', 'install', 'graphviz-dev']
     subprocess.run(command, check=True)
 
-    import os # make images folder
-    os.mkdir("ims/")
-
     from IPython import get_ipython
     ipython = get_ipython()
 

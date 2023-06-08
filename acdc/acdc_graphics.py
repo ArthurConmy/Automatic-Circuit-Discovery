@@ -19,10 +19,7 @@ import networkx as nx
 from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from acdc.TLACDCInterpNode import TLACDCInterpNode
 from acdc.acdc_utils import EdgeType
-try:
-    import pygraphviz as pgv
-except:
-    warnings.warn("Could not import pygraphviz. Some functions will not work.")
+import pygraphviz as pgv
 
 def generate_random_color(colorscheme: str) -> str:
     """
