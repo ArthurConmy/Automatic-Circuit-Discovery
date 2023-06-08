@@ -27,7 +27,6 @@ import networkx as nx
 import os
 import torch
 import huggingface_hub
-import graphviz
 from enum import Enum
 import torch.nn as nn
 import torch.nn.functional as F
@@ -77,14 +76,16 @@ from acdc.acdc_graphics import (
     show,
 )
 import pytest
+from pathlib import Path
 
-@pytest.mark.skip(reason="OOM on small machine - worth unchecking!!!")
+@pytest.mark.slow
+@pytest.mark.skip(reason="TODO fix")
 def test_induction_several_steps():
     # get induction task stuff
     num_examples = 400
     seq_len = 30
     # TODO initialize the `tl_model` with the right model
-    all_induction_things = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device="cuda") # removed some randomize seq_len thing - hopefully unimportant
+    all_induction_things = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device="cpu") # removed some randomize seq_len thing - hopefully unimportant
     tl_model, toks_int_values, toks_int_values_other, metric = all_induction_things.tl_model, all_induction_things.validation_data, all_induction_things.validation_patch_data, all_induction_things.validation_metric
 
     gc.collect()
@@ -137,10 +138,14 @@ def test_induction_several_steps():
     for edge_tuple, edge in edges_to_consider.items():
         assert abs(edge.effect_size - EDGE_EFFECTS[edge_tuple]) < 1e-5, (edge_tuple, edge.effect_size, EDGE_EFFECTS[edge_tuple])
 
+@pytest.mark.slow
 def test_main_script():
     import subprocess
+
+    main_path = Path(__file__).resolve().parent.parent.parent / "acdc" / "main.py"
+
     for task in ["induction", "ioi", "tracr", "docstring"]:
-        subprocess.run(["python", "../../acdc/main.py", "--task", task, "--threshold", "123456789", "--single-step"])
+        subprocess.check_call(["python", str(main_path), f"--task={task}", "--threshold=1234", "--single-step", "--device=cpu"])
 
 def test_editing_edges_notebook():
     import notebooks.editing_edges

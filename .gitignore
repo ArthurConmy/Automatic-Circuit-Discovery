@@ -57,3 +57,5 @@ pts/
 .Ds_Store
 .pylintrc
 **/.DS_Store
+
+ob-jupyter

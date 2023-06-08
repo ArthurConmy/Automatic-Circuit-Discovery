@@ -38,7 +38,7 @@ else:
 
 # %%
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / "plots_data"
+DATA_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / "plots_data"
 all_data = {}
 
 for fname in os.listdir(DATA_DIR):

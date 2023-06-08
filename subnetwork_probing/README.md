@@ -1,14 +1,11 @@
 # Setup
 
-This implementation of Subnetwork Probing (and also HISP) should install by default when installing the ACDC code.
+This implementation of Subnetwork Probing should install by default when installing the ACDC code.
 
-# TODO
+It hosts a fork of `transformer_lens` as a submodule. This should probably be changed in the future.
 
-[ ] Sort out `transformer_lens` as a submodule for code release.
-[ ] Tune learning rate
-[ ] Tests for initialisation
-[ ] MLP masked hook points
-[ ] Tests for Gumbel 
+The fork introduces the class `MaskedHookPoint`, which masks some of its values with either zero or stored activations.
+That's the only crucial difference with mainstream `transformer_lens`. Most of the complexity is in `train.py`.
 
 # Subnetwork Probing
 
@@ -18,6 +15,4 @@ NAACL-HLT 2021
 
 # HISP 
 
-[Are Sixteen Heads Really Better than One?](https://arxiv.org/abs/1905.10650)
-Michel et al
-2019
+[Are Sixteen Heads Really Better than One?](https://arxiv.org/abs/1905.10650) Michel et al 2019

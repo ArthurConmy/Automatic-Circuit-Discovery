@@ -1,0 +1,8 @@
+.DS_Store
+.idea
+*.log
+tmp/
+
+
+plots_with_qkv_deleted
+plots_with_qkv_deleted_two

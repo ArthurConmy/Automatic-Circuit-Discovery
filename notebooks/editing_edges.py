@@ -66,6 +66,7 @@ import gc
 # <h2>Load in the model and data for the induction task
 
 #%%
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 num_examples = 40
 seq_len = 50
 
@@ -73,7 +74,7 @@ seq_len = 50
 all_induction_things = get_all_induction_things(
     num_examples=num_examples,
     seq_len=seq_len,
-    device="cuda",
+    device=DEVICE,
 )
 
 tl_model, toks_int_values, toks_int_values_other, metric, mask_rep = (

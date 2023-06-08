@@ -65,7 +65,7 @@ import networkx as nx
 import os
 import torch
 import huggingface_hub
-import graphviz
+import pygraphviz as pgv
 from enum import Enum
 import torch.nn as nn
 import torch.nn.functional as F
@@ -192,8 +192,8 @@ TESTING = True if args.testing else False
 ONLY_SAVE_CANONICAL = True if args.only_save_canonical else False
 
 if args.out_dir == "DEFAULT":
-    OUT_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / f"{'arthur_' if 'arthur' in __file__ else ''}plots_data"
-    CANONICAL_OUT_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / "canonical_circuits"
+    OUT_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / f"{'arthur_' if 'arthur' in __file__ else ''}plots_data"
+    CANONICAL_OUT_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / "canonical_circuits"
 else:
     OUT_DIR = Path(args.out_dir)
     CANONICAL_OUT_DIR = Path(args.canonical_graph_save_dir)
@@ -439,8 +439,12 @@ if TASK != "induction":
         edge.effect_size = 1.0   # make it visible
 
     if ONLY_SAVE_CANONICAL:
-        g: graphviz.Digraph = show(canonical_circuit_subgraph, colorscheme=COLORSCHEME_FOR[TASK](), show_full_index=False, show=True)
-        g.render(str(CANONICAL_OUT_DIR / TASK), view=False, cleanup=True, format="pdf")
+        g: pgv.AGraph = show(
+            canonical_circuit_subgraph,
+            fname=CANONICAL_OUT_DIR / f"{TASK}.pdf",
+            colorscheme=COLORSCHEME_FOR[TASK](),
+            show_full_index=False,
+        )
 
         if TASK in ["ioi", "greaterthan"]:
             def save(source, suffix):
@@ -462,8 +466,8 @@ if TASK != "induction":
                 with open(CANONICAL_OUT_DIR / f"{TASK}_{suffix}.gv", "w") as f:
                     f.write("digraph {\n" + source + "\n}")
 
-            save(g.source, "heads_qkv")
-            save(g.source.replace("_q>", ">").replace("_k>", ">").replace("_v>", ">"), "heads")
+            save(g.to_string(), "heads_qkv")
+            save(g.to_string().replace("_q>", ">").replace("_k>", ">").replace("_v>", ">"), "heads")
 
 
 if ONLY_SAVE_CANONICAL:

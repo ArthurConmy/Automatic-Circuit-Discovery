@@ -1,7 +1,7 @@
 from experiments.launcher import KubernetesJob, WandbIdentifier, launch
 import numpy as np
 import random
-from typing import List
+from typing import List, Optional
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
@@ -13,7 +13,7 @@ METRICS_FOR_TASK = {
 }
 
 
-def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool, reset_networks: bool):
+def main(TASKS: list[str], job: Optional[KubernetesJob], name: str, testing: bool, reset_networks: bool):
     NUM_SPACINGS = 5 if reset_networks else 21
     expensive_base_regularization_params = np.concatenate(
         [
@@ -102,6 +102,14 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool, reset_n
                     else:
                         raise ValueError("Unknown task")
 
+                    if job is None:
+                        device = "cpu"
+                        n_cpu = 4
+                        assert testing
+                    else:
+                        device = "cuda" if job.gpu else "cpu"
+                        n_cpu = job.cpu
+
                     for lambda_reg in [0.01] if testing else regularization_params:
                         command = [
                             "python",
@@ -112,7 +120,7 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool, reset_n
                             "--wandb-project=induction-sp-replicate",
                             "--wandb-entity=remix_school-of-rock",
                             "--wandb-group=tracr-shuffled-redo",
-                            f"--device={'cpu' if testing or not job.gpu else 'cuda'}",
+                            f"--device={device}",
                             f"--epochs={1 if testing else 10000}",
                             f"--zero-ablation={zero_ablation}",
                             f"--reset-subject={reset_network}",
@@ -122,8 +130,8 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, testing: bool, reset_n
                             f"--seq-len={seq_len}",
                             f"--n-loss-average-runs={1 if testing else 20}",
                             "--wandb-dir=/training",  # If it doesn't exist wandb will use /tmp
-                            f"--wandb-mode=online",
-                            f"--torch-num-threads={job.cpu}",
+                            f"--wandb-mode={'offline' if testing else 'online'}",
+                            f"--torch-num-threads={n_cpu}",
                         ]
                         commands.append(command)
 

@@ -1,0 +1,8 @@
+.DS_Store
+.idea
+*.log
+tmp/
+
+
+*.pdf
+data.csv
