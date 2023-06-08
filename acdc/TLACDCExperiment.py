@@ -384,31 +384,36 @@ class TLACDCExperiment:
     def setup_second_cache(self):
         if self.verbose:
             print("Adding sender hooks...")
-        
+
         self.model.reset_hooks()
+
+        if self.zero_ablation:
+            # to calculate the inputs to each model component, 
+            # we need zero out all the outputs into the residual stream
+
+            # all hooknames that output into the residual stream
+            hook_name_substrings = ["attn_result", "mlp_out", "hook_embed"]
+            if self.use_pos_embed:
+                hook_name_substrings.append("hook_pos_embed")
+
+            hook_name_bool_function = lambda hook_name: any([hook_name_substring in hook_name for hook_name_substring in hook_name_substrings])
+
+            self.model.add_hook(
+                name = hook_name_bool_function,
+                hook = lambda z, hook: torch.zeroslike(z),
+            )
+
         self.model.cache_all(self.global_cache.second_cache)
-
-        if self.verbose:
-            print("Now corrupting things..")
-
         corrupt_stuff = self.model(self.ref_ds)
 
         if self.verbose:
             print("Done corrupting things")
 
-        if self.zero_ablation:
-            names = list(self.global_cache.second_cache.keys())
-            assert len(names)>0, "No second cache names found"
-            for name in names:
-                self.global_cache.second_cache[name] = torch.zeros_like(
-                    self.global_cache.second_cache[name]
-                )
-                torch.cuda.empty_cache()
 
         if self.second_cache_cpu:
             self.global_cache.to("cpu", which_caches="second")
 
-        if self.use_pos_embed:
+        if self.use_pos_embed and not self.zero_ablation:
             self.global_cache.second_cache["hook_pos_embed"][:] = shuffle_tensor(self.global_cache.second_cache["hook_pos_embed"][0], seed=49) # make all positions the same shuffled set of positions
 
         self.model.reset_hooks()

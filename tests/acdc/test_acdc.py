@@ -210,7 +210,7 @@ exp.model.reset_hooks()
 cache1={}
 exp.model.cache_all(cache1)
 exp.model(things.test_data)
-v1 = cache1["blocks.0.hook_resid_pre"] + cache1["blocks.0.attn.hook_result"].sum(dim=-2)
+v1 = cache1["blocks.0.hook_resid_pre"] + cache1["blocks.0.hook_attn_out"] # .sum(dim=-2) # sum over head dimension
 v2 = cache1["blocks.1.hook_q_input"][:, :, 0]
 
 assert torch.allclose(v1, v2) # how are these different???
