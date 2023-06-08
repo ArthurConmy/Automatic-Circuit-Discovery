@@ -328,7 +328,7 @@ class TLACDCExperiment:
 
         return z
 
-    def add_all_sender_hooks(self, reset=True, cache="first", skip_direct_computation=False, add_all_hooks=False):
+    def add_all_sender_hooks(self, reset=True, cache="first", skip_direct_computation=False, add_all_hooks=False, override=False):
         """We use add_sender_hook for lazily adding *some* sender hooks"""
 
         if self.verbose:
@@ -358,7 +358,7 @@ class TLACDCExperiment:
 
             for node in nodes:
                 fwd_hooks = self.model.hook_dict[node.name].fwd_hooks
-                if len(fwd_hooks) > 0:
+                if len(fwd_hooks) > 0 and not override:
                     resolved_hooks_dicts = [fwd_hook.hook.hooks_dict_ref() for fwd_hook in fwd_hooks]
                     assert all([resolved_hooks_dict == resolved_hooks_dicts[0] for resolved_hooks_dict in resolved_hooks_dicts]), f"{resolved_hooks_dicts}\nUnexpected behavior: different hook dict for different hooks on the same HookPoint?! https://github.com/neelnanda-io/TransformerLens/issues/297"
                     for fwd_hook in resolved_hooks_dicts[0].values():
@@ -411,9 +411,6 @@ class TLACDCExperiment:
         add_receiver_hooks=False,
         doing_acdc_runs=True,
     ):
-        if add_sender_hooks:
-            self.add_all_sender_hooks(cache="first", skip_direct_computation=False, add_all_hooks=True) # when this is True, this is wrong I think
-
         if add_receiver_hooks:
             if doing_acdc_runs:
                 warnings.warn("Deprecating adding receiver hooks before launching into ACDC runs, this may be totally broke. Ignore this warning if you are not doing ACDC runs")
@@ -424,6 +421,10 @@ class TLACDCExperiment:
                     name=receiver_name,
                     hook=partial(self.receiver_hook, verbose=self.hook_verbose),
                 )
+
+        if add_sender_hooks: # bug fixed; crucial to add sender hooks AFTER the receivers
+            self.add_all_sender_hooks(cache="first", skip_direct_computation=False, add_all_hooks=True, reset=False, override=True)
+
 
     def save_edges(self, fname):
         """Stefan's idea for fast saving!
