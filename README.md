@@ -13,15 +13,6 @@ This is the accompanying code to the paper "Towards Automated Circuit Discovery 
 
 ## Installation:
 
-You need Python 3.8+ and Poetry (https://python-poetry.org/docs/) to install ACDC, like so
-
-```bash
-git clone git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git
-cd Automatic-Circuit-Discovery
-poetry env use 3.10 # Recommended Python 3.10, use whichever one you like
-poetry install
-```
-
 ### System Dependencies
 
 If you want to see the ACDC graphics in the notebooks (rather than just performance statistics in command line runs), you also need to install system dependencies:
@@ -44,6 +35,15 @@ export CFLAGS="-I$(brew --prefix graphviz)/include
 export LDFLAGS="-L$(brew --prefix graphviz)/lib
 ```
 
+
+You need Python 3.8+ and Poetry (https://python-poetry.org/docs/) to install ACDC, like so
+
+```bash
+git clone git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git
+cd Automatic-Circuit-Discovery
+poetry env use 3.10 # Recommended Python 3.10, use whichever one you like
+poetry install
+```
 ## Tests
 
 From the root directory, run 
