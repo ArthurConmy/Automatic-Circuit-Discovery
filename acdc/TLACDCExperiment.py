@@ -32,6 +32,8 @@ from acdc.acdc_utils import next_key
 TorchIndexHashableTuple = Tuple[Union[None, slice], ...]
 Subgraph = Dict[Tuple[str, TorchIndexHashableTuple, str, TorchIndexHashableTuple], bool] # an alias for loading and saving from WANDB (primarily)
 
+T = TypeVar("T")
+
 class TLACDCExperiment:
     """Manages an ACDC experiment, including the computational graph, the model, the data etc.
 
@@ -848,3 +850,24 @@ class TLACDCExperiment:
                     assert edge.present == False or edge.edge_type == EdgeType.PLACEHOLDER, (tupl, edge, hook_name, hook_idx)
                     edge.present = True
                     break # don't double remove
+
+
+    def call_metric_with_corr(self, corr: TLACDCCorrespondence, metric_fn: Callable[[torch.Tensor], T], data: torch.Tensor) -> T:
+        """Call a function ``metric_fn`` with a new correspondence ``corr``.
+
+        Remember to call ``self.setup_cache()`` with the desired ``ref_ds`` before this function.
+        """
+
+        old_exp_corr = self.corr
+        try:
+            self.corr = corr
+            self.model.reset_hooks()
+            self.setup_model_hooks(
+                add_sender_hooks=True,
+                add_receiver_hooks=True,
+                doing_acdc_runs=False,
+            )
+            out = metric_fn(self.model(data))
+        finally:
+            self.corr = old_exp_corr
+        return out

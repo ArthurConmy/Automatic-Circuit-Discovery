@@ -608,19 +608,13 @@ def get_acdc_runs(
 
             corrs.append((corr, score_d))
             ids.append(run.id)
-        try:
-            old_exp_corr = exp.corr
-            exp.corr = corrs[-1][0]
-            exp.model.reset_hooks()
-            exp.setup_model_hooks(
-                add_sender_hooks=True,
-                add_receiver_hooks=True,
-                doing_acdc_runs=False,
-            )
-            for name, fn in things.test_metrics.items():
-                corrs[-1][1]["test_"+name] = fn(exp.model(things.test_data)).item()
-        finally:
-            exp.corr = old_exp_corr
+
+
+        def all_test_fns(data: torch.Tensor) -> dict[str, float]:
+            return {f"test_{name}": fn(data).item() for name, fn in things.test_metrics.items()}
+
+        test_metrics = exp.call_metric_with_corr(corrs[-1][0], all_test_fns, things.test_data)
+        corrs[-1][1].update(test_metrics)
         print(f"Added run with threshold={score_d['score']}, n_edges={corrs[-1][0].count_no_edges()}")
     if return_ids:
         return corrs, ids
