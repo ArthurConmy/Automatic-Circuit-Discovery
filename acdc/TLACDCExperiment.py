@@ -396,12 +396,13 @@ class TLACDCExperiment:
             if self.use_pos_embed:
                 hook_name_substrings.append("hook_pos_embed")
 
+            # add hooks to zero out all these hook points
             hook_name_bool_function = lambda hook_name: any([hook_name_substring in hook_name for hook_name_substring in hook_name_substrings])
-
             self.model.add_hook(
                 name = hook_name_bool_function,
                 hook = lambda z, hook: torch.zeros_like(z),
             )
+            # we now add the saving hooks AFTER we've zeroed out activations
 
         self.model.cache_all(self.global_cache.second_cache)
         corrupt_stuff = self.model(self.ref_ds)
@@ -409,12 +410,13 @@ class TLACDCExperiment:
         if self.verbose:
             print("Done corrupting things")
 
-
         if self.second_cache_cpu:
             self.global_cache.to("cpu", which_caches="second")
 
         if self.use_pos_embed and not self.zero_ablation:
-            self.global_cache.second_cache["hook_pos_embed"][:] = shuffle_tensor(self.global_cache.second_cache["hook_pos_embed"][0], seed=49) # make all positions the same shuffled set of positions
+            # make all positions the same shuffled set of positions
+            # if we used zero ablation, they are all zeroed which is great
+            self.global_cache.second_cache["hook_pos_embed"][:] = shuffle_tensor(self.global_cache.second_cache["hook_pos_embed"][0], seed=49) 
 
         self.model.reset_hooks()
 
