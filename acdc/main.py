@@ -16,6 +16,7 @@ try:
     print("Running as a Colab notebook. WARNING: you should switch to a High-RAM A100 (you can buy $10 of credits for this). We're working on a low-memory version")
 
     from IPython import get_ipython
+    from acdc.acdc_graphics import show # import graphics dependencies
 
     ipython = get_ipython()
     ipython.run_line_magic(
@@ -53,6 +54,7 @@ except Exception as e:
 
     ipython = get_ipython()
     if ipython is not None:
+        from acdc.acdc_graphics import show
         ipython.run_line_magic("load_ext", "autoreload")  # type: ignore
         ipython.run_line_magic("autoreload", "2")  # type: ignore
 
@@ -86,7 +88,6 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
 from transformer_lens.hook_points import HookedRootModule, HookPoint
-from acdc.acdc_graphics import show
 from transformer_lens.HookedTransformer import (
     HookedTransformer,
 )
@@ -331,13 +332,13 @@ exp = TLACDCExperiment(
 for i in range(args.max_num_epochs):
     exp.step(testing=False)
 
-    show(
-        exp.corr,
-        f"ims/img_new_{i+1}.png",
-        show_full_index=use_pos_embed,
-    )
-
     if IN_COLAB or ipython is not None:
+        show(
+            exp.corr,
+            f"ims/img_new_{i+1}.png",
+            show_full_index=use_pos_embed,
+        )
+
         # so long as we're not running this as a script, show the image!
         display(Image(f"ims/img_new_{i+1}.png"))
 

@@ -22,11 +22,11 @@ try:
     ipython = get_ipython()
     ipython.run_line_magic(
         "pip",
-        "install git+https://github.com/neelnanda-io/TransformerLens.git", 
+        "install git+https://github.com/neelnanda-io/TransformerLens.git@6983358",
     )
     ipython.run_line_magic(
         "pip",
-        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git", # install ACDC
+        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@541ea29", # install ACDC
     )
     ipython.run_line_magic("pip", "install torchtyping cmapy")
 
