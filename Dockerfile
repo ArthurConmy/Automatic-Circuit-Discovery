@@ -24,7 +24,7 @@ COPY --chown=root:root pyproject.toml poetry.lock ./
 # Don't create a virtualenv, the Docker container is already enough isolation
 RUN "$POETRY" config virtualenvs.create false \
     # Install dependencies
-    && "$POETRY" install --no-root --no-interaction "--only=main,dev" \
+    && "$POETRY" install --no-root --no-interaction "--only=main,dev,tracr" \
     && rm -rf "${HOME}/.cache"
 
 # Copy whole repo
