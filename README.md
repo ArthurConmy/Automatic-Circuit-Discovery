@@ -13,37 +13,37 @@ This is the accompanying code to the paper "Towards Automated Circuit Discovery 
 
 ## Installation:
 
+First, install the system dependencies for either [Mac](#apple-mac-os-x) or [Linux](#penguin-ubuntu-linux).
+
+Then, you need Python 3.8+ and [Poetry](https://python-poetry.org/docs/) to install ACDC, like so
+
+```bash
+git clone git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git
+cd Automatic-Circuit-Discovery
+poetry env use 3.10 # Python 3.10 is recommended but use any Python version >= 3.8
+poetry install
+```
+
 ### System Dependencies
 
-If you want to see the ACDC graphics in the notebooks (rather than just performance statistics in command line runs), you also need to install system dependencies:
-
-#### Ubuntu linux
+#### :penguin: Ubuntu Linux
 
 ```bash
 sudo apt-get update && sudo apt-get install libgl1-mesa-glx graphviz build-essential graphviz-dev
 ```
 
+#### :apple: Mac OS X
+
+On Mac, you need to let pip (inside poetry) know about the path to the Graphviz libraries.
+
+```
+brew install graphviz
+export CFLAGS="-I$(brew --prefix graphviz)/include"
+export LDFLAGS="-L$(brew --prefix graphviz)/lib"
+```
+
 See the [Dockerfile](./Dockerfile) for details.
 
-#### Mac OS X
-
-On Mac, you need to let `pip` (inside `poetry`) know about the path to the Graphviz libraries.
-
-``` bash
-brew install graphviz
-export CFLAGS="-I$(brew --prefix graphviz)/include
-export LDFLAGS="-L$(brew --prefix graphviz)/lib
-```
-
-
-You need Python 3.8+ and Poetry (https://python-poetry.org/docs/) to install ACDC, like so
-
-```bash
-git clone git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git
-cd Automatic-Circuit-Discovery
-poetry env use 3.10 # Recommended Python 3.10, use whichever one you like
-poetry install
-```
 ## Tests
 
 From the root directory, run 
