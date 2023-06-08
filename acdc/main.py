@@ -13,32 +13,22 @@ try:
     import google.colab
 
     IN_COLAB = True
-    print("Running as a Colab notebook. WARNING: you should switch to a High-RAM A100 (you can buy $10 of credits for this). We're working on a low-memory version")
+    print("Running as a Colab notebook. WARNING: you should switch to a High-RAM A100 (you can buy $10 of credits for this)")
 
-    import subprocess # to install graphviz
+    import subprocess # to install graphviz dependencies
     command = ['apt-get', 'install', 'graphviz-dev']
     subprocess.run(command, check=True)
 
+    import os # make images folder
+    os.mkdir("ims/")
+
     from IPython import get_ipython
     ipython = get_ipython()
-    ipython.run_line_magic(
-        "pip",
-        "install git+https://github.com/neelnanda-io/TransformerLens.git@6983358",
-    )
-    ipython.run_line_magic(
-        "pip",
-        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@4462921",
-    )
-    ipython.run_line_magic("pip", "install torchtyping")
-    ipython.run_line_magic("pip", "install cmapy")
-    try:
-        ipython.run_line_magic(
-            "pip",
-            "install git+https://github.com/deepmind/tracr.git@e75ecdaec12bf2d831a60e54d4270e8fa31fb537#egg=tracr",
-        )
-    except Exception as e:
-        print(f"Could not import `tracr` because {e}; the rest of the file should work but you cannot use the tracr tasks")
 
+    ipython.run_line_magic( # install ACDC
+        "pip",
+        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@541ea29",
+    )
 
 except Exception as e:
     IN_COLAB = False

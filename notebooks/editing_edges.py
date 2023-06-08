@@ -15,23 +15,22 @@ try:
     import google.colab
 
     IN_COLAB = True
-    print("Running as a Colab notebook. WARNING: you should switch to a High-RAM A100 (you can buy $10 of credits for this). We're working on a low-memory version")
+    print("Running as a Colab notebook. WARNING: you should switch to a High-RAM A100 (you can buy $10 of credits for this)")
 
-    import subprocess # to install graphviz
+    import subprocess # to install graphviz dependencies
     command = ['apt-get', 'install', 'graphviz-dev']
     subprocess.run(command, check=True)
 
+    import os # make images folder
+    os.mkdir("ims/")
+
     from IPython import get_ipython
     ipython = get_ipython()
-    ipython.run_line_magic(
+
+    ipython.run_line_magic( # install ACDC
         "pip",
-        "install git+https://github.com/neelnanda-io/TransformerLens.git@6983358",
+        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@541ea29",
     )
-    ipython.run_line_magic(
-        "pip",
-        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@541ea29", # install ACDC
-    )
-    ipython.run_line_magic("pip", "install torchtyping cmapy")
 
 except Exception as e:
     IN_COLAB = False
