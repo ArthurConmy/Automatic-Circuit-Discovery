@@ -185,7 +185,7 @@ def test_full_correspondence_zero_kl(task, zero_ablation, device="cpu", metric_n
         metric=things.validation_metric,
         second_metric=None,
         verbose=True,
-        use_pos_embed=task.startswith("tracr"),
+        use_pos_embed=False,  # In the case that this is True, the KL should not be zero.
         first_cache_cpu=True,
         second_cache_cpu=True,
     )
