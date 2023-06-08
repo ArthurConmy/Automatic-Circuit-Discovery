@@ -42,7 +42,6 @@ export CFLAGS="-I$(brew --prefix graphviz)/include"
 export LDFLAGS="-L$(brew --prefix graphviz)/lib"
 ```
 
-See the [Dockerfile](./Dockerfile) for details.
 
 ## Tests
 
