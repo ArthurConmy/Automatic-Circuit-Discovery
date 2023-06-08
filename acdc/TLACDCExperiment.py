@@ -328,8 +328,14 @@ class TLACDCExperiment:
 
         return z
 
-    def add_all_sender_hooks(self, reset=True, cache="first", skip_direct_computation=False, add_all_hooks=False, override=False):
-        """We use add_sender_hook for lazily adding *some* sender hooks"""
+    def add_all_sender_hooks(self, reset=True, cache="first", skip_direct_computation=False, add_all_hooks=False, sender_and_receiver_both_ok=False):
+        """We use add_sender_hook for lazily adding *some* sender hooks
+
+        :param sender_and_receiver_both_ok: The sender hooks had some checks that we're not adding both adding sender
+        and receiver hooks to the same HookPoint. Usually this is a sign something has gone wrong, but in the case where
+        we're adding all the hooks (for test loss calculation) it's not wrong
+
+        """
 
         if self.verbose:
             print("Adding sender hooks...")
@@ -358,7 +364,7 @@ class TLACDCExperiment:
 
             for node in nodes:
                 fwd_hooks = self.model.hook_dict[node.name].fwd_hooks
-                if len(fwd_hooks) > 0 and not override:
+                if len(fwd_hooks) > 0 and not sender_and_receiver_both_ok:
                     resolved_hooks_dicts = [fwd_hook.hook.hooks_dict_ref() for fwd_hook in fwd_hooks]
                     assert all([resolved_hooks_dict == resolved_hooks_dicts[0] for resolved_hooks_dict in resolved_hooks_dicts]), f"{resolved_hooks_dicts}\nUnexpected behavior: different hook dict for different hooks on the same HookPoint?! https://github.com/neelnanda-io/TransformerLens/issues/297"
                     for fwd_hook in resolved_hooks_dicts[0].values():
@@ -423,7 +429,7 @@ class TLACDCExperiment:
                 )
 
         if add_sender_hooks: # bug fixed; crucial to add sender hooks AFTER the receivers
-            self.add_all_sender_hooks(cache="first", skip_direct_computation=False, add_all_hooks=True, reset=False, override=True)
+            self.add_all_sender_hooks(cache="first", skip_direct_computation=False, add_all_hooks=True, reset=False, sender_and_receiver_both_ok=True)
 
 
     def save_edges(self, fname):
