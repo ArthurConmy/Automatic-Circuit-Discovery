@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# TODO add this all to the Makefile
+
 set -e
 
 # Check for --skip-run flag
@@ -45,6 +47,7 @@ for in_path in "${!file_paths[@]}"; do
     if ! $skip_run; then
         papermill "$middle_path" "$final_out_path" --kernel=python
 
+        # TODO fix this; it seems some errored files are slipping through
         python -c "
 import nbformat
 nb = nbformat.read('$final_out_path', as_version=4)
