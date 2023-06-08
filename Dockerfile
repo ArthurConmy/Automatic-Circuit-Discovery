@@ -1,5 +1,5 @@
 FROM nvidia/cuda:11.7.1-cudnn8-devel-ubuntu22.04
-LABEL org.opencontainers.image.source=https://github.com/rhaps0dy/Automatic-Circuit-Discovery
+LABEL org.opencontainers.image.source=https://github.com/arthurconmy/Automatic-Circuit-Discovery
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update -q \
