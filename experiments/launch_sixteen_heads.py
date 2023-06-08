@@ -17,7 +17,9 @@ import torch
 import wandb
 import tqdm
 
-from transformer_lens import HookedTransformer, TLACDCCorrespondence, TLACDCInterpNode
+from transformer_lens import HookedTransformer 
+from acdc.TLACDCCorrespondence import TLACDCCorrespondence
+from acdc.TLACDCInterpNode import TLACDCInterpNode
 from acdc.acdc_utils import (
     cleanup,
     ct,
@@ -254,7 +256,7 @@ for layer_i in range(model.cfg.n_layers):
         name = f"blocks.{layer_i}.hook_mlp_out"
         mlp_nodes = [
             TLACDCInterpNode(name, TorchIndex([None]), incoming_edge_type=EdgeType.PLACEHOLDER),
-            TLACDCInterpNode(f"blocks.{layer_i}.hook_resid_mid", TorchIndex([None]), incoming_edge_type=EdgeType.ADDITION),
+            TLACDCInterpNode(f"blocks.{layer_i}.hook_mlp_in", TorchIndex([None]), incoming_edge_type=EdgeType.ADDITION),
         ]
         nodes_names_indices.append((mlp_nodes, name, slice(None)))
 

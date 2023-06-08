@@ -3,26 +3,28 @@
 #
 # <p>This notebook (which doubles as a script) shows several use cases of ACDC</p>
 #
-# <p>This codebase is a fork of https://github.com/neelnanda-io/TransformerLens with changes that will hopefully be merged soon</p>
+# <p>The codebase is built on top of https://github.com/neelnanda-io/TransformerLens (source version)</p>
 #
 # <h3>Setup:</h3>
 # <p>Janky code to do different setup when run in a Colab notebook vs VSCode (adapted from e.g <a href="https://github.com/neelnanda-io/TransformerLens/blob/5c89b7583e73ce96db5e46ef86a14b15f303dde6/demos/Activation_Patching_in_TL_Demo.ipynb">this notebook</a>)</p>
+
+#%%
 try:
     import google.colab
 
     IN_COLAB = True
-    print("Running as a Colab notebook")
+    print("Running as a Colab notebook. WARNING: you should switch to a High-RAM A100 (you can buy $10 of credits for this). We're working on a low-memory version")
 
     from IPython import get_ipython
 
     ipython = get_ipython()
     ipython.run_line_magic(
         "pip",
-        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@arthur-patch-resid-mid", # install a patched TL
+        "install git+https://github.com/neelnanda-io/TransformerLens.git@6983358", 
     )
     ipython.run_line_magic(
         "pip",
-        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git", # install ACDC
+        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@4462921",
     )
     ipython.run_line_magic("pip", "install torchtyping")
     ipython.run_line_magic("pip", "install cmapy")
@@ -41,6 +43,7 @@ except Exception as e:
         "Running as a Jupyter notebook - intended for development only! (This is also used for automatically generating notebook outputs)"
     )
 
+    import numpy # crucial to not get cursed error
     import plotly
 
     plotly.io.renderers.default = "colab"  # added by Arthur so running as a .py notebook with #%% generates .ipynb notebooks that display in colab
@@ -56,6 +59,7 @@ except Exception as e:
 # %% [markdown]
 # <h2>Imports etc</h2>
 
+#%%
 import wandb
 import IPython
 from IPython.display import Image, display
@@ -138,7 +142,7 @@ torch.autograd.set_grad_enabled(False)
 # This is still usable in notebooks! We can pass a string to the parser, see below.
 # We'll reproduce </p>
 
-
+#%%
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
 
 task_choices = ['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan']
@@ -205,6 +209,7 @@ SINGLE_STEP = True if args.single_step else False
 #%% [markdown] 
 # <h2>Setup Task</h2>
 
+#%%
 second_metric = None  # some tasks only have one metric
 use_pos_embed = TASK.startswith("tracr")
 
@@ -230,7 +235,7 @@ elif TASK == "tracr-proportion":
         device=DEVICE,
     )
 elif TASK == "induction":
-    num_examples = 50
+    num_examples = 10 if IN_COLAB else 50
     seq_len = 300
     # TODO initialize the `tl_model` with the right model
     things = get_all_induction_things(
@@ -268,12 +273,13 @@ if RESET_NETWORK:
 #%% [markdown]
 # <h2>Setup ACDC Experiment</h2>
 
+#%%
 # Make notes for potential wandb run
-if IN_COLAB:
-    notes = "No notes; using colab"
-else:
+try:
     with open(__file__, "r") as f:
         notes = f.read()
+except:
+    notes = "No notes generated, expected when running in an .ipynb file"
 
 tl_model.reset_hooks()
 
@@ -322,6 +328,7 @@ exp = TLACDCExperiment(
 # <h2>Run steps of ACDC: iterate over a NODE in the model's computational graph</h2>
 # <p>WARNING! This will take a few minutes to run, but there should be rolling nice pictures too : )</p>
 
+#%%
 for i in range(args.max_num_epochs):
     exp.step(testing=False)
 
@@ -361,6 +368,7 @@ if USING_WANDB:
 # <p>Also note that the final image has more than 12 edges, because the edges from a0.0_q and a0.0_k are not connected to the input</p>
 # <p>We recover minimal induction machinery! `embed -> a0.0_v -> a1.6k`</p>
 
+#%%
 exp.save_subgraph(
     return_it=True,
 ) 
