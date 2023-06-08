@@ -25,6 +25,7 @@ networkx = "^3.1"
 plotly = "^5.12.0"
 transformer-lens = {git = "https://github.com/neelnanda-io/TransformerLens.git", rev = "6983358"}
 kaleido = "0.2.1"
+pygraphviz = "^1.11"
 tracr = {git = "https://github.com/deepmind/tracr.git", rev = "e75ecda"}
 
 [tool.poetry.group.dev.dependencies]
@@ -32,12 +33,6 @@ pytest = "^7.2.0"
 pytest-cov = "^4.0.0"
 jupyterlab = "^3.5.0"
 jupyter = "^1.0.0"
-
-[tool.poetry.group.graph]
-optional = True
-
-[tool.poetry.group.graph.dependencies]
-pygraphviz = "^1.11"
 
 [build-system]
 requires = ["poetry-core"]
