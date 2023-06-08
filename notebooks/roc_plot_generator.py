@@ -65,7 +65,7 @@ import networkx as nx
 import os
 import torch
 import huggingface_hub
-import pydot
+import pygraphviz as pgv
 from enum import Enum
 import torch.nn as nn
 import torch.nn.functional as F
@@ -429,8 +429,12 @@ if TASK != "induction":
         edge.effect_size = 1.0   # make it visible
 
     if ONLY_SAVE_CANONICAL:
-        g: pydot.Dot = show(canonical_circuit_subgraph, colorscheme=ioi_group_colorscheme() if TASK == "ioi" else "Pastel2", show_full_index=False)
-        g.write(str(CANONICAL_OUT_DIR / f"{TASK}.pdf"), format="pdf")
+        g: pgv.AGraph = show(
+            canonical_circuit_subgraph,
+            fname=CANONICAL_OUT_DIR / f"{TASK}.pdf",
+            colorscheme=ioi_group_colorscheme() if TASK == "ioi" else "Pastel2",
+            show_full_index=False,
+        )
 
         if TASK == "ioi":
             def save(source, suffix):

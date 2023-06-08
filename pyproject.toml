@@ -22,10 +22,10 @@ torchtyping = "^0.1.4"
 huggingface-hub = "^0.15.1"
 cmapy = "^0.6.6"
 networkx = "^3.1"
-pydot = "^1.4.2"
 plotly = "^5.12.0"
 transformer-lens = {git = "https://github.com/neelnanda-io/TransformerLens.git", rev = "6983358"}
 kaleido = "0.2.1"
+pygraphviz = "^1.11"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2.0"
@@ -48,6 +48,9 @@ filterwarnings = [
     # Ignore numpy.distutils deprecation warning caused by pandas
     # More info: https://numpy.org/doc/stable/reference/distutils.html#module-numpy.distutils
     "ignore:distutils Version classes are deprecated:DeprecationWarning"
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
 ]
 
 [tool.black]

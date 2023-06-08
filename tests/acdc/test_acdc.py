@@ -27,7 +27,6 @@ import networkx as nx
 import os
 import torch
 import huggingface_hub
-import graphviz
 from enum import Enum
 import torch.nn as nn
 import torch.nn.functional as F
@@ -78,13 +77,14 @@ from acdc.acdc_graphics import (
 )
 import pytest
 
-@pytest.mark.skip(reason="OOM on small machine - worth unchecking!!!")
+@pytest.mark.slow
+@pytest.mark.skip(reason="TODO fix")
 def test_induction_several_steps():
     # get induction task stuff
     num_examples = 400
     seq_len = 30
     # TODO initialize the `tl_model` with the right model
-    all_induction_things = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device="cuda") # removed some randomize seq_len thing - hopefully unimportant
+    all_induction_things = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device="cpu") # removed some randomize seq_len thing - hopefully unimportant
     tl_model, toks_int_values, toks_int_values_other, metric = all_induction_things.tl_model, all_induction_things.validation_data, all_induction_things.validation_patch_data, all_induction_things.validation_metric
 
     gc.collect()

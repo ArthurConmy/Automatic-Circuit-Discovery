@@ -19,7 +19,7 @@ import networkx as nx
 from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from acdc.TLACDCInterpNode import TLACDCInterpNode
 from acdc.acdc_utils import EdgeType
-import pydot
+import pygraphviz as pgv
 
 def generate_random_color(colorscheme: str) -> str:
     """
@@ -94,11 +94,11 @@ def show(
     colorscheme: dict | str = "Pastel2",
     minimum_penwidth: float = 0.3,
     show_full_index: bool = True,
-) -> pydot.Dot:
+) -> pgv.AGraph:
     """
     Colorscheme: a color for each node name, or a string corresponding to a cmapy color scheme
     """
-    g = pydot.Dot(graph_type="digraph", bgcolor="transparent", fontname="Helvetica")
+    g = pgv.AGraph(directed=True, bgcolor="transparent", fontname="Helvetica")
 
     if isinstance(colorscheme, str):
         colors = build_colorscheme(correspondence, colorscheme, show_full_index=show_full_index)
@@ -121,26 +121,23 @@ def show(
                     if edge.present and edge.effect_size is not None and edge.edge_type != EdgeType.PLACEHOLDER:
                         for node_name in [parent_name, child_name]:
                             g.add_node(
-                                pydot.Node(
-                                    node_name,
-                                    fillcolor=colors[node_name],
-                                    style="filled, rounded",
-                                    shape="box",
-                                )
+                                node_name,
+                                fillcolor=colors[node_name],
+                                style="filled, rounded",
+                                shape="box",
                             )
                         
                         g.add_edge(
-                            pydot.Edge(
-                                parent_name,
-                                child_name,
-                                penwidth=str(max(minimum_penwidth, edge.effect_size)),
-                                color=colors[parent_name],
-                            )
+                            parent_name,
+                            child_name,
+                            penwidth=str(max(minimum_penwidth, edge.effect_size)),
+                            color=colors[parent_name],
                         )
 
     if fname is not None:
-        format = fname.split(".")[-1]
-        g.write(path=fname, format=format)
+        gv_fname = ".".join(str(fname).split(".")[:-1]) + ".gv"
+        g.write(path=gv_fname)
+        g.draw(path=fname, prog="dot")
     return g
 
 # -------------------------------------------
