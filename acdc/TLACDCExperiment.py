@@ -32,6 +32,8 @@ from acdc.acdc_utils import next_key
 TorchIndexHashableTuple = Tuple[Union[None, slice], ...]
 Subgraph = Dict[Tuple[str, TorchIndexHashableTuple, str, TorchIndexHashableTuple], bool] # an alias for loading and saving from WANDB (primarily)
 
+T = TypeVar("T")
+
 class TLACDCExperiment:
     """Manages an ACDC experiment, including the computational graph, the model, the data etc.
 
@@ -296,6 +298,9 @@ class TLACDCExperiment:
             return hook_point_input
 
         assert incoming_edge_types == [EdgeType.ADDITION for _ in incoming_edge_types], f"All incoming edges should be the same type, not {incoming_edge_types}"
+
+        # second_cache (and thus z) contains the residual stream for the corrupted data
+        # That is, the sum of all heads and MLPs and biases from previous layers
         hook_point_input[:] = self.global_cache.second_cache[hook.name].to(hook_point_input.device)
 
         # We will now edit the input activations to this component 
@@ -327,9 +332,11 @@ class TLACDCExperiment:
                             )
                     
                     if edge.edge_type == EdgeType.ADDITION:
+                        # Add the effect of the new head (from the current forward pass)
                         hook_point_input[receiver_node_index.as_index] += self.global_cache.cache[
                             sender_node_name
                         ][sender_node_index.as_index].to(hook_point_input.device)
+                        # Remove the effect of this head (from the corrupted data)
                         hook_point_input[receiver_node_index.as_index] -= self.global_cache.second_cache[
                             sender_node_name
                         ][sender_node_index.as_index].to(hook_point_input.device)
@@ -339,8 +346,14 @@ class TLACDCExperiment:
 
         return hook_point_input
 
-    def add_all_sender_hooks(self, reset=True, cache="online", skip_direct_computation=False, add_all_hooks=False):
-        """We use add_sender_hook for lazily adding *some* sender hooks"""
+    def add_all_sender_hooks(self, reset=True, cache="first", skip_direct_computation=False, add_all_hooks=False, sender_and_receiver_both_ok=False):
+        """We use add_sender_hook for lazily adding *some* sender hooks
+
+        :param sender_and_receiver_both_ok: The sender hooks had some checks that we're not adding both adding sender
+        and receiver hooks to the same HookPoint. Usually this is a sign something has gone wrong, but in the case where
+        we're adding all the hooks (for test loss calculation) it's not wrong
+
+        """
 
         if self.verbose:
             print("Adding sender hooks...")
@@ -369,7 +382,7 @@ class TLACDCExperiment:
 
             for node in nodes:
                 fwd_hooks = self.model.hook_dict[node.name].fwd_hooks
-                if len(fwd_hooks) > 0:
+                if len(fwd_hooks) > 0 and not sender_and_receiver_both_ok:
                     resolved_hooks_dicts = [fwd_hook.hook.hooks_dict_ref() for fwd_hook in fwd_hooks]
                     assert all([resolved_hooks_dict == resolved_hooks_dicts[0] for resolved_hooks_dict in resolved_hooks_dicts]), f"{resolved_hooks_dicts}\nUnexpected behavior: different hook dict for different hooks on the same HookPoint?! https://github.com/neelnanda-io/TransformerLens/issues/297"
                     for fwd_hook in resolved_hooks_dicts[0].values():
@@ -387,32 +400,39 @@ class TLACDCExperiment:
     def setup_second_cache(self):
         if self.verbose:
             print("Adding sender hooks...")
-        
+
         self.model.reset_hooks()
+
+        if self.zero_ablation:
+            # to calculate the inputs to each model component, 
+            # we need zero out all the outputs into the residual stream
+
+            # all hooknames that output into the residual stream
+            hook_name_substrings = ["attn_result", "mlp_out", "hook_embed"]
+            if self.use_pos_embed:
+                hook_name_substrings.append("hook_pos_embed")
+
+            # add hooks to zero out all these hook points
+            hook_name_bool_function = lambda hook_name: any([hook_name_substring in hook_name for hook_name_substring in hook_name_substrings])
+            self.model.add_hook(
+                name = hook_name_bool_function,
+                hook = lambda z, hook: torch.zeros_like(z),
+            )
+            # we now add the saving hooks AFTER we've zeroed out activations
+
         self.model.cache_all(self.global_cache.second_cache)
-
-        if self.verbose:
-            print("Now corrupting things..")
-
         corrupt_stuff = self.model(self.ref_ds)
 
         if self.verbose:
             print("Done corrupting things")
 
-        if self.zero_ablation:
-            names = list(self.global_cache.second_cache.keys())
-            assert len(names)>0, "No second cache names found"
-            for name in names:
-                self.global_cache.second_cache[name] = torch.zeros_like(
-                    self.global_cache.second_cache[name]
-                )
-                torch.cuda.empty_cache()
+        if self.second_cache_cpu:
+            self.global_cache.to("cpu", which_caches="second")
 
-        if self.corrupted_cache_cpu:
-            self.global_cache.to("cpu", which_caches="corrupted")
-
-        if self.use_pos_embed:
-            self.global_cache.second_cache["hook_pos_embed"][:] = shuffle_tensor(self.global_cache.second_cache["hook_pos_embed"][0], seed=49) # make all positions the same shuffled set of positions
+        if self.use_pos_embed and not self.zero_ablation:
+            # make all positions the same shuffled set of positions
+            # if we used zero ablation, they are all zeroed which is great
+            self.global_cache.second_cache["hook_pos_embed"][:] = shuffle_tensor(self.global_cache.second_cache["hook_pos_embed"][0], seed=49) 
 
         self.model.reset_hooks()
 
@@ -422,9 +442,6 @@ class TLACDCExperiment:
         add_receiver_hooks=False,
         doing_acdc_runs=True,
     ):
-        if add_sender_hooks:
-            self.add_all_sender_hooks(cache="online", skip_direct_computation=False, add_all_hooks=True) # when this is True, this is wrong I think
-
         if add_receiver_hooks:
             if doing_acdc_runs:
                 warnings.warn("Deprecating adding receiver hooks before launching into ACDC runs, this may be totally broke. Ignore this warning if you are not doing ACDC runs")
@@ -435,6 +452,10 @@ class TLACDCExperiment:
                     name=receiver_name,
                     hook=partial(self.receiver_hook, verbose=self.hook_verbose),
                 )
+
+        if add_sender_hooks: # bug fixed; crucial to add sender hooks AFTER the receivers
+            self.add_all_sender_hooks(cache="first", skip_direct_computation=False, add_all_hooks=True, reset=False, sender_and_receiver_both_ok=True)
+
 
     def save_edges(self, fname):
         """Stefan's idea for fast saving!
@@ -852,3 +873,24 @@ class TLACDCExperiment:
                     assert edge.present == False or edge.edge_type == EdgeType.PLACEHOLDER, (tupl, edge, hook_name, hook_idx)
                     edge.present = True
                     break # don't double remove
+
+
+    def call_metric_with_corr(self, corr: TLACDCCorrespondence, metric_fn: Callable[[torch.Tensor], T], data: torch.Tensor) -> T:
+        """Call a function ``metric_fn`` with a new correspondence ``corr``.
+
+        Remember to call ``self.setup_cache()`` with the desired ``ref_ds`` before this function.
+        """
+
+        old_exp_corr = self.corr
+        try:
+            self.corr = corr
+            self.model.reset_hooks()
+            self.setup_model_hooks(
+                add_sender_hooks=True,
+                add_receiver_hooks=True,
+                doing_acdc_runs=False,
+            )
+            out = metric_fn(self.model(data))
+        finally:
+            self.corr = old_exp_corr
+        return out
