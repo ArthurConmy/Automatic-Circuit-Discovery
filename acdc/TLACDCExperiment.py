@@ -118,7 +118,7 @@ class TLACDCExperiment:
 
         self.ds = ds
         self.ref_ds = ref_ds
-        self.first_cache_cpu = online_cache_cpu
+        self.online_cache_cpu = online_cache_cpu
         self.corrupted_cache_cpu = corrupted_cache_cpu
 
         if zero_ablation:
@@ -127,7 +127,7 @@ class TLACDCExperiment:
             else:
                 warnings.warn("We shall overwrite the ref_ds with zeros.")
         self.global_cache = GlobalCache(
-            device=("cpu" if self.first_cache_cpu else "cuda", "cpu" if self.corrupted_cache_cpu else "cuda"),
+            device=("cpu" if self.online_cache_cpu else "cuda", "cpu" if self.corrupted_cache_cpu else "cuda"),
         )
 
         self.setup_second_cache()
@@ -347,7 +347,7 @@ class TLACDCExperiment:
         if reset:
             self.model.reset_hooks()
         device = {
-            "online": "cpu" if self.first_cache_cpu else None,
+            "online": "cpu" if self.online_cache_cpu else None,
             "corrupted": "cpu" if self.corrupted_cache_cpu else None,
         }[cache]
 
@@ -461,7 +461,7 @@ class TLACDCExperiment:
 
         self.model.add_hook(
             name=node.name, 
-            hook=partial(self.sender_hook, verbose=self.hook_verbose, cache="corrupted", device="cpu" if self.first_cache_cpu else None),
+            hook=partial(self.sender_hook, verbose=self.hook_verbose, cache="corrupted", device="cpu" if self.online_cache_cpu else None),
         )
 
         return True
