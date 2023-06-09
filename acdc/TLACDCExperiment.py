@@ -212,7 +212,7 @@ class TLACDCExperiment:
             assert len(hook.fwd_hooks) == 0, "Don't load the model with hooks *then* call this"
 
         new_graph = OrderedDict()
-        cache=OrderedDict() # what if?
+        cache=OrderedDict()
         self.model.cache_all(cache)
         self.model(torch.arange(5)) # some random forward pass so that we can see all the hook names
         self.model.reset_hooks()
@@ -231,7 +231,10 @@ class TLACDCExperiment:
         self.corr.graph = new_graph
 
     def sender_hook(self, z, hook, verbose=False, cache="online", device=None):
-        """General, to cover online and corrupt caching"""
+        """Hook that saves activations of a HookPoint to a cache
+        Supports cache="corrupted" to save corrupted activations
+        
+        And cache="online" to save activations 'online' throughout a forward pass"""
 
         if device == "cpu":
             tens = z.cpu()
