@@ -292,6 +292,8 @@ class TLACDCExperiment:
     
             return z
 
+        # second_cache (and thus z) contains the residual stream for the corrupted data
+        # That is, the sum of all heads and MLPs and biases from previous layers
         z[:] = self.global_cache.second_cache[hook.name].to(z.device)
 
         # TODO - is this slow ???
@@ -318,9 +320,11 @@ class TLACDCExperiment:
                             )
                     
                     if edge.edge_type == EdgeType.ADDITION:
+                        # Add the effect of the new head (from the current forward pass)
                         z[receiver_node_index.as_index] += self.global_cache.cache[
                             sender_node_name
                         ][sender_node_index.as_index].to(z.device)
+                        # Remove the effect of this head (from the corrupted data)
                         z[receiver_node_index.as_index] -= self.global_cache.second_cache[
                             sender_node_name
                         ][sender_node_index.as_index].to(z.device)
