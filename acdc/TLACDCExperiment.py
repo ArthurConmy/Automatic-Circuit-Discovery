@@ -61,7 +61,7 @@ class TLACDCExperiment:
             "off", "maximize", "minimize"
         ] = "minimize",  # if this is set to "maximize" or "minimize", then the metric will be maximized or minimized, respectively instead of us trying to keep the metric roughly the same. We do KL divergence by default
         first_cache_cpu: bool = True,
-        second_cache_cpu: bool = True,
+        corrupted_cache_cpu: bool = True,
         zero_ablation: bool = False, # use zero rather than 
         show_full_index = False,
         using_wandb: bool = False,
@@ -119,7 +119,7 @@ class TLACDCExperiment:
         self.ds = ds
         self.ref_ds = ref_ds
         self.first_cache_cpu = first_cache_cpu
-        self.second_cache_cpu = second_cache_cpu
+        self.corrupted_cache_cpu = corrupted_cache_cpu
 
         if zero_ablation:
             if self.ref_ds is None:
@@ -127,11 +127,11 @@ class TLACDCExperiment:
             else:
                 warnings.warn("We shall overwrite the ref_ds with zeros.")
         self.global_cache = GlobalCache(
-            device=("cpu" if self.first_cache_cpu else "cuda", "cpu" if self.second_cache_cpu else "cuda"),
+            device=("cpu" if self.first_cache_cpu else "cuda", "cpu" if self.corrupted_cache_cpu else "cuda"),
         )
 
         self.setup_second_cache()
-        if self.second_cache_cpu:
+        if self.corrupted_cache_cpu:
             self.global_cache.to("cpu", which_caches="second")
 
         self.setup_model_hooks(
@@ -228,7 +228,7 @@ class TLACDCExperiment:
 
         self.corr.graph = new_graph
 
-    def sender_hook(self, z, hook, verbose=False, cache="first", device=None):
+    def sender_hook(self, z, hook, verbose=False, cache="online", device=None):
         """General, to cover online and corrupt caching"""
 
         if device == "cpu":
@@ -238,10 +238,10 @@ class TLACDCExperiment:
             if device is not None:
                 tens = tens.to(device)
 
-        if cache == "second":
-            self.global_cache.second_cache[hook.name] = tens
-        elif cache == "first":
-            self.global_cache.cache[hook.name] = tens
+        if cache == "corrupted":
+            self.global_cache.corrupted[hook.name] = tens
+        elif cache == "online":
+            self.global_cache.online_cache[hook.name] = tens
         else:
             raise ValueError(f"Unknown cache type {cache}")
 
@@ -250,7 +250,12 @@ class TLACDCExperiment:
 
         return z
 
-    def receiver_hook(self, z, hook, verbose=False):
+    def receiver_hook(self, hook_point_input, hook, verbose=False):
+        """Hook that manages nodes *receiving* input from other nodes
+
+        Note that we add **one receiver_hook per HookPoint**
+        So all the computation for a given HookPoint, for example all computations involving query inputs to layer 1 is managed by one receiver_hook 
+        (because all layer 1 query inputs are contained in the `blocks.1.hook_q_input` hook)"""
         
         incoming_edge_types = [self.corr.graph[hook.name][receiver_index].incoming_edge_type for receiver_index in list(self.corr.edges[hook.name].keys())]
 
@@ -259,8 +264,8 @@ class TLACDCExperiment:
 
         if EdgeType.DIRECT_COMPUTATION in incoming_edge_types:
 
-            old_z = z.clone()
-            z[:] = self.global_cache.second_cache[hook.name].to(z.device)
+            old_z = hook_point_input.clone()
+            hook_point_input[:] = self.global_cache.second_cache[hook.name].to(hook_point_input.device)
 
             if verbose:
                 print("Overwrote to sec cache")
@@ -286,11 +291,12 @@ class TLACDCExperiment:
                     if verbose:
                         print(f"Overwrote {receiver_index} with norm {old_z[receiver_index.as_index].norm().item()}")
 
-                    z[receiver_index.as_index] = old_z[receiver_index.as_index].to(z.device)
+                    hook_point_input[receiver_index.as_index] = old_z[receiver_index.as_index].to(hook_point_input.device)
     
-            return z
+            return hook_point_input
 
-        z[:] = self.global_cache.second_cache[hook.name].to(z.device)
+        assert incoming_edge_types == [EdgeType.ADDITION for _ in incoming_edge_types], f"All incoming edges should be the same type, not {incoming_edge_types}"
+        hook_point_input[:] = self.global_cache.second_cache[hook.name].to(hook_point_input.device)
 
         # We will now edit the input activations to this component 
         # This is one of the key reasons ACDC is slow, so the implementation is for performance
@@ -321,19 +327,19 @@ class TLACDCExperiment:
                             )
                     
                     if edge.edge_type == EdgeType.ADDITION:
-                        z[receiver_node_index.as_index] += self.global_cache.cache[
+                        hook_point_input[receiver_node_index.as_index] += self.global_cache.cache[
                             sender_node_name
-                        ][sender_node_index.as_index].to(z.device)
-                        z[receiver_node_index.as_index] -= self.global_cache.second_cache[
+                        ][sender_node_index.as_index].to(hook_point_input.device)
+                        hook_point_input[receiver_node_index.as_index] -= self.global_cache.second_cache[
                             sender_node_name
-                        ][sender_node_index.as_index].to(z.device)
+                        ][sender_node_index.as_index].to(hook_point_input.device)
 
                     else: 
                         raise ValueError(f"Unknown edge type {edge.edge_type} ... {edge}")
 
-        return z
+        return hook_point_input
 
-    def add_all_sender_hooks(self, reset=True, cache="first", skip_direct_computation=False, add_all_hooks=False):
+    def add_all_sender_hooks(self, reset=True, cache="online", skip_direct_computation=False, add_all_hooks=False):
         """We use add_sender_hook for lazily adding *some* sender hooks"""
 
         if self.verbose:
@@ -341,8 +347,8 @@ class TLACDCExperiment:
         if reset:
             self.model.reset_hooks()
         device = {
-            "first": "cpu" if self.first_cache_cpu else None,
-            "second": "cpu" if self.second_cache_cpu else None,
+            "online": "cpu" if self.first_cache_cpu else None,
+            "corrupted": "cpu" if self.corrupted_cache_cpu else None,
         }[cache]
 
         for big_tuple, edge in self.corr.all_edges().items():
@@ -402,7 +408,7 @@ class TLACDCExperiment:
                 )
                 torch.cuda.empty_cache()
 
-        if self.second_cache_cpu:
+        if self.corrupted_cache_cpu:
             self.global_cache.to("cpu", which_caches="second")
 
         if self.use_pos_embed:
@@ -417,7 +423,7 @@ class TLACDCExperiment:
         doing_acdc_runs=True,
     ):
         if add_sender_hooks:
-            self.add_all_sender_hooks(cache="first", skip_direct_computation=False, add_all_hooks=True) # when this is True, this is wrong I think
+            self.add_all_sender_hooks(cache="online", skip_direct_computation=False, add_all_hooks=True) # when this is True, this is wrong I think
 
         if add_receiver_hooks:
             if doing_acdc_runs:
@@ -455,7 +461,7 @@ class TLACDCExperiment:
 
         self.model.add_hook(
             name=node.name, 
-            hook=partial(self.sender_hook, verbose=self.hook_verbose, cache="first", device="cpu" if self.first_cache_cpu else None),
+            hook=partial(self.sender_hook, verbose=self.hook_verbose, cache="corrupted", device="cpu" if self.first_cache_cpu else None),
         )
 
         return True

@@ -140,8 +140,10 @@ parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only tas
 task_choices = ['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan']
 parser.add_argument('--task', type=str, required=True, choices=task_choices, help=f'Choose a task from the available options: {task_choices}')
 parser.add_argument('--threshold', type=float, required=True, help='Value for THRESHOLD')
-parser.add_argument('--first-cache-cpu', type=bool, required=False, default=True, help='Value for FIRST_CACHE_CPU')
-parser.add_argument('--second-cache-cpu', type=bool, required=False, default=True, help='Value for SECOND_CACHE_CPU')
+parser.add_argument('--online-cache-cpu', type=bool, required=False, default=True, help='Value for FIRST_CACHE_CPU')
+parser.add_argument('--first-cache-cpu', type=bool, required=False, default=True, help='Value for ONLINE_CACHE_CPU; deprecated')
+# assert False # add corrupted cache
+parser.add_argument('--second-cache-cpu', type=bool, required=False, default=True, help='Value for corrupted_cache_cpu')
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
 parser.add_argument('--using-wandb', action='store_true', help='Use wandb')
 parser.add_argument('--wandb-entity-name', type=str, required=False, default="remix_school-of-rock", help='Value for WANDB_ENTITY_NAME')
@@ -183,8 +185,10 @@ if args.torch_num_threads > 0:
 torch.manual_seed(args.seed)
 
 TASK = args.task
-FIRST_CACHE_CPU = args.first_cache_cpu
-SECOND_CACHE_CPU = args.second_cache_cpu
+ONLINE_CACHE_CPU = args.online_cache_cpu
+if args.first_cache_cpu:
+
+corrupted_cache_cpu = args.corrupted_cache_cpu
 THRESHOLD = args.threshold  # only used if >= 0.0
 ZERO_ABLATION = True if args.zero_ablation else False
 USING_WANDB = True if args.using_wandb else False
@@ -306,7 +310,7 @@ exp = TLACDCExperiment(
     verbose=True,
     indices_mode=INDICES_MODE,
     names_mode=NAMES_MODE,
-    second_cache_cpu=SECOND_CACHE_CPU,
+    corrupted_cache_cpu=corrupted_cache_cpu,
     hook_verbose=False,
     first_cache_cpu=FIRST_CACHE_CPU,
     add_sender_hooks=True,
