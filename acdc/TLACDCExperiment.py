@@ -60,7 +60,7 @@ class TLACDCExperiment:
         monotone_metric: Literal[
             "off", "maximize", "minimize"
         ] = "minimize",  # if this is set to "maximize" or "minimize", then the metric will be maximized or minimized, respectively instead of us trying to keep the metric roughly the same. We do KL divergence by default
-        first_cache_cpu: bool = True,
+        online_cache_cpu: bool = True,
         corrupted_cache_cpu: bool = True,
         zero_ablation: bool = False, # use zero rather than 
         show_full_index = False,
@@ -118,7 +118,7 @@ class TLACDCExperiment:
 
         self.ds = ds
         self.ref_ds = ref_ds
-        self.first_cache_cpu = first_cache_cpu
+        self.first_cache_cpu = online_cache_cpu
         self.corrupted_cache_cpu = corrupted_cache_cpu
 
         if zero_ablation:
