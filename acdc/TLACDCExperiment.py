@@ -132,7 +132,7 @@ class TLACDCExperiment:
             device=("cpu" if self.online_cache_cpu else "cuda", "cpu" if self.corrupted_cache_cpu else "cuda"),
         )
 
-        self.setup_second_cache()
+        self.setup_corrupted_cache()
         if self.corrupted_cache_cpu:
             self.global_cache.to("cpu", which_caches="corrupted")
 
@@ -267,7 +267,7 @@ class TLACDCExperiment:
         if EdgeType.DIRECT_COMPUTATION in incoming_edge_types:
 
             old_z = hook_point_input.clone()
-            hook_point_input[:] = self.global_cache.second_cache[hook.name].to(hook_point_input.device)
+            hook_point_input[:] = self.global_cache.corrupted_cache[hook.name].to(hook_point_input.device)
 
             if verbose:
                 print("Overwrote to sec cache")
@@ -299,9 +299,9 @@ class TLACDCExperiment:
 
         assert incoming_edge_types == [EdgeType.ADDITION for _ in incoming_edge_types], f"All incoming edges should be the same type, not {incoming_edge_types}"
 
-        # second_cache (and thus z) contains the residual stream for the corrupted data
+        # corrupted_cache (and thus z) contains the residual stream for the corrupted data
         # That is, the sum of all heads and MLPs and biases from previous layers
-        hook_point_input[:] = self.global_cache.second_cache[hook.name].to(hook_point_input.device)
+        hook_point_input[:] = self.global_cache.corrupted_cache[hook.name].to(hook_point_input.device)
 
         # We will now edit the input activations to this component 
         # This is one of the key reasons ACDC is slow, so the implementation is for performance
@@ -327,17 +327,17 @@ class TLACDCExperiment:
                         print("-------")
                         if edge.edge_type == EdgeType.ADDITION:
                             print(
-                                self.global_cache.cache[sender_node_name].shape,
+                                self.global_cache.online_cache[sender_node_name].shape,
                                 sender_node_index,
                             )
                     
                     if edge.edge_type == EdgeType.ADDITION:
                         # Add the effect of the new head (from the current forward pass)
-                        hook_point_input[receiver_node_index.as_index] += self.global_cache.cache[
+                        hook_point_input[receiver_node_index.as_index] += self.global_cache.online_cache[
                             sender_node_name
                         ][sender_node_index.as_index].to(hook_point_input.device)
                         # Remove the effect of this head (from the corrupted data)
-                        hook_point_input[receiver_node_index.as_index] -= self.global_cache.second_cache[
+                        hook_point_input[receiver_node_index.as_index] -= self.global_cache.corrupted_cache[
                             sender_node_name
                         ][sender_node_index.as_index].to(hook_point_input.device)
 
@@ -397,7 +397,7 @@ class TLACDCExperiment:
                     hook=partial(self.sender_hook, verbose=self.hook_verbose, cache=cache, device=device),
                 )
 
-    def setup_second_cache(self):
+    def setup_corrupted_cache(self):
         if self.verbose:
             print("Adding sender hooks...")
 
@@ -420,19 +420,19 @@ class TLACDCExperiment:
             )
             # we now add the saving hooks AFTER we've zeroed out activations
 
-        self.model.cache_all(self.global_cache.second_cache)
+        self.model.cache_all(self.global_cache.corrupted_cache)
         corrupt_stuff = self.model(self.ref_ds)
 
         if self.verbose:
             print("Done corrupting things")
 
-        if self.second_cache_cpu:
+        if self.corrupted_cache_cpu:
             self.global_cache.to("cpu", which_caches="second")
 
         if self.use_pos_embed and not self.zero_ablation:
             # make all positions the same shuffled set of positions
             # if we used zero ablation, they are all zeroed which is great
-            self.global_cache.second_cache["hook_pos_embed"][:] = shuffle_tensor(self.global_cache.second_cache["hook_pos_embed"][0], seed=49) 
+            self.global_cache.corrupted_cache["hook_pos_embed"][:] = shuffle_tensor(self.global_cache.corrupted_cache["hook_pos_embed"][0], seed=49) 
 
         self.model.reset_hooks()
 
