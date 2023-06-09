@@ -183,16 +183,20 @@ if args.torch_num_threads > 0:
 torch.manual_seed(args.seed)
 
 TASK = args.task
-if args.first_cache_cpu is None:
+if args.first_cache_cpu is None: # manage default
     FIRST_CACHE_CPU = True
 elif args.first_cache_cpu.lower() == "false":
     FIRST_CACHE_CPU = False
+elif args.first_cache_cpu.lower() == "true":
+    FIRST_CACHE_CPU = True
 else: 
     raise ValueError(f"first_cache_cpu must be either True or False, got {args.first_cache_cpu}")
 if args.second_cache_cpu is None:
     SECOND_CACHE_CPU = True
 elif args.second_cache_cpu.lower() == "false":
     SECOND_CACHE_CPU = False
+elif args.second_cache_cpu.lower() == "true":
+    SECOND_CACHE_CPU = True
 else:
     raise ValueError(f"second_cache_cpu must be either True or False, got {args.second_cache_cpu}")
 THRESHOLD = args.threshold  # only used if >= 0.0
