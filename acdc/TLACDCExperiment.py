@@ -292,9 +292,14 @@ class TLACDCExperiment:
 
         z[:] = self.global_cache.second_cache[hook.name].to(z.device)
 
-        # TODO - is this slow ???
-        # answer: yes --- try and have hoooks for each individual (name, index)
-
+        # We will now edit the input activations to this component 
+        # This is one of the key reasons ACDC is slow, so the implementation is for performance
+        # 
+        # In general we will be looking at very few input edges.
+        # So it was a design decision to compute the inputs to model components by the two step process.
+        # i) set input to corrupted activation
+        # ii) add back to residual_stream_in the (hopefully small number of) clean activations, by firstly subtracting their corrupted activation, and then adding back the clean activations
+        
         for receiver_node_index in self.corr.edges[hook.name]:
             for sender_node_name in self.corr.edges[hook.name][receiver_node_index]:
                 for sender_node_index in self.corr.edges[hook.name][receiver_node_index][sender_node_name]:
