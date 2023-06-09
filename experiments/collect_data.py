@@ -34,7 +34,7 @@ def main(
     # num_processes = MPI.COMM_WORLD.Get_size()
 
     if IS_ADRIA:
-        OUT_RELPATH = Path(".cache") / "plots_data"
+        OUT_RELPATH = Path(".cache") / "plots_data_q_mlp"
         OUT_HOME_DIR = Path(os.environ["HOME"]) / OUT_RELPATH
     else:
         OUT_RELPATH = Path("experiments/results/arthur_plots_data") # trying to remove extra things from acdc/
@@ -96,7 +96,7 @@ tasks_for = {
     "acdc": TASKS,
     "16h": TASKS,
     "sp": TASKS,
-    "canonical": ["ioi", "greaterthan"],
+    "canonical": ["greaterthan"],
 }
 
 parser = argparse.ArgumentParser()
@@ -113,7 +113,7 @@ if __name__ == "__main__":
                 alg,
                 task,
                 KubernetesJob(
-                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:05cb4ba",
+                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:15503ac",
                     cpu=4,
                     gpu=0 if not IS_ADRIA or task.startswith("tracr") or alg != "acdc" else 1,
                     mount_training=False,
