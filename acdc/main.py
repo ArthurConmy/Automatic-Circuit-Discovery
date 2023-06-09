@@ -3,37 +3,32 @@
 #
 # <p>This notebook (which doubles as a script) shows several use cases of ACDC</p>
 #
-# <p>This codebase is a fork of https://github.com/neelnanda-io/TransformerLens with changes that will hopefully be merged soon</p>
+# <p>The codebase is built on top of https://github.com/neelnanda-io/TransformerLens (source version)</p>
 #
 # <h3>Setup:</h3>
 # <p>Janky code to do different setup when run in a Colab notebook vs VSCode (adapted from e.g <a href="https://github.com/neelnanda-io/TransformerLens/blob/5c89b7583e73ce96db5e46ef86a14b15f303dde6/demos/Activation_Patching_in_TL_Demo.ipynb">this notebook</a>)</p>
+
+#%%
 try:
     import google.colab
 
     IN_COLAB = True
-    print("Running as a Colab notebook")
+    print("Running as a Colab notebook. WARNING: you should switch to a High-RAM A100 (you can buy $10 of credits for this). We're working on a low-memory version")
+
+    import subprocess # to install graphviz dependencies
+    command = ['apt-get', 'install', 'graphviz-dev']
+    subprocess.run(command, check=True)
+
+    import os # make images folder
+    os.mkdir("ims/")
 
     from IPython import get_ipython
-
     ipython = get_ipython()
-    ipython.run_line_magic(
-        "pip",
-        "install git@https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@parthur-patch-resid-mid", # install a patched TL
-    )
-    ipython.run_line_magic(
-        "pip",
-        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git", # install ACDC
-    )
-    ipython.run_line_magic("pip", "install torchtyping")
-    ipython.run_line_magic("pip", "install cmapy")
-    try:
-        ipython.run_line_magic(
-            "pip",
-            "install git+https://github.com/deepmind/tracr.git@e75ecdaec12bf2d831a60e54d4270e8fa31fb537#egg=tracr",
-        )
-    except Exception as e:
-        print(f"Could not import `tracr` because {e}; the rest of the file should work but you cannot use the tracr tasks")
 
+    ipython.run_line_magic( # install ACDC
+        "pip",
+        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@541ea29",
+    )
 
 except Exception as e:
     IN_COLAB = False
@@ -41,6 +36,7 @@ except Exception as e:
         "Running as a Jupyter notebook - intended for development only! (This is also used for automatically generating notebook outputs)"
     )
 
+    import numpy # crucial to not get cursed error
     import plotly
 
     plotly.io.renderers.default = "colab"  # added by Arthur so running as a .py notebook with #%% generates .ipynb notebooks that display in colab
@@ -50,12 +46,14 @@ except Exception as e:
 
     ipython = get_ipython()
     if ipython is not None:
+        from acdc.acdc_graphics import show
         ipython.run_line_magic("load_ext", "autoreload")  # type: ignore
         ipython.run_line_magic("autoreload", "2")  # type: ignore
 
 # %% [markdown]
 # <h2>Imports etc</h2>
 
+#%%
 import wandb
 import IPython
 from IPython.display import Image, display
@@ -66,7 +64,6 @@ import networkx as nx
 import os
 import torch
 import huggingface_hub
-import graphviz
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -83,7 +80,6 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
 from transformer_lens.hook_points import HookedRootModule, HookPoint
-from acdc.acdc_graphics import show
 from transformer_lens.HookedTransformer import (
     HookedTransformer,
 )
@@ -138,14 +134,14 @@ torch.autograd.set_grad_enabled(False)
 # This is still usable in notebooks! We can pass a string to the parser, see below.
 # We'll reproduce </p>
 
-
+#%%
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
 
 task_choices = ['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan']
 parser.add_argument('--task', type=str, required=True, choices=task_choices, help=f'Choose a task from the available options: {task_choices}')
 parser.add_argument('--threshold', type=float, required=True, help='Value for THRESHOLD')
-parser.add_argument('--first-cache-cpu', type=bool, required=False, default=True, help='Value for FIRST_CACHE_CPU')
-parser.add_argument('--second-cache-cpu', type=bool, required=False, default=True, help='Value for SECOND_CACHE_CPU')
+parser.add_argument('--first-cache-cpu', type=str, required=False, default="True", help='Value for FIRST_CACHE_CPU')
+parser.add_argument('--second-cache-cpu', type=str, required=False, default="True", help='Value for SECOND_CACHE_CPU')
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
 parser.add_argument('--using-wandb', action='store_true', help='Use wandb')
 parser.add_argument('--wandb-entity-name', type=str, required=False, default="remix_school-of-rock", help='Value for WANDB_ENTITY_NAME')
@@ -187,8 +183,22 @@ if args.torch_num_threads > 0:
 torch.manual_seed(args.seed)
 
 TASK = args.task
-FIRST_CACHE_CPU = args.first_cache_cpu
-SECOND_CACHE_CPU = args.second_cache_cpu
+if args.first_cache_cpu is None: # manage default
+    FIRST_CACHE_CPU = True
+elif args.first_cache_cpu.lower() == "false":
+    FIRST_CACHE_CPU = False
+elif args.first_cache_cpu.lower() == "true":
+    FIRST_CACHE_CPU = True
+else: 
+    raise ValueError(f"first_cache_cpu must be either True or False, got {args.first_cache_cpu}")
+if args.second_cache_cpu is None:
+    SECOND_CACHE_CPU = True
+elif args.second_cache_cpu.lower() == "false":
+    SECOND_CACHE_CPU = False
+elif args.second_cache_cpu.lower() == "true":
+    SECOND_CACHE_CPU = True
+else:
+    raise ValueError(f"second_cache_cpu must be either True or False, got {args.second_cache_cpu}")
 THRESHOLD = args.threshold  # only used if >= 0.0
 ZERO_ABLATION = True if args.zero_ablation else False
 USING_WANDB = True if args.using_wandb else False
@@ -205,6 +215,7 @@ SINGLE_STEP = True if args.single_step else False
 #%% [markdown] 
 # <h2>Setup Task</h2>
 
+#%%
 second_metric = None  # some tasks only have one metric
 use_pos_embed = TASK.startswith("tracr")
 
@@ -230,7 +241,7 @@ elif TASK == "tracr-proportion":
         device=DEVICE,
     )
 elif TASK == "induction":
-    num_examples = 50
+    num_examples = 10 if IN_COLAB else 50
     seq_len = 300
     # TODO initialize the `tl_model` with the right model
     things = get_all_induction_things(
@@ -268,12 +279,13 @@ if RESET_NETWORK:
 #%% [markdown]
 # <h2>Setup ACDC Experiment</h2>
 
+#%%
 # Make notes for potential wandb run
-if IN_COLAB:
-    notes = "No notes; using colab"
-else:
+try:
     with open(__file__, "r") as f:
         notes = f.read()
+except:
+    notes = "No notes generated, expected when running in an .ipynb file"
 
 tl_model.reset_hooks()
 
@@ -322,6 +334,7 @@ exp = TLACDCExperiment(
 # <h2>Run steps of ACDC: iterate over a NODE in the model's computational graph</h2>
 # <p>WARNING! This will take a few minutes to run, but there should be rolling nice pictures too : )</p>
 
+#%%
 for i in range(args.max_num_epochs):
     exp.step(testing=False)
 
@@ -361,6 +374,7 @@ if USING_WANDB:
 # <p>Also note that the final image has more than 12 edges, because the edges from a0.0_q and a0.0_k are not connected to the input</p>
 # <p>We recover minimal induction machinery! `embed -> a0.0_v -> a1.6k`</p>
 
+#%%
 exp.save_subgraph(
     return_it=True,
 ) 

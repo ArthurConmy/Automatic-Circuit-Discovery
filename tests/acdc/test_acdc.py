@@ -27,7 +27,6 @@ import networkx as nx
 import os
 import torch
 import huggingface_hub
-import graphviz
 from enum import Enum
 import torch.nn as nn
 import torch.nn.functional as F
@@ -65,26 +64,31 @@ from acdc.TLACDCInterpNode import TLACDCInterpNode
 from acdc.TLACDCExperiment import TLACDCExperiment
 
 from collections import defaultdict, deque, OrderedDict
+from acdc.docstring.utils import get_all_docstring_things
+from acdc.greaterthan.utils import get_all_greaterthan_things
 from acdc.induction.utils import (
     get_all_induction_things,
     get_validation_data,
     get_good_induction_candidates,
     get_mask_repeat_candidates,
 )
-from acdc.tracr_task.utils import get_tracr_model_input_and_tl_model
+from acdc.ioi.utils import get_all_ioi_things
+from acdc.tracr_task.utils import get_all_tracr_things, get_tracr_model_input_and_tl_model
 from acdc.acdc_graphics import (
     build_colorscheme,
     show,
 )
 import pytest
+from pathlib import Path
 
-@pytest.mark.skip(reason="OOM on small machine - worth unchecking!!!")
+@pytest.mark.slow
+@pytest.mark.skip(reason="TODO fix")
 def test_induction_several_steps():
     # get induction task stuff
     num_examples = 400
     seq_len = 30
     # TODO initialize the `tl_model` with the right model
-    all_induction_things = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device="cuda") # removed some randomize seq_len thing - hopefully unimportant
+    all_induction_things = get_all_induction_things(num_examples=num_examples, seq_len=seq_len, device="cpu") # removed some randomize seq_len thing - hopefully unimportant
     tl_model, toks_int_values, toks_int_values_other, metric = all_induction_things.tl_model, all_induction_things.validation_data, all_induction_things.validation_patch_data, all_induction_things.validation_metric
 
     gc.collect()
@@ -137,10 +141,59 @@ def test_induction_several_steps():
     for edge_tuple, edge in edges_to_consider.items():
         assert abs(edge.effect_size - EDGE_EFFECTS[edge_tuple]) < 1e-5, (edge_tuple, edge.effect_size, EDGE_EFFECTS[edge_tuple])
 
+@pytest.mark.slow
 def test_main_script():
     import subprocess
+
+    main_path = Path(__file__).resolve().parent.parent.parent / "acdc" / "main.py"
+
     for task in ["induction", "ioi", "tracr", "docstring"]:
-        subprocess.run(["python", "../../acdc/main.py", "--task", task, "--threshold", "123456789", "--single-step"])
+        subprocess.check_call(["python", str(main_path), f"--task={task}", "--threshold=1234", "--single-step", "--device=cpu"])
 
 def test_editing_edges_notebook():
     import notebooks.editing_edges
+
+
+
+@pytest.mark.parametrize("task", ["tracr-proportion", "tracr-reverse", "docstring", "induction", "ioi", "greaterthan"])
+@pytest.mark.parametrize("zero_ablation", [False, True])
+def test_full_correspondence_zero_kl(task, zero_ablation, device="cpu", metric_name="kl_div", num_examples=4, seq_len=10):
+    if task == "tracr-proportion":
+        things = get_all_tracr_things(task="proportion", num_examples=num_examples, device=device, metric_name="l2")
+    elif task == "tracr-reverse":
+        things = get_all_tracr_things(task="reverse", num_examples=6, device=device, metric_name="l2")
+    elif task == "induction":
+        things = get_all_induction_things(num_examples=100, seq_len=20, device=device, metric=metric_name)
+    elif task == "ioi":
+        things = get_all_ioi_things(num_examples=num_examples, device=device, metric_name=metric_name)
+    elif task == "docstring":
+        things = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=device, metric_name=metric_name, correct_incorrect_wandb=False)
+    elif task == "greaterthan":
+        things = get_all_greaterthan_things(num_examples=num_examples, metric_name=metric_name, device=device)
+    else:
+        raise ValueError(task)
+
+    exp = TLACDCExperiment(
+        model=things.tl_model,
+        threshold=100_000,
+        early_exit=False,
+        using_wandb=False,
+        zero_ablation=zero_ablation,
+        ds=things.test_data,
+        ref_ds=things.test_patch_data,
+        metric=things.validation_metric,
+        second_metric=None,
+        verbose=True,
+        use_pos_embed=False,  # In the case that this is True, the KL should not be zero.
+        first_cache_cpu=True,
+        second_cache_cpu=True,
+    )
+    exp.setup_second_cache()
+
+    corr = deepcopy(exp.corr)
+    for e in corr.all_edges().values():
+        e.present = True
+
+    with torch.no_grad():
+        out = exp.call_metric_with_corr(corr, things.test_metrics["kl_div"], things.test_data)
+    assert abs(out) < 1e-6, f"{out} should be abs(out) < 1e-6"

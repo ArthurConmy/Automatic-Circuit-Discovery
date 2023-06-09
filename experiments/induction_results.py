@@ -47,10 +47,20 @@ api = wandb.Api()
 all_runs = api.runs(path="remix_school-of-rock/acdc", filters={"group": ACDC_GROUP})
 
 df = pd.DataFrame()
+
+total = len(all_runs)
+failed = 0
+
 for r in all_runs:
-    d = {k: r.summary[k] for k in ["cur_metric", "test_specific_metric", "num_edges"]}
-    idx = int(r.name.split("-")[-1])
-    df = pd.concat([df, pd.DataFrame(d, index=[idx])])
+    try:
+        d = {k: r.summary[k] for k in ["cur_metric", "test_specific_metric", "num_edges"]}
+    except KeyError:
+        failed+=1
+    else:
+        idx = int(r.name.split("-")[-1])
+        df = pd.concat([df, pd.DataFrame(d, index=[idx])])
+
+assert failed/total < 0.5
 
 # %%
 

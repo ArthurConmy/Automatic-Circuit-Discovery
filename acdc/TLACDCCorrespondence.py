@@ -6,17 +6,19 @@ from acdc.TLACDCEdge import (
     EdgeType,
 )  # these introduce several important classes !!!
 from acdc.acdc_utils import OrderedDefaultdict, make_nd_dict
-from typing import List, Dict, Optional, Tuple, Union, Set, Callable, TypeVar, Iterable, Any
+from typing import List, Dict, MutableMapping, Optional, Tuple, Union, Set, Callable, TypeVar, Iterable, Any
 
 
 class TLACDCCorrespondence:
     """Stores the full computational graph, similar to ACDCCorrespondence from the rust_circuit code
     
     The two attributes, self.graph and self.edges allow for efficiently looking up the nodes and edges in the graph: see `notebooks/editing_edges.py`"""
-        
+
+    graph: MutableMapping[str, MutableMapping[TorchIndex, TLACDCInterpNode]]
+    edges: MutableMapping[str, MutableMapping[TorchIndex, MutableMapping[str, MutableMapping[TorchIndex, Edge]]]]
     def __init__(self):
-        self.graph: OrderedDict[str, OrderedDict[TorchIndex, TLACDCInterpNode]] = OrderedDefaultdict(OrderedDict) # TODO rename "nodes?"
-        self.edges: OrderedDict[str, OrderedDict[TorchIndex, OrderedDict[str, OrderedDict[TorchIndex, Optional[Edge]]]]] = make_nd_dict(end_type=None, n=4)
+        self.graph = OrderedDefaultdict(OrderedDict) # TODO rename "nodes?"
+        self.edges = make_nd_dict(end_type=None, n=4)
 
     def first_node(self):
         return self.graph[list(self.graph.keys())[0]][list(self.graph[list(self.graph.keys())[0]].keys())[0]]
@@ -129,7 +131,7 @@ class TLACDCCorrespondence:
                         safe=False,
                     )
 
-                cur_mlp_input_name = f"blocks.{layer_idx}.hook_resid_mid"
+                cur_mlp_input_name = f"blocks.{layer_idx}.hook_mlp_in"
                 cur_mlp_input_slice = TorchIndex([None])
                 cur_mlp_input = TLACDCInterpNode(
                     name=cur_mlp_input_name,

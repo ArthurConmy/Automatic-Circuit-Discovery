@@ -65,7 +65,7 @@ import networkx as nx
 import os
 import torch
 import huggingface_hub
-import graphviz
+import pygraphviz as pgv
 from enum import Enum
 import torch.nn as nn
 import torch.nn.functional as F
@@ -151,7 +151,7 @@ parser.add_argument("--mode", type=str, required=False, choices=["edges", "nodes
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
 parser.add_argument('--metric', type=str, default="kl_div", help="Which metric to use for the experiment")
 parser.add_argument('--reset-network', type=int, default=0, help="Whether to reset the network we're operating on before running interp on it")
-parser.add_argument("--alg", type=str, default="none", choices=["none", "acdc", "sp", "16h"])
+parser.add_argument("--alg", type=str, default="none", choices=["none", "acdc", "sp", "16h", "canonical"])
 parser.add_argument("--skip-sixteen-heads", action="store_true", help="Skip the 16 heads stuff")
 parser.add_argument("--skip-sp", action="store_true", help="Skip the SP stuff")
 parser.add_argument("--testing", action="store_true", help="Use testing data instead of validation data")
@@ -187,12 +187,13 @@ RESET_NETWORK = 1 if args.reset_network else 0
 SKIP_ACDC = False
 SKIP_SP = True if args.skip_sp else False
 SKIP_SIXTEEN_HEADS = True if args.skip_sixteen_heads else False
+SKIP_CANONICAL = True
 TESTING = True if args.testing else False
 ONLY_SAVE_CANONICAL = True if args.only_save_canonical else False
 
 if args.out_dir == "DEFAULT":
-    OUT_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / f"{'arthur_' if 'arthur' in __file__ else ''}plots_data"
-    CANONICAL_OUT_DIR = Path(__file__).resolve().parent.parent / "acdc" / "media" / "canonical_circuits"
+    OUT_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / f"{'arthur_' if 'arthur' in __file__ else ''}plots_data"
+    CANONICAL_OUT_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / "canonical_circuits"
 else:
     OUT_DIR = Path(args.out_dir)
     CANONICAL_OUT_DIR = Path(args.canonical_graph_save_dir)
@@ -202,6 +203,7 @@ if args.alg != "none":
     SKIP_ACDC = False if args.alg == "acdc" else True
     SKIP_SP = False if args.alg == "sp" else True
     SKIP_SIXTEEN_HEADS = False if args.alg == "16h" else True
+    SKIP_CANONICAL = False if args.alg == "canonical" else True
     OUT_FILE = OUT_DIR / f"{args.alg}-{args.task}-{args.metric}-{args.zero_ablation}-{args.reset_network}.json"
 
     if OUT_FILE.exists():
@@ -297,7 +299,12 @@ elif TASK == "ioi":
     things = get_all_ioi_things(num_examples=num_examples, device=DEVICE, metric_name=METRIC)
 
     if METRIC == "kl_div" and not RESET_NETWORK:
-        ACDC_PRE_RUN_FILTER["group"] = "acdc-ioi-gt-redo2"
+        if ZERO_ABLATION:
+            ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_ioi_sweep"
+            del ACDC_PRE_RUN_FILTER["config.reset_network"]
+            ACDC_PRE_RUN_FILTER["group"] = "default"
+        else:
+            ACDC_PRE_RUN_FILTER["group"] = "acdc-ioi-gt-redo2"
     else:
         try:
             del ACDC_PRE_RUN_FILTER["group"]
@@ -370,11 +377,15 @@ if RESET_NETWORK:
 #%% [markdown]
 # Setup the experiment for wrapping functionality nicely
 
+import gc
+gc.collect()
+torch.cuda.empty_cache()
+
 things.tl_model.reset_hooks()
 exp = TLACDCExperiment(
     model=things.tl_model,
     threshold=100_000,
-    early_exit=SKIP_ACDC or ONLY_SAVE_CANONICAL,
+    early_exit=SKIP_ACDC and SKIP_CANONICAL,
     using_wandb=False,
     zero_ablation=bool(ZERO_ABLATION),
     ds=things.test_data,
@@ -386,8 +397,7 @@ exp = TLACDCExperiment(
     first_cache_cpu=False,
     second_cache_cpu=False,
 )
-if not SKIP_ACDC and not ONLY_SAVE_CANONICAL:
-    exp.global_cache.clear()
+if not SKIP_ACDC or not SKIP_CANONICAL:
     exp.setup_second_cache()
 
 max_subgraph_size = exp.corr.count_no_edges()
@@ -395,7 +405,7 @@ max_subgraph_size = exp.corr.count_no_edges()
 #%% [markdown]
 # Load the *canonical* circuit
 
-COLORSCHEME_FOR = collections.defaultdict(lambda: "Pastel2", {
+COLORSCHEME_FOR = collections.defaultdict(lambda: (lambda: "Pastel2"), {
     "ioi": ioi_group_colorscheme,
     "greaterthan": greaterthan_group_colorscheme,
 })
@@ -429,8 +439,12 @@ if TASK != "induction":
         edge.effect_size = 1.0   # make it visible
 
     if ONLY_SAVE_CANONICAL:
-        g: graphviz.Digraph = show(canonical_circuit_subgraph, colorscheme=COLORSCHEME_FOR[TASK](), show_full_index=False, show=True)
-        g.render(str(CANONICAL_OUT_DIR / TASK), view=False, cleanup=True, format="pdf")
+        g: pgv.AGraph = show(
+            canonical_circuit_subgraph,
+            fname=CANONICAL_OUT_DIR / f"{TASK}.pdf",
+            colorscheme=COLORSCHEME_FOR[TASK](),
+            show_full_index=False,
+        )
 
         if TASK in ["ioi", "greaterthan"]:
             def save(source, suffix):
@@ -452,8 +466,8 @@ if TASK != "induction":
                 with open(CANONICAL_OUT_DIR / f"{TASK}_{suffix}.gv", "w") as f:
                     f.write("digraph {\n" + source + "\n}")
 
-            save(g.source, "heads_qkv")
-            save(g.source.replace("_q>", ">").replace("_k>", ">").replace("_v>", ">"), "heads")
+            save(g.to_string(), "heads_qkv")
+            save(g.to_string().replace("_q>", ">").replace("_k>", ">").replace("_v>", ">"), "heads")
 
 
 if ONLY_SAVE_CANONICAL:
@@ -461,7 +475,7 @@ if ONLY_SAVE_CANONICAL:
 #%%
 
 def get_acdc_runs(
-    experiment,
+    exp,
     project_name: str = ACDC_PROJECT_NAME,
     pre_run_filter: dict = ACDC_PRE_RUN_FILTER,
     run_filter: Optional[Callable[[Any], bool]] = ACDC_RUN_FILTER,
@@ -578,8 +592,8 @@ def get_acdc_runs(
                 try:
                     with run.file("output.log").download(root=ROOT / run.id, replace=False, exist_ok=True) as f:
                         log_text = f.read()
-                    experiment.load_from_wandb_run(log_text)
-                    corrs.append((deepcopy(experiment.corr), score_d))
+                    exp.load_from_wandb_run(log_text)
+                    corrs.append((deepcopy(exp.corr), score_d))
                     ids.append(run.id)
                 except Exception:
                     print(f"Loading run {run.name} with state={run.state} config={run.config} totally failed.")
@@ -604,19 +618,13 @@ def get_acdc_runs(
 
             corrs.append((corr, score_d))
             ids.append(run.id)
-        try:
-            old_exp_corr = exp.corr
-            exp.corr = corrs[-1][0]
-            exp.model.reset_hooks()
-            exp.setup_model_hooks(
-                add_sender_hooks=True,
-                add_receiver_hooks=True,
-                doing_acdc_runs=False,
-            )
-            for name, fn in things.test_metrics.items():
-                corrs[-1][1]["test_"+name] = fn(exp.model(things.test_data)).item()
-        finally:
-            exp.corr = old_exp_corr
+
+
+        def all_test_fns(data: torch.Tensor) -> dict[str, float]:
+            return {f"test_{name}": fn(data).item() for name, fn in things.test_metrics.items()}
+
+        test_metrics = exp.call_metric_with_corr(corrs[-1][0], all_test_fns, things.test_data)
+        corrs[-1][1].update(test_metrics)
         print(f"Added run with threshold={score_d['score']}, n_edges={corrs[-1][0].count_no_edges()}")
     if return_ids:
         return corrs, ids
@@ -628,6 +636,43 @@ if not SKIP_ACDC: # this is slow, so run once
     acdc_corrs, ids = get_acdc_runs(None if things is None else exp, clip = 1 if TESTING else None, return_ids = True)
     assert len(acdc_corrs) > 1
     print("acdc_corrs", len(acdc_corrs))
+
+# %%
+
+def get_canonical_corrs(exp):
+    all_present_corr = deepcopy(exp.corr)
+    for e in all_present_corr.all_edges().values():
+        e.present = True
+
+    none_present_corr = deepcopy(exp.corr)
+    for e in none_present_corr.all_edges().values():
+        e.present = False
+
+    output = [
+        (none_present_corr, {"score": 0.0}),
+        (deepcopy(canonical_circuit_subgraph), {"score": 0.5}),
+        (all_present_corr, {"score": 1.0}),
+    ]
+
+    for corr, score_d in output:
+        old_exp_corr = exp.corr
+        try:
+            exp.corr = corr
+            exp.model.reset_hooks()
+            exp.setup_model_hooks(
+                add_sender_hooks=True,
+                add_receiver_hooks=True,
+                doing_acdc_runs=False,
+            )
+            for name, fn in things.test_metrics.items():
+                score_d["test_"+name] = fn(exp.model(things.test_data)).item()
+        finally:
+            exp.corr = old_exp_corr
+    return output
+
+
+if not SKIP_CANONICAL:
+    canonical_corrs = get_canonical_corrs(exp)
 
 #%%
 
@@ -730,6 +775,7 @@ if "sixteen_heads_corrs" not in locals() and not SKIP_SIXTEEN_HEADS: # this is s
 
 methods = []
 
+if not SKIP_CANONICAL: methods.append("CANONICAL")
 if not SKIP_ACDC: methods.append("ACDC") 
 if not SKIP_SP: methods.append("SP")
 if not SKIP_SIXTEEN_HEADS: methods.append("16H")
@@ -823,6 +869,12 @@ points = {}
 if "ACDC" in methods:
     if "ACDC" not in points: points["ACDC"] = []
     points["ACDC"].extend(get_points(acdc_corrs))
+#%%
+
+if "CANONICAL" in methods:
+    if "CANONICAL" not in points: points["CANONICAL"] = []
+    points["CANONICAL"].extend(get_points(canonical_corrs))
+
 
 #%%
 

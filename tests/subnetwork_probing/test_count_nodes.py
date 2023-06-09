@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import graphviz
+import pygraphviz as pgv
 from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from acdc.TLACDCInterpNode import TLACDCInterpNode
 from acdc.TLACDCEdge import EdgeType, TorchIndex
@@ -40,7 +40,6 @@ def delete_nested_dict(d: dict, keys: list):
             if len(inner_dict) > 0:
                 break
 
-@pytest.mark.skip("TODO ask Adria to update this test - cursed graphics dependency bug")
 def test_count_nodes():
     nodes_to_mask_str = [
         "blocks.0.attn.hook_q[COL, COL, 0]",
@@ -118,10 +117,11 @@ def test_count_nodes():
                         
     with tempfile.TemporaryDirectory() as tmpdir:
         g = show(corr, os.path.join(tmpdir, "out.png"), show_full_index=False)
-        assert isinstance(g, graphviz.Digraph)
-        g.render(os.path.join(tmpdir, "out.gv"), view=False)
+        assert isinstance(g, pgv.AGraph)
+        path = Path(tmpdir) / "out.gv"
+        assert path.exists()
         # In advance I predict that it should be 41
-        g2 = nx.nx_pydot.read_dot(os.path.join(tmpdir, "out.gv"))
+        g2 = nx.nx_agraph.read_dot(path)
 
     to_delete = []
     for n in g2.nodes:
