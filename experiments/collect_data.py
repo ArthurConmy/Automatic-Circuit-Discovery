@@ -83,7 +83,7 @@ def main(
             job=job,
             synchronous=True,
             just_print_commands=False,
-            check_wandb=WandbIdentifier(f"agarriga-collect-{alg}-{task[-5:]}-{{i:05d}}-2", "collect", "acdc"),
+            check_wandb=WandbIdentifier(f"agarriga-col-{alg}-{task[-5:]}-{{i:04d}}b", "collect", "acdc"),
         )
 
     else:
