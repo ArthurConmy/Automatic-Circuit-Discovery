@@ -292,6 +292,8 @@ class TLACDCExperiment:
     
             return z
 
+        # second_cache (and thus z) contains the residual stream for the corrupted data
+        # That is, the sum of all heads and MLPs and biases from previous layers
         z[:] = self.global_cache.second_cache[hook.name].to(z.device)
 
         # TODO - is this slow ???
@@ -318,9 +320,11 @@ class TLACDCExperiment:
                             )
                     
                     if edge.edge_type == EdgeType.ADDITION:
+                        # Add the effect of the new head (from the current forward pass)
                         z[receiver_node_index.as_index] += self.global_cache.cache[
                             sender_node_name
                         ][sender_node_index.as_index].to(z.device)
+                        # Remove the effect of this head (from the corrupted data)
                         z[receiver_node_index.as_index] -= self.global_cache.second_cache[
                             sender_node_name
                         ][sender_node_index.as_index].to(z.device)
@@ -384,32 +388,39 @@ class TLACDCExperiment:
     def setup_second_cache(self):
         if self.verbose:
             print("Adding sender hooks...")
-        
+
         self.model.reset_hooks()
+
+        if self.zero_ablation:
+            # to calculate the inputs to each model component, 
+            # we need zero out all the outputs into the residual stream
+
+            # all hooknames that output into the residual stream
+            hook_name_substrings = ["attn_result", "mlp_out", "hook_embed"]
+            if self.use_pos_embed:
+                hook_name_substrings.append("hook_pos_embed")
+
+            # add hooks to zero out all these hook points
+            hook_name_bool_function = lambda hook_name: any([hook_name_substring in hook_name for hook_name_substring in hook_name_substrings])
+            self.model.add_hook(
+                name = hook_name_bool_function,
+                hook = lambda z, hook: torch.zeros_like(z),
+            )
+            # we now add the saving hooks AFTER we've zeroed out activations
+
         self.model.cache_all(self.global_cache.second_cache)
-
-        if self.verbose:
-            print("Now corrupting things..")
-
         corrupt_stuff = self.model(self.ref_ds)
 
         if self.verbose:
             print("Done corrupting things")
 
-        if self.zero_ablation:
-            names = list(self.global_cache.second_cache.keys())
-            assert len(names)>0, "No second cache names found"
-            for name in names:
-                self.global_cache.second_cache[name] = torch.zeros_like(
-                    self.global_cache.second_cache[name]
-                )
-                torch.cuda.empty_cache()
-
         if self.second_cache_cpu:
             self.global_cache.to("cpu", which_caches="second")
 
-        if self.use_pos_embed:
-            self.global_cache.second_cache["hook_pos_embed"][:] = shuffle_tensor(self.global_cache.second_cache["hook_pos_embed"][0], seed=49) # make all positions the same shuffled set of positions
+        if self.use_pos_embed and not self.zero_ablation:
+            # make all positions the same shuffled set of positions
+            # if we used zero ablation, they are all zeroed which is great
+            self.global_cache.second_cache["hook_pos_embed"][:] = shuffle_tensor(self.global_cache.second_cache["hook_pos_embed"][0], seed=49) 
 
         self.model.reset_hooks()
 
