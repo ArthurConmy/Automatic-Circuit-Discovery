@@ -54,6 +54,9 @@ def main(
     for reset_network in [0, 1]:
         for zero_ablation in [0, 1]:
             for metric in METRICS_FOR_TASK[task]:
+                if alg == "canonical" and (task == "induction" or metric == "kl_div"):
+                    continue
+
                 command = [
                     "python",
                     "notebooks/roc_plot_generator.py",
