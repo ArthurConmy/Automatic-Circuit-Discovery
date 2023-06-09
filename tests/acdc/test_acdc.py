@@ -64,13 +64,16 @@ from acdc.TLACDCInterpNode import TLACDCInterpNode
 from acdc.TLACDCExperiment import TLACDCExperiment
 
 from collections import defaultdict, deque, OrderedDict
+from acdc.docstring.utils import get_all_docstring_things
+from acdc.greaterthan.utils import get_all_greaterthan_things
 from acdc.induction.utils import (
     get_all_induction_things,
     get_validation_data,
     get_good_induction_candidates,
     get_mask_repeat_candidates,
 )
-from acdc.tracr_task.utils import get_tracr_model_input_and_tl_model
+from acdc.ioi.utils import get_all_ioi_things
+from acdc.tracr_task.utils import get_all_tracr_things, get_tracr_model_input_and_tl_model
 from acdc.acdc_graphics import (
     build_colorscheme,
     show,
@@ -149,3 +152,48 @@ def test_main_script():
 
 def test_editing_edges_notebook():
     import notebooks.editing_edges
+
+
+
+@pytest.mark.parametrize("task", ["tracr-proportion", "tracr-reverse", "docstring", "induction", "ioi", "greaterthan"])
+@pytest.mark.parametrize("zero_ablation", [False, True])
+def test_full_correspondence_zero_kl(task, zero_ablation, device="cpu", metric_name="kl_div", num_examples=4, seq_len=10):
+    if task == "tracr-proportion":
+        things = get_all_tracr_things(task="proportion", num_examples=num_examples, device=device, metric_name="l2")
+    elif task == "tracr-reverse":
+        things = get_all_tracr_things(task="reverse", num_examples=6, device=device, metric_name="l2")
+    elif task == "induction":
+        things = get_all_induction_things(num_examples=100, seq_len=20, device=device, metric=metric_name)
+    elif task == "ioi":
+        things = get_all_ioi_things(num_examples=num_examples, device=device, metric_name=metric_name)
+    elif task == "docstring":
+        things = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=device, metric_name=metric_name, correct_incorrect_wandb=False)
+    elif task == "greaterthan":
+        things = get_all_greaterthan_things(num_examples=num_examples, metric_name=metric_name, device=device)
+    else:
+        raise ValueError(task)
+
+    exp = TLACDCExperiment(
+        model=things.tl_model,
+        threshold=100_000,
+        early_exit=False,
+        using_wandb=False,
+        zero_ablation=zero_ablation,
+        ds=things.test_data,
+        ref_ds=things.test_patch_data,
+        metric=things.validation_metric,
+        second_metric=None,
+        verbose=True,
+        use_pos_embed=False,  # In the case that this is True, the KL should not be zero.
+        first_cache_cpu=True,
+        second_cache_cpu=True,
+    )
+    exp.setup_second_cache()
+
+    corr = deepcopy(exp.corr)
+    for e in corr.all_edges().values():
+        e.present = True
+
+    with torch.no_grad():
+        out = exp.call_metric_with_corr(corr, things.test_metrics["kl_div"], things.test_data)
+    assert abs(out) < 1e-6, f"{out} should be abs(out) < 1e-6"

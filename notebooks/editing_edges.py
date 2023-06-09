@@ -17,18 +17,17 @@ try:
     IN_COLAB = True
     print("Running as a Colab notebook. WARNING: you should switch to a High-RAM A100 (you can buy $10 of credits for this)")
 
-    from IPython import get_ipython
+    import subprocess # to install graphviz dependencies
+    command = ['apt-get', 'install', 'graphviz-dev']
+    subprocess.run(command, check=True)
 
+    from IPython import get_ipython
     ipython = get_ipython()
-    ipython.run_line_magic(
+
+    ipython.run_line_magic( # install ACDC
         "pip",
-        "install git+https://github.com/neelnanda-io/TransformerLens.git", 
+        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@541ea29",
     )
-    ipython.run_line_magic(
-        "pip",
-        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git", # install ACDC
-    )
-    ipython.run_line_magic("pip", "install torchtyping cmapy")
 
 except Exception as e:
     IN_COLAB = False
