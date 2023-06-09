@@ -132,7 +132,7 @@ class TLACDCExperiment:
 
         self.setup_second_cache()
         if self.corrupted_cache_cpu:
-            self.global_cache.to("cpu", which_caches="second")
+            self.global_cache.to("cpu", which_caches="corrupted")
 
         self.setup_model_hooks(
             add_sender_hooks=add_sender_hooks,
@@ -239,7 +239,7 @@ class TLACDCExperiment:
                 tens = tens.to(device)
 
         if cache == "corrupted":
-            self.global_cache.corrupted[hook.name] = tens
+            self.global_cache.corrupted_cache[hook.name] = tens
         elif cache == "online":
             self.global_cache.online_cache[hook.name] = tens
         else:
@@ -409,7 +409,7 @@ class TLACDCExperiment:
                 torch.cuda.empty_cache()
 
         if self.corrupted_cache_cpu:
-            self.global_cache.to("cpu", which_caches="second")
+            self.global_cache.to("cpu", which_caches="corrupted")
 
         if self.use_pos_embed:
             self.global_cache.second_cache["hook_pos_embed"][:] = shuffle_tensor(self.global_cache.second_cache["hook_pos_embed"][0], seed=49) # make all positions the same shuffled set of positions
