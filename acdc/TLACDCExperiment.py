@@ -346,7 +346,7 @@ class TLACDCExperiment:
 
         return hook_point_input
 
-    def add_all_sender_hooks(self, reset=True, cache="first", skip_direct_computation=False, add_all_hooks=False, sender_and_receiver_both_ok=False):
+    def add_all_sender_hooks(self, reset=True, cache="online", skip_direct_computation=False, add_all_hooks=False, sender_and_receiver_both_ok=False):
         """We use add_sender_hook for lazily adding *some* sender hooks
 
         :param sender_and_receiver_both_ok: The sender hooks had some checks that we're not adding both adding sender
@@ -454,7 +454,7 @@ class TLACDCExperiment:
                 )
 
         if add_sender_hooks: # bug fixed; crucial to add sender hooks AFTER the receivers
-            self.add_all_sender_hooks(cache="first", skip_direct_computation=False, add_all_hooks=True, reset=False, sender_and_receiver_both_ok=True)
+            self.add_all_sender_hooks(cache="online", skip_direct_computation=False, add_all_hooks=True, reset=False, sender_and_receiver_both_ok=True)
 
 
     def save_edges(self, fname):

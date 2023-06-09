@@ -107,8 +107,8 @@ def test_induction_several_steps():
         verbose=True,
         indices_mode="reverse",
         names_mode="normal",
-        second_cache_cpu=True,
-        first_cache_cpu=True,
+        corrupted_cache_cpu=True,
+        online_cache_cpu=True,
         add_sender_hooks=True, # attempting to be efficient...
         add_receiver_hooks=False,
         remove_redundant=True,
@@ -185,10 +185,10 @@ def test_full_correspondence_zero_kl(task, zero_ablation, device="cpu", metric_n
         second_metric=None,
         verbose=True,
         use_pos_embed=False,  # In the case that this is True, the KL should not be zero.
-        first_cache_cpu=True,
-        second_cache_cpu=True,
+        online_cache_cpu=True,
+        corrupted_cache_cpu=True,
     )
-    exp.setup_second_cache()
+    exp.setup_corrupted_cache()
 
     corr = deepcopy(exp.corr)
     for e in corr.all_edges().values():
