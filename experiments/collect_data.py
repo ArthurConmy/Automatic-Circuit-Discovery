@@ -96,6 +96,7 @@ tasks_for = {
     "acdc": TASKS,
     "16h": TASKS,
     "sp": TASKS,
+    "canonical": ["ioi", "greaterthan"],
 }
 
 parser = argparse.ArgumentParser()
@@ -106,13 +107,13 @@ mod_idx = parser.parse_args().i
 num_processes = parser.parse_args().n
 
 if __name__ == "__main__":
-    for alg in ["acdc", "16h", "sp"]:
+    for alg in ["canonical"]:
         for task in tasks_for[alg]:
             main(
                 alg,
                 task,
                 KubernetesJob(
-                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.9.1",
+                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:05cb4ba",
                     cpu=4,
                     gpu=0 if not IS_ADRIA or task.startswith("tracr") or alg != "acdc" else 1,
                     mount_training=False,
