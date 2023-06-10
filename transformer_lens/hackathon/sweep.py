@@ -32,7 +32,8 @@ def sweep_train_model(
         # todo - early stopping
 
         if show_plot:
-            px.line(loss_list)
+            fig=px.line(loss_list)
+            fig.show()
 
         if save_models:
             torch.save(and_model.state_dict(), f"saved_models/and_model_{str(cfg)}.pth")
@@ -40,14 +41,13 @@ def sweep_train_model(
         if verbose:
             loss_scaled = torch.tensor(loss_list[-3:]) * cfg.N * cfg.M
             loss_scaled = ", ".join([f"{x:.4f}" for x in loss_scaled])
-            n_superposed = cfg.N * cfg.M * (1 - loss_list[-1])
-            printout = f"cfg: {cfg.get_str()}\nloss: {loss_scaled}\nn_superposed: {n_superposed:.4f}\n\n"
+            n_correct = cfg.N * cfg.M * (1 - loss_list[-1]) # an approximation of correct...
+            printout = f"cfg: {cfg.get_str()}\nloss: {loss_scaled}\n_correct: {n_correct:.4f}\n\n"
             print(printout)
 
         loss_tensor[idx] = loss_list[-1] * cfg.N * cfg.M
 
     return loss_tensor
-
 
 
 # %%

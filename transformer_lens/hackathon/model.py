@@ -213,12 +213,13 @@ def get_all_outputs(model: AndModel, return_cache=False):
         n=model.cfg.N,
     )
 
-    cache_keys = list(all_cache.keys())
-    for key in cache_keys:
-        all_cache[key] = einops.rearrange(
-            to_numpy(all_cache[key]),
-            "(n m) ... -> n m ...",
-            n=model.cfg.N,
-        )
+    if return_cache:
+        cache_keys = list(all_cache.keys())
+        for key in cache_keys:
+            all_cache[key] = einops.rearrange(
+                to_numpy(all_cache[key]),
+                "(n m) ... -> n m ...",
+                n=model.cfg.N,
+            )
 
     return all_outputs, all_cache

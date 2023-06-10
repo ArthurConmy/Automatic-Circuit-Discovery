@@ -39,17 +39,6 @@ all_outputs, cache = get_all_outputs(and_model, return_cache=True) # all_outputs
 
 # %%
 
-# plotly code to vizualize output of the model
-px.imshow(
-    all_outputs,
-    animation_frame=0,
-    zmin=-1,
-    zmax=1,
-    color_continuous_scale="RdBu",
-)
-
-# %%
-
 px.imshow(
     cache["mlp.hook_post"],
     animation_frame=-1,
@@ -60,21 +49,25 @@ px.imshow(
 
 # %%
 
-N_range = [3, 5, 10, 15, 20, 30, 40, 50]
-d_mlp_range = [3]
-d_model_range = [5, 10, 20, 40]
+N_range = [3]
+d_mlp_range = [2]
+d_model_range = [3] # list(range(3, 11))
+seed_range = [3]
+num_epochs = 3000
 
 cfg_list = [
     Config(N=N, M=N, d_model=d_model, d_mlp=d_mlp, relu_at_end=True)
     for N in N_range
     for d_mlp in d_mlp_range
     for d_model in d_model_range
+    for seed in seed_range
 ]
 train_cfg_list = [
-    TrainingConfig(num_epochs=1500, weight_decay=0.0, batch_size=N*N)
+    TrainingConfig(num_epochs=num_epochs, weight_decay=0.0, batch_size=N*N, seed=seed)
     for N in N_range
     for d_mlp in d_mlp_range
     for d_model in d_model_range
+    for seed in seed_range
 ]
 
 loss_tensor = sweep_train_model(cfg_list, train_cfg_list, save_models=True, verbose=True, show_plot=True)
@@ -83,3 +76,23 @@ loss_tensor = sweep_train_model(cfg_list, train_cfg_list, save_models=True, verb
 
 and_model, loss_list = train_model(cfg_list[1], train_cfg_list[1])
 px.line(loss_list)
+
+#%% 
+
+and_model = AndModel(cfg_list[0])
+and_model.load_state_dict(torch.load("repo_models/and_model_Config_N=3_M=3_d_model=3_d_mlp=2_relu_at_end=True_correct=6.pth"))
+
+# %%
+
+outputs, cache = get_all_outputs(and_model, return_cache=True)
+
+# %%
+
+px.imshow(
+    einops.rearrange(outputs, "n m ... -> (n m) ..."),
+    animation_frame=0,
+    zmin=-1,
+    zmax=1,
+    color_continuous_scale="RdBu",
+)
+# %%
