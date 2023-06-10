@@ -11,8 +11,6 @@ if ipython is not None:
 import os
 os.environ["ACCELERATE_DISABLE_RICH"] = "1"
 import torch.nn as nn
-
-from transformer_lens.components import Embed, Unembed, MLP
 from transformer_lens.HookedTransformer import HookedRootModule, HookPoint
 import torch
 import einops
@@ -20,6 +18,10 @@ import torch.nn as nn
 from jaxtyping import Float, Int
 from typing import Dict, Union
 import torch.nn.functional as F
+from dataclasses import dataclass
+from tqdm.notebook import tqdm
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 #%%
 
@@ -126,34 +128,43 @@ class MLP(HookPoint):
 
 #%%
 
+
+@dataclass
+class Config:
+    N: int = 100
+    M: int = 100
+    d_model: int = 50
+    d_mlp: int = 20
+    relu_at_end: bool = False
+
 class AndModel(HookedRootModule):
 
-    # TODO; move args to config
-
-    def __init__(
-        self,
-        N, 
-        M,
-        d_model,
-        d_mlp,
-        relu_at_end=False,
-    ):
+    def __init__(self, cfg: Config):
         super().__init__()
 
-        self.embed1 = Embed(d_model=d_model, d_vocab=N)
+        self.embed1 = Embed(d_model=cfg.d_model, d_vocab=cfg.N)
         self.hook_embed1 = HookPoint()
-        self.embed2 = Embed(d_model=d_model, d_vocab=M)
+        self.embed2 = Embed(d_model=cfg.d_model, d_vocab=cfg.M)
         self.hook_embed2 = HookPoint()
         self.hook_resid_pre = HookPoint()
-        self.mlp = MLP(d_model=d_model, d_mlp=d_mlp)
+        self.mlp = MLP(d_model=cfg.d_model, d_mlp=cfg.d_mlp)
         self.hook_resid_post = HookPoint()   
-        self.unembed = Unembed(d_model=d_model, d_vocab1=N, d_vocab2=M)
-        self.relu_at_end = relu_at_end
+        self.unembed = Unembed(d_model=cfg.d_model, d_vocab1=cfg.N, d_vocab2=cfg.M)
+        self.relu_at_end = cfg.relu_at_end
 
         if self.relu_at_end:
             self.hook_relu_out = HookPoint()
 
         super().setup()
+        self.init_weights()
+
+    def init_weights(self):
+        weight_names = [name for name, param in self.named_parameters() if "W_" in name]
+        assert sorted(weight_names) == ['embed1.W_E', 'embed2.W_E', 'mlp.W_in', 'mlp.W_out', 'unembed.W_U'], sorted(weight_names)
+        for name, param in self.named_parameters():
+            if "W_" in name: # W_in, W_out, W_E * 2, W_U
+                nn.init.normal_(param, std=(1/param.shape[0])**0.5)
+                # TODO - maybe return to do smth better?
 
     def forward(self, x: Int[torch.Tensor, "batch 2"]):
         e1 = self.hook_embed1(self.embed1(x[:, 0]))
@@ -166,30 +177,13 @@ class AndModel(HookedRootModule):
         else: 
             return unembed
 
-N = 100
-M = 100
-d_model = 50
-d_mlp = 20
-batch_size = 100
-and_model = AndModel(N=N, M=M, d_model=d_model, d_mlp=d_mlp)
+
+cfg = Config()
+and_model = AndModel(cfg)
 
 #%%
 
-input_data1 = torch.randint(N, (batch_size,))
-input_data2 = torch.randint(M, (batch_size,))
 
-input_data = torch.stack((input_data1, input_data2), dim=1)
-
-# %%
-
-and_model.reset_hooks()
-logits, cache = and_model.run_with_cache(
-    input_data,
-)
-
-# %%
- 
-print(cache.keys())
 
 # %%
 
@@ -205,13 +199,96 @@ def get_all_data(N, M):
             all_data_inputs[i*M + j, 1] = j
     return all_data_inputs, all_data_labels
 
-data, labels = get_all_data(N, M)
+# data, labels = get_all_data(N, M)
 
 # %%
 
+# and_model.reset_hooks()
+# logits, cache = and_model.run_with_cache(
+#     data,
+# )
+
+# %%
+
+
+@dataclass
+class TrainingConfig:
+    learning_rate: float = 0.001
+    weight_decay: float = 1.0e-2
+    batch_size: int = 100
+    num_epochs: int = 10
+    print_every: int = 10
+
+# %%
+
+cfg = Config()
+train_cfg = TrainingConfig()
+
+input_data, input_labels = get_all_data(cfg.N, cfg.M)
+
 and_model.reset_hooks()
 logits, cache = and_model.run_with_cache(
-    data,
+    input_data[0].unsqueeze(0),
 )
+
+print(cache.keys())
+
+# %%
+
+def train_model(cfg: Config, train_cfg: TrainingConfig):
+
+    loss_list = []
+
+    assert (cfg.N * cfg.M) % train_cfg.batch_size == 0
+
+    and_model = AndModel(cfg).to(device)
+
+    data, labels = get_all_data(cfg.N, cfg.M)
+
+    optimizer = torch.optim.AdamW(and_model.parameters(), lr=train_cfg.learning_rate, weight_decay=train_cfg.weight_decay)
+    
+    for epoch in range(train_cfg.num_epochs):
+
+        torch.cuda.empty_cache()
+
+        indices = torch.randperm(cfg.N * cfg.M)
+
+        curr_data = einops.rearrange(
+            data[indices], 
+            "(n_batches batch_size) two -> n_batches batch_size two",
+            batch_size=train_cfg.batch_size
+        )
+        curr_labels = einops.rearrange(
+            labels[indices], 
+            "(n_batches batch_size) ... -> n_batches batch_size ...",
+            batch_size=train_cfg.batch_size
+        )
+
+        print(curr_data.shape)
+        print(curr_labels.shape)
+
+        progress_bar = tqdm(list(enumerate(zip(curr_data, curr_labels))))
+        for batch_idx, (batch_data, batch_labels) in progress_bar:
+            batch_data = batch_data.to(device)
+            batch_labels = batch_labels.to(device)
+            logits = and_model(batch_data)
+            loss = (logits - batch_labels.float()).pow(2).mean()
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
+            progress_bar.set_description(f"Epoch {epoch}, batch {batch_idx}, loss {loss.item():.3f}")
+
+            loss_list.append(loss.item())
+
+    return and_model, loss_list
+
+
+cfg = Config()
+train_cfg = TrainingConfig(num_epochs=1)
+and_model, loss_list = train_model(cfg, train_cfg)
+
+import plotly.express as px
+
+px.line(loss_list)
 
 # %%
