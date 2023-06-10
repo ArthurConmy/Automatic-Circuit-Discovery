@@ -132,11 +132,9 @@ class Config:
     relu_at_end: bool
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    def __str__(self) -> str:
+    def get_str(self) -> str:
         return f"N={self.N}_M={self.M}_d_model={self.d_model}_d_mlp={self.d_mlp}_relu={self.relu_at_end}"
 
-    def __repr__(self) -> str:
-        return f"N={self.N}_M={self.M}_d_model={self.d_model}_d_mlp={self.d_mlp}_relu={self.relu_at_end}"
 
 class AndModel(HookedRootModule):
 

@@ -34,7 +34,8 @@ def sweep_train_model(
         if verbose:
             loss_scaled = torch.tensor(loss_list[-3:]) * cfg.N * cfg.M
             loss_scaled = ", ".join([f"{x:.4f}" for x in loss_scaled])
-            printout = f"cfg: {str(cfg)}\nloss: {loss_scaled}\n\n"
+            n_superposed = cfg.N * cfg.M * (1 - loss_list[-1])
+            printout = f"cfg: {cfg.get_str()}\nloss: {loss_scaled}\nn_superposed: {n_superposed:.4f}\n\n"
             print(printout)
 
         loss_tensor[idx] = loss_list[-1] * cfg.N * cfg.M
@@ -45,3 +46,6 @@ def sweep_train_model(
 
 # %%
 
+# 24%|██▍       | 6/25 [00:27<01:27,  4.61s/it]
+# cfg: Config(N=4, M=4, d_model=20, d_mlp=3, relu_at_end=True)
+# loss: 10.0000, 10.0000, 10.0000
