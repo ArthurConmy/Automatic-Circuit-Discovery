@@ -1,13 +1,17 @@
 # %%
 
-# import os
+import os
+os.environ["ACCELERATE_DISABLE_RICH"] = "1"
 # os.getcwd(C:\Users\calsm\Documents\AI Alignment\SERIMATS_23\TransformerLens\transformer_lens)
 from IPython import get_ipython
 ipython = get_ipython()
 ipython.run_line_magic("load_ext", "autoreload")
 ipython.run_line_magic("autoreload", "2")
 
+import torch
+import einops
 import plotly.express as px
+from tqdm import tqdm
 from transformer_lens.hackathon.sweep import sweep_train_model
 from transformer_lens.hackathon.model import AndModel, Config, get_all_data, get_all_outputs
 from transformer_lens.hackathon.train import TrainingConfig, train_model
@@ -19,10 +23,10 @@ cfg = Config(
     M=10,
     d_model=40,
     d_mlp=20,
-    relu_at_end=True,
+    relu_at_end=False,
 )
 
-train_cfg = TrainingConfig(num_epochs=500, weight_decay=0.0)
+train_cfg = TrainingConfig(num_epochs=1000, weight_decay=1e-2)
 
 # %%
 
@@ -30,8 +34,6 @@ and_model, loss_list = train_model(cfg, train_cfg)
 px.line(loss_list)
 
 # %%
-
-
 
 all_outputs, cache = get_all_outputs(and_model, return_cache=True) # all_outputs N*M, N, M
 
@@ -60,10 +62,18 @@ px.imshow(
 
 cfg_list = [
     Config(N=N, M=N, d_model=40, d_mlp=d_mlp, relu_at_end=True)
-    for N in range(1, 11)
-    for d_mlp in range(5, 25)
+    for d_mlp in range(5, 21)
+    for N in range(3, 8)
+]
+train_cfg_list = [
+    TrainingConfig(num_epochs=1000, weight_decay=0.0,batch_size=N*N)
+    for d_mlp in range(5, 21)
+    for N in range(3, 8)
 ]
 
-loss_tensor = sweep_train_model(cfg_list, train_cfg)
+loss_tensor = sweep_train_model(cfg_list, train_cfg_list, save_models=True, verbose=True)
 
 # %%
+
+and_model, loss_list = train_model(cfg_list[1], train_cfg_list[1])
+px.line(loss_list)
