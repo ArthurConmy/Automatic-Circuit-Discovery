@@ -292,13 +292,27 @@ def get_all_outputs(model: AndModel, return_cache=False):
         all_outputs = to_numpy(model(all_data))
         all_cache = None
 
+    all_outputs = einops.rearrange(
+        all_outputs,
+        "(n m) ... -> n m ...",
+        n=model.cfg.N,
+    )
+
+    cache_keys = list(all_cache.keys())
+    for key in cache_keys:
+        all_cache[key] = einops.rearrange(
+            to_numpy(all_cache[key]),
+            "(n m) ... -> n m ...",
+            n=model.cfg.N,
+        )
+
     return all_outputs, all_cache
 
 all_outputs, cache = get_all_outputs(and_model, return_cache=True) # all_outputs N*M, N, M
 
 # %%
 
-# plotly code to vizualize output
+# plotly code to vizualize output of the model
 px.imshow(
     all_outputs,
     animation_frame=0,
@@ -307,3 +321,11 @@ px.imshow(
     color_continuous_scale="RdBu",
 )
 # %%
+
+px.imshow(
+    cache["mlp.hook_post"],
+    animation_frame=-1,
+    zmin=-1,
+    zmax=1,
+    color_continuous_scale="RdBu",
+)
