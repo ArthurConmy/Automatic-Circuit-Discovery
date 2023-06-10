@@ -1,11 +1,3 @@
-#%%
-
-from IPython import get_ipython
-ipython = get_ipython()
-if ipython is not None:
-    ipython.magic("load_ext autoreload")
-    ipython.magic("autoreload 2")
-
 # %%
 
 import os
@@ -22,7 +14,7 @@ import torch.nn.functional as F
 from dataclasses import dataclass
 from tqdm import tqdm
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+MAIN = __name__ == "__main__"
 
 
 #%%
@@ -138,6 +130,7 @@ class Config:
     d_model: int
     d_mlp: int
     relu_at_end: bool
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class AndModel(HookedRootModule):
 
@@ -160,6 +153,10 @@ class AndModel(HookedRootModule):
 
         super().setup()
         self.init_weights()
+
+    def to(self, device):
+        self.cfg.device = device
+        self.to(self.cfg.device)
 
     def init_weights(self):
         weight_names = [name for name, param in self.named_parameters() if "W_" in name]
@@ -196,92 +193,6 @@ def get_all_data(N, M):
 
 # %%
 
-
-@dataclass
-class TrainingConfig:
-    learning_rate: float = 0.001
-    weight_decay: float = 1.0e-2
-    batch_size: int = 100
-    num_epochs: int = 10
-    print_every: int = 10
-    seed: int = 42
-
-# %%
-
-cfg = Config(relu_at_end=True)
-train_cfg = TrainingConfig()
-
-input_data, input_labels = get_all_data(cfg.N, cfg.M)
-
-# and_model.reset_hooks()
-# logits, cache = and_model.run_with_cache(
-#     input_data[0].unsqueeze(0),
-# )
-# print(cache.keys())
-
-# %%
-
-def train_model(cfg: Config, train_cfg: TrainingConfig):
-
-    loss_list = []
-    assert (cfg.N * cfg.M) % train_cfg.batch_size == 0
-    torch.manual_seed(train_cfg.seed)
-    and_model = AndModel(cfg).to(device)
-
-    data, labels = get_all_data(cfg.N, cfg.M)
-
-    optimizer = torch.optim.AdamW(and_model.parameters(), lr=train_cfg.learning_rate, weight_decay=train_cfg.weight_decay)
-    
-    progress_bar = tqdm(range(train_cfg.num_epochs))
-    for epoch in progress_bar:
-
-        torch.cuda.empty_cache()
-
-        indices = torch.randperm(cfg.N * cfg.M)
-
-        curr_data = einops.rearrange(
-            data[indices], 
-            "(n_batches batch_size) two -> n_batches batch_size two",
-            batch_size=train_cfg.batch_size
-        )
-        curr_labels = einops.rearrange(
-            labels[indices], 
-            "(n_batches batch_size) ... -> n_batches batch_size ...",
-            batch_size=train_cfg.batch_size
-        )
-        # print(curr_data.shape)
-        # print(curr_labels.shape)
-
-        for batch_idx, (batch_data, batch_labels) in list(enumerate(zip(curr_data, curr_labels))):
-            batch_data = batch_data.to(device)
-            batch_labels = batch_labels.to(device)
-            logits = and_model(batch_data)
-            loss = (logits - batch_labels.float()).pow(2).mean()
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
-            loss_list.append(loss.item())
-
-        progress_bar.set_description(f"Epoch {epoch}, loss {loss.item():.3e}")
-
-    return and_model, loss_list
-
-cfg = Config(
-    N=10,
-    M=10,
-    d_model=40,
-    d_mlp=20,
-    relu_at_end=True,
-)
-
-train_cfg = TrainingConfig(num_epochs=1000, weight_decay=0.0)
-and_model, loss_list = train_model(cfg, train_cfg)
-
-import plotly.express as px
-px.line(loss_list)
-
-#%%
-
 def get_all_outputs(model: AndModel, return_cache=False):
     all_data, all_labels = get_all_data(N=model.cfg.N, M=model.cfg.M)
     
@@ -307,25 +218,3 @@ def get_all_outputs(model: AndModel, return_cache=False):
         )
 
     return all_outputs, all_cache
-
-all_outputs, cache = get_all_outputs(and_model, return_cache=True) # all_outputs N*M, N, M
-
-# %%
-
-# plotly code to vizualize output of the model
-px.imshow(
-    all_outputs,
-    animation_frame=0,
-    zmin=-1,
-    zmax=1,
-    color_continuous_scale="RdBu",
-)
-# %%
-
-px.imshow(
-    cache["mlp.hook_post"],
-    animation_frame=-1,
-    zmin=-1,
-    zmax=1,
-    color_continuous_scale="RdBu",
-)
