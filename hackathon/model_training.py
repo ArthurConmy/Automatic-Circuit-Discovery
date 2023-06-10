@@ -133,11 +133,11 @@ class MLP(HookPoint):
 
 @dataclass
 class Config:
-    N: int = 10
-    M: int = 10
-    d_model: int = 40
-    d_mlp: int = 20
-    relu_at_end: bool = False
+    N: int
+    M: int
+    d_model: int
+    d_mlp: int
+    relu_at_end: bool
 
 class AndModel(HookedRootModule):
 
@@ -266,9 +266,14 @@ def train_model(cfg: Config, train_cfg: TrainingConfig):
 
     return and_model, loss_list
 
+cfg = Config(
+    N=10,
+    M=10,
+    d_model=40,
+    d_mlp=20,
+    relu_at_end=True,
+)
 
-
-cfg = Config(d_mlp=100, d_model=100, relu_at_end=True)
 train_cfg = TrainingConfig(num_epochs=1000, weight_decay=0.0)
 and_model, loss_list = train_model(cfg, train_cfg)
 
@@ -277,12 +282,19 @@ px.line(loss_list)
 
 #%%
 
-def get_all_outputs(model: AndModel):
+def get_all_outputs(model: AndModel, return_cache=False):
     all_data, all_labels = get_all_data(N=model.cfg.N, M=model.cfg.M)
-    all_outputs = to_numpy(model(all_data))
-    return all_outputs
+    
+    if return_cache:
+        all_outputs, all_cache = model.run_with_cache(all_data)
+        all_outputs = to_numpy(all_outputs)
+    else:
+        all_outputs = to_numpy(model(all_data))
+        all_cache = None
 
-all_outputs = get_all_outputs(and_model) # N*M, N, M
+    return all_outputs, all_cache
+
+all_outputs, cache = get_all_outputs(and_model, return_cache=True) # all_outputs N*M, N, M
 
 # %%
 
