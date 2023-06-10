@@ -312,7 +312,7 @@ def get_greaterthan_true_edges(model):
     # connect all MLPs before the AMID heads
     for mlp_sender_layer in range(0, MAX_AMID_LAYER):
         for mlp_receiver_layer in range(1+mlp_sender_layer, MAX_AMID_LAYER):
-            corr.edges[f"blocks.{mlp_receiver_layer}.hook_resid_mid"][TorchIndex([None])][f"blocks.{mlp_sender_layer}.hook_mlp_out"][TorchIndex([None])].present = True # TODO update to hook_mlp_in when merging main
+            corr.edges[f"blocks.{mlp_receiver_layer}.hook_mlp_in"][TorchIndex([None])][f"blocks.{mlp_sender_layer}.hook_mlp_out"][TorchIndex([None])].present = True
     
     # connect all early MLPs to AMID heads
     for layer_idx, head_idx in CIRCUIT["AMID"]:
