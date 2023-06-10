@@ -77,7 +77,7 @@ train_cfg_list = [
     for d_model in d_model_range
 ]
 
-loss_tensor = sweep_train_model(cfg_list, train_cfg_list, save_models=True, verbose=True)
+loss_tensor = sweep_train_model(cfg_list, train_cfg_list, save_models=True, verbose=True, show_plot=True)
 
 # %%
 
