@@ -155,9 +155,9 @@ class AndModel(HookedRootModule):
 
         super().setup()
 
-    def forward(self, x1, x2):
-        e1 = self.hook_embed1(self.embed1(x1))
-        e2 = self.hook_embed2(self.embed2(x2))
+    def forward(self, x: Int[torch.Tensor, "batch 2"]):
+        e1 = self.hook_embed1(self.embed1(x[:, 0]))
+        e2 = self.hook_embed2(self.embed2(x[:, 1]))
         mlp_pre = self.hook_resid_pre(e1 + e2)
         mlp = self.hook_resid_post(self.mlp(mlp_pre))
         unembed = self.unembed(mlp)
@@ -178,13 +178,13 @@ and_model = AndModel(N=N, M=M, d_model=d_model, d_mlp=d_mlp)
 input_data1 = torch.randint(N, (batch_size,))
 input_data2 = torch.randint(M, (batch_size,))
 
+input_data = torch.stack((input_data1, input_data2), dim=1)
+
 # %%
 
 and_model.reset_hooks()
 logits, cache = and_model.run_with_cache(
-    input_data1,
-    input_data2, 
-    # return_type="logits",
+    input_data,
 )
 
 # %%
@@ -194,3 +194,24 @@ print(cache.keys())
 # %%
 
 # now onto training
+
+def get_all_data(N, M):
+    all_data_inputs = torch.zeros((N*M, 2)).long()
+    all_data_labels = torch.zeros((N*M, N, M)).long()
+    for i in range(N):
+        for j in range(M):
+            all_data_labels[i*M + j, i, j] = 1
+            all_data_inputs[i*M + j, 0] = i
+            all_data_inputs[i*M + j, 1] = j
+    return all_data_inputs, all_data_labels
+
+data, labels = get_all_data(N, M)
+
+# %%
+
+and_model.reset_hooks()
+logits, cache = and_model.run_with_cache(
+    data,
+)
+
+# %%
