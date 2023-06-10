@@ -300,6 +300,7 @@ GROUP_COLORS = {
     "duplicate token": "#fad6e9",
     "previous token": "#f9ecd7",
 }
+MLP_COLOR = "#f0f0f0"
 
 def ioi_group_colorscheme():
     assert set(GROUP_COLORS.keys()) == set(IOI_CIRCUIT.keys())
@@ -308,6 +309,9 @@ def ioi_group_colorscheme():
         "embed": "#cbd5e8",
         "<resid_post>": "#fff2ae",
     }
+
+    for i in range(12):
+        scheme[f"<m{i}>"] = MLP_COLOR
 
     for k, heads in IOI_CIRCUIT.items():
         for (layer, head) in heads:

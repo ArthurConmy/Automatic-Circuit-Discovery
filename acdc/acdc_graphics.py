@@ -100,7 +100,7 @@ def show(
     """
     Colorscheme: a color for each node name, or a string corresponding to a cmapy color scheme
     """
-    g = pgv.AGraph(directed=True, bgcolor="transparent", fontname="Helvetica")
+    g = pgv.AGraph(directed=True, bgcolor="transparent")
 
     if isinstance(colorscheme, str):
         colors = build_colorscheme(correspondence, colorscheme, show_full_index=show_full_index)
@@ -127,6 +127,7 @@ def show(
                                 fillcolor=colors[node_name],
                                 style="filled, rounded",
                                 shape="box",
+                                fontname="Helvetica"
                             )
                         
                         g.add_edge(

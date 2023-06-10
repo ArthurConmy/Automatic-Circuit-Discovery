@@ -330,6 +330,7 @@ GROUP_COLORS = {
     "AMID": "#ececf5",
     "MLATE": "#fff6db",
 }
+MLP_COLOR = "#f0f0f0"
 
 def greaterthan_group_colorscheme():
     assert set(GROUP_COLORS.keys()) == set(CIRCUIT.keys())
@@ -338,6 +339,9 @@ def greaterthan_group_colorscheme():
         "embed": "#cbd5e8",
         "<resid_post>": "#fff2ae",
     }
+
+    for i in range(12):
+        scheme[f"<m{i}>"] = MLP_COLOR
 
     for k, heads in CIRCUIT.items():
         for (layer, head) in heads:
