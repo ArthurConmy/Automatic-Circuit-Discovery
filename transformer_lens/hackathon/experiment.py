@@ -8,15 +8,44 @@ ipython = get_ipython()
 ipython.run_line_magic("load_ext", "autoreload")
 ipython.run_line_magic("autoreload", "2")
 
-import torch
+import torch as t
 import einops
 import plotly.express as px
 from tqdm import tqdm
+from transformer_lens.utils import to_numpy
 from transformer_lens.hackathon.sweep import sweep_train_model
 from transformer_lens.hackathon.model import AndModel, Config, get_all_data, get_all_outputs
 from transformer_lens.hackathon.train import TrainingConfig, train_model
 
 # %%
+
+def to_tensor(
+    tensor,
+):
+    return t.from_numpy(to_numpy(tensor))
+
+def imshow(
+    tensor, 
+    **kwargs,
+):
+    tensor = to_tensor(tensor)
+    zmax = tensor.abs().max().item()
+
+    if "zmin" not in kwargs:
+        kwargs["zmin"] = -zmax
+    if "zmax" not in kwargs:
+        kwargs["zmax"] = zmax
+    if "color_continuous_scale" not in kwargs:
+        kwargs["color_continuous_scale"] = "RdBu"
+
+    fig = px.imshow(
+        to_numpy(tensor),
+        **kwargs,
+    )
+    fig.show()
+
+#%%
+
 
 cfg = Config(
     N=10,
@@ -80,7 +109,7 @@ px.line(loss_list)
 #%% 
 
 and_model = AndModel(cfg_list[0])
-and_model.load_state_dict(torch.load("repo_models/and_model_Config_N=3_M=3_d_model=3_d_mlp=2_relu_at_end=True_correct=6.pth"))
+and_model.load_state_dict(t.load("repo_models/and_model_Config_N=3_M=3_d_model=3_d_mlp=2_relu_at_end=True_correct=6.pth"))
 
 # %%
 
@@ -88,11 +117,29 @@ outputs, cache = get_all_outputs(and_model, return_cache=True)
 
 # %%
 
-px.imshow(
+imshow(
     einops.rearrange(outputs, "n m ... -> (n m) ..."),
     animation_frame=0,
-    zmin=-1,
-    zmax=1,
-    color_continuous_scale="RdBu",
+)
+
+# %%
+
+imshow(
+    cache["mlp.hook_post"],
+    facet_col=-1,
+    title="Neuron activations post",
+)
+# %%
+
+neuron_outs = einops.einsum(
+    and_model.mlp.W_out,
+    and_model.unembed.W_U,
+    "d_mlp d_model, d_model N M -> d_mlp N M",
+)
+
+imshow(
+    neuron_outs,
+    facet_col=0,
+    title="
 )
 # %%
