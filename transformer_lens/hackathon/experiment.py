@@ -11,6 +11,7 @@ ipython.run_line_magic("autoreload", "2")
 import torch as t
 import einops
 import plotly.express as px
+import numpy as np
 from tqdm import tqdm
 from transformer_lens.utils import to_numpy
 from transformer_lens.hackathon.sweep import sweep_train_model
@@ -46,16 +47,19 @@ def imshow(
 
 #%%
 
-
 cfg = Config(
     N=10,
     M=10,
     d_model=40,
-    d_mlp=20,
+    d_mlp=11,
     relu_at_end=False,
+    minimal_linears=True,
 )
-
 train_cfg = TrainingConfig(num_epochs=1000, weight_decay=1e-2)
+
+#%%
+
+and_model = AndModel(cfg)
 
 # %%
 
@@ -79,13 +83,13 @@ px.imshow(
 # %%
 
 N_range = [3]
-d_mlp_range = [2]
+d_mlp_range = range(2, 11)
 d_model_range = [3] # list(range(3, 11))
 seed_range = [3]
 num_epochs = 3000
 
 cfg_list = [
-    Config(N=N, M=N, d_model=d_model, d_mlp=d_mlp, relu_at_end=True)
+    Config(N=N, M=N, d_model=d_model, d_mlp=d_mlp, relu_at_end=True, minimal_linears=True)
     for N in N_range
     for d_mlp in d_mlp_range
     for d_model in d_model_range

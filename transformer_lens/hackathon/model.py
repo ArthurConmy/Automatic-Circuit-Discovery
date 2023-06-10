@@ -131,6 +131,7 @@ class Config:
     d_mlp: int
     relu_at_end: bool
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    minimal_linears: bool = False
 
     def get_str(self) -> str:
         return f"N={self.N}_M={self.M}_d_model={self.d_model}_d_mlp={self.d_mlp}_relu={self.relu_at_end}"
@@ -142,17 +143,26 @@ class AndModel(HookedRootModule):
         super().__init__()
 
         self.cfg = cfg
-        self.embed1 = Embed(d_model=cfg.d_model, d_vocab=cfg.N)
-        self.hook_embed1 = HookPoint()
-        self.embed2 = Embed(d_model=cfg.d_model, d_vocab=cfg.M)
-        self.hook_embed2 = HookPoint()
-        self.hook_resid_pre = HookPoint()
-        self.mlp = MLP(d_model=cfg.d_model, d_mlp=cfg.d_mlp)
-        self.hook_resid_post = HookPoint()   
-        self.unembed = Unembed(d_model=cfg.d_model, d_vocab1=cfg.N, d_vocab2=cfg.M)
-        self.relu_at_end = cfg.relu_at_end
 
-        if self.relu_at_end:
+        if cfg.minimal_linears:
+            self.embed1 = Embed(d_model=cfg.d_mlp, d_vocab=cfg.N) # TODO pretty cursed
+            self.hook_embed1 = HookPoint()
+            self.embed2 = Embed(d_model = cfg.d_mlp, d_vocab = cfg.M)
+            self.hook_embed2 = HookPoint()
+            self.unembed = Unembed(d_model = cfg.d_mlp, d_vocab1 = cfg.N, d_vocab2 = cfg.M)
+
+        else:
+            self.embed1 = Embed(d_model=cfg.d_model, d_vocab=cfg.N)
+            self.hook_embed1 = HookPoint()
+            self.embed2 = Embed(d_model=cfg.d_model, d_vocab=cfg.M)
+            self.hook_embed2 = HookPoint()
+            self.hook_resid_pre = HookPoint()
+            self.mlp = MLP(d_model=cfg.d_model, d_mlp=cfg.d_mlp)
+            self.hook_resid_post = HookPoint()   
+            self.unembed = Unembed(d_model=cfg.d_model, d_vocab1=cfg.N, d_vocab2=cfg.M)
+            self.cfg.relu_at_end = cfg.relu_at_end
+
+        if self.cfg.relu_at_end:
             self.hook_relu_out = HookPoint()
 
         super().setup()
@@ -163,23 +173,38 @@ class AndModel(HookedRootModule):
         return super().to(self.cfg.device)
 
     def init_weights(self):
-        weight_names = [name for name, param in self.named_parameters() if "W_" in name]
-        assert sorted(weight_names) == ['embed1.W_E', 'embed2.W_E', 'mlp.W_in', 'mlp.W_out', 'unembed.W_U'], sorted(weight_names)
-        for name, param in self.named_parameters():
-            if "W_" in name: # W_in, W_out, W_E * 2, W_U
-                nn.init.normal_(param, std=(1/param.shape[0])**0.5)
-                # TODO - maybe return to do smth better?
+        if self.cfg.minimal_linears:
+            assert len(list(self.named_parameters()))==4, list(self.named_parameters()) # include unembed bias... ok...
+            for name, param in self.named_parameters():
+                if "W_" in name: # W_in, W_out, W_E * 2, W_U
+                    nn.init.normal_(param, std=(1/param.shape[0])**0.5)
+                    # TODO - maybe return to do smth better?
+
+        else:
+            weight_names = [name for name, param in self.named_parameters() if "W_" in name]
+            assert sorted(weight_names) == ['embed1.W_E', 'embed2.W_E', 'mlp.W_in', 'mlp.W_out', 'unembed.W_U'], sorted(weight_names)
+            for name, param in self.named_parameters():
+                if "W_" in name: # W_in, W_out, W_E * 2, W_U
+                    nn.init.normal_(param, std=(1/param.shape[0])**0.5)
+                    # TODO - maybe return to do smth better?
 
     def forward(self, x: Int[torch.Tensor, "batch 2"]):
-        e1 = self.hook_embed1(self.embed1(x[:, 0]))
-        e2 = self.hook_embed2(self.embed2(x[:, 1]))
-        mlp_pre = self.hook_resid_pre(e1 + e2)
-        mlp = self.hook_resid_post(self.mlp(mlp_pre))
-        unembed = self.unembed(mlp)
-        if self.relu_at_end:
-            return self.hook_relu_out(F.relu(unembed))
-        else: 
+        if self.cfg.minimal_linears:
+            e1 = self.hook_embed1(self.embed1(x[:, 0]))
+            e2 = self.hook_embed2(self.embed2(x[:, 1]))
+            unembed = self.unembed(F.relu(e1 + e2))
             return unembed
+
+        else:
+            e1 = self.hook_embed1(self.embed1(x[:, 0]))
+            e2 = self.hook_embed2(self.embed2(x[:, 1]))
+            mlp_pre = self.hook_resid_pre(e1 + e2)
+            mlp = self.hook_resid_post(self.mlp(mlp_pre))
+            unembed = self.unembed(mlp)
+            if self.cfg.relu_at_end:
+                return self.hook_relu_out(F.relu(unembed))
+            else: 
+                return unembed
 
 # %%
 
