@@ -71,8 +71,5 @@ def train_model(cfg: Config, train_cfg: TrainingConfig, use_progress_bar: bool =
 
     return and_model, loss_list
 
-#%%
-
-
 
 # %%

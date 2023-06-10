@@ -60,18 +60,20 @@ px.imshow(
 
 # %%
 
+d_models = list(range(3, 21))
+
+N = M = 3
+
 cfg_list = [
-    Config(N=N, M=N, d_model=40, d_mlp=d_mlp, relu_at_end=True)
-    for d_mlp in range(5, 21)
-    for N in range(3, 8)
+    Config(N=N, M=M, d_model=d_model, d_mlp=3, relu_at_end=True)
+    for d_model in d_models
 ]
 train_cfg_list = [
-    TrainingConfig(num_epochs=1000, weight_decay=0.0,batch_size=N*N)
-    for d_mlp in range(5, 21)
-    for N in range(3, 8)
+    TrainingConfig(num_epochs=1000, weight_decay=0.0,batch_size=N*M)
+    for d_model in d_models
 ]
 
-loss_tensor = sweep_train_model(cfg_list, train_cfg_list, save_models=True, verbose=True)
+loss_tensor = sweep_train_model(cfg_list, train_cfg_list, save_models=True, verbose=True, show_plot=True)
 
 # %%
 
