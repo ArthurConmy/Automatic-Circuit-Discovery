@@ -118,7 +118,7 @@ if __name__ == "__main__":
                 KubernetesJob(
                     container="ghcr.io/rhaps0dy/automatic-circuit-discovery:05cb4ba",
                     cpu=4,
-                    gpu=0 if not IS_ADRIA or task.startswith("tracr") or alg != "acdc" else 1,
+                    gpu=0 if not IS_ADRIA or task.startswith("tracr") or alg not in ["acdc", "canonical"] else 1,
                     mount_training=False,
                 ),
                 testing=False,
