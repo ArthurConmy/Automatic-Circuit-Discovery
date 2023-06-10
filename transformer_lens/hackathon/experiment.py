@@ -140,6 +140,6 @@ neuron_outs = einops.einsum(
 imshow(
     neuron_outs,
     facet_col=0,
-    title="
+    title="Neuron contribtions",
 )
 # %%
