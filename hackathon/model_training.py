@@ -19,7 +19,7 @@ from jaxtyping import Float, Int
 from typing import Dict, Union
 import torch.nn.functional as F
 from dataclasses import dataclass
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -131,9 +131,9 @@ class MLP(HookPoint):
 
 @dataclass
 class Config:
-    N: int = 100
-    M: int = 100
-    d_model: int = 50
+    N: int = 10
+    M: int = 10
+    d_model: int = 40
     d_mlp: int = 20
     relu_at_end: bool = False
 
@@ -177,14 +177,6 @@ class AndModel(HookedRootModule):
         else: 
             return unembed
 
-
-cfg = Config()
-and_model = AndModel(cfg)
-
-#%%
-
-
-
 # %%
 
 # now onto training
@@ -199,15 +191,6 @@ def get_all_data(N, M):
             all_data_inputs[i*M + j, 1] = j
     return all_data_inputs, all_data_labels
 
-# data, labels = get_all_data(N, M)
-
-# %%
-
-# and_model.reset_hooks()
-# logits, cache = and_model.run_with_cache(
-#     data,
-# )
-
 # %%
 
 
@@ -218,36 +201,36 @@ class TrainingConfig:
     batch_size: int = 100
     num_epochs: int = 10
     print_every: int = 10
+    seed: int = 42
 
 # %%
 
-cfg = Config()
+cfg = Config(relu_at_end=True)
 train_cfg = TrainingConfig()
 
 input_data, input_labels = get_all_data(cfg.N, cfg.M)
 
-and_model.reset_hooks()
-logits, cache = and_model.run_with_cache(
-    input_data[0].unsqueeze(0),
-)
-
-print(cache.keys())
+# and_model.reset_hooks()
+# logits, cache = and_model.run_with_cache(
+#     input_data[0].unsqueeze(0),
+# )
+# print(cache.keys())
 
 # %%
 
 def train_model(cfg: Config, train_cfg: TrainingConfig):
 
     loss_list = []
-
     assert (cfg.N * cfg.M) % train_cfg.batch_size == 0
-
+    torch.manual_seed(train_cfg.seed)
     and_model = AndModel(cfg).to(device)
 
     data, labels = get_all_data(cfg.N, cfg.M)
 
     optimizer = torch.optim.AdamW(and_model.parameters(), lr=train_cfg.learning_rate, weight_decay=train_cfg.weight_decay)
     
-    for epoch in range(train_cfg.num_epochs):
+    progress_bar = tqdm(range(train_cfg.num_epochs))
+    for epoch in progress_bar:
 
         torch.cuda.empty_cache()
 
@@ -263,12 +246,10 @@ def train_model(cfg: Config, train_cfg: TrainingConfig):
             "(n_batches batch_size) ... -> n_batches batch_size ...",
             batch_size=train_cfg.batch_size
         )
+        # print(curr_data.shape)
+        # print(curr_labels.shape)
 
-        print(curr_data.shape)
-        print(curr_labels.shape)
-
-        progress_bar = tqdm(list(enumerate(zip(curr_data, curr_labels))))
-        for batch_idx, (batch_data, batch_labels) in progress_bar:
+        for batch_idx, (batch_data, batch_labels) in list(enumerate(zip(curr_data, curr_labels))):
             batch_data = batch_data.to(device)
             batch_labels = batch_labels.to(device)
             logits = and_model(batch_data)
@@ -276,19 +257,25 @@ def train_model(cfg: Config, train_cfg: TrainingConfig):
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
-            progress_bar.set_description(f"Epoch {epoch}, batch {batch_idx}, loss {loss.item():.3f}")
-
             loss_list.append(loss.item())
+
+        progress_bar.set_description(f"Epoch {epoch}, loss {loss.item():.3e}")
 
     return and_model, loss_list
 
 
-cfg = Config()
-train_cfg = TrainingConfig(num_epochs=1)
+cfg = Config(d_mlp=100, d_model=100, relu_at_end=True)
+train_cfg = TrainingConfig(num_epochs=1000, weight_decay=0.0)
 and_model, loss_list = train_model(cfg, train_cfg)
 
 import plotly.express as px
-
 px.line(loss_list)
 
 # %%
+
+# plotly code to vizualize output
+
+px.imshow(
+    # 3D tensor,
+    animation_frame=0,
+)
