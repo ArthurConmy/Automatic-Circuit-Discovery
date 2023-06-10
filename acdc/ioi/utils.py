@@ -274,7 +274,7 @@ def get_ioi_true_edges(model):
         if conn.out == "OUTPUT":
             idx_to = [(13, "blocks.11.hook_resid_post", TorchIndex([None]))]
             for mlp_layer_idx in range(12):
-                idx_to.append((mlp_layer_idx, f"blocks.{mlp_layer_idx}.hook_resid_mid", TorchIndex([None])))
+                idx_to.append((mlp_layer_idx, f"blocks.{mlp_layer_idx}.hook_mlp_in", TorchIndex([None])))
         else:
             idx_to = [
                 (layer_idx, f"blocks.{layer_idx}.hook_{letter}_input", TorchIndex([None, None, head_idx]))

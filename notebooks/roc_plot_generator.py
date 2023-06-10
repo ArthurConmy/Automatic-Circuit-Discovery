@@ -651,8 +651,7 @@ def get_canonical_corrs(exp):
     output = [
         (none_present_corr, {"score": 0.0}),
         (deepcopy(canonical_circuit_subgraph), {"score": 0.5}),
-        # Give up on the all_present_corr, due to the current ACDC implementation it takes a long time to compute.
-        # (all_present_corr, {"score": 1.0}),
+        (all_present_corr, {"score": 1.0}),
     ]
 
     for corr, score_d in output:
