@@ -46,9 +46,9 @@ class Unembed(torch.nn.Module):
         self.W_U: Float[torch.Tensor, "d_model d_vocab1 d_vocab2"] = nn.Parameter(
             torch.empty(self.d_model, self.d_vocab1, self.d_vocab2)
         )
-        self.b_U: Float[torch.Tensor, "d_vocab1 d_vocab2"] = nn.Parameter(
-            torch.zeros(self.d_vocab1, self.d_vocab2)
-        )
+        # self.b_U: Float[torch.Tensor, "d_vocab1 d_vocab2"] = nn.Parameter(
+        #     torch.zeros(self.d_vocab1, self.d_vocab2)
+        # )
 
     def forward(
         self, residual: Float[torch.Tensor, "batch d_model"]
@@ -59,7 +59,7 @@ class Unembed(torch.nn.Module):
                 self.W_U,
                 "batch d_model, d_model d_vocab1 d_vocab2 -> batch d_vocab1 d_vocab2",
             )
-            + self.b_U
+            # + self.b_U
         )
 
 #%%
@@ -175,7 +175,7 @@ class AndModel(HookedRootModule):
 
     def init_weights(self):
         if self.cfg.minimal_linears:
-            assert len(list(self.named_parameters()))==4, list(self.named_parameters()) # include unembed bias... ok...
+            assert len(list(self.named_parameters()))==3, list(self.named_parameters()) # include unembed  bias... ok...until i removed embveeigns'
             for name, param in self.named_parameters():
                 if "W_" in name: # W_in, W_out, W_E * 2, W_U
                     nn.init.normal_(param, std=(1/param.shape[0])**0.5)

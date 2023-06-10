@@ -55,7 +55,7 @@ cfg = Config(
     relu_at_end=False,
     minimal_linears=True,
 )
-train_cfg = TrainingConfig(num_epochs=1000, weight_decay=1e-2)
+train_cfg = TrainingConfig(num_epochs=1000, weight_decay=4e-2)
 
 #%%
 
@@ -72,21 +72,21 @@ all_outputs, cache = get_all_outputs(and_model, return_cache=True) # all_outputs
 
 # %%
 
-px.imshow(
-    cache["mlp.hook_post"],
-    animation_frame=-1,
-    zmin=-1,
-    zmax=1,
-    color_continuous_scale="RdBu",
-)
+# px.imshow(
+#     cache["mlp.hook_post"],
+#     animation_frame=-1,
+#     zmin=-1,
+#     zmax=1,
+#     color_continuous_scale="RdBu",
+# )
 
 # %%
 
-N_range = [3]
-d_mlp_range = range(2, 7)
-d_model_range = [3] # list(range(3, 11))
+N_range = [10]
+d_mlp_range = [20]
+d_model_range = range(20, 50, 10) # list(range(3, 11))
 seed_range = [3]
-num_epochs = 3000
+num_epochs = 500
 relu_at_end = False
 minimal_linears = True
 
@@ -95,14 +95,14 @@ cfg_list = [
     for N in N_range
     for d_mlp in d_mlp_range
     for d_model in d_model_range
-    for seed in seed_range
+    # for seed in d_model_range
 ]
 train_cfg_list = [
-    TrainingConfig(num_epochs=num_epochs, weight_decay=0.0, batch_size=N*N, seed=seed)
+    TrainingConfig(num_epochs=num_epochs, weight_decay=1e-2, batch_size=N*N, seed=d_model, learning_rate=1e-2)
     for N in N_range
     for d_mlp in d_mlp_range
     for d_model in d_model_range
-    for seed in seed_range
+    # for seed in d_model_range
 ]
 
 loss_tensor = sweep_train_model(cfg_list, train_cfg_list, save_models=True, verbose=True, show_plot=True)
