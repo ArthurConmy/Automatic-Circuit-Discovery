@@ -83,13 +83,15 @@ px.imshow(
 # %%
 
 N_range = [3]
-d_mlp_range = range(2, 11)
+d_mlp_range = range(2, 7)
 d_model_range = [3] # list(range(3, 11))
 seed_range = [3]
 num_epochs = 3000
+relu_at_end = False
+minimal_linears = True
 
 cfg_list = [
-    Config(N=N, M=N, d_model=d_model, d_mlp=d_mlp, relu_at_end=True, minimal_linears=True)
+    Config(N=N, M=N, d_model=d_model, d_mlp=d_mlp, relu_at_end=relu_at_end, minimal_linears=minimal_linears)
     for N in N_range
     for d_mlp in d_mlp_range
     for d_model in d_model_range
@@ -112,38 +114,33 @@ px.line(loss_list)
 
 #%% 
 
-and_model = AndModel(cfg_list[0])
-and_model.load_state_dict(t.load("repo_models/and_model_Config_N=3_M=3_d_model=3_d_mlp=2_relu_at_end=True_correct=6.pth"))
+for i, d_mlp in enumerate(d_mlp_range):
+    and_model = AndModel(cfg_list[i])
+    and_model.load_state_dict(t.load(f"saved_models/and_model_Config(N=3, M=3, d_model=3, d_mlp={d_mlp}, relu_at_end=True, minimal_linears=True).pth"))
+    outputs, cache = get_all_outputs(and_model, return_cache=True)
 
-# %%
+    imshow(
+        einops.rearrange(outputs, "n m ... -> (n m) ..."),
+        animation_frame=0,
+        title="Outputs",
+    )
 
-outputs, cache = get_all_outputs(and_model, return_cache=True)
+    imshow(
+        cache["hook_resid_post"],
+        facet_col=-1,
+        title="Neuron activations post",
+    )
 
-# %%
+    # neuron_outs = einops.einsum(
+    #     and_model.mlp.W_out,
+    #     and_model.unembed.W_U,
+    #     "d_mlp d_model, d_model N M -> d_mlp N M",
+    # )
 
-imshow(
-    einops.rearrange(outputs, "n m ... -> (n m) ..."),
-    animation_frame=0,
-)
+    # imshow(
+    #     neuron_outs,
+    #     facet_col=0,
+    #     title="Neuron contributions",
+    # )
 
-# %%
-
-imshow(
-    cache["mlp.hook_post"],
-    facet_col=-1,
-    title="Neuron activations post",
-)
-# %%
-
-neuron_outs = einops.einsum(
-    and_model.mlp.W_out,
-    and_model.unembed.W_U,
-    "d_mlp d_model, d_model N M -> d_mlp N M",
-)
-
-imshow(
-    neuron_outs,
-    facet_col=0,
-    title="Neuron contribtions",
-)
 # %%

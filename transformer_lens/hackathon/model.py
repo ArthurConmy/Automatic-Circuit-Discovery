@@ -149,6 +149,7 @@ class AndModel(HookedRootModule):
             self.hook_embed1 = HookPoint()
             self.embed2 = Embed(d_model = cfg.d_mlp, d_vocab = cfg.M)
             self.hook_embed2 = HookPoint()
+            self.hook_resid_post = HookPoint()  
             self.unembed = Unembed(d_model = cfg.d_mlp, d_vocab1 = cfg.N, d_vocab2 = cfg.M)
 
         else:
@@ -192,7 +193,7 @@ class AndModel(HookedRootModule):
         if self.cfg.minimal_linears:
             e1 = self.hook_embed1(self.embed1(x[:, 0]))
             e2 = self.hook_embed2(self.embed2(x[:, 1]))
-            unembed = self.unembed(F.relu(e1 + e2))
+            unembed = self.unembed(self.hook_resid_post(F.relu(e1 + e2)))
             return unembed
 
         else:
