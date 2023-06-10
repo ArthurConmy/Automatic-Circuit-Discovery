@@ -12,6 +12,7 @@ import os
 os.environ["ACCELERATE_DISABLE_RICH"] = "1"
 import torch.nn as nn
 from transformer_lens.HookedTransformer import HookedRootModule, HookPoint
+from transformer_lens.utils import to_numpy
 import torch
 import einops
 import torch.nn as nn
@@ -22,6 +23,7 @@ from dataclasses import dataclass
 from tqdm import tqdm
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 #%%
 
@@ -142,6 +144,7 @@ class AndModel(HookedRootModule):
     def __init__(self, cfg: Config):
         super().__init__()
 
+        self.cfg = cfg
         self.embed1 = Embed(d_model=cfg.d_model, d_vocab=cfg.N)
         self.hook_embed1 = HookPoint()
         self.embed2 = Embed(d_model=cfg.d_model, d_vocab=cfg.M)
@@ -264,6 +267,7 @@ def train_model(cfg: Config, train_cfg: TrainingConfig):
     return and_model, loss_list
 
 
+
 cfg = Config(d_mlp=100, d_model=100, relu_at_end=True)
 train_cfg = TrainingConfig(num_epochs=1000, weight_decay=0.0)
 and_model, loss_list = train_model(cfg, train_cfg)
@@ -271,11 +275,23 @@ and_model, loss_list = train_model(cfg, train_cfg)
 import plotly.express as px
 px.line(loss_list)
 
+#%%
+
+def get_all_outputs(model: AndModel):
+    all_data, all_labels = get_all_data(N=model.cfg.N, M=model.cfg.M)
+    all_outputs = to_numpy(model(all_data))
+    return all_outputs
+
+all_outputs = get_all_outputs(and_model) # N*M, N, M
+
 # %%
 
 # plotly code to vizualize output
-
 px.imshow(
-    # 3D tensor,
+    all_outputs,
     animation_frame=0,
+    zmin=-1,
+    zmax=1,
+    color_continuous_scale="RdBu",
 )
+# %%
