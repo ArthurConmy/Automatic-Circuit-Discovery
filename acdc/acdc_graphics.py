@@ -96,6 +96,8 @@ def show(
     colorscheme: dict | str = "Pastel2",
     minimum_penwidth: float = 0.3,
     show_full_index: bool = True,
+    remove_self_loops: bool = True,
+    remove_qkv: bool = False,
 ) -> pgv.AGraph:
     """
     Colorscheme: a color for each node name, or a string corresponding to a cmapy color scheme
@@ -120,6 +122,14 @@ def show(
                     parent_name = get_node_name(parent, show_full_index=show_full_index)
                     child_name = get_node_name(child, show_full_index=show_full_index)
 
+                    if remove_qkv:
+                        parent_name = parent_name.replace("_q>", ">").replace("_k>", ">").replace("_v>", ">")
+                        child_name = child_name.replace("_q>", ">").replace("_k>", ">").replace("_v>", ">")
+
+                    if remove_self_loops and parent_name == child_name:
+                        # Important this go after the qkv removal
+                        continue
+
                     if edge.present and edge.effect_size is not None and edge.edge_type != EdgeType.PLACEHOLDER:
                         for node_name in [parent_name, child_name]:
                             g.add_node(
@@ -140,7 +150,8 @@ def show(
     if fname is not None:
         gv_fname = ".".join(str(fname).split(".")[:-1]) + ".gv"
         g.write(path=gv_fname)
-        g.draw(path=fname, prog="dot")
+        if gv_fname != fname:
+            g.draw(path=fname, prog="dot")
     return g
 
 # -------------------------------------------
