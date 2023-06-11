@@ -233,8 +233,15 @@ dataset = [train_dataset[i]["text"] for i in range(len(train_dataset))]
 
 # %%
 
-# Let's see if 10.7 can be approximated as having zero bias, or whether it consistently pushes for/against some tokens
-# ... let's do it one document at a time for ease ...
+# In this cell I look at the sequence positions where the
+# NORM of the 10.7 output (divided by the layer norm scale)
+# is very large across several documents
+# 
+# we find that 
+# i) just like in IOI, the top tokens are not interpretable and the bottom tokens repress certain tokens in prompt
+# ii) unlike in IOI it seems that it is helpfully blocks the wrong tokens from prompt from being activated - example:
+# 
+# ' blacks', ' are', ' arrested', ' for', ' marijuana', ' possession', ' between', ' four', ' and', ' twelve', ' times', ' more', ' than'] -> 10.7 REPRESSES " blacks"
 
 contributions = []
 
@@ -283,42 +290,3 @@ for i in tqdm(list(range(2)) + [5]):
                 print(model.tokenizer.decode(i))
 
 full_contributions = t.cat(contributions, dim=0)
-
-#%%
-
-# Some dataset statistics suggest that probably 
-# i) 11.10 has a persistent bias towards/against some tokens
-# ii) There are certain token positions where it pushes for *somethings* way more than other positsions
-
-# Evidence for i) 
-print(full_contributions.mean(dim=0).norm().item()) # fairly large
-print(full_contributions.norm(dim=0).mean().item()) # almost as large # TODO nail what I'm trying to measure here
-
-px.histogram(to_tensor(full_contributions.norm(dim=0)), title="Distributions of 11.10 contribution-to-each-logit norms").show()
-px.histogram(to_tensor(full_contributions.mean(dim=0)), title="Distributions of 11.10 mean-contribution-to-each-logit").show()
-px.histogram(to_tensor(full_contributions[4]), title="Distribution of logit contributions for a single token pos").show() # so similar to Previous!!!
-
-#%%
-
-mean_contributions_to_tokens = full_contributions.mean(dim=0)
-top_tokens = t.topk(mean_contributions_to_tokens, 10).indices
-bottom_tokens = t.topk(-mean_contributions_to_tokens, 10).indices
-
-print("TOP TOKENS")
-for i in top_tokens:
-    print(model.tokenizer.decode(i))
-print()
-print("BOTTOM TOKENS")
-for i in bottom_tokens:
-    print(model.tokenizer.decode(i))
-
-# %%
-
-# That didn't help. Maybe isolating the heavy tail of logit norms???
-px.histogram(to_tensor(full_contributions.norm(dim=1)), title="Distributions of 11.10 contribution-to-each-logit norms").show()
-
-# %%
-
-# OBSERVATION: the top outputs are almost never interpretable and the bottom outputs almost always are... --- they seem to repress copying:
-#
-# GOOD: [',', ' which', ' is', ' in', ' favor', ' of', ' legalization', ',', ' blacks', ' are', ' arrested', ' for', ' marijuana', ' possession', ' between', ' four', ' and', ' twelve', ' times', ' more', ' than'] -> 11.10 blocks " blacks"
