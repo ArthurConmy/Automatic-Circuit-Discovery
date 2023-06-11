@@ -1,23 +1,22 @@
 # %%
 
 import os
-
+os.environ["ACCELERATE_DISABLE_RICH"] = "1"
 from typeguard import typechecked
-
 from transformer_lens import HookedTransformer
 from transformer_lens.hook_points import HookPoint
-os.environ["ACCELERATE_DISABLE_RICH"] = "1"
-# os.getcwd(C:\Users\calsm\Documents\AI Alignment\SERIMATS_23\TransformerLens\transformer_lens)
 from IPython import get_ipython
 ipython = get_ipython()
 ipython.run_line_magic("load_ext", "autoreload")
 ipython.run_line_magic("autoreload", "2")
 
 import torch as t
+import torch
 import einops
 import plotly.express as px
 import numpy as np
 from datasets import load_dataset
+from functools import partial
 from tqdm import tqdm
 from jaxtyping import Float, Int, jaxtyped
 from typing import Union, List, Dict, Tuple, Callable, Optional
@@ -217,36 +216,36 @@ print(f"Top-5 accuracy of full QK circuit: {top_5_acc_iteration(full_QK_circuit)
 
 # %%
 
+def lock_attn(
+    attn_patterns: Float[t.Tensor, "batch head_idx dest_pos src_pos"],
+    hook: HookPoint,
+    ablate: bool = False,
+) -> Float[t.Tensor, "batch head_idx dest_pos src_pos"]:
+    
+    assert isinstance(attn_patterns, Float[t.Tensor, "batch head_idx dest_pos src_pos"])
+    assert hook.layer() == 0
+
+    batch, n_heads, seq_len = attn_patterns.shape[:3]
+    attn_new = einops.repeat(t.eye(seq_len), "dest src -> batch head_idx dest src", batch=batch, head_idx=n_heads).clone().to(attn_patterns.device)
+    if ablate:
+        attn_new = attn_new * 0
+    return attn_new
+
 def fwd_pass_lock_attn0_to_self(
     model: HookedTransformer,
     input: Union[List[str], Int[t.Tensor, "batch seq_pos"]],
-    ablate: bool = False
+    ablate: bool = False,
 ) -> Float[t.Tensor, "batch seq_pos d_vocab"]:
 
     model.reset_hooks()
-
-    def hook_attn(
-        attn_patterns: Float[t.Tensor, "batch head_idx dest_pos src_pos"],
-        hook: HookPoint
-    ) -> Float[t.Tensor, "batch head_idx dest_pos src_pos"]:
-        
-        assert isinstance(attn_patterns, Float[t.Tensor, "batch head_idx dest_pos src_pos"])
-        assert hook.layer() == 0
-
-        batch, n_heads, seq_len = attn_patterns.shape[:3]
-        attn_new = einops.repeat(t.eye(seq_len), "dest src -> batch head_idx dest src", batch=batch, head_idx=n_heads).clone().to(attn_patterns.device)
-        if ablate:
-            attn_new = attn_new * 0
-        return attn_new
     
     loss = model.run_with_hooks(
         input,
         return_type="loss",
-        fwd_hooks=[(utils.get_act_name("pattern", 0), hook_attn)],
+        fwd_hooks=[(utils.get_act_name("pattern", 0), partial(lock_attn, ablate=ablate))],
     )
 
     return loss
-
 
 # %%
 
@@ -268,5 +267,64 @@ for i, s in enumerate(dataset):
 
     if i == 5:
         break
+
+# %%
+
+# Calculate W_{TE} edit
+
+batch_size = 1000
+nrows = model.cfg.d_vocab
+W_TE = t.zeros((nrows, model.cfg.d_model)).to(DEVICE)
+
+for i in tqdm(range(0, nrows + batch_size, batch_size)):
+    cur_range = t.tensor(range(i, min(i + batch_size, nrows)))
+    if len(cur_range)>0:
+        embeds = W_E[cur_range].unsqueeze(0)
+        pre_attention = model.blocks[0].ln1(embeds)
+        post_attention = einops.einsum(
+            pre_attention, 
+            model.W_V[0],
+            model.W_O[0],
+            "b s d_model, num_heads d_model d_head, num_heads d_head d_model_out -> b s d_model_out",
+        )
+        normalized_resid_mid = model.blocks[0].ln2(post_attention + embeds)
+        resid_post = model.blocks[0].mlp(normalized_resid_mid)
+        W_TE[cur_range.to(DEVICE)] = resid_post
+
+# %%
+
+# sanity check this is the same 
+
+def remove_pos_embed(z, hook):
+    return 0.0 * z
+
+# setup a forward pass that 
+model.reset_hooks()
+model.add_hook(
+    name="hook_pos_embed",
+    hook=remove_pos_embed,
+    level=1, # ???
+) 
+model.add_hook(
+    name=utils.get_act_name("pattern", 0),
+    hook=lock_attn,
+)
+logits, cache = model.run_with_cache(
+    torch.arange(1000).to(DEVICE).unsqueeze(0),
+    names_filter=lambda name: name=="blocks.1.hook_resid_pre",
+    return_type="logits",
+)
+
+#%%
+
+W_TE_test = cache["blocks.1.hook_resid_pre"].squeeze(0)
+W_TE_prefix = W_TE_test[:1000]
+
+assert torch.allclose(
+    W_TE_prefix,
+    W_TE_test,
+    atol=1e-4,
+    rtol=1e-43,
+)   
 
 # %%
