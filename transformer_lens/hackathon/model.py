@@ -53,13 +53,20 @@ class Unembed(torch.nn.Module):
     def forward(
         self, residual: Float[torch.Tensor, "batch d_model"]
     ) -> Float[torch.Tensor, "batch d_vocab1 d_vocab2"]:
-        return (
+        ans1= (
             einops.einsum(
                 residual,
                 self.W_U,
                 "batch d_model, d_model d_vocab1 d_vocab2 -> batch d_vocab1 d_vocab2",
             )
             # + self.b_U
+        )
+        ans2 = einops.rearrange(
+            ans1, "batch d_vocab1 d_vocab2 -> batch (d_vocab1 d_vocab2)", d_vocab1=self.d_vocab1, d_vocab2=self.d_vocab2
+        )
+        ans3 = torch.softmax(ans2, dim=-1)
+        return einops.rearrange(
+            ans3, "batch (d_vocab1 d_vocab2) -> batch d_vocab1 d_vocab2", d_vocab1=self.d_vocab1, d_vocab2=self.d_vocab2
         )
 
 #%%
@@ -194,6 +201,7 @@ class AndModel(HookedRootModule):
             e1 = self.hook_embed1(self.embed1(x[:, 0]))
             e2 = self.hook_embed2(self.embed2(x[:, 1]))
             unembed = self.unembed(self.hook_resid_post(F.relu(e1 + e2)))
+            
             return unembed
 
         else:
@@ -249,3 +257,4 @@ def get_all_outputs(model: AndModel, return_cache=False):
             )
 
     return all_outputs, all_cache
+# %%

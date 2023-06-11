@@ -82,27 +82,28 @@ all_outputs, cache = get_all_outputs(and_model, return_cache=True) # all_outputs
 
 # %%
 
-N_range = [10]
-d_mlp_range = [20]
-d_model_range = range(20, 50, 10) # list(range(3, 11))
+N_range = [3]
+d_mlp_range = [2]
+d_model_range = [4] # list(range(3, 11))
 seed_range = [3]
-num_epochs = 500
+num_epochs = 3000
 relu_at_end = False
 minimal_linears = True
+seeds = list(range(5,9))
 
 cfg_list = [
     Config(N=N, M=N, d_model=d_model, d_mlp=d_mlp, relu_at_end=relu_at_end, minimal_linears=minimal_linears)
     for N in N_range
     for d_mlp in d_mlp_range
     for d_model in d_model_range
-    # for seed in d_model_range
+    for seed in seeds
 ]
 train_cfg_list = [
     TrainingConfig(num_epochs=num_epochs, weight_decay=1e-2, batch_size=N*N, seed=d_model, learning_rate=1e-2)
     for N in N_range
     for d_mlp in d_mlp_range
     for d_model in d_model_range
-    # for seed in d_model_range
+    for seed in seeds
 ]
 
 loss_tensor = sweep_train_model(cfg_list, train_cfg_list, save_models=True, verbose=True, show_plot=True)
@@ -116,7 +117,7 @@ px.line(loss_list)
 
 for i, d_mlp in enumerate(d_mlp_range):
     and_model = AndModel(cfg_list[i])
-    and_model.load_state_dict(t.load(f"saved_models/and_model_Config(N=3, M=3, d_model=3, d_mlp={d_mlp}, relu_at_end=True, minimal_linears=True).pth"))
+    and_model.load_state_dict(t.load(f"saved_models/and_model_Config(N=3, M=3, d_model=4, d_mlp=2, relu_at_end=False, minimal_linears=True).pth"))
     outputs, cache = get_all_outputs(and_model, return_cache=True)
 
     imshow(
@@ -131,16 +132,12 @@ for i, d_mlp in enumerate(d_mlp_range):
         title="Neuron activations post",
     )
 
-    # neuron_outs = einops.einsum(
-    #     and_model.mlp.W_out,
-    #     and_model.unembed.W_U,
-    #     "d_mlp d_model, d_model N M -> d_mlp N M",
-    # )
+    unembed = and_model.unembed.W_U.detach().numpy()
+    unembed[0]=-unembed[0]
 
-    # imshow(
-    #     neuron_outs,
-    #     facet_col=0,
-    #     title="Neuron contributions",
-    # )
+    imshow(
+        unembed,
+        facet_col=0,
+    )
 
 # %%
