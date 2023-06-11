@@ -34,7 +34,7 @@ t.set_grad_enabled(False)
 
 # %%
 
-def to_EEnsor(
+def to_tensor(
     tensor,
 ):
     return t.from_numpy(to_numpy(tensor))
@@ -43,7 +43,7 @@ def imshow(
     tensor, 
     **kwargs,
 ):
-    tensor = to_EEnsor(tensor)
+    tensor = to_tensor(tensor)
     zmax = tensor.abs().max().item()
 
     if "zmin" not in kwargs:
@@ -58,7 +58,7 @@ def imshow(
         **kwargs,
     )
     fig.show()
-def to_EEnsor(
+def to_tensor(
     tensor,
 ):
     return t.from_numpy(to_numpy(tensor))
@@ -67,7 +67,7 @@ def imshow(
     tensor, 
     **kwargs,
 ):
-    tensor = to_EEnsor(tensor)
+    tensor = to_tensor(tensor)
     zmax = tensor.abs().max().item()
 
     if "zmin" not in kwargs:
@@ -145,8 +145,8 @@ imshow(
 # %%
 
 W_U = model.W_U
-W_Q = model.W_Q[10, 7]
-W_K = model.W_K[10, 7]
+W_Q_ten_seven = model.W_Q[10, 7]
+W_K_ten_seven = model.W_K[10, 7]
 W_E = model.W_E
 
 # ! question - what's the approximation of GPT2-small's embedding?
@@ -156,7 +156,7 @@ W_E = model.W_E
 
 from transformer_lens import FactoredMatrix
 
-full_QK_circuit = FactoredMatrix(W_U.T @ W_Q, W_K.T @ W_E.T)
+full_QK_circuit = FactoredMatrix(W_U.T @ W_Q_ten_seven, W_K_ten_seven.T @ W_E.T)
 
 indices = t.randint(0, model.cfg.d_vocab, (250,))
 full_QK_circuit_sample = full_QK_circuit.A[indices, :] @ full_QK_circuit.B[:, indices]
@@ -329,16 +329,33 @@ assert torch.allclose(
 
 # %%
 
-EE_QK_circuit = FactoredMatrix(W_U.T @ W_Q, W_K.T @ W_EE.T)
+def show_EE_QK_circuit_plot(
+    layer_idx,
+    head_idx,
+):
+    W_Q_head = model.W_Q[layer_idx, head_idx]
+    W_K_head = model.W_K[layer_idx, head_idx]
 
-indices = t.randint(0, model.cfg.d_vocab, (250,))
-EE_QK_circuit_sample = EE_QK_circuit.A[indices, :] @ EE_QK_circuit.B[:, indices]
+    EE_QK_circuit = FactoredMatrix(W_U.T @ W_Q_head, W_K_head.T @ W_EE.T)
 
-EE_QK_circuit_sample_centered = EE_QK_circuit_sample - EE_QK_circuit_sample.mean(dim=1, keepdim=True)
+    indices = t.randint(0, model.cfg.d_vocab, (250,))
+    EE_QK_circuit_sample = EE_QK_circuit.A[indices, :] @ EE_QK_circuit.B[:, indices]
 
-imshow(
-    EE_QK_circuit_sample_centered,
-    labels={"x": "Source / key token (embedding)", "y": "Destination / query token (unembedding)"},
-    title="EE QK circuit for negative name mover head",
-    width=700,
-)
+    EE_QK_circuit_sample_centered = EE_QK_circuit_sample - EE_QK_circuit_sample.mean(dim=1, keepdim=True)
+
+    imshow(
+        EE_QK_circuit_sample_centered,
+        labels={"x": "Source / key token (embedding)", "y": "Destination / query token (unembedding)"},
+        title=f"EE QK circuit for head {layer_idx}.{head_idx}",
+        width=700,
+    )
+
+show_EE_QK_circuit_plot(10, 7)
+
+# %%
+
+for layer in range(11, 12):
+    for head in range(12):
+        show_EE_QK_circuit_plot(layer, head)
+
+# %%
