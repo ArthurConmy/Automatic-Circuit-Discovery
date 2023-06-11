@@ -34,7 +34,7 @@ t.set_grad_enabled(False)
 
 # %%
 
-def to_tensor(
+def to_EEnsor(
     tensor,
 ):
     return t.from_numpy(to_numpy(tensor))
@@ -43,7 +43,7 @@ def imshow(
     tensor, 
     **kwargs,
 ):
-    tensor = to_tensor(tensor)
+    tensor = to_EEnsor(tensor)
     zmax = tensor.abs().max().item()
 
     if "zmin" not in kwargs:
@@ -58,7 +58,7 @@ def imshow(
         **kwargs,
     )
     fig.show()
-def to_tensor(
+def to_EEnsor(
     tensor,
 ):
     return t.from_numpy(to_numpy(tensor))
@@ -67,7 +67,7 @@ def imshow(
     tensor, 
     **kwargs,
 ):
-    tensor = to_tensor(tensor)
+    tensor = to_EEnsor(tensor)
     zmax = tensor.abs().max().item()
 
     if "zmin" not in kwargs:
@@ -274,7 +274,7 @@ for i, s in enumerate(dataset):
 
 batch_size = 1000
 nrows = model.cfg.d_vocab
-W_TE = t.zeros((nrows, model.cfg.d_model)).to(DEVICE)
+W_EE = t.zeros((nrows, model.cfg.d_model)).to(DEVICE)
 
 for i in tqdm(range(0, nrows + batch_size, batch_size)):
     cur_range = t.tensor(range(i, min(i + batch_size, nrows)))
@@ -289,7 +289,7 @@ for i in tqdm(range(0, nrows + batch_size, batch_size)):
         )
         normalized_resid_mid = model.blocks[0].ln2(post_attention + embeds)
         resid_post = model.blocks[0].mlp(normalized_resid_mid)
-        W_TE[cur_range.to(DEVICE)] = resid_post
+        W_EE[cur_range.to(DEVICE)] = resid_post
 
 # %%
 
@@ -317,14 +317,28 @@ logits, cache = model.run_with_cache(
 
 #%%
 
-W_TE_test = cache["blocks.1.hook_resid_pre"].squeeze(0)
-W_TE_prefix = W_TE_test[:1000]
+W_EE_test = cache["blocks.1.hook_resid_pre"].squeeze(0)
+W_EE_prefix = W_EE_test[:1000]
 
 assert torch.allclose(
-    W_TE_prefix,
-    W_TE_test,
+    W_EE_prefix,
+    W_EE_test,
     atol=1e-4,
-    rtol=1e-43,
+    rtol=1e-4,
 )   
 
 # %%
+
+EE_QK_circuit = FactoredMatrix(W_U.T @ W_Q, W_K.T @ W_EE.T)
+
+indices = t.randint(0, model.cfg.d_vocab, (250,))
+EE_QK_circuit_sample = EE_QK_circuit.A[indices, :] @ EE_QK_circuit.B[:, indices]
+
+EE_QK_circuit_sample_centered = EE_QK_circuit_sample - EE_QK_circuit_sample.mean(dim=1, keepdim=True)
+
+imshow(
+    EE_QK_circuit_sample_centered,
+    labels={"x": "Source / key token (embedding)", "y": "Destination / query token (unembedding)"},
+    title="EE QK circuit for negative name mover head",
+    width=700,
+)
