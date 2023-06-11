@@ -173,6 +173,13 @@ for i in range(12):
         logit_diff_directions, # model.W_U, # TODO Arthur memorise these...
         "b n d, b d -> b n",
     )
+    
+    unembedding = model.W_U.clone()
+    unembedding = model.unembed.W_U.clone()
+
+    # layer_attribution_old = einops.einsum(
+
+    # )
 
     for j in range(12):
         logit_attribution[i, j] = layer_attribution[:, j].mean()
