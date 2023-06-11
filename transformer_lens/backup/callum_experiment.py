@@ -257,34 +257,57 @@ assert torch.allclose(
     rtol=1e-4,
 )
 # %%
+
 def get_EE_QK_circuit(
     layer_idx,
     head_idx,
-    num_samples: int = 200,
-    show_plot: bool = False
+    random_seeds: int = 5,
+    num_samples: int = 500,
+    show_plot: bool = False,
+    # bag_of_words_version: bool = False,
 ):
     W_Q_head = model.W_Q[layer_idx, head_idx]
     W_K_head = model.W_K[layer_idx, head_idx]
     EE_QK_circuit = FactoredMatrix(W_U.T @ W_Q_head, W_K_head.T @ W_EE.T)
-    indices = t.randint(0, model.cfg.d_vocab, (num_samples,))
-    EE_QK_circuit_sample = EE_QK_circuit.A[indices, :] @ EE_QK_circuit.B[:, indices]
-    EE_QK_circuit_sample_centered = EE_QK_circuit_sample - EE_QK_circuit_sample.mean(dim=1, keepdim=True)
+
+    EE_QK_circuit_result = t.zeros((num_samples, num_samples))
+
+    for random_seed in range(random_seeds):
+        indices = t.randint(0, model.cfg.d_vocab, (num_samples,))
+
+        EE_QK_circuit_sample = einops.einsum(
+            EE_QK_circuit.A[indices, :],
+            EE_QK_circuit.B[:, indices],
+            "num_query_samples d_head, d_head num_key_samples -> num_query_samples num_key_samples"
+        )
+
+        # we're going to take a softmax so the constant factor is arbitrary 
+        # and it's a good idea to centre all these results so adding them up is reasonable
+        EE_QK_mean = EE_QK_circuit_sample.mean(dim=1, keepdim=True)
+        EE_QK_circuit_sample_centered = EE_QK_circuit_sample - EE_QK_mean 
+        EE_QK_circuit_result += (EE_QK_circuit_sample_centered @ EE_QK_circuit_sample_centered.T).cpu()
+
+    EE_QK_circuit_result /= random_seeds
+
     if show_plot:
         imshow(
             EE_QK_circuit_sample_centered,
-            labels={"x": "Source / key token (embedding)", "y": "Destination / query token (unembedding)"},
+            labels={"x": "Source/Key Token (embedding)", "y": "Destination / Query Token (unembedding)"},
             title=f"EE QK circuit for head {layer_idx}.{head_idx}",
             width=700,
         )
+
     return EE_QK_circuit_sample_centered
-# show_EE_QK_circuit_plot(10, 7)
+
 # %%
+
 import itertools
 results = t.zeros(12, 12)
 for layer, head in tqdm(list(itertools.product(range(12), range(12)))):
-        softmaxed_attn = get_EE_QK_circuit(layer, head).softmax(-1)
+        softmaxed_attn = get_EE_QK_circuit(layer, head, show_plot=False).softmax(-1)
         diff = (softmaxed_attn - t.eye(softmaxed_attn.shape[0]).to(DEVICE)).norm()
         # diff = softmaxed_attn.diag().mean()
         results[layer, head] = diff
 imshow(results)
+
 # %%
