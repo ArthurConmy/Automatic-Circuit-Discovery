@@ -1,4 +1,5 @@
 # %%
+
 import os
 os.environ["ACCELERATE_DISABLE_RICH"] = "1"
 from typeguard import typechecked
@@ -8,6 +9,7 @@ from IPython import get_ipython
 ipython = get_ipython()
 ipython.run_line_magic("load_ext", "autoreload")
 ipython.run_line_magic("autoreload", "2")
+
 import torch as t
 import torch
 import einops
@@ -28,36 +30,46 @@ from transformer_lens.utils import to_numpy
 from transformer_lens.hackathon.sweep import sweep_train_model
 from transformer_lens.hackathon.model import AndModel, Config, get_all_data, get_all_outputs
 from transformer_lens.hackathon.train import TrainingConfig, train_model
+
 t.set_grad_enabled(False)
+
 # %%
+
 def to_tensor(
     tensor,
 ):
     return t.from_numpy(to_numpy(tensor))
+
 def imshow(
-    tensor,
+    tensor, 
     **kwargs,
 ):
     tensor = to_tensor(tensor)
     zmax = tensor.abs().max().item()
+
     if "zmin" not in kwargs:
         kwargs["zmin"] = -zmax
     if "zmax" not in kwargs:
         kwargs["zmax"] = zmax
     if "color_continuous_scale" not in kwargs:
         kwargs["color_continuous_scale"] = "RdBu"
+
     fig = px.imshow(
         to_numpy(tensor),
         **kwargs,
     )
     fig.show()
+# %%
+
+model = transformer_lens.HookedTransformer.from_pretrained("gpt2")
+
+from transformer_lens.backup.ioi_dataset import IOIDataset, NAMES
 
 # %%
-model = transformer_lens.HookedTransformer.from_pretrained("gpt2")
-from transformer_lens.backup.ioi_dataset import IOIDataset, NAMES
-# %%
+
 N = 10
 DEVICE = "cuda" if t.cuda.is_available() else "cpu"
+
 ioi_dataset = IOIDataset(
     prompt_type="mixed",
     N=N,
@@ -66,16 +78,24 @@ ioi_dataset = IOIDataset(
     seed=1,
     device=DEVICE,
 )
+
 #%%
+
 model.set_use_attn_result(False)
 model.set_use_split_qkv_input(True)
+
 # %%
+
 # reproduce name mover heatmap
+
 logits, cache = model.run_with_cache(
     ioi_dataset.toks,
     names_filter = lambda name: name.endswith("z"),
 )
+
+
 # %%
+
 logit_attribution = t.zeros((12, 12))
 for i in range(12):
     attn_result = einops.einsum(
@@ -84,39 +104,52 @@ for i in range(12):
         "batch head_idx d_head, head_idx d_head d_model -> batch head_idx d_model",
     )
     logit_dir = model.W_U.clone()[:, ioi_dataset.io_tokenIDs] - model.W_U.clone()[:, ioi_dataset.s_tokenIDs]
+
     layer_attribution_old = einops.einsum(
         attn_result,
         logit_dir,
         "batch head_idx d_model, d_model batch -> batch head_idx",
     )
+
     for j in range(12):
         logit_attribution[i, j] = layer_attribution_old[:, j].mean()
+
 # %%
+
 imshow(
     logit_attribution,
 )
 # %%
+
 W_U = model.W_U
 W_Q_ten_seven = model.W_Q[10, 7]
 W_K_ten_seven = model.W_K[10, 7]
 W_E = model.W_E
+
 # ! question - what's the approximation of GPT2-small's embedding?
 # lock attn to 1 at current position
 # lock attn to average
 # don't include attention
+
 from transformer_lens import FactoredMatrix
+
 full_QK_circuit = FactoredMatrix(W_U.T @ W_Q_ten_seven, W_K_ten_seven.T @ W_E.T)
+
 indices = t.randint(0, model.cfg.d_vocab, (250,))
 full_QK_circuit_sample = full_QK_circuit.A[indices, :] @ full_QK_circuit.B[:, indices]
+
 full_QK_circuit_sample_centered = full_QK_circuit_sample - full_QK_circuit_sample.mean(dim=1, keepdim=True)
+
 imshow(
     full_QK_circuit_sample_centered,
     labels={"x": "Source / key token (embedding)", "y": "Destination / query token (unembedding)"},
     title="Full QK circuit for negative name mover head",
     width=700,
 )
+
 # %%
-def top_1_acc_iteration(full_QK_circuit: FactoredMatrix, batch_size: int = 100) -> float:
+
+def top_1_acc_iteration(full_QK_circuit: FactoredMatrix, batch_size: int = 100) -> float: 
     '''
     This should take the argmax of each row (i.e. over dim=1) and return the fraction of the time that's equal to the correct logit
     '''
@@ -124,15 +157,20 @@ def top_1_acc_iteration(full_QK_circuit: FactoredMatrix, batch_size: int = 100) 
     A, B = full_QK_circuit.A, full_QK_circuit.B
     nrows = full_QK_circuit.shape[0]
     nrows_max_on_diagonal = 0
+
     for i in tqdm(range(0, nrows + batch_size, batch_size)):
         rng = range(i, min(i + batch_size, nrows))
         if rng:
             submatrix = A[rng, :] @ B
             diag_indices = t.tensor(rng, device=submatrix.device)
             nrows_max_on_diagonal += (submatrix.argmax(-1) == diag_indices).float().sum().item()
+    
     return nrows_max_on_diagonal / nrows
+
 print(f"Top-1 accuracy of full QK circuit: {top_1_acc_iteration(full_QK_circuit):.2%}")
+
 # %%
+
 def top_5_acc_iteration(full_OV_circuit: FactoredMatrix, batch_size: int = 100) -> float:
     '''
     This should take the argmax of each column (ie over dim=0) and return the fraction of the time that's equal to the correct logit
@@ -140,6 +178,7 @@ def top_5_acc_iteration(full_OV_circuit: FactoredMatrix, batch_size: int = 100) 
     A, B = full_OV_circuit.A, full_OV_circuit.B
     nrows = full_OV_circuit.shape[0]
     nrows_top5_on_diagonal = 0
+
     for i in tqdm(range(0, nrows + batch_size, batch_size)):
         rng = range(i, min(i + batch_size, nrows))
         if rng:
@@ -147,38 +186,52 @@ def top_5_acc_iteration(full_OV_circuit: FactoredMatrix, batch_size: int = 100) 
             diag_indices = t.tensor(rng, device=submatrix.device).unsqueeze(-1)
             top5 = t.topk(submatrix, k=5).indices
             nrows_top5_on_diagonal += (diag_indices == top5).sum().item()
+
     return nrows_top5_on_diagonal / nrows
+
 print(f"Top-5 accuracy of full QK circuit: {top_5_acc_iteration(full_QK_circuit):.2%}")
+
 # %%
+
 def lock_attn(
     attn_patterns: Float[t.Tensor, "batch head_idx dest_pos src_pos"],
     hook: HookPoint,
     ablate: bool = False,
 ) -> Float[t.Tensor, "batch head_idx dest_pos src_pos"]:
+    
     assert isinstance(attn_patterns, Float[t.Tensor, "batch head_idx dest_pos src_pos"])
     assert hook.layer() == 0
+
     batch, n_heads, seq_len = attn_patterns.shape[:3]
     attn_new = einops.repeat(t.eye(seq_len), "dest src -> batch head_idx dest src", batch=batch, head_idx=n_heads).clone().to(attn_patterns.device)
     if ablate:
         attn_new = attn_new * 0
     return attn_new
+
 def fwd_pass_lock_attn0_to_self(
     model: HookedTransformer,
     input: Union[List[str], Int[t.Tensor, "batch seq_pos"]],
     ablate: bool = False,
 ) -> Float[t.Tensor, "batch seq_pos d_vocab"]:
+
     model.reset_hooks()
+    
     loss = model.run_with_hooks(
         input,
         return_type="loss",
         fwd_hooks=[(utils.get_act_name("pattern", 0), partial(lock_attn, ablate=ablate))],
     )
+
     return loss
+
 # %%
+
 raw_dataset = load_dataset("stas/openwebtext-10k")
 train_dataset = raw_dataset["train"]
 dataset = [train_dataset[i]["text"] for i in range(len(train_dataset))]
+
 # %%
+
 for i, s in enumerate(dataset):
     loss_hooked = fwd_pass_lock_attn0_to_self(model, s)
     print(f"Loss with attn locked to self: {loss_hooked:.2f}")
@@ -186,21 +239,27 @@ for i, s in enumerate(dataset):
     print(f"Loss with attn locked to zero: {loss_hooked_0:.2f}")
     loss_orig = model(s, return_type="loss")
     print(f"Loss with attn free: {loss_orig:.2f}\n")
+
     # gc.collect()
+
     if i == 5:
         break
+
 # %%
+
 # Calculate W_{TE} edit
+
 batch_size = 1000
 nrows = model.cfg.d_vocab
 W_EE = t.zeros((nrows, model.cfg.d_model)).to(DEVICE)
+
 for i in tqdm(range(0, nrows + batch_size, batch_size)):
     cur_range = t.tensor(range(i, min(i + batch_size, nrows)))
     if len(cur_range)>0:
         embeds = W_E[cur_range].unsqueeze(0)
         pre_attention = model.blocks[0].ln1(embeds)
         post_attention = einops.einsum(
-            pre_attention,
+            pre_attention, 
             model.W_V[0],
             model.W_O[0],
             "b s d_model, num_heads d_model d_head, num_heads d_head d_model_out -> b s d_model_out",
@@ -208,17 +267,21 @@ for i in tqdm(range(0, nrows + batch_size, batch_size)):
         normalized_resid_mid = model.blocks[0].ln2(post_attention + embeds)
         resid_post = model.blocks[0].mlp(normalized_resid_mid)
         W_EE[cur_range.to(DEVICE)] = resid_post
+
 # %%
-# sanity check this is the same
+
+# sanity check this is the same 
+
 def remove_pos_embed(z, hook):
     return 0.0 * z
-# setup a forward pass that
+
+# setup a forward pass that 
 model.reset_hooks()
 model.add_hook(
     name="hook_pos_embed",
     hook=remove_pos_embed,
     level=1, # ???
-)
+) 
 model.add_hook(
     name=utils.get_act_name("pattern", 0),
     hook=lock_attn,
@@ -228,15 +291,19 @@ logits, cache = model.run_with_cache(
     names_filter=lambda name: name=="blocks.1.hook_resid_pre",
     return_type="logits",
 )
+
 #%%
+
 W_EE_test = cache["blocks.1.hook_resid_pre"].squeeze(0)
 W_EE_prefix = W_EE_test[:1000]
+
 assert torch.allclose(
     W_EE_prefix,
     W_EE_test,
     atol=1e-4,
     rtol=1e-4,
-)
+)   
+
 # %%
 
 def get_EE_QK_circuit(
@@ -257,6 +324,7 @@ def get_EE_QK_circuit(
 
     W_Q_head = model.W_Q[layer_idx, head_idx]
     W_K_head = model.W_K[layer_idx, head_idx]
+
     EE_QK_circuit = FactoredMatrix(W_U.T @ W_Q_head, W_K_head.T @ W_EE.T)
     EE_QK_circuit_result = t.zeros((num_samples, num_samples))
 
