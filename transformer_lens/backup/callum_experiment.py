@@ -51,27 +51,7 @@ def imshow(
         **kwargs,
     )
     fig.show()
-def to_tensor(
-    tensor,
-):
-    return t.from_numpy(to_numpy(tensor))
-def imshow(
-    tensor,
-    **kwargs,
-):
-    tensor = to_tensor(tensor)
-    zmax = tensor.abs().max().item()
-    if "zmin" not in kwargs:
-        kwargs["zmin"] = -zmax
-    if "zmax" not in kwargs:
-        kwargs["zmax"] = zmax
-    if "color_continuous_scale" not in kwargs:
-        kwargs["color_continuous_scale"] = "RdBu"
-    fig = px.imshow(
-        to_numpy(tensor),
-        **kwargs,
-    )
-    fig.show()
+
 # %%
 model = transformer_lens.HookedTransformer.from_pretrained("gpt2")
 from transformer_lens.backup.ioi_dataset import IOIDataset, NAMES
@@ -266,6 +246,7 @@ def get_EE_QK_circuit(
     num_samples: Optional[int] = 500,
     show_plot: bool = False,
     bags_of_words: Optional[List[List[int]]] = None, # each List is a List of unique tokens
+    mean_version: bool = True,
 ):
     assert (random_seeds is None and num_samples is None) != (bags_of_words is None), (random_seeds is None, num_samples is None, bags_of_words is None, "Must specify either random_seeds and num_samples or bag_of_words_version")
 
@@ -277,7 +258,6 @@ def get_EE_QK_circuit(
     W_Q_head = model.W_Q[layer_idx, head_idx]
     W_K_head = model.W_K[layer_idx, head_idx]
     EE_QK_circuit = FactoredMatrix(W_U.T @ W_Q_head, W_K_head.T @ W_EE.T)
-
     EE_QK_circuit_result = t.zeros((num_samples, num_samples))
 
     for random_seed in range(random_seeds):
@@ -286,44 +266,84 @@ def get_EE_QK_circuit(
         else:
             indices = t.tensor(bags_of_words[random_seed])
 
+        n_layers, n_heads, d_model, d_head = model.W_Q.shape
+
         EE_QK_circuit_sample = einops.einsum(
             EE_QK_circuit.A[indices, :],
             EE_QK_circuit.B[:, indices],
             "num_query_samples d_head, d_head num_key_samples -> num_query_samples num_key_samples"
-        )
+        ) / np.sqrt(d_head)
 
-        # we're going to take a softmax so the constant factor is arbitrary 
-        # and it's a good idea to centre all these results so adding them up is reasonable
-        EE_QK_mean = EE_QK_circuit_sample.mean(dim=1, keepdim=True)
-        EE_QK_circuit_sample_centered = EE_QK_circuit_sample - EE_QK_mean 
-        EE_QK_circuit_result += (EE_QK_circuit_sample_centered @ EE_QK_circuit_sample_centered.T).cpu()
+        if mean_version:
+            # we're going to take a softmax so the constant factor is arbitrary 
+            # and it's a good idea to centre all these results so adding them up is reasonable
+            EE_QK_mean = EE_QK_circuit_sample.mean(dim=1, keepdim=True)
+            EE_QK_circuit_sample_centered = EE_QK_circuit_sample - EE_QK_mean 
+            EE_QK_circuit_result += EE_QK_circuit_sample_centered.cpu()
+
+        else:
+            EE_QK_softmax = t.nn.functional.softmax(EE_QK_circuit_sample, dim=-1)
+            EE_QK_circuit_result += EE_QK_softmax.cpu()
 
     EE_QK_circuit_result /= random_seeds
 
     if show_plot:
         imshow(
-            EE_QK_circuit_sample_centered,
-            labels={"x": "Source/Key Token (embedding)", "y": "Destination / Query Token (unembedding)"},
+            EE_QK_circuit_result,
+            labels={"x": "Source/Key Token (embedding)", "y": "Destination/Query Token (unembedding)"},
             title=f"EE QK circuit for head {layer_idx}.{head_idx}",
             width=700,
         )
 
-    return EE_QK_circuit_sample_centered
+    return EE_QK_circuit_result
+
+#%%
+
+def get_single_example_plot(
+    layer, 
+    head,
+    sentence="Tony Abbott under fire from Cabinet colleagues over decision",
+):
+    tokens = model.tokenizer.encode(sentence)
+    pattern = get_EE_QK_circuit(
+        layer,
+        head,
+        random_seeds=None,
+        num_samples=None,
+        show_plot=True,
+        bags_of_words=[tokens],
+        mean_version=False,
+    )
+    imshow(
+        pattern, 
+        x=sentence.split(" "), 
+        y=sentence.split(" "),
+        title=f"Unembedding Attention Score for Head {layer}.{head}",
+        labels = {"y": "Query (W_U)", "x": "Key (W_EE)"},
+    )
+
+for layer, head in [
+    (9, 9),
+    (8, 10),
+    (10, 7), 
+    (11, 10),
+]:
+    get_single_example_plot(layer, head)
 
 # %%
-
+        
 # Prep some bags of words...
 # OVERLY LONG because it really helps to have the bags of words the same length
 
 bags_of_words = []
 
 OUTER_LEN = 100
-INNER_LEN = 5
+INNER_LEN = 10
 
-i=-1
+idx = -1
 while len(bags_of_words) < OUTER_LEN:
-    i+=1
-    cur_tokens = model.tokenizer.encode(dataset[i])
+    idx+=1
+    cur_tokens = model.tokenizer.encode(dataset[idx])
     cur_bag = []
     
     for i in range(len(cur_tokens)):
@@ -334,15 +354,33 @@ while len(bags_of_words) < OUTER_LEN:
 
     if len(cur_bag) == INNER_LEN:
         bags_of_words.append(cur_bag)
-    
+
 #%%
 
+for idx in range(OUTER_LEN):
+    print(model.tokenizer.decode(bags_of_words[idx]), "ye")
+    softmaxed_attn = get_EE_QK_circuit(
+        10,
+        7,
+        show_plot=True,
+        num_samples=None,
+        random_seeds=None,
+        bags_of_words=bags_of_words[idx:idx+1],
+        mean_version=False,
+    )
+
+#%%
+
+# observe that a large value of num_samples gives better results
+
 for num_samples, random_seeds in [
-    (2**i, 2**(10-i)) for i in range(11)
+    (2**i, 2**(10-i)) for i in range(1, 11)
 ]:
     results = t.zeros(12, 12)
     for layer, head in tqdm(list(itertools.product(range(12), range(12)))):
+
         bags_of_words = None
+        mean_version = False
 
         softmaxed_attn = get_EE_QK_circuit(
             layer,
@@ -351,12 +389,16 @@ for num_samples, random_seeds in [
             num_samples=num_samples,
             random_seeds=random_seeds,
             bags_of_words=bags_of_words,
-        ).softmax(-1)
+            mean_version=mean_version,
+        )
+        if mean_version:
+            softmaxed_attn = t.nn.functional.softmax(softmaxed_attn, dim=-1)
         trace = einops.einsum(
             softmaxed_attn,
             "i i -> ",
         )
-        results[layer, head] = trace / softmaxed_attn.shape[0]
+        results[layer, head] = trace / softmaxed_attn.shape[0] # average attention on "diagonal"
+    
     imshow(results - results.mean(), title=f"num_samples={num_samples}, random_seeds={random_seeds}")
 
 # %%
