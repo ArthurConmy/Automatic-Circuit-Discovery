@@ -8,7 +8,9 @@ ipython = get_ipython()
 ipython.run_line_magic("load_ext", "autoreload")
 ipython.run_line_magic("autoreload", "2")
 
+from datasets import load_dataset
 import torch as t
+import torch
 import einops
 import plotly.express as px
 import numpy as np
@@ -21,7 +23,6 @@ from transformer_lens.hackathon.sweep import sweep_train_model
 from transformer_lens.hackathon.model import AndModel, Config, get_all_data, get_all_outputs
 from transformer_lens.hackathon.train import TrainingConfig, train_model
 
-# %%
 # %%
 
 import os
@@ -166,14 +167,15 @@ logits, cache = model.run_with_cache(
 
 # %%
 
+unembedding = model.W_U.clone()
 logit_attribution = t.zeros((12, 12))
 for i in range(12):
     end_logits = cache["result", i][t.arange(N), ioi_dataset.word_idx["end"], :, :]
-    unembedding = model.W_U.clone()[:, ioi_dataset.io_tokenIDs] - model.W_U.clone()[:, ioi_dataset.s_tokenIDs]
+    out_dir = unembedding[:, ioi_dataset.io_tokenIDs] - unembedding[:, ioi_dataset.s_tokenIDs]
 
     layer_attribution_old = einops.einsum(
         end_logits,
-        unembedding,
+        out_dir,
         "b n d, d b -> b n",
     )
 
@@ -185,4 +187,138 @@ for i in range(12):
 imshow(
     logit_attribution,
 )
+
+# %% [markdown]
+# <p> 10.7 is a fascinating head because it REVERSES direction in the backup step</p>
+# <p> What is it doing on the IOI distribution? </p>
+
+#%%
+
+LAYER_IDX = 10
+HEAD_IDX = 7
+HOOK_NAME = f"blocks.{LAYER_IDX}.attn.hook_result"
+
+head_output = cache["result", LAYER_IDX][t.arange(N), ioi_dataset.word_idx["end"], HEAD_IDX, :]
+
+head_logits = einops.einsum(
+    head_output,
+    unembedding,
+    "b d, d V -> b V",
+)
+
+for b in range(10, 12):
+    print("PROMPT:")
+    print(ioi_dataset.tokenized_prompts[b])
+
+    for outps_type, outps in [
+        ("TOP TOKENS", t.topk(head_logits[b], 10).indices),
+        ("BOTTOM_TOKENS", t.topk(-head_logits[b], 10).indices),
+    ]:
+        print(outps_type)
+        for i in outps:
+            print(ioi_dataset.tokenizer.decode(i))
+    print()
+
+print("So it seems like the bottom tokens (checked on more prompts, seems legit) are JUST the correct answer, and the top tokens are not interpretable")
+
+# %% [markdown]
+# <p> Okay let's look more generally at OWT...</p>
+
+#%%
+
+# Let's see some WEBTEXT
+raw_dataset = load_dataset("stas/openwebtext-10k")
+train_dataset = raw_dataset["train"]
+dataset = [train_dataset[i]["text"] for i in range(len(train_dataset))]
+
 # %%
+
+# Let's see if 10.7 can be approximated as having zero bias, or whether it consistently pushes for/against some tokens
+# ... let's do it one document at a time for ease ...
+
+contributions = []
+
+for i in tqdm(list(range(2)) + [5]):
+    tokens = model.tokenizer(
+        dataset[i], 
+        return_tensors="pt", 
+        truncation=True, 
+        padding=True
+    )["input_ids"].to(DEVICE)
+    
+    if tokens.shape[1] < 256: # lotsa short docs here
+        print("SKIPPING short document", tokens.shape)
+        continue
+    tokens = tokens[0:1, :256]
+
+    model.reset_hooks()
+    logits, cache = model.run_with_cache(
+        tokens,
+        names_filter = lambda name: name in [HOOK_NAME, "ln_final.hook_scale"],
+    )
+    output = cache[HOOK_NAME][0, :, HEAD_IDX] / cache["ln_final.hook_scale"][0, :, 0].unsqueeze(dim=-1) # account for layer norm scaling
+    
+    contribution = einops.einsum(
+        output,
+        unembedding,
+        "s d, d V -> s V",
+    )
+    contributions.append(contribution.clone())
+
+    for j in range(256):
+        if contribution[j].norm().item() > 80:
+            print(model.to_str_tokens(tokens[0, j-30: j+1]))
+            print(model.tokenizer.decode(tokens[0, j+1]))
+            print()
+
+            top_tokens = t.topk(contribution[j], 10).indices
+            bottom_tokens = t.topk(-contribution[j], 10).indices
+
+            print("TOP TOKENS")
+            for i in top_tokens:
+                print(model.tokenizer.decode(i))
+            print()
+            print("BOTTOM TOKENS")
+            for i in bottom_tokens:
+                print(model.tokenizer.decode(i))
+
+full_contributions = t.cat(contributions, dim=0)
+
+#%%
+
+# Some dataset statistics suggest that probably 
+# i) 11.10 has a persistent bias towards/against some tokens
+# ii) There are certain token positions where it pushes for *somethings* way more than other positsions
+
+# Evidence for i) 
+print(full_contributions.mean(dim=0).norm().item()) # fairly large
+print(full_contributions.norm(dim=0).mean().item()) # almost as large # TODO nail what I'm trying to measure here
+
+px.histogram(to_tensor(full_contributions.norm(dim=0)), title="Distributions of 11.10 contribution-to-each-logit norms").show()
+px.histogram(to_tensor(full_contributions.mean(dim=0)), title="Distributions of 11.10 mean-contribution-to-each-logit").show()
+px.histogram(to_tensor(full_contributions[4]), title="Distribution of logit contributions for a single token pos").show() # so similar to Previous!!!
+
+#%%
+
+mean_contributions_to_tokens = full_contributions.mean(dim=0)
+top_tokens = t.topk(mean_contributions_to_tokens, 10).indices
+bottom_tokens = t.topk(-mean_contributions_to_tokens, 10).indices
+
+print("TOP TOKENS")
+for i in top_tokens:
+    print(model.tokenizer.decode(i))
+print()
+print("BOTTOM TOKENS")
+for i in bottom_tokens:
+    print(model.tokenizer.decode(i))
+
+# %%
+
+# That didn't help. Maybe isolating the heavy tail of logit norms???
+px.histogram(to_tensor(full_contributions.norm(dim=1)), title="Distributions of 11.10 contribution-to-each-logit norms").show()
+
+# %%
+
+# OBSERVATION: the top outputs are almost never interpretable and the bottom outputs almost always are... --- they seem to repress copying:
+#
+# GOOD: [',', ' which', ' is', ' in', ' favor', ' of', ' legalization', ',', ' blacks', ' are', ' arrested', ' for', ' marijuana', ' possession', ' between', ' four', ' and', ' twelve', ' times', ' more', ' than'] -> 11.10 blocks " blacks"
