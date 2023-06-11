@@ -127,62 +127,58 @@ logits, cache = model.run_with_cache(
     names_filter = lambda name: name.endswith("hook_result"),
 )
 
-# %%
+# # %%
 
-per_head_residual, labels = cache.stack_head_results(layer=-1, pos_slice=-1, return_labels=True)
-per_head_residual = einops.rearrange(
-    per_head_residual, 
-    "(layer head) ... -> layer head ...", 
-    layer=model.cfg.n_layers
-)
+# per_head_residual, labels = cache.stack_head_results(layer=-1, pos_slice=-1, return_labels=True)
+# per_head_residual = einops.rearrange(
+#     per_head_residual, 
+#     "(layer head) ... -> layer head ...", 
+#     layer=model.cfg.n_layers
+# )
 
-#%%
+# #%%
 
-def residual_stack_to_logit_diff(
-    residual_stack: Float[Tensor, "... batch d_model"], 
-    cache: ActivationCache,
-    logit_diff_directions: Float[Tensor, "batch d_model"],
-) -> Float[Tensor, "..."]:
-    '''
-    Gets the avg logit difference between the correct and incorrect answer for a given 
-    stack of components in the residual stream.
-    '''
-    # SOLUTION
-    batch_size = residual_stack.size(-2)
-    # scaled_residual_stack = cache.apply_ln_to_stack(residual_stack, layer=-1, pos_slice=-1)
-    return einops.einsum(
-        residual_stack, logit_diff_directions,
-        "... batch d_model, batch d_model -> ..."
-    ) / batch_size
+# def residual_stack_to_logit_diff(
+#     residual_stack: Float[Tensor, "... batch d_model"], 
+#     cache: ActivationCache,
+#     logit_diff_directions: Float[Tensor, "batch d_model"],
+# ) -> Float[Tensor, "..."]:
+#     '''
+#     Gets the avg logit difference between the correct and incorrect answer for a given 
+#     stack of components in the residual stream.
+#     '''
+#     # SOLUTION
+#     batch_size = residual_stack.size(-2)
+#     # scaled_residual_stack = cache.apply_ln_to_stack(residual_stack, layer=-1, pos_slice=-1)
+#     return einops.einsum(
+#         residual_stack, logit_diff_directions,
+#         "... batch d_model, batch d_model -> ..."
+#     ) / batch_size
 
-# %%
+# # %%
 
-answer_residual_directions: Float[Tensor, "batch 2 d_model"] = model.tokens_to_residual_directions(t.tensor([ioi_dataset.io_tokenIDs, ioi_dataset.s_tokenIDs]).T)
-print("Answer residual directions shape:", answer_residual_directions.shape)
+# answer_residual_directions: Float[Tensor, "batch 2 d_model"] = model.tokens_to_residual_directions(t.tensor([ioi_dataset.io_tokenIDs, ioi_dataset.s_tokenIDs]).T)
+# print("Answer residual directions shape:", answer_residual_directions.shape)
 
-correct_residual_directions, incorrect_residual_directions = answer_residual_directions.unbind(dim=1)
-logit_diff_directions: Float[Tensor, "batch d_model"] = correct_residual_directions - incorrect_residual_directions
+# correct_residual_directions, incorrect_residual_directions = answer_residual_directions.unbind(dim=1)
+# logit_diff_directions: Float[Tensor, "batch d_model"] = correct_residual_directions - incorrect_residual_directions
 
 
 # %%
 
 logit_attribution = t.zeros((12, 12))
 for i in range(12):
-    layer_attribution = einops.einsum(
-        cache["result", i][t.arange(N), ioi_dataset.word_idx["end"], :, :],
-        logit_diff_directions, # model.W_U, # TODO Arthur memorise these...
-        "b n d, b d -> b n",
+    end_logits = cache["result", i][t.arange(N), ioi_dataset.word_idx["end"], :, :]
+    unembedding = model.W_U.clone()[:, ioi_dataset.io_tokenIDs] - model.W_U.clone()[:, ioi_dataset.s_tokenIDs]
+
+    layer_attribution_old = einops.einsum(
+        end_logits,
+        unembedding,
+        "b n d, d b -> b n",
     )
-    
-    unembedding = model.W_U.clone()
-    unembedding = model.unembed.W_U.clone()
-
-    # layer_attribution_old = einops.einsum(
-
-    # )
 
     for j in range(12):
-        logit_attribution[i, j] = layer_attribution[:, j].mean()
+        logit_attribution[i, j] = layer_attribution_old[:, j].mean()
 
 # %%
 
