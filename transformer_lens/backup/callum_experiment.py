@@ -11,6 +11,7 @@ ipython.run_line_magic("autoreload", "2")
 import torch as t
 import torch
 import einops
+import itertools
 import plotly.express as px
 import numpy as np
 from datasets import load_dataset
@@ -261,11 +262,18 @@ assert torch.allclose(
 def get_EE_QK_circuit(
     layer_idx,
     head_idx,
-    random_seeds: int = 5,
-    num_samples: int = 500,
+    random_seeds: Optional[int] = 5,
+    num_samples: Optional[int] = 500,
     show_plot: bool = False,
-    # bag_of_words_version: bool = False,
+    bags_of_words: Optional[List[List[int]]] = None, # each List is a List of unique tokens
 ):
+    assert (random_seeds is None and num_samples is None) != (bags_of_words is None), (random_seeds is None, num_samples is None, bags_of_words is None, "Must specify either random_seeds and num_samples or bag_of_words_version")
+
+    if bags_of_words is not None:
+        random_seeds = len(bags_of_words) # eh not quite random seeds but whatever
+        assert all([len(bag_of_words) == len(bags_of_words[0])] for bag_of_words in bags_of_words), "Must have same number of words in each bag of words"
+        num_samples = len(bags_of_words[0])
+
     W_Q_head = model.W_Q[layer_idx, head_idx]
     W_K_head = model.W_K[layer_idx, head_idx]
     EE_QK_circuit = FactoredMatrix(W_U.T @ W_Q_head, W_K_head.T @ W_EE.T)
@@ -273,7 +281,10 @@ def get_EE_QK_circuit(
     EE_QK_circuit_result = t.zeros((num_samples, num_samples))
 
     for random_seed in range(random_seeds):
-        indices = t.randint(0, model.cfg.d_vocab, (num_samples,))
+        if bags_of_words is None:
+            indices = t.randint(0, model.cfg.d_vocab, (num_samples,))
+        else:
+            indices = t.tensor(bags_of_words[random_seed])
 
         EE_QK_circuit_sample = einops.einsum(
             EE_QK_circuit.A[indices, :],
@@ -301,13 +312,51 @@ def get_EE_QK_circuit(
 
 # %%
 
-import itertools
-results = t.zeros(12, 12)
-for layer, head in tqdm(list(itertools.product(range(12), range(12)))):
-        softmaxed_attn = get_EE_QK_circuit(layer, head, show_plot=False).softmax(-1)
-        diff = (softmaxed_attn - t.eye(softmaxed_attn.shape[0]).to(DEVICE)).norm()
-        # diff = softmaxed_attn.diag().mean()
-        results[layer, head] = diff
-imshow(results)
+# Prep some bags of words...
+# OVERLY LONG because it really helps to have the bags of words the same length
+
+bags_of_words = []
+
+OUTER_LEN = 100
+INNER_LEN = 5
+
+i=-1
+while len(bags_of_words) < OUTER_LEN:
+    i+=1
+    cur_tokens = model.tokenizer.encode(dataset[i])
+    cur_bag = []
+    
+    for i in range(len(cur_tokens)):
+        if len(cur_bag) == INNER_LEN:
+            break
+        if cur_tokens[i] not in cur_bag:
+            cur_bag.append(cur_tokens[i])
+
+    if len(cur_bag) == INNER_LEN:
+        bags_of_words.append(cur_bag)
+    
+#%%
+
+for num_samples, random_seeds in [
+    (2**i, 2**(10-i)) for i in range(11)
+]:
+    results = t.zeros(12, 12)
+    for layer, head in tqdm(list(itertools.product(range(12), range(12)))):
+        bags_of_words = None
+
+        softmaxed_attn = get_EE_QK_circuit(
+            layer,
+            head,
+            show_plot=False,
+            num_samples=num_samples,
+            random_seeds=random_seeds,
+            bags_of_words=bags_of_words,
+        ).softmax(-1)
+        trace = einops.einsum(
+            softmaxed_attn,
+            "i i -> ",
+        )
+        results[layer, head] = trace / softmaxed_attn.shape[0]
+    imshow(results - results.mean(), title=f"num_samples={num_samples}, random_seeds={random_seeds}")
 
 # %%
