@@ -17,9 +17,13 @@ import torch as t
 import einops
 import plotly.express as px
 import numpy as np
+from datasets import load_dataset
 from tqdm import tqdm
 from jaxtyping import Float, Int, jaxtyped
+from typing import Union, List, Dict, Tuple, Callable, Optional
 from torch import Tensor
+import gc
+import transformer_lens
 from transformer_lens.ActivationCache import ActivationCache
 from transformer_lens import utils
 from transformer_lens.utils import to_numpy
@@ -27,28 +31,7 @@ from transformer_lens.hackathon.sweep import sweep_train_model
 from transformer_lens.hackathon.model import AndModel, Config, get_all_data, get_all_outputs
 from transformer_lens.hackathon.train import TrainingConfig, train_model
 
-# %%
-
-import os
-os.environ["ACCELERATE_DISABLE_RICH"] = "1"
-# os.getcwd(C:\Users\calsm\Documents\AI Alignment\SERIMATS_23\TransformerLens\transformer_lens)
-from IPython import get_ipython
-ipython = get_ipython()
-ipython.run_line_magic("load_ext", "autoreload")
-ipython.run_line_magic("autoreload", "2")
-
-import torch as t
-from transformer_lens.backup.ioi_dataset import IOIDataset, NAMES
-import transformer_lens.backup.ioi_circuit_extraction
-import einops
-import plotly.express as px
-import numpy as np
-from tqdm import tqdm
-import transformer_lens
-from transformer_lens.utils import to_numpy
-from transformer_lens.hackathon.sweep import sweep_train_model
-from transformer_lens.hackathon.model import AndModel, Config, get_all_data, get_all_outputs
-from transformer_lens.hackathon.train import TrainingConfig, train_model
+t.set_grad_enabled(False)
 
 # %%
 
@@ -103,6 +86,8 @@ def imshow(
 # %%
 
 model = transformer_lens.HookedTransformer.from_pretrained("gpt2")
+
+from transformer_lens.backup.ioi_dataset import IOIDataset, NAMES
 
 # %%
 
@@ -234,10 +219,9 @@ print(f"Top-5 accuracy of full QK circuit: {top_5_acc_iteration(full_QK_circuit)
 
 def fwd_pass_lock_attn0_to_self(
     model: HookedTransformer,
-    input: Int[t.Tensor, "batch seq_pos"]
+    input: Union[List[str], Int[t.Tensor, "batch seq_pos"]],
+    ablate: bool = False
 ) -> Float[t.Tensor, "batch seq_pos d_vocab"]:
-    
-    assert isinstance(input, Int[t.Tensor, "batch seq_pos"])
 
     model.reset_hooks()
 
@@ -250,19 +234,39 @@ def fwd_pass_lock_attn0_to_self(
         assert hook.layer() == 0
 
         batch, n_heads, seq_len = attn_patterns.shape[:3]
-        return einops.repeat(t.eye(seq_len), "dest src -> batch head_idx dest src", batch=batch, head_idx=n_heads).clone().to(attn_patterns.device)
+        attn_new = einops.repeat(t.eye(seq_len), "dest src -> batch head_idx dest src", batch=batch, head_idx=n_heads).clone().to(attn_patterns.device)
+        if ablate:
+            attn_new = attn_new * 0
+        return attn_new
     
-    logits, loss = model.run_with_hooks(
+    loss = model.run_with_hooks(
         input,
-        return_type="both",
-        fwd_hooks=[(utils.get_act_name("pattern"), hook_attn)],
+        return_type="loss",
+        fwd_hooks=[(utils.get_act_name("pattern", 0), hook_attn)],
     )
 
-    return logits, loss
+    return loss
 
 
+# %%
 
-        
-    
+raw_dataset = load_dataset("stas/openwebtext-10k")
+train_dataset = raw_dataset["train"]
+dataset = [train_dataset[i]["text"] for i in range(len(train_dataset))]
 
+# %%
 
+for i, s in enumerate(dataset):
+    loss_hooked = fwd_pass_lock_attn0_to_self(model, s)
+    print(f"Loss with attn locked to self: {loss_hooked:.2f}")
+    loss_hooked_0 = fwd_pass_lock_attn0_to_self(model, s, ablate=True)
+    print(f"Loss with attn locked to zero: {loss_hooked_0:.2f}")
+    loss_orig = model(s, return_type="loss")
+    print(f"Loss with attn free: {loss_orig:.2f}\n")
+
+    # gc.collect()
+
+    if i == 5:
+        break
+
+# %%
