@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from dataclasses import dataclass
 from acdc.TLACDCEdge import (
     Edge,
     EdgeType,
@@ -193,6 +194,12 @@ IOI_CIRCUIT = {
     ],
 }
 
+@dataclass(frozen=True)
+class Conn:
+    inp: str
+    out: str
+    qkv: tuple[str, ...]
+
 def get_ioi_true_edges(model):
     nodes_to_mask = []
     
@@ -217,34 +224,68 @@ def get_ioi_true_edges(model):
         model = model,
     )
 
-    # remove input -> induction heads connections
-    for layer_idx, head_idx in IOI_CIRCUIT["induction"]:
+    # For all heads...
+    for layer_idx, head_idx in all_nodes:
         for letter in "qkv":
-            corr.edges[f"blocks.{layer_idx}.hook_{letter}_input"][TorchIndex([None, None, head_idx])][f"blocks.0.hook_resid_pre"][TorchIndex([None])].present = False
+            # remove input -> head connection
+            edge_to = corr.edges[f"blocks.{layer_idx}.hook_{letter}_input"][TorchIndex([None, None, head_idx])]
+            edge_to[f"blocks.0.hook_resid_pre"][TorchIndex([None])].present = False
 
-    special_connections = {
-        ("s2 inhibition", "name mover"),
-        ("s2 inhibition", "backup name mover"),
-        ("s2 inhibition", "negative"),
-        ("induction", "s2 inhibition"),
-        ("induction"),
-        ("previous token", "induction"),
-        ("duplicate token", "s2 inhibition"),
+            # Remove all MLP -> head connections
+            # for mlp_layer_idx in range(layer_idx):
+            #     edge_to[f"blocks.{mlp_layer_idx}.hook_mlp_out"][TorchIndex([None])].present = False
+
+            # Remove all other_head->this_head connections in the circuit
+            for layer_from in range(layer_idx):
+                for head_from in range(12):
+                    edge_to[f"blocks.{layer_from}.attn.hook_result"][TorchIndex([None, None, head_from])].present = False
+
+            # Remove connection from this head to the output
+            corr.edges["blocks.11.hook_resid_post"][TorchIndex([None])][f"blocks.{layer_idx}.attn.hook_result"][TorchIndex([None, None, head_idx])].present = False
+
+
+
+    special_connections: set[Conn] = {
+        Conn("INPUT", "previous token", ("q", "k", "v")),
+        Conn("INPUT", "duplicate token", ("q", "k", "v")),
+        Conn("INPUT", "s2 inhibition", ("q",)),
+        Conn("INPUT", "negative", ("k", "v")),
+        Conn("INPUT", "name mover", ("k", "v")),
+        Conn("INPUT", "backup name mover", ("k", "v")),
+        Conn("previous token", "induction", ("k", "v")),
+        Conn("induction", "s2 inhibition", ("k", "v")),
+        Conn("duplicate token", "s2 inhibition", ("k", "v")),
+        Conn("s2 inhibition", "negative", ("q",)),
+        Conn("s2 inhibition", "name mover", ("q",)),
+        Conn("s2 inhibition", "backup name mover", ("q",)),
+        Conn("negative", "OUTPUT", ()),
+        Conn("name mover", "OUTPUT", ()),
+        Conn("backup name mover", "OUTPUT", ()),
     }
 
-    for group_name_1 in IOI_CIRCUIT.keys():
-        for group_name_2 in IOI_CIRCUIT.keys():
-            if group_name_1 == group_name_2:
-                continue
-            if (group_name_1, group_name_2) in special_connections:
-                continue
+    for conn in special_connections:
+        if conn.inp == "INPUT":
+            idx_from = [(-1, "blocks.0.hook_resid_pre", TorchIndex([None]))]
+            for mlp_layer_idx in range(12):
+                idx_from.append((mlp_layer_idx, f"blocks.{mlp_layer_idx}.hook_mlp_out", TorchIndex([None])))
+        else:
+            idx_from = [(layer_idx, f"blocks.{layer_idx}.attn.hook_result", TorchIndex([None, None, head_idx])) for layer_idx, head_idx in IOI_CIRCUIT[conn.inp]]
 
-            for layer_idx1, head_idx1 in IOI_CIRCUIT[group_name_1]:
-                for layer_idx2, head_idx2 in IOI_CIRCUIT[group_name_2]:
-                    if layer_idx1 >= layer_idx2:
-                        continue # no connection..
-                    for letter in "qkv":
-                        corr.edges[f"blocks.{layer_idx2}.hook_{letter}_input"][TorchIndex([None, None, head_idx2])][f"blocks.{layer_idx1}.attn.hook_result"][TorchIndex([None, None, head_idx1])].present = False
+        if conn.out == "OUTPUT":
+            idx_to = [(13, "blocks.11.hook_resid_post", TorchIndex([None]))]
+            for mlp_layer_idx in range(12):
+                idx_to.append((mlp_layer_idx, f"blocks.{mlp_layer_idx}.hook_mlp_in", TorchIndex([None])))
+        else:
+            idx_to = [
+                (layer_idx, f"blocks.{layer_idx}.hook_{letter}_input", TorchIndex([None, None, head_idx]))
+                for layer_idx, head_idx in IOI_CIRCUIT[conn.out]
+                for letter in conn.qkv
+            ]
+
+        for layer_from, layer_name_from, which_idx_from in idx_from:
+            for layer_to, layer_name_to, which_idx_to in idx_to:
+                if layer_to > layer_from:
+                    corr.edges[layer_name_to][which_idx_to][layer_name_from][which_idx_from].present = True
 
     ret =  OrderedDict({(t[0], t[1].hashable_tuple, t[2], t[3].hashable_tuple): e.present for t, e in corr.all_edges().items() if e.present})
     return ret

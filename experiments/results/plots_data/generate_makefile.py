@@ -24,6 +24,7 @@ def main():
     sixteenh_files = []
     sp_files = []
     acdc_files = []
+    canonical_files = []
     random_files = []
     zero_files = []
     ioi_files = []
@@ -36,11 +37,17 @@ def main():
     with open(OUT_DIR/ "Makefile", "w") as f:
         possible_files = {"generate_makefile.py", "Makefile"}
 
-        for alg in ["16h", "sp", "acdc"]:
+        for alg in ["16h", "sp", "acdc", "canonical"]:
             for reset_network in [0, 1]:
                 for zero_ablation in [0, 1]:
                     for task in TASKS:
                         for metric in METRICS_FOR_TASK[task]:
+                            if alg == "canonical" and (task == "induction" or metric == "kl_div"):
+                                # No canonical circuit for induction
+                                # No need to repeat the canonical calculations for both train metrics
+                                # (they're the same, nothing is trained)
+                                continue
+
                             fname = f"{alg}-{task}-{metric}-{bool(zero_ablation)}-{reset_network}.json"
                             possible_files.add(fname)
 
@@ -64,6 +71,8 @@ def main():
                                 sp_files.append(fname)
                             elif alg == "acdc":
                                 acdc_files.append(fname)
+                            elif alg == "canonical":
+                                canonical_files.append(fname)
 
                             if reset_network:
                                 reset_files.append(fname)
@@ -92,6 +101,7 @@ def main():
         f.write("16h: " + " ".join(sorted(sixteenh_files)) + "\n\n")
         f.write("sp: " + " ".join(sorted(sp_files)) + "\n\n")
         f.write("acdc: " + " ".join(sorted(acdc_files)) + "\n\n")
+        f.write("canonical: " + " ".join(sorted(canonical_files)) + "\n\n")
         f.write("trained: " + " ".join(sorted(trained_files)) + "\n\n")
         f.write("reset: " + " ".join(sorted(reset_files)) + "\n\n")
         f.write("zero: " + " ".join(sorted(zero_files)) + "\n\n")

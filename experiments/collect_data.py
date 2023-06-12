@@ -7,10 +7,10 @@ import shlex
 import random
 
 IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root")
-print(IS_ADRIA)
+print("is adria:", IS_ADRIA)
 
 #TASKS = ["ioi", "docstring", "greaterthan", "tracr-reverse", "tracr-proportion", "induction"]
-TASKS = ["ioi", "docstring", "greaterthan", "tracr-reverse", "tracr-proportion", "induction"]
+TASKS = ["ioi", "docstring", "greaterthan", "induction"]
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
@@ -54,6 +54,9 @@ def main(
     for reset_network in [0, 1]:
         for zero_ablation in [0, 1]:
             for metric in METRICS_FOR_TASK[task]:
+                if alg == "canonical" and (task == "induction" or metric == "kl_div"):
+                    continue
+
                 command = [
                     "python",
                     "notebooks/roc_plot_generator.py",
@@ -73,29 +76,30 @@ def main(
                     command.append("--ignore-missing-score")
                 commands.append(command)
 
-        if IS_ADRIA:
-            launch(
-                commands,
-                name="collect_data",
-                job=job,
-                synchronous=True,
-                just_print_commands=False,
-                check_wandb=WandbIdentifier(f"agarriga-collect-{alg}-{task[-5:]}-{{i:05d}}", "collect", "acdc"),
-            )
+    if IS_ADRIA:
+        launch(
+            commands,
+            name="collect_data",
+            job=job,
+            synchronous=True,
+            just_print_commands=False,
+            check_wandb=WandbIdentifier(f"agarriga-collect-{alg}-{task[-5:]}-{{i:05d}}", "collect", "acdc"),
+        )
 
-        else:
-            for command_idx in range(mod_idx, len(commands), num_processes): # commands:
-                # run 4 in parallel
-                command = commands[command_idx]
-                print(f"Running command {command_idx} / {len(commands)}")
-                print(" ".join(command))
-                subprocess.run(command)
+    else:
+        for command_idx in range(mod_idx, len(commands), num_processes): # commands:
+            # run 4 in parallel
+            command = commands[command_idx]
+            print(f"Running command {command_idx} / {len(commands)}")
+            print(" ".join(command))
+            subprocess.run(command)
 
 
 tasks_for = {
     "acdc": TASKS,
     "16h": TASKS,
     "sp": TASKS,
+    "canonical": ["ioi", "greaterthan"],
 }
 
 parser = argparse.ArgumentParser()
@@ -106,15 +110,15 @@ mod_idx = parser.parse_args().i
 num_processes = parser.parse_args().n
 
 if __name__ == "__main__":
-    for alg in ["acdc"]:
+    for alg in ["canonical"]:
         for task in tasks_for[alg]:
             main(
                 alg,
                 task,
                 KubernetesJob(
-                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.8.0",
+                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:dbc12da",
                     cpu=4,
-                    gpu=0 if not IS_ADRIA or task.startswith("tracr") or alg != "acdc" else 1,
+                    gpu=0 if not IS_ADRIA or task.startswith("tracr") or alg not in ["acdc", "canonical"] else 1,
                     mount_training=False,
                 ),
                 testing=False,

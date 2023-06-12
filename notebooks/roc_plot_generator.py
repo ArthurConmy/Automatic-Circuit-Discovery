@@ -22,6 +22,7 @@
 # SIXTEEN_HEADS_PROJECT_NAME
 # SIXTEEN_HEADS_RUN
 
+import collections
 import IPython
 
 if IPython.get_ipython() is not None:
@@ -30,8 +31,7 @@ if IPython.get_ipython() is not None:
 
 from copy import deepcopy
 from subnetwork_probing.train import correspondence_from_mask
-from acdc.acdc_utils import filter_nodes, get_edge_stats, get_node_stats, get_present_nodes
-from acdc.acdc_utils import reset_network
+from acdc.acdc_utils import filter_nodes, get_edge_stats, get_node_stats, get_present_nodes, reset_network
 import pandas as pd
 import gc
 import math
@@ -130,7 +130,7 @@ from acdc.ioi.utils import (
     get_gpt2_small,
 )
 import argparse
-from acdc.greaterthan.utils import get_all_greaterthan_things, get_greaterthan_true_edges
+from acdc.greaterthan.utils import get_all_greaterthan_things, get_greaterthan_true_edges, greaterthan_group_colorscheme
 from pathlib import Path
 
 from notebooks.emacs_plotly_render import set_plotly_renderer
@@ -151,7 +151,7 @@ parser.add_argument("--mode", type=str, required=False, choices=["edges", "nodes
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
 parser.add_argument('--metric', type=str, default="kl_div", help="Which metric to use for the experiment")
 parser.add_argument('--reset-network', type=int, default=0, help="Whether to reset the network we're operating on before running interp on it")
-parser.add_argument("--alg", type=str, default="none", choices=["none", "acdc", "sp", "16h"])
+parser.add_argument("--alg", type=str, default="none", choices=["none", "acdc", "sp", "16h", "canonical"])
 parser.add_argument("--skip-sixteen-heads", action="store_true", help="Skip the 16 heads stuff")
 parser.add_argument("--skip-sp", action="store_true", help="Skip the SP stuff")
 parser.add_argument("--testing", action="store_true", help="Use testing data instead of validation data")
@@ -187,6 +187,7 @@ RESET_NETWORK = 1 if args.reset_network else 0
 SKIP_ACDC = False
 SKIP_SP = True if args.skip_sp else False
 SKIP_SIXTEEN_HEADS = True if args.skip_sixteen_heads else False
+SKIP_CANONICAL = True
 TESTING = True if args.testing else False
 ONLY_SAVE_CANONICAL = True if args.only_save_canonical else False
 
@@ -202,6 +203,7 @@ if args.alg != "none":
     SKIP_ACDC = False if args.alg == "acdc" else True
     SKIP_SP = False if args.alg == "sp" else True
     SKIP_SIXTEEN_HEADS = False if args.alg == "16h" else True
+    SKIP_CANONICAL = False if args.alg == "canonical" else True
     OUT_FILE = OUT_DIR / f"{args.alg}-{args.task}-{args.metric}-{args.zero_ablation}-{args.reset_network}.json"
 
     if OUT_FILE.exists():
@@ -297,9 +299,12 @@ elif TASK == "ioi":
     things = get_all_ioi_things(num_examples=num_examples, device=DEVICE, metric_name=METRIC)
 
     if METRIC == "kl_div" and not RESET_NETWORK:
-        ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_ioi_sweep"
-        del ACDC_PRE_RUN_FILTER["config.reset_network"]
-        ACDC_PRE_RUN_FILTER["group"] = "default"
+        if ZERO_ABLATION:
+            ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_ioi_sweep"
+            del ACDC_PRE_RUN_FILTER["config.reset_network"]
+            ACDC_PRE_RUN_FILTER["group"] = "default"
+        else:
+            ACDC_PRE_RUN_FILTER["group"] = "acdc-ioi-gt-redo2"
     else:
         try:
             del ACDC_PRE_RUN_FILTER["group"]
@@ -380,7 +385,7 @@ things.tl_model.reset_hooks()
 exp = TLACDCExperiment(
     model=things.tl_model,
     threshold=100_000,
-    early_exit=SKIP_ACDC or ONLY_SAVE_CANONICAL,
+    early_exit=SKIP_ACDC and SKIP_CANONICAL,
     using_wandb=False,
     zero_ablation=bool(ZERO_ABLATION),
     ds=things.test_data,
@@ -399,6 +404,11 @@ max_subgraph_size = exp.corr.count_no_edges()
 
 #%% [markdown]
 # Load the *canonical* circuit
+
+COLORSCHEME_FOR = collections.defaultdict(lambda: (lambda: "Pastel2"), {
+    "ioi": ioi_group_colorscheme,
+    "greaterthan": greaterthan_group_colorscheme,
+})
 
 if TASK != "induction":
     d = {(d[0], d[1].hashable_tuple, d[2], d[3].hashable_tuple): False for d in exp.corr.all_edges()}
@@ -432,11 +442,11 @@ if TASK != "induction":
         g: pgv.AGraph = show(
             canonical_circuit_subgraph,
             fname=CANONICAL_OUT_DIR / f"{TASK}.pdf",
-            colorscheme=ioi_group_colorscheme() if TASK == "ioi" else "Pastel2",
+            colorscheme=COLORSCHEME_FOR[TASK](),
             show_full_index=False,
         )
 
-        if TASK == "ioi":
+        if TASK in ["ioi", "greaterthan"]:
             def save(source, suffix):
                 seen_lines = {"}"}
                 # Don't add self-loops
@@ -446,7 +456,7 @@ if TASK != "induction":
 
                 out = []
                 for line in source.split("\n")[1:-1]:
-                    if "<m" not in line:
+                    if "<m" not in line or TASK == "greaterthan":
                         edge_info = line.split("[")[0]
                         if edge_info not in seen_lines:
                             out.append(line)
@@ -465,7 +475,7 @@ if ONLY_SAVE_CANONICAL:
 #%%
 
 def get_acdc_runs(
-    experiment,
+    exp,
     project_name: str = ACDC_PROJECT_NAME,
     pre_run_filter: dict = ACDC_PRE_RUN_FILTER,
     run_filter: Optional[Callable[[Any], bool]] = ACDC_RUN_FILTER,
@@ -582,8 +592,8 @@ def get_acdc_runs(
                 try:
                     with run.file("output.log").download(root=ROOT / run.id, replace=False, exist_ok=True) as f:
                         log_text = f.read()
-                    experiment.load_from_wandb_run(log_text)
-                    corrs.append((deepcopy(experiment.corr), score_d))
+                    exp.load_from_wandb_run(log_text)
+                    corrs.append((deepcopy(exp.corr), score_d))
                     ids.append(run.id)
                 except Exception:
                     print(f"Loading run {run.name} with state={run.state} config={run.config} totally failed.")
@@ -626,6 +636,43 @@ if not SKIP_ACDC: # this is slow, so run once
     acdc_corrs, ids = get_acdc_runs(None if things is None else exp, clip = 1 if TESTING else None, return_ids = True)
     assert len(acdc_corrs) > 1
     print("acdc_corrs", len(acdc_corrs))
+
+# %%
+
+def get_canonical_corrs(exp):
+    all_present_corr = deepcopy(exp.corr)
+    for e in all_present_corr.all_edges().values():
+        e.present = True
+
+    none_present_corr = deepcopy(exp.corr)
+    for e in none_present_corr.all_edges().values():
+        e.present = False
+
+    output = [
+        (none_present_corr, {"score": 0.0}),
+        (deepcopy(canonical_circuit_subgraph), {"score": 0.5}),
+        (all_present_corr, {"score": 1.0}),
+    ]
+
+    for corr, score_d in output:
+        old_exp_corr = exp.corr
+        try:
+            exp.corr = corr
+            exp.model.reset_hooks()
+            exp.setup_model_hooks(
+                add_sender_hooks=True,
+                add_receiver_hooks=True,
+                doing_acdc_runs=False,
+            )
+            for name, fn in things.test_metrics.items():
+                score_d["test_"+name] = fn(exp.model(things.test_data)).item()
+        finally:
+            exp.corr = old_exp_corr
+    return output
+
+
+if not SKIP_CANONICAL:
+    canonical_corrs = get_canonical_corrs(exp)
 
 #%%
 
@@ -728,6 +775,7 @@ if "sixteen_heads_corrs" not in locals() and not SKIP_SIXTEEN_HEADS: # this is s
 
 methods = []
 
+if not SKIP_CANONICAL: methods.append("CANONICAL")
 if not SKIP_ACDC: methods.append("ACDC") 
 if not SKIP_SP: methods.append("SP")
 if not SKIP_SIXTEEN_HEADS: methods.append("16H")
@@ -821,15 +869,12 @@ points = {}
 if "ACDC" in methods:
     if "ACDC" not in points: points["ACDC"] = []
     points["ACDC"].extend(get_points(acdc_corrs))
-
 #%%
 
-if "shaved_points" not in locals():
-    shaved_points = points["ACDC"][1:-1]
+if "CANONICAL" in methods:
+    if "CANONICAL" not in points: points["CANONICAL"] = []
+    points["CANONICAL"].extend(get_points(canonical_corrs))
 
-for idx, (p, idd) in enumerate(zip(shaved_points, ids)):
-    if p["edge_tpr"] == 1.0 and p["edge_fpr"] == 0.0:
-        print(idx, idd, p["n_edges"], p["n_nodes"], p["edge_tpr"], p["edge_fpr"])
 
 #%%
 
