@@ -34,7 +34,7 @@ def main(
     # num_processes = MPI.COMM_WORLD.Get_size()
 
     if IS_ADRIA:
-        OUT_RELPATH = Path(".cache") / "plots_data"
+        OUT_RELPATH = Path(".cache") / "plots_data_q_mlp"
         OUT_HOME_DIR = Path(os.environ["HOME"]) / OUT_RELPATH
     else:
         OUT_RELPATH = Path("experiments/results/arthur_plots_data") # trying to remove extra things from acdc/
@@ -83,7 +83,7 @@ def main(
             job=job,
             synchronous=True,
             just_print_commands=False,
-            check_wandb=WandbIdentifier(f"agarriga-collect-{alg}-{task[-5:]}-{{i:05d}}", "collect", "acdc"),
+            check_wandb=WandbIdentifier(f"agarriga-col-{alg}-{task[-5:]}-{{i:04d}}b", "collect", "acdc"),
         )
 
     else:
@@ -99,7 +99,7 @@ tasks_for = {
     "acdc": TASKS,
     "16h": TASKS,
     "sp": TASKS,
-    "canonical": ["ioi", "greaterthan"],
+    "canonical": ["greaterthan"],
 }
 
 parser = argparse.ArgumentParser()
@@ -116,7 +116,7 @@ if __name__ == "__main__":
                 alg,
                 task,
                 KubernetesJob(
-                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:dbc12da",
+                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:b353d83",
                     cpu=4,
                     gpu=0 if not IS_ADRIA or task.startswith("tracr") or alg not in ["acdc", "canonical"] else 1,
                     mount_training=False,

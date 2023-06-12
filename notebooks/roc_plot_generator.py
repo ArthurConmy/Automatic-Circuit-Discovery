@@ -436,39 +436,38 @@ if TASK != "induction":
         exp.corr.edges[t[0]][t[1]][t[2]][t[3]].present = True
 
     for edge in canonical_circuit_subgraph.all_edges().values():
-        edge.effect_size = 1.0   # make it visible
+        edge.effect_size = 1.0  # make it visible
 
     if ONLY_SAVE_CANONICAL:
+        colorscheme = COLORSCHEME_FOR[TASK]()
         g: pgv.AGraph = show(
             canonical_circuit_subgraph,
-            fname=CANONICAL_OUT_DIR / f"{TASK}.pdf",
-            colorscheme=COLORSCHEME_FOR[TASK](),
+            fname=CANONICAL_OUT_DIR / f"{TASK}.gv",
+            colorscheme=colorscheme,
             show_full_index=False,
         )
 
         if TASK in ["ioi", "greaterthan"]:
-            def save(source, suffix):
-                seen_lines = {"}"}
-                # Don't add self-loops
-                for layer in range(12):
-                    for head in range(12):
-                        seen_lines.add(f"\t<a{layer}.{head}> -> <a{layer}.{head}> ")
-
-                out = []
-                for line in source.split("\n")[1:-1]:
-                    if "<m" not in line or TASK == "greaterthan":
-                        edge_info = line.split("[")[0]
-                        if edge_info not in seen_lines:
-                            out.append(line)
-                            seen_lines.add(edge_info)
-
-                source = "\n".join(sorted(out))
-                with open(CANONICAL_OUT_DIR / f"{TASK}_{suffix}.gv", "w") as f:
-                    f.write("digraph {\n" + source + "\n}")
-
-            save(g.to_string(), "heads_qkv")
-            save(g.to_string().replace("_q>", ">").replace("_k>", ">").replace("_v>", ">"), "heads")
-
+            no_mlp = deepcopy(canonical_circuit_subgraph)
+            for (n_to, _, n_from, _), e in no_mlp.all_edges().items():
+                if "mlp" in n_to or "mlp" in n_from:
+                    e.present = False
+            show(
+                no_mlp,
+                fname=CANONICAL_OUT_DIR / f"{TASK}_heads_qkv.gv",
+                colorscheme=colorscheme,
+                show_full_index=False,
+                remove_self_loops=True,
+                remove_qkv=False,
+            )
+            show(
+                no_mlp,
+                fname=CANONICAL_OUT_DIR / f"{TASK}_heads.gv",
+                colorscheme=colorscheme,
+                show_full_index=False,
+                remove_self_loops=True,
+                remove_qkv=True,
+            )
 
 if ONLY_SAVE_CANONICAL:
     sys.exit(0)
