@@ -265,11 +265,17 @@ if TASK == "docstring":
     get_true_edges = get_docstring_subgraph_true_edges
     SP_PRE_RUN_FILTER["group"] = "docstring3"
 
-    if METRIC == "kl_div":
-        ACDC_PRE_RUN_FILTER["group"] = "adria-docstring3"
+    if ZERO_ABLATION:
+        ACDC_PRE_RUN_FILTER["group"] = "zero-ablation-fix-bias"
+    else:
+        if RESET_NETWORK:
+            ACDC_PRE_RUN_FILTER["group"] = "reset-networks-neurips"
+        else:
+            if METRIC == "kl_div":
+                ACDC_PRE_RUN_FILTER["group"] = "adria-docstring3"
+            else:
+                pass
 
-    if RESET_NETWORK:
-        ACDC_PRE_RUN_FILTER["group"] = "reset-networks-neurips"
 
 elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     USE_POS_EMBED = True
@@ -286,7 +292,10 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     else:
         raise NotImplementedError("not a tracr task")
 
-    ACDC_PRE_RUN_FILTER["group"] = "acdc-tracr-neurips-5"
+    if ZERO_ABLATION:
+        ACDC_PRE_RUN_FILTER["group"] = "zero-ablation-fix-bias"
+    else:
+        ACDC_PRE_RUN_FILTER["group"] = "acdc-tracr-neurips-5"
 
     things = get_all_tracr_things(task=tracr_task, metric_name=METRIC, num_examples=num_examples, device=DEVICE)
 
@@ -298,25 +307,24 @@ elif TASK == "ioi":
     num_examples = 100
     things = get_all_ioi_things(num_examples=num_examples, device=DEVICE, metric_name=METRIC)
 
-    if METRIC == "kl_div" and not RESET_NETWORK:
-        if ZERO_ABLATION:
-            ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_ioi_sweep"
-            del ACDC_PRE_RUN_FILTER["config.reset_network"]
-            ACDC_PRE_RUN_FILTER["group"] = "default"
-        else:
-            ACDC_PRE_RUN_FILTER["group"] = "acdc-ioi-gt-redo2"
+    if ZERO_ABLATION:
+        ACDC_PRE_RUN_FILTER["group"] = "zero-ablation-fix-bias"
     else:
-        try:
-            del ACDC_PRE_RUN_FILTER["group"]
-        except KeyError:
-            pass
-        ACDC_PRE_RUN_FILTER = {
-            "$or": [
-                {"group": "reset-networks-neurips", **ACDC_PRE_RUN_FILTER},
-                {"group": "acdc-gt-ioi-redo", **ACDC_PRE_RUN_FILTER},
-                {"group": "acdc-spreadsheet2", **ACDC_PRE_RUN_FILTER},
-            ]
-        }
+        if METRIC == "kl_div" and not RESET_NETWORK:
+            ACDC_PRE_RUN_FILTER["group"] = "acdc-ioi-gt-redo2"
+        else:
+            try:
+                del ACDC_PRE_RUN_FILTER["group"]
+            except KeyError:
+                pass
+
+            ACDC_PRE_RUN_FILTER = {
+                "$or": [
+                    {"group": "reset-networks-neurips", **ACDC_PRE_RUN_FILTER},
+                    {"group": "acdc-gt-ioi-redo", **ACDC_PRE_RUN_FILTER},
+                    {"group": "acdc-spreadsheet2", **ACDC_PRE_RUN_FILTER},
+                ]
+            }
 
     get_true_edges = partial(get_ioi_true_edges, model=things.tl_model)
 
@@ -328,41 +336,44 @@ elif TASK == "greaterthan":
     SP_PRE_RUN_FILTER["group"] = "tracr-shuffled-redo"
     SP_PROJECT_NAME = "remix_school-of-rock/induction_arthur"  # moved here manually
 
-    if METRIC == "kl_div" and not RESET_NETWORK:
-        if ZERO_ABLATION:
-            ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_greaterthan_zero_sweep"
-            ACDC_PRE_RUN_FILTER = {}
+    if ZERO_ABLATION:
+        ACDC_PRE_RUN_FILTER["group"] = "zero-ablation-fix-bias"
+    else:
+        if METRIC == "greaterthan":
+            if not RESET_NETWORK and not ZERO_ABLATION:
+                ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_greaterthan_sweep_fixed_random"
+                ACDC_PRE_RUN_FILTER = {}
+            else:
+                ACDC_PRE_RUN_FILTER["group"] = "gt-fix-metric"
         else:
-            del ACDC_PRE_RUN_FILTER["group"]
-
-    if METRIC == "greaterthan" and not RESET_NETWORK and not ZERO_ABLATION:
-        ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_greaterthan_sweep_fixed_random"
-        ACDC_PRE_RUN_FILTER = {}
-    elif METRIC == "greaterthan":
-        ACDC_PRE_RUN_FILTER["group"] = "gt-fix-metric"
-    elif RESET_NETWORK:
-        try:
-            del ACDC_PRE_RUN_FILTER["group"]
-        except KeyError:
-            pass
-        ACDC_PRE_RUN_FILTER = {
-            "$or": [
-                {"group": "reset-networks-neurips", **ACDC_PRE_RUN_FILTER},
-                {"group": "acdc-gt-ioi-redo", **ACDC_PRE_RUN_FILTER},
-                {"group": "acdc-spreadsheet2", **ACDC_PRE_RUN_FILTER},
-            ]
-        }
-
+            if RESET_NETWORK:
+                try:
+                    del ACDC_PRE_RUN_FILTER["group"]
+                except KeyError:
+                    pass
+                ACDC_PRE_RUN_FILTER = {
+                    "$or": [
+                        {"group": "reset-networks-neurips", **ACDC_PRE_RUN_FILTER},
+                        {"group": "acdc-gt-ioi-redo", **ACDC_PRE_RUN_FILTER},
+                        {"group": "acdc-spreadsheet2", **ACDC_PRE_RUN_FILTER},
+                    ]
+                }
+            else:
+                assert METRIC == "kl_div"
+                del ACDC_PRE_RUN_FILTER["group"]
 
 elif TASK == "induction":
     num_examples=50
     things = get_all_induction_things(num_examples=num_examples, seq_len=300, device=DEVICE, metric=METRIC)
 
-    if RESET_NETWORK:
-        ACDC_PRE_RUN_FILTER["group"] = "reset-networks-neurips"
+    if ZERO_ABLATION:
+        ACDC_PRE_RUN_FILTER["group"] = "zero-ablation-fix-bias"
     else:
-        # ACDC_PRE_RUN_FILTER["group"] = "adria-induction-2"
-        ACDC_PRE_RUN_FILTER["group"] = "adria-induction-3"
+        if RESET_NETWORK:
+            ACDC_PRE_RUN_FILTER["group"] = "reset-networks-neurips"
+        else:
+            # ACDC_PRE_RUN_FILTER["group"] = "adria-induction-2"
+            ACDC_PRE_RUN_FILTER["group"] = "adria-induction-3"
 else:
     raise NotImplementedError("TODO " + TASK)
 

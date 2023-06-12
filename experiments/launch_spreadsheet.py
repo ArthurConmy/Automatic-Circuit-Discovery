@@ -6,10 +6,10 @@ from typing import List
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
     "tracr-reverse": ["l2"],
-    "tracr-proportion": ["kl_div", "l2"],
+    "tracr-proportion": ["l2"],
     "induction": ["kl_div", "nll"],
     "docstring": ["kl_div", "docstring_metric"],
-    "greaterthan": ["greaterthan"],  # "kl_div"
+    "greaterthan": ["greaterthan", "kl_div"],
 }
 
 CPU = 4
@@ -28,9 +28,9 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
 
     commands: List[List[str]] = []
     for reset_network in [int(reset_networks)]:
-        for zero_ablation in [0]:
+        for zero_ablation in [1]:
             for task in TASKS:
-                for metric in ["kl_div"]: # METRICS_FOR_TASK[task]:
+                for metric in METRICS_FOR_TASK[task]:
 
                     if task.startswith("tracr"):
                         # Typical metric value range: 0.0-0.1
@@ -122,39 +122,29 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
         name="acdc-spreadsheet",
         job=None
         if not use_kubernetes
-        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.8.0", cpu=CPU, gpu=int(use_gpu)),
+        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:3aebc1c", cpu=CPU, gpu=int(use_gpu)),
         check_wandb=wandb_identifier,
         just_print_commands=False,
     )
 
 
 if __name__ == "__main__":
-    for reset_networks in [False]:
+    for reset_networks in [False, True]:
         main(
-            ["ioi", "greaterthan"],
-            "acdc-ioi-gt-redo2",
-            f"agarriga-ioi-res{int(reset_networks)}-{{i:05d}}",
+            ["tracr-reverse", "tracr-proportion"],
+            "zero-ablation-fix-bias",
+            f"agarriga-tr-res{int(reset_networks)}-{{i:05d}}",
+            testing=False,
+            use_kubernetes=True,
+            reset_networks=reset_networks,
+            use_gpu=False,
+        )
+        main(
+            ["ioi", "greaterthan", "docstring", "induction"],
+            "zero-ablation-fix-bias",
+            f"agarriga-res{int(reset_networks)}-{{i:05d}}",
             testing=False,
             use_kubernetes=True,
             reset_networks=reset_networks,
             use_gpu=True,
         )
-
-# if __name__ == "__main__":
-#     for reset_networks in [False, True]:
-#         main(
-#             ["ioi", "greaterthan", "induction", "docstring"],
-#             "reset-networks-neurips",
-#             "agarriga-tracr3-{i:05d}",
-#             testing=False,
-#             use_kubernetes=True,
-#             reset_networks=True,
-#         )
-#         main(
-#             ["induction"],
-#             "adria-induction-3",
-#             "agarriga-induction-{i:05d}",
-#             testing=False,
-#             use_kubernetes=True,
-#             reset_networks=False,
-#         )
