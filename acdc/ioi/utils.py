@@ -231,10 +231,6 @@ def get_ioi_true_edges(model):
             edge_to = corr.edges[f"blocks.{layer_idx}.hook_{letter}_input"][TorchIndex([None, None, head_idx])]
             edge_to[f"blocks.0.hook_resid_pre"][TorchIndex([None])].present = False
 
-            # Remove all MLP -> head connections
-            # for mlp_layer_idx in range(layer_idx):
-            #     edge_to[f"blocks.{mlp_layer_idx}.hook_mlp_out"][TorchIndex([None])].present = False
-
             # Remove all other_head->this_head connections in the circuit
             for layer_from in range(layer_idx):
                 for head_from in range(12):
