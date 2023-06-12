@@ -1,6 +1,6 @@
 {
   "reset": {
-    "random_ablation": {
+    "zero_ablation": {
       "greaterthan": {
         "greaterthan": {
           "CANONICAL": {
@@ -11,18 +11,18 @@
               0.0,
               -Infinity
             ],
-            "test_greaterthan": [
-              Infinity,
-              3.6952919799659867e-06,
-              3.78175309379003e-06,
-              3.752810698642861e-06,
-              -Infinity
-            ],
             "test_kl_div": [
               Infinity,
               16.261966705322266,
-              16.13306999206543,
-              16.13994598388672,
+              12.224029541015625,
+              15.661361694335938,
+              -Infinity
+            ],
+            "test_greaterthan": [
+              Infinity,
+              3.695297891681548e-06,
+              5.2621740906033665e-05,
+              3.054685521419742e-06,
               -Infinity
             ],
             "edge_fpr": [
