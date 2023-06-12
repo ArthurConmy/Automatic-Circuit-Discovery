@@ -382,7 +382,7 @@ def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: st
 
 
 def get_tracr_proportion_edges():
-    # generated from acdc/main.py commit 3a3770bb7
+    """Set of edges generated from ACDC run with threshold epsilon, metric l2 and zero ablation (commit e612e50)"""
 
     return OrderedDict(
         [
@@ -405,6 +405,8 @@ def get_tracr_proportion_edges():
 
 
 def get_tracr_reverse_edges():
+    """Set of edges generated from ACDC run with threshold epsilon, metric l2 and zero ablation (commit e612e50)"""
+    
     return OrderedDict(
         [
             (("blocks.3.hook_resid_post", (None,), "blocks.3.attn.hook_result", (None, None, 0)), True),

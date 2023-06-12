@@ -13,15 +13,15 @@ class GlobalCache: # this dict stores the activations from the forward pass
         if isinstance(device, str):
             device = (device, device)
 
-        self.cache = OrderedDict() 
-        self.second_cache = OrderedDict()
+        self.online_cache = OrderedDict() 
+        self.corrupted_cache = OrderedDict()
         self.device: Tuple[str, str] = (device, device)
 
 
     def clear(self, just_first_cache=False):
         
         if not just_first_cache:
-            self.cache = OrderedDict()
+            self.online_cache = OrderedDict()
         else:
             raise NotImplementedError()
             self.__init__(self.device[0], self.device[1]) # lol
@@ -30,15 +30,15 @@ class GlobalCache: # this dict stores the activations from the forward pass
         gc.collect()
         torch.cuda.empty_cache()
 
-    def to(self, device, which_caches: Literal["first", "second", "all"]="all"): # 
+    def to(self, device, which_caches: Literal["online", "corrupted", "all"]="all"): # 
 
         caches = []
-        if which_caches != "second":
+        if which_caches != "online":
             self.device = (device, self.device[1])
-            caches.append(self.cache)
-        if which_caches != "first":
+            caches.append(self.online_cache)
+        if which_caches != "corrupted":
             self.device = (self.device[0], device)
-            caches.append(self.second_cache)
+            caches.append(self.corrupted_cache)
 
         # move all the parameters
         for cache in caches: # mutable means this works..

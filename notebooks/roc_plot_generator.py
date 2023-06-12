@@ -394,11 +394,11 @@ exp = TLACDCExperiment(
     second_metric=None,
     verbose=True,
     use_pos_embed=USE_POS_EMBED,
-    first_cache_cpu=False,
-    second_cache_cpu=False,
+    online_cache_cpu=False,
+    corrupted_cache_cpu=False,
 )
-if not SKIP_ACDC or not SKIP_CANONICAL:
-    exp.setup_second_cache()
+if not SKIP_ACDC and not ONLY_SAVE_CANONICAL:
+    exp.setup_corrupted_cache()
 
 max_subgraph_size = exp.corr.count_no_edges()
 

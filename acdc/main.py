@@ -140,8 +140,8 @@ parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only tas
 task_choices = ['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan']
 parser.add_argument('--task', type=str, required=True, choices=task_choices, help=f'Choose a task from the available options: {task_choices}')
 parser.add_argument('--threshold', type=float, required=True, help='Value for THRESHOLD')
-parser.add_argument('--first-cache-cpu', type=str, required=False, default="True", help='Value for FIRST_CACHE_CPU')
-parser.add_argument('--second-cache-cpu', type=str, required=False, default="True", help='Value for SECOND_CACHE_CPU')
+parser.add_argument('--first-cache-cpu', type=str, required=False, default="True", help='Value for FIRST_CACHE_CPU (the old name for the `online_cache`)')
+parser.add_argument('--second-cache-cpu', type=str, required=False, default="True", help='Value for SECOND_CACHE_CPU (the old name for the `corrupted_cache`)')
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
 parser.add_argument('--using-wandb', action='store_true', help='Use wandb')
 parser.add_argument('--wandb-entity-name', type=str, required=False, default="remix_school-of-rock", help='Value for WANDB_ENTITY_NAME')
@@ -184,19 +184,19 @@ torch.manual_seed(args.seed)
 
 TASK = args.task
 if args.first_cache_cpu is None: # manage default
-    FIRST_CACHE_CPU = True
+    ONLINE_CACHE_CPU = True
 elif args.first_cache_cpu.lower() == "false":
-    FIRST_CACHE_CPU = False
+    ONLINE_CACHE_CPU = False
 elif args.first_cache_cpu.lower() == "true":
-    FIRST_CACHE_CPU = True
+    ONLINE_CACHE_CPU = True
 else: 
     raise ValueError(f"first_cache_cpu must be either True or False, got {args.first_cache_cpu}")
 if args.second_cache_cpu is None:
-    SECOND_CACHE_CPU = True
+    CORRUPTED_CACHE_CPU = True
 elif args.second_cache_cpu.lower() == "false":
-    SECOND_CACHE_CPU = False
+    CORRUPTED_CACHE_CPU = False
 elif args.second_cache_cpu.lower() == "true":
-    SECOND_CACHE_CPU = True
+    CORRUPTED_CACHE_CPU = True
 else:
     raise ValueError(f"second_cache_cpu must be either True or False, got {args.second_cache_cpu}")
 THRESHOLD = args.threshold  # only used if >= 0.0
@@ -320,9 +320,9 @@ exp = TLACDCExperiment(
     verbose=True,
     indices_mode=INDICES_MODE,
     names_mode=NAMES_MODE,
-    second_cache_cpu=SECOND_CACHE_CPU,
+    corrupted_cache_cpu=CORRUPTED_CACHE_CPU,
     hook_verbose=False,
-    first_cache_cpu=FIRST_CACHE_CPU,
+    online_cache_cpu=ONLINE_CACHE_CPU,
     add_sender_hooks=True,
     use_pos_embed=use_pos_embed,
     add_receiver_hooks=False,
