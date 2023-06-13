@@ -61,8 +61,7 @@ def imshow(
     fig.show()
 # %%
 
-model = transformer_lens.HookedTransformer.from_pretrained("gpt2")
-
+model = transformer_lens.HookedTransformer.from_pretrained("gpt2-medium")
 from transformer_lens.backup.ioi_dataset import IOIDataset, NAMES
 
 # %%
@@ -96,8 +95,8 @@ logits, cache = model.run_with_cache(
 
 # %%
 
-logit_attribution = t.zeros((12, 12))
-for i in range(12):
+logit_attribution = t.zeros((model.cfg.n_layers, model.cfg.n_heads))
+for i in range(model.cfg.n_layers):
     attn_result = einops.einsum(
         cache["z", i][t.arange(N), ioi_dataset.word_idx["end"]], # (batch, head_idx, d_head)
         model.W_O[i], # (head_idx, d_head, d_model)
@@ -111,13 +110,14 @@ for i in range(12):
         "batch head_idx d_model, d_model batch -> batch head_idx",
     )
 
-    for j in range(12):
+    for j in range(model.cfg.n_heads):
         logit_attribution[i, j] = layer_attribution_old[:, j].mean()
 
 # %%
 
 imshow(
     logit_attribution,
+    title="GPT-2 Medium head direct logit attribution",
 )
 # %%
 
@@ -130,6 +130,8 @@ W_E = model.W_E
 # lock attn to 1 at current position
 # lock attn to average
 # don't include attention
+
+#%%
 
 from transformer_lens import FactoredMatrix
 
@@ -442,10 +444,10 @@ for idx in range(OUTER_LEN):
 # observe that a large value of num_samples gives better results
 
 for num_samples, random_seeds in [
-    (2**i, 2**(10-i)) for i in range(1, 11)
+    (2**i, 2**(10-i)) for i in range(4, 11)
 ]:
-    results = t.zeros(12, 12)
-    for layer, head in tqdm(list(itertools.product(range(12), range(12)))):
+    results = t.zeros(model.cfg.n_layers, model.cfg.n_heads)
+    for layer, head in tqdm(list(itertools.product(range(model.cfg.n_layers), range(model.cfg.n_heads)))):
 
         bags_of_words = None
         mean_version = False
