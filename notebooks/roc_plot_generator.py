@@ -30,7 +30,6 @@ if IPython.get_ipython() is not None:
     IPython.get_ipython().run_line_magic("autoreload", "2")  # type: ignore
 
 from copy import deepcopy
-from subnetwork_probing.train import correspondence_from_mask
 from acdc.acdc_utils import filter_nodes, get_edge_stats, get_node_stats, get_present_nodes, reset_network
 import pandas as pd
 import gc
@@ -147,7 +146,7 @@ torch.autograd.set_grad_enabled(False)
 
 parser = argparse.ArgumentParser(description="Used to control ROC plot scripts (for standardisation with other files...)")
 parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr-reverse, tracr-proportion, greaterthan')
-parser.add_argument("--mode", type=str, required=False, choices=["edges", "nodes"], help="Choose a mode from the available options: edges, nodes", default="edges") # TODO implement nodes
+parser.add_argument("--mode", type=str, required=False, choices=["edges", "nodes"], help="Choose a mode from the available options: edges, nodes", default="edges")
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
 parser.add_argument('--metric', type=str, default="kl_div", help="Which metric to use for the experiment")
 parser.add_argument('--reset-network', type=int, default=0, help="Whether to reset the network we're operating on before running interp on it")
@@ -163,10 +162,10 @@ parser.add_argument("--canonical-graph-save-dir", type=str, default="DEFAULT")
 parser.add_argument("--only-save-canonical", action="store_true", help="Only save the canonical graph")
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 
-if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task=tracr-reverse --metric=l2 --alg=acdc".split())
-    if "arthur" not in __file__:
-        __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
+if True or IPython.get_ipython() is not None:
+    args = parser.parse_args("--task=docstring --metric=docstring_metric --alg=canonical".split())
+    # if "arthur" not in __file__:
+    #     __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
 else:
     args = parser.parse_args()
 
@@ -206,9 +205,11 @@ if args.alg != "none":
     SKIP_CANONICAL = False if args.alg == "canonical" else True
     OUT_FILE = OUT_DIR / f"{args.alg}-{args.task}-{args.metric}-{args.zero_ablation}-{args.reset_network}.json"
 
-    if OUT_FILE.exists():
-        print("File already exists, skipping")
-        sys.exit(0)
+    # print()
+    # if OUT_FILE.exists():
+    #     print("File already exists, skipping")
+    #     sys.exit(0)
+
 else:
     OUT_FILE = None
 

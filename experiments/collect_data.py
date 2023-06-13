@@ -11,6 +11,7 @@ print("is adria:", IS_ADRIA)
 
 #TASKS = ["ioi", "docstring", "greaterthan", "tracr-reverse", "tracr-proportion", "induction"]
 TASKS = ["ioi", "docstring", "greaterthan", "induction"]
+TASKS = ["docstring"] # just reproducing the docstring stuff
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
@@ -21,17 +22,16 @@ METRICS_FOR_TASK = {
     "greaterthan": ["kl_div", "greaterthan"],
 }
 
-
 def main(
     alg: str, 
-    task: str, 
+    task: str,
     job: KubernetesJob, 
     testing: bool = False, 
     mod_idx=0,
     num_processes=1,
 ):
-    # mod_idx= MPI.COMM_WORLD.Get_rank()
-    # num_processes = MPI.COMM_WORLD.Get_size()
+    mod_idx= MPI.COMM_WORLD.Get_rank()
+    num_processes = MPI.COMM_WORLD.Get_size()
 
     if IS_ADRIA:
         OUT_RELPATH = Path(".cache") / "plots_data_q_mlp"
@@ -76,23 +76,14 @@ def main(
                     command.append("--ignore-missing-score")
                 commands.append(command)
 
-    if IS_ADRIA:
-        launch(
-            commands,
-            name="collect_data",
-            job=job,
-            synchronous=True,
-            just_print_commands=False,
-            check_wandb=WandbIdentifier(f"agarriga-col-{alg}-{task[-5:]}-{{i:04d}}b", "collect", "acdc"),
-        )
-
-    else:
-        for command_idx in range(mod_idx, len(commands), num_processes): # commands:
-            # run 4 in parallel
-            command = commands[command_idx]
-            print(f"Running command {command_idx} / {len(commands)}")
-            print(" ".join(command))
-            subprocess.run(command)
+    launch(
+        commands,
+        name="collect_data",
+        job=job,
+        synchronous=True,
+        just_print_commands=False,
+        check_wandb=WandbIdentifier(f"agarriga-col-{alg}-{task[-5:]}-{{i:04d}}b", "collect", "acdc"),
+    )
 
 
 tasks_for = {
@@ -116,9 +107,9 @@ if __name__ == "__main__":
                 alg,
                 task,
                 KubernetesJob(
-                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:b353d83",
+                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:b353d83", # Arthur TODO figure out whether this need be updated
                     cpu=4,
-                    gpu=0 if not IS_ADRIA or task.startswith("tracr") or alg not in ["acdc", "canonical"] else 1,
+                    gpu=0 if task.startswith("tracr") or alg not in ["acdc", "canonical"] else 1,
                     mount_training=False,
                 ),
                 testing=False,

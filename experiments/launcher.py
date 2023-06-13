@@ -5,6 +5,8 @@ import numpy as np
 import shlex
 import dataclasses
 import wandb
+import os
+IS_ADRIA = "aconmy" in os.environ["USER"]
 
 @dataclasses.dataclass(frozen=True)
 class KubernetesJob:
@@ -17,8 +19,8 @@ class KubernetesJob:
         if not self.mount_training:
             return []
         return [
-            "--volume-mount=/training",
-            "--volume-name=agarriga-models-training",
+            "--volume-mount=/training" if IS_ADRIA else "--volume-mount=/aconmy-data", # Arthur is following Hofvarpnir onboarding
+            "--volume-name=agarriga-models-training" if IS_ADRIA else "--volume-name=aconmy-home", # Arthur is following Hofvarpnir onboarding
         ]
 
 
@@ -95,7 +97,7 @@ def launch(commands: List[List[str]], name: str, job: Optional[KubernetesJob] = 
                     "--never-restart",
                     f"--command={command_str}",
                     "--working-dir=/Automatic-Circuit-Discovery",
-                    "--shared-host-dir=/home/agarriga/.cache",
+                    "--shared-host-dir=/home/agarriga/.cache" if IS_ADRIA else "--shared-host-dir=/home/aconmy/.cache", # Arthur guesses this will work...
                     "--shared-host-dir-mount=/root/.cache",
                     *job.mount_training_options(),
                 ],
