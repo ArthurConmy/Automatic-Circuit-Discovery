@@ -112,6 +112,8 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
                             f"--wandb-mode=online",
                             f"--max-num-epochs={1 if testing else 40_000}",
                             "--no-save-images",
+                            "--first-cache-cpu=False",
+                            "--second-cache-cpu=False",
                         ]
                         if zero_ablation:
                             command.append("--zero-ablation")
@@ -123,7 +125,7 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
         name="acdc-spreadsheet",
         job=None
         if not use_kubernetes
-        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:3aebc1c", cpu=CPU, gpu=int(use_gpu)),
+        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:10257aa", cpu=CPU, gpu=int(use_gpu)),
         check_wandb=wandb_identifier,
         just_print_commands=False,
     )
