@@ -166,7 +166,7 @@ def discard_non_pareto_optimal(points, auxiliary, cmp="gt"):
 
 #%%
 
-def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("trained",), ablation_type="random_ablation", plot_type="roc_nodes", scale_min=0.0, scale_max=0.8):
+def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("trained",), ablation_type="random_ablation", plot_type="roc_nodes", scale_min=0.01, scale_max=0.8):
     TOP_MARGIN = -0.02 + 0.26 * len(weights_types)
     LEFT_MARGIN = -0.02
     RIGHT_MARGIN = 0.02 if y_key in ["edge_tpr", "node_tpr"] else 0.00
@@ -382,7 +382,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     }))
 
 
-                others = [(*p, *aux) for (p, *aux) in sorted(zip(points, log_scores, normalized_log_scores, scores), key=lambda x: -x[-1]) if p not in pareto_optimal]
+                others = [(*p, *aux) for (p, *aux) in sorted(zip(points, log_scores, normalized_log_scores, scores), key=lambda x: -x[-1])] #  if p not in pareto_optimal]
 
                 if others:
                     x_data, y_data, log_scores, normalized_log_scores, scores = zip(*others)
