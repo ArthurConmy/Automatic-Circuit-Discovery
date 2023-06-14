@@ -217,9 +217,11 @@ tasks_for = {
 }
 
 if __name__ == "__main__":
-    for alg in ["canonical"]:
+    algs = ["acdc", "sp", "16h"]
+    for alg_idx in range(1, len(algs), 2):
+        alg = algs[alg_idx]
         tasks_list = tasks_for[alg]
-        for task_idx in range(0, len(tasks_for[alg]), 1): # change to 2 at end to parallelize...
+        for task_idx in range(0, len(tasks_list)):
             task = tasks_list[task_idx]
             main(
                 alg,
