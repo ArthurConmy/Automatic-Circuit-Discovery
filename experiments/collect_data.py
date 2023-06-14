@@ -34,19 +34,11 @@ def main(
     # mod_idx= MPI.COMM_WORLD.Get_rank()
     # num_processes = MPI.COMM_WORLD.Get_size()
 
-    if IS_ADRIA:
-        OUT_RELPATH = Path(".cache") / "plots_data_q_mlp"
-        OUT_HOME_DIR = Path(os.environ["HOME"]) / OUT_RELPATH
-    else:
-        OUT_RELPATH = Path("experiments/results/arthur_plots_data") # trying to remove extra things from acdc/
-        OUT_HOME_DIR = OUT_RELPATH
+    OUT_RELPATH = Path(".cache") / "plots_data_q_mlp"
+    OUT_HOME_DIR = Path(os.environ["HOME"]) / OUT_RELPATH
 
     assert OUT_HOME_DIR.exists()
-
-    if IS_ADRIA:
-        OUT_DIR = Path("/root") / OUT_RELPATH
-    else:
-        OUT_DIR = OUT_RELPATH
+    OUT_DIR = Path("/root") / OUT_RELPATH
 
     seed = 1233778640
     random.seed(seed)
@@ -77,23 +69,22 @@ def main(
                     command.append("--ignore-missing-score")
                 commands.append(command)
 
-    if IS_ADRIA:
-        launch(
-            commands,
-            name="collect_data",
-            job=job,
-            synchronous=True,
-            just_print_commands=False,
-            check_wandb=WandbIdentifier(f"agarriga-col-{alg}-{task[-5:]}-{{i:04d}}b", "collect", "acdc"),
-        )
+    launch(
+        commands,
+        name="collect_data",
+        job=job,
+        synchronous=True,
+        just_print_commands=False,
+        check_wandb=WandbIdentifier(f"agarriga-col-{alg}-{task[-5:]}-{{i:04d}}b", "collect", "acdc"),
+    )
 
-    else:
-        for command_idx in range(mod_idx, len(commands), num_processes): # commands:
-            # run 4 in parallel
-            command = commands[command_idx]
-            print(f"Running command {command_idx} / {len(commands)}")
-            print(" ".join(command))
-            subprocess.run(command)
+    # else:
+    #     for command_idx in range(mod_idx, len(commands), num_processes): # commands:
+    #         # run 4 in parallel
+    #         command = commands[command_idx]
+    #         print(f"Running command {command_idx} / {len(commands)}")
+    #         print(" ".join(command))
+    #         subprocess.run(command)
 
 
 tasks_for = {
