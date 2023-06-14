@@ -183,6 +183,7 @@ def main(
                     f"--metric={metric}",
                     f"--alg={alg}",
                     f"--device={'cpu' if testing or not job.gpu else 'cuda'}",
+                    # f"--first-cache-cpu=False",
                     f"--torch-num-threads={job.cpu}",
                     f"--out-dir={OUT_DIR}",
                     f"--seed={random.randint(0, 2**31-1)}",
@@ -217,14 +218,16 @@ tasks_for = {
 
 if __name__ == "__main__":
     for alg in ["canonical"]:
-        for task in tasks_for[alg]:
+        tasks_list = tasks_for[alg]
+        for task_idx in range(0, len(tasks_for[alg]), 1): # change to 2 at end to parallelize...
+            task = tasks_list[task_idx]
             main(
                 alg,
                 task,
                 KubernetesJob(
                     container="ghcr.io/arthurconmy/automatic-circuit-discovery:tag",
                     cpu=4,
-                    gpu=0 if not IS_ADRIA or task.startswith("tracr") or alg not in ["acdc", "canonical"] else 1,
+                    gpu=0 if task.startswith("tracr") or alg not in ["acdc", "canonical"] else 1,
                     mount_training=False,
                 ),
                 testing=False,
