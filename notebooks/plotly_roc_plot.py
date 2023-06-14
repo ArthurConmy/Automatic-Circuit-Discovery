@@ -7,7 +7,8 @@ if get_ipython() is not None:
     __file__ = os.path.join(get_ipython().run_line_magic('pwd', ''), "notebooks", "plotly_roc_plot.py")
 
     from notebooks.emacs_plotly_render import set_plotly_renderer
-    if "adria" in __file__:
+    cwd=os.getcwd()
+    if not (cwd.startswith("/root") or "arthur" in cwd or "aconmy"):
         set_plotly_renderer("emacs")
 
 import plotly
