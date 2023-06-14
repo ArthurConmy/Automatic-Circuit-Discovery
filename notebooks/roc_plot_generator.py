@@ -155,7 +155,7 @@ parser.add_argument("--alg", type=str, default="none", choices=["none", "acdc", 
 parser.add_argument("--skip-sixteen-heads", action="store_true", help="Skip the 16 heads stuff")
 parser.add_argument("--skip-sp", action="store_true", help="Skip the SP stuff")
 parser.add_argument("--testing", action="store_true", help="Use testing data instead of validation data")
-parser.add_argument("--device", type=str, default="cpu")
+parser.add_argument("--device", type=str, default="cuda")
 parser.add_argument("--out-dir", type=str, default="DEFAULT")
 parser.add_argument('--torch-num-threads', type=int, default=0, help="How many threads to use for torch (0=all)")
 parser.add_argument('--seed', type=int, default=42, help="Random seed")
@@ -165,8 +165,11 @@ parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore 
 
 if IPython.get_ipython() is not None:
     args = parser.parse_args("--task=tracr-reverse --metric=l2 --alg=acdc".split())
-    if "arthur" not in __file__ and not __file__.startswith("/root") and not "aconmy" in __file__:
-        __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
+
+IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root") and not "aconmy" in __file__
+if IS_ADRIA:
+    __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
+
 else:
     args = parser.parse_args()
 
@@ -190,6 +193,11 @@ SKIP_SIXTEEN_HEADS = True if args.skip_sixteen_heads else False
 SKIP_CANONICAL = True
 TESTING = True if args.testing else False
 ONLY_SAVE_CANONICAL = True if args.only_save_canonical else False
+
+if not IS_ADRIA:
+    if METRIC == "kl_div": 
+        print("EXITING as the KL div stuff is not being redone...")
+        sys.exit(0)
 
 if args.out_dir == "DEFAULT":
     OUT_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / f"{'arthur_' if 'arthur' in __file__ else ''}plots_data"
@@ -496,12 +504,12 @@ def get_acdc_runs(
     if run_filter is None:
         filtered_runs = list(runs)[:clip]
     else:
-        filtered_runs = list(filter(run_filter, tqdm(list(runs)[:clip])))
+        filtered_runs = list(filter(run_filter, list(runs)[:clip]))
     print(f"loading {len(filtered_runs)} runs with filter {pre_run_filter} and {run_filter}")
 
     corrs = []
     ids = []
-    for run in filtered_runs:
+    for run in tqdm(filtered_runs):
         score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
         try:
             score_d["score"] = run.config["threshold"]
@@ -691,7 +699,7 @@ def get_sp_corrs(
     if run_filter is None:
         filtered_runs = runs[:clip]
     else:
-        filtered_runs = list(filter(run_filter, tqdm(runs[:clip])))
+        filtered_runs = list(filter(run_filter, runs[:clip]))
     print(f"loading {len(filtered_runs)} runs")
 
     if things is None:
@@ -701,7 +709,7 @@ def get_sp_corrs(
         ]
 
     corrs = []
-    for run in filtered_runs:
+    for run in tqdm(filtered_runs):
         try:
             nodes_to_mask_strings = run.summary["nodes_to_mask"]
         except KeyError:
@@ -752,7 +760,7 @@ def get_sixteen_heads_corrs(
     assert len(score_d_list) == len(nodes_names_indices) + 1
 
     corrs = [(correspondence_from_mask(model=model, nodes_to_mask=[], use_pos_embed=exp.use_pos_embed), {"score": 0.0, **score_d_list[0]})]
-    for (nodes, hook_name, idx, score), score_d in tqdm(zip(nodes_names_indices, score_d_list[1:])):
+    for (nodes, hook_name, idx, score), score_d in tqdm(list(zip(nodes_names_indices, score_d_list[1:]))):
         if score == "NaN":
             score = 0.0
         if things is None:

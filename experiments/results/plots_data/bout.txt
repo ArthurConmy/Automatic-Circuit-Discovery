@@ -1,0 +1,7 @@
+python ../../../notebooks/roc_plot_generator.py --task=greaterthan --reset-network=0 --metric=greaterthan --alg=16h
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cuda
+Loaded pretrained model gpt2 into HookedTransformer
+Moving model to device:  cuda
+Editing all edges...
+Done!
