@@ -197,11 +197,6 @@ SKIP_CANONICAL = True
 TESTING = True if args.testing else False
 ONLY_SAVE_CANONICAL = True if args.only_save_canonical else False
 
-if not IS_ADRIA:
-    if METRIC == "kl_div": 
-        print("EXITING as the KL div stuff is not being redone...")
-        sys.exit(0)
-
 if args.out_dir == "DEFAULT":
     OUT_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / f"{'arthur_' if 'arthur' in __file__ else ''}plots_data"
     CANONICAL_OUT_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / "canonical_circuits"
