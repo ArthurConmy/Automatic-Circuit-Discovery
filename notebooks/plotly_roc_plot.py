@@ -10,6 +10,7 @@ if get_ipython() is not None:
 
 import plotly
 import numpy as np
+import torch
 import json
 import wandb
 from acdc.acdc_graphics import dict_merge, pessimistic_auc
@@ -142,6 +143,15 @@ def discard_non_pareto_optimal(points, auxiliary, cmp="gt"):
         else:
             ret.append(((x, y), aux))
     return list(sorted(ret))
+
+def my_log_transform(x):
+    if None in x:
+        print(x, "Looks sketchy!")
+        return x
+    x = torch.tensor(x)
+    # convert 0s to 1e-2
+    x[x <= 1e-2] = 1e-2
+    return (torch.log10(x) + 2) / 2
 
 #%%
 
@@ -312,12 +322,6 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
                         print(e)
                         auc=-420.0
 
-                def my_log_transform(x):
-                    x = torch.tensor(x)
-                    # convert 0s to 1e-2
-                    x[x == 0] = 1e-2
-                    return (torch.log10(x) + 2) / 2
-
                 fig.add_trace(
                     go.Scatter(
                         x=my_log_transform(x_data),
@@ -407,7 +411,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
 
             fig.add_trace(
                 go.Scatter(
-                    x=x_data,
+                    x=my_log_transform(x_data),
                     y=y_data,
                     name=methodof,
                     mode="markers",
