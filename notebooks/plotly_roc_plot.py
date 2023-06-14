@@ -35,7 +35,8 @@ else:
 
 # %%
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "plots_data"
+DATA_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / "plots_data"
+print(DATA_DIR, "is the data directory")
 all_data = {}
 
 for fname in os.listdir(DATA_DIR):
@@ -200,7 +201,12 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
 
         for (row, col), task_idx in rows_cols_task_idx:
             metric_name = METRICS_FOR_TASK[task_idx][metric_idx]
-            scores = this_data[task_idx][metric_name][alg_idx]["score"]
+            try:
+                scores = this_data[task_idx][metric_name][alg_idx]["score"]
+            except Exception as e:
+                print(task_idx, metric_name, alg_idx, "score")
+                raise e 
+
             log_scores = np.log10(scores)
             log_scores = np.nan_to_num(log_scores, nan=0.0, neginf=0.0, posinf=0.0)
 
@@ -261,7 +267,11 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
 
             x_data = this_data[task_idx][metric_name][alg_idx][x_key]
             y_data = this_data[task_idx][metric_name][alg_idx][y_key]
-            scores = this_data[task_idx][metric_name][alg_idx]["score"]
+            try:
+                scores = this_data[task_idx][metric_name][alg_idx]["score"]
+            except Exception as e:
+                print(task_idx, metric_name, alg_idx, "score")
+                raise e 
 
             log_scores = np.log10(scores)
             # if alg_idx == "16H" and task_idx == "tracr-reverse":
@@ -302,9 +312,15 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_type="tra
                         print(e)
                         auc=-420.0
 
+                def my_log_transform(x):
+                    x = torch.tensor(x)
+                    # convert 0s to 1e-2
+                    x[x == 0] = 1e-2
+                    return (torch.log10(x) + 2) / 2
+
                 fig.add_trace(
                     go.Scatter(
-                        x=x_data,
+                        x=my_log_transform(x_data),
                         y=y_data,
                         name=methodof,
                         mode="lines",
