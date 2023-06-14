@@ -612,8 +612,10 @@ def get_acdc_runs(
                     with open(fopen.name, "rb") as fopenb:
                         edges_pth = pickle.load(fopenb)
 
-            for t, _effect_size in edges_pth:
-                all_edges[t].present = True
+            for (n_to, idx_to, n_from, idx_from), _effect_size in edges_pth:
+                n_to = n_to.replace("hook_resid_mid", "hook_mlp_in")
+                n_from = n_from.replace("hook_resid_mid", "hook_mlp_in")
+                all_edges[(n_to, idx_to, n_from, idx_from)].present = True
 
             corrs.append((corr, score_d))
             ids.append(run.id)
