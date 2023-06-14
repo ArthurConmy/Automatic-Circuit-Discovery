@@ -22,7 +22,7 @@ import torch
 import torch.nn.functional as F
 import subnetwork_probing.transformer_lens.transformer_lens.utils as utils
 from acdc.tracr_task.utils import get_all_tracr_things
-from acdc.acdc_utils import reset_network
+from acdc.acdc_utils import reset_network, translate_name
 from acdc.TLACDCEdge import (
     TorchIndex,
     Edge,
@@ -64,8 +64,11 @@ def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACD
             nodes_to_mask.append(TLACDCInterpNode(child_name, child_index, EdgeType.ADDITION))
 
     for node in nodes_to_mask + additional_nodes_to_mask:
+
+        node_name = translate_name(node.name)
+
         # Mark edges where this is child as not present
-        rest2 = corr.edges[node.name][node.index]
+        rest2 = corr.edges[node_name][node.index]
         for rest3 in rest2.values():
             for edge in rest3.values():
                 edge.present = False
@@ -74,7 +77,7 @@ def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACD
         for rest1 in corr.edges.values():
             for rest2 in rest1.values():
                 try:
-                    rest2[node.name][node.index].present = False
+                    rest2[node_name][node.index].present = False
                 except KeyError:
                     pass
     return corr

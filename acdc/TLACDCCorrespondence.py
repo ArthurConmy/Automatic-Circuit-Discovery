@@ -77,7 +77,7 @@ class TLACDCCorrespondence:
         try:
             edge = self.edges[child_name][child_index][parent_name][parent_index]
         except Exception as e:
-            print("Couldn't index in - are you sure this edge exists???")
+            print("Couldn't index in - are you sure this edge exists???", child_name, child_index, parent_name, parent_index)
             raise e
 
         edge.present=False

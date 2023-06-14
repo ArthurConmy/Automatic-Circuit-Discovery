@@ -17,7 +17,7 @@ from acdc.global_cache import GlobalCache
 from acdc.acdc_graphics import log_metrics_to_wandb
 import warnings
 import wandb
-from acdc.acdc_utils import extract_info, shuffle_tensor
+from acdc.acdc_utils import extract_info, shuffle_tensor, translate_name
 from acdc.TLACDCEdge import (
     TorchIndex,
     Edge, 
@@ -835,7 +835,7 @@ class TLACDCExperiment:
                     raise ValueError("Didn't find corresponding node line")
                 parent_name, parent_list, current_name, current_list = extract_info(previous_line)
                 parent_torch_index, current_torch_index = TorchIndex(parent_list), TorchIndex(current_list)
-                self.corr.edges[current_name][current_torch_index][parent_name][parent_torch_index].present = keeping_connection
+                self.corr.edges[translate_name(current_name)][current_torch_index][translate_name(parent_name)][parent_torch_index].present = keeping_connection
 
         assert found_at_least_one_readable_line, f"No readable lines found in the log file. Is this formatted correctly ??? {lines=}"
         

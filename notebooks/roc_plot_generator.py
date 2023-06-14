@@ -31,7 +31,7 @@ if IPython.get_ipython() is not None:
 
 from copy import deepcopy
 from subnetwork_probing.train import correspondence_from_mask
-from acdc.acdc_utils import filter_nodes, get_edge_stats, get_node_stats, get_present_nodes, reset_network
+from acdc.acdc_utils import filter_nodes, get_edge_stats, get_node_stats, get_present_nodes, reset_network, translate_name
 import pandas as pd
 import gc
 import math
@@ -436,12 +436,12 @@ if TASK != "induction":
     exp.load_subgraph(d)
     canonical_circuit_subgraph = deepcopy(exp.corr)
     for t in exp.corr.all_edges().keys():
-        exp.corr.edges[t[0]][t[1]][t[2]][t[3]].present = True
+        exp.corr.edges[translate_name(t[0])][t[1]][translate_name(t[2])][t[3]].present = True
     canonical_circuit_subgraph_size = canonical_circuit_subgraph.count_no_edges()
 
     # and reset the sugbgraph...
     for t, e in exp.corr.all_edges().items():
-        exp.corr.edges[t[0]][t[1]][t[2]][t[3]].present = True
+        exp.corr.edges[translate_name(t[0])][t[1]][translate_name(t[2])][t[3]].present = True
 
     for edge in canonical_circuit_subgraph.all_edges().values():
         edge.effect_size = 1.0  # make it visible
@@ -571,12 +571,12 @@ def get_acdc_runs(
                     current_node = child
 
                     if result < threshold:
-                        corr.edges[child.name][child.index][parent.name][parent.index].present = False
+                        corr.edges[translate_name(child.name)][child.index][translate_name(parent.name)][parent.index].present = False
                         corr.remove_edge(
-                            current_node.name, current_node.index, parent.name, parent.index
+                            translate_name(current_node.name), current_node.index, translate_name(parent.name), parent.index
                         )
                     else:
-                        corr.edges[child.name][child.index][parent.name][parent.index].present = True
+                        corr.edges[translate_name(child.name)][child.index][translate_name(parent.name)][parent.index].present = True
                 print("Before copying: n_edges=", corr.count_no_edges())
 
                 corr_all_edges = corr.all_edges().items()
@@ -587,7 +587,8 @@ def get_acdc_runs(
                     edge.present = False
 
                 for tupl, edge in corr_all_edges:
-                    new_all_edges[tupl].present = edge.present
+                    t = (translate_name(tupl[0]), tupl[1], translate_name(tupl[2]), tupl[3])
+                    new_all_edges[t].present = edge.present
 
                 print("After copying: n_edges=", corr_to_copy.count_no_edges())
 
@@ -621,7 +622,8 @@ def get_acdc_runs(
                         edges_pth = pickle.load(fopenb)
 
             for t, _effect_size in edges_pth:
-                all_edges[t].present = True
+                tupl = (translate_name(t[0]), t[1], translate_name(t[2]), t[3])
+                all_edges[tupl].present = True
 
             corrs.append((corr, score_d))
             ids.append(run.id)

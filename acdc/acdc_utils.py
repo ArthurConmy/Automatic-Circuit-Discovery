@@ -313,6 +313,14 @@ def get_node_stats(ground_truth, recovered) -> dict[str, int]:
 
     return counts
 
+def translate_name(name):
+    """To ensure backwards compatibility with the old names (we changed hook_resid_mid -> hook_mlp_in)"""
+
+    if "hook_resid_mid" in name:
+        return name.replace("hook_resid_mid", "hook_mlp_in")
+    return name
+
+
 def get_edge_stats(ground_truth, recovered):    
     assert set(ground_truth.all_edges().keys()) == set(recovered.all_edges().keys()), "There is a mismatch between the keys we're comparing here"
 
@@ -327,9 +335,10 @@ def get_edge_stats(ground_truth, recovered):
     }
 
     for tupl, edge in ground_truth_all_edges.items():
+        edited_tupl = (translate_name(tupl[0]), tupl[1], translate_name(tupl[2]), tupl[3])
         if edge.edge_type == EdgeType.PLACEHOLDER:
             continue
-        if recovered_all_edges[tupl].present:
+        if recovered_all_edges[edited_tupl].present:
             if edge.present:
                 counts["true positive"] += 1
             else:
@@ -507,3 +516,4 @@ if __name__ == "__main__":
     parent_name, parent_list, current_name, current_list = extract_info(string)
 
     print(f"Parent Name: {parent_name}\nParent List: {parent_list}\nCurrent Name: {current_name}\nCurrent List: {current_list}")
+
