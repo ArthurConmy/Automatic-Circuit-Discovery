@@ -1,16 +1,148 @@
+from pathlib import Path
+import subprocess
+from typing import Optional, TextIO, List, Tuple
+import numpy as np
+import shlex
+import dataclasses
+import wandb
+import os
+
+cwd = str(os.getcwd())
+IS_ARTHUR = cwd.startswith("/root") or "aconmy" in cwd or "arthur" in cwd
+IS_ADRIA = not IS_ARTHUR
+ON_HOFVARPNIR = IS_ADRIA or "aconmy" in cwd
+
+@dataclasses.dataclass(frozen=True)
+class KubernetesJob:
+    container: str
+    cpu: int
+    gpu: int
+    mount_training: bool=False
+
+    def mount_training_options(self) -> List[str]:
+        if not self.mount_training:
+            return []
+        return [
+            "--volume-mount=/training",
+            "--volume-name=agarriga-models-training",
+        ]
+
+
+@dataclasses.dataclass(frozen=True)
+class WandbIdentifier:
+    run_name: str
+    group_name: str
+    project: str
+
+
+def launch(commands: List[List[str]], name: str, job: Optional[KubernetesJob] = None, check_wandb: Optional[WandbIdentifier]=None, ids_for_worker=range(0, 10000000), synchronous=True, just_print_commands=False):
+    to_wait: List[Tuple[str, subprocess.Popen, TextIO, TextIO]] = []
+
+    assert len(commands) <= 100_000, "Too many commands for 5 digits"
+
+    print(f"Launching {len(commands)} jobs")
+    for i, command in enumerate(commands):
+        if i not in ids_for_worker:
+            print(f"Skipping {name} because it's not my turn, {i} not in {ids_for_worker}")
+            continue
+
+        command_str = shlex.join(command)
+
+
+        if check_wandb is not None:
+            # HACK this is pretty vulnerable to duplicating work if the same run is launched in close succession,
+            # it's more to be able to restart
+            # api = wandb.Api()
+            name = check_wandb.run_name.format(i=i)
+            # if name in existing_names:
+            #     print(f"Skipping {name} because it already exists")
+            #     continue
+
+            # runs = api.runs(path=f"remix_school-of-rock/{check_wandb.project}", filters={"group": check_wandb.group_name})
+            # existing_names = existing_names.union({r.name for r in runs})
+            # print("Runs that exist: ", existing_names)
+            # if name in existing_names:
+            #     print(f"Run {name} already exists, skipping")
+            #     continue
+
+        print("Launching", name, command_str)
+        if just_print_commands:
+            continue
+
+        if job is None:
+            if synchronous:
+                out = subprocess.run(command)
+                assert out.returncode == 0, f"Command return={out.returncode} != 0"
+            else:
+                base_path = Path(f"/tmp/{name}")
+                base_path.mkdir(parents=True, exist_ok=True)
+                stdout = open(base_path / f"stdout_{i:05d}.txt", "w")
+                stderr = open(base_path / f"stderr_{i:05d}.txt", "w")
+                out = subprocess.Popen(command, stdout=stdout, stderr=stderr)
+                to_wait.append((command_str, out, stdout, stderr))
+        else:
+            if "cuda" in command_str:
+                assert job.gpu > 0
+            else:
+                assert job.gpu == 0
+
+            # fpath = Path("/root/sleipnir/ctl/ctl/ctl.py")
+            # # assert all these subdirectories exist
+            # assert fpath.parent.parent.parent.parent.exists(), fpath.parent.parent.parent.parent
+            # assert fpath.parent.parent.parent.exists(), fpath.parent.parent.parent
+            # assert fpath.parent.parent.exists(), fpath.parent.parent
+
+            print("Launching", name, command_str)
+            subprocess.run(
+                [
+                    "ctl",
+                    "job",
+                    "run",
+                    f"--name={name}",
+                    "--shared-host-dir-slow-tolerant",
+                    f"--container={job.container}",
+                    f"--cpu={job.cpu}",
+                    f"--gpu={job.gpu}",
+                    "--login",
+                    "--wandb",
+                    f"--command={command_str}",
+                    "--working-dir=/Automatic-Circuit-Discovery",
+                    "--shared-host-dir=/home/aconmy/.cache",
+                    "--shared-host-dir-mount=/root/.cache",
+                    *job.mount_training_options(),
+                ],
+                check=True,
+            )
+            print("DONE")
+        i += 1
+
+    for (command, process, out, err) in to_wait:
+        retcode = process.wait()
+        with open(out.name, 'r') as f:
+            stdout = f.read()
+        with open(err.name, 'r') as f:
+            stderr = f.read()
+
+        if retcode != 0 or "nan" in stdout.lower() or "nan" in stderr.lower():
+            s = f""" Command {command} exited with code {retcode}.
+stdout:
+{stdout}
+stderr:
+{stderr}
+"""
+            print(s)
+
 import subprocess
 import argparse
 import os
 from pathlib import Path
-from experiments.launcher import KubernetesJob, WandbIdentifier, launch
 import shlex
 import random
 
 IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root")
 print("is adria:", IS_ADRIA)
 
-#TASKS = ["ioi", "docstring", "greaterthan", "tracr-reverse", "tracr-proportion", "induction"]
-TASKS = ["ioi", "docstring", "greaterthan", "induction"]
+TASKS = ["docstring"]
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
@@ -21,7 +153,6 @@ METRICS_FOR_TASK = {
     "greaterthan": ["kl_div", "greaterthan"],
 }
 
-
 def main(
     alg: str, 
     task: str, 
@@ -30,22 +161,9 @@ def main(
     mod_idx=0,
     num_processes=1,
 ):
-    # mod_idx= MPI.COMM_WORLD.Get_rank()
-    # num_processes = MPI.COMM_WORLD.Get_size()
 
-    if IS_ADRIA:
-        OUT_RELPATH = Path(".cache") / "plots_data_q_mlp"
-        OUT_HOME_DIR = Path(os.environ["HOME"]) / OUT_RELPATH
-    else:
-        OUT_RELPATH = Path("experiments/results/arthur_plots_data") # trying to remove extra things from acdc/
-        OUT_HOME_DIR = OUT_RELPATH
-
-    assert OUT_HOME_DIR.exists()
-
-    if IS_ADRIA:
-        OUT_DIR = Path("/root") / OUT_RELPATH
-    else:
-        OUT_DIR = OUT_RELPATH
+    OUT_RELPATH = Path("arthur_cache")
+    OUT_DIR = Path("/root") / OUT_RELPATH
 
     seed = 1233778640
     random.seed(seed)
@@ -76,7 +194,7 @@ def main(
                     command.append("--ignore-missing-score")
                 commands.append(command)
 
-    if IS_ADRIA:
+    if ON_HOFVARPNIR:
         launch(
             commands,
             name="collect_data",
@@ -87,27 +205,15 @@ def main(
         )
 
     else:
-        for command_idx in range(mod_idx, len(commands), num_processes): # commands:
-            # run 4 in parallel
-            command = commands[command_idx]
-            print(f"Running command {command_idx} / {len(commands)}")
-            print(" ".join(command))
-            subprocess.run(command)
-
+        for i, command in enumerate(commands):
+            subprocess.run(command, check=True)
 
 tasks_for = {
     "acdc": TASKS,
     "16h": TASKS,
     "sp": TASKS,
-    "canonical": ["greaterthan"],
+    "canonical": TASKS,
 }
-
-parser = argparse.ArgumentParser()
-parser.add_argument("--i", type=int, default=0)
-parser.add_argument("--n", type=int, default=1)
-
-mod_idx = parser.parse_args().i
-num_processes = parser.parse_args().n
 
 if __name__ == "__main__":
     for alg in ["canonical"]:
@@ -116,12 +222,10 @@ if __name__ == "__main__":
                 alg,
                 task,
                 KubernetesJob(
-                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:b353d83",
+                    container="ghcr.io/arthurconmy/automatic-circuit-discovery:tag",
                     cpu=4,
                     gpu=0 if not IS_ADRIA or task.startswith("tracr") or alg not in ["acdc", "canonical"] else 1,
                     mount_training=False,
                 ),
                 testing=False,
-                mod_idx=mod_idx,
-                num_processes=num_processes,
             )
