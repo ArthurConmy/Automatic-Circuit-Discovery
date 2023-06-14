@@ -13,7 +13,7 @@ class KubernetesJob:
     gpu: int
     mount_training: bool=False
 
-    def mount_training_options(self) -> List[str]:
+    def mount_training_options(self) -> list[str]:
         if not self.mount_training:
             return []
         return [
@@ -80,13 +80,6 @@ def launch(commands: List[List[str]], name: str, job: Optional[KubernetesJob] = 
             else:
                 assert job.gpu == 0
 
-            # fpath = Path("/root/sleipnir/ctl/ctl/ctl.py")
-            # # assert all these subdirectories exist
-            # assert fpath.parent.parent.parent.parent.exists(), fpath.parent.parent.parent.parent
-            # assert fpath.parent.parent.parent.exists(), fpath.parent.parent.parent
-            # assert fpath.parent.parent.exists(), fpath.parent.parent
-
-            print("Launching", name, command_str)
             subprocess.run(
                 [
                     "ctl",
@@ -99,15 +92,15 @@ def launch(commands: List[List[str]], name: str, job: Optional[KubernetesJob] = 
                     f"--gpu={job.gpu}",
                     "--login",
                     "--wandb",
+                    "--never-restart",
                     f"--command={command_str}",
                     "--working-dir=/Automatic-Circuit-Discovery",
-                    "--shared-host-dir=/home/aconmy/.cache",
+                    "--shared-host-dir=/home/agarriga/.cache",
                     "--shared-host-dir-mount=/root/.cache",
                     *job.mount_training_options(),
                 ],
                 check=True,
             )
-            print("DONE")
         i += 1
 
     for (command, process, out, err) in to_wait:
