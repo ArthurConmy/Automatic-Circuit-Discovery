@@ -22,6 +22,9 @@
 # SIXTEEN_HEADS_PROJECT_NAME
 # SIXTEEN_HEADS_RUN
 
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
 import collections
 import IPython
 
@@ -499,7 +502,7 @@ def get_acdc_runs(
     if clip is None:
         clip = 100_000 # so we don't clip anything
 
-    api = wandb.Api()
+    api = wandb.Api(timeout=30)
     runs = api.runs(project_name, filters=pre_run_filter)
     if run_filter is None:
         filtered_runs = list(runs)[:clip]
@@ -696,7 +699,7 @@ def get_sp_corrs(
     if clip is None:
         clip = 100_000 # so we don't clip anything
 
-    api = wandb.Api()
+    api = wandb.Api(timeout=30)
     runs = api.runs(project_name, filters=pre_run_filter)
     if run_filter is None:
         filtered_runs = runs[:clip]
@@ -741,7 +744,7 @@ def get_sixteen_heads_corrs(
     run_filter = SIXTEEN_HEADS_RUN_FILTER,
     model= None if things is None else things.tl_model,
 ):
-    api = wandb.Api()
+    api = wandb.Api(timeout=30)
     runs = api.runs(project_name, filters=pre_run_filter)
     if run_filter is None:
         run = runs[0]

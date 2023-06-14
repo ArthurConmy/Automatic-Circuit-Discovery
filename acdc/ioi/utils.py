@@ -262,15 +262,15 @@ def get_ioi_true_edges(model):
     for conn in special_connections:
         if conn.inp == "INPUT":
             idx_from = [(-1, "blocks.0.hook_resid_pre", TorchIndex([None]))]
-            for mlp_layer_idx in range(12):
+            for mlp_layer_idx in range(1):
                 idx_from.append((mlp_layer_idx, f"blocks.{mlp_layer_idx}.hook_mlp_out", TorchIndex([None])))
         else:
             idx_from = [(layer_idx, f"blocks.{layer_idx}.attn.hook_result", TorchIndex([None, None, head_idx])) for layer_idx, head_idx in IOI_CIRCUIT[conn.inp]]
 
         if conn.out == "OUTPUT":
-            idx_to = [(13, "blocks.11.hook_resid_post", TorchIndex([None]))]
-            for mlp_layer_idx in range(12):
-                idx_to.append((mlp_layer_idx, f"blocks.{mlp_layer_idx}.hook_mlp_in", TorchIndex([None])))
+            idx_to = [(12, "blocks.11.hook_resid_post", TorchIndex([None]))]
+            # for mlp_layer_idx in range(12):
+            # idx_to.append((mlp_layer_idx, f"blocks.{mlp_layer_idx}.hook_mlp_in", TorchIndex([None])))
         else:
             idx_to = [
                 (layer_idx, f"blocks.{layer_idx}.hook_{letter}_input", TorchIndex([None, None, head_idx]))
