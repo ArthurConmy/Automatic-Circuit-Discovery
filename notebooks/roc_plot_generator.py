@@ -13,8 +13,7 @@
 # ACDC_PROJECT_NAME
 # ACDC_RUN_FILTER 
 
-# # for SP # filters are more annoying since some t
-# hings are nested in groups
+# # for SP # filters are more annoying since some things are nested in groups
 # SP_PROJECT_NAME
 # SP_PRE_RUN_FILTER 
 # SP_RUN_FILTER
@@ -32,7 +31,7 @@ if IPython.get_ipython() is not None:
 
 from copy import deepcopy
 from subnetwork_probing.train import correspondence_from_mask
-from acdc.acdc_utils import filter_nodes, get_edge_stats, get_node_stats, get_present_nodes, reset_network
+from acdc.acdc_utils import filter_nodes, get_edge_stats, get_node_stats, get_present_nodes, reset_network, translate_name
 import pandas as pd
 import gc
 import math
@@ -156,7 +155,7 @@ parser.add_argument("--alg", type=str, default="none", choices=["none", "acdc", 
 parser.add_argument("--skip-sixteen-heads", action="store_true", help="Skip the 16 heads stuff")
 parser.add_argument("--skip-sp", action="store_true", help="Skip the SP stuff")
 parser.add_argument("--testing", action="store_true", help="Use testing data instead of validation data")
-parser.add_argument("--device", type=str, default="cpu")
+parser.add_argument("--device", type=str, default="cuda")
 parser.add_argument("--out-dir", type=str, default="DEFAULT")
 parser.add_argument('--torch-num-threads', type=int, default=0, help="How many threads to use for torch (0=all)")
 parser.add_argument('--seed', type=int, default=42, help="Random seed")
@@ -165,9 +164,12 @@ parser.add_argument("--only-save-canonical", action="store_true", help="Only sav
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task=greaterthan --metric=l2 --alg=acdc".split())
-    if "arthur" not in __file__:
-        __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
+    args = parser.parse_args("--task=tracr-reverse --metric=l2 --alg=acdc".split())
+
+IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root") and not "aconmy" in __file__
+if IS_ADRIA:
+    __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
+
 else:
     args = parser.parse_args()
 
@@ -191,6 +193,11 @@ SKIP_SIXTEEN_HEADS = True if args.skip_sixteen_heads else False
 SKIP_CANONICAL = True
 TESTING = True if args.testing else False
 ONLY_SAVE_CANONICAL = True if args.only_save_canonical else False
+
+if not IS_ADRIA:
+    if METRIC == "kl_div": 
+        print("EXITING as the KL div stuff is not being redone...")
+        sys.exit(0)
 
 if args.out_dir == "DEFAULT":
     OUT_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / f"{'arthur_' if 'arthur' in __file__ else ''}plots_data"
@@ -429,12 +436,12 @@ if TASK != "induction":
     exp.load_subgraph(d)
     canonical_circuit_subgraph = deepcopy(exp.corr)
     for t in exp.corr.all_edges().keys():
-        exp.corr.edges[t[0]][t[1]][t[2]][t[3]].present = True
+        exp.corr.edges[translate_name(t[0])][t[1]][translate_name(t[2])][t[3]].present = True
     canonical_circuit_subgraph_size = canonical_circuit_subgraph.count_no_edges()
 
     # and reset the sugbgraph...
     for t, e in exp.corr.all_edges().items():
-        exp.corr.edges[t[0]][t[1]][t[2]][t[3]].present = True
+        exp.corr.edges[translate_name(t[0])][t[1]][translate_name(t[2])][t[3]].present = True
 
     for edge in canonical_circuit_subgraph.all_edges().values():
         edge.effect_size = 1.0  # make it visible
@@ -497,12 +504,12 @@ def get_acdc_runs(
     if run_filter is None:
         filtered_runs = list(runs)[:clip]
     else:
-        filtered_runs = list(filter(run_filter, tqdm(list(runs)[:clip])))
+        filtered_runs = list(filter(run_filter, list(runs)[:clip]))
     print(f"loading {len(filtered_runs)} runs with filter {pre_run_filter} and {run_filter}")
 
     corrs = []
     ids = []
-    for run in filtered_runs:
+    for run in tqdm(filtered_runs):
         score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
         try:
             score_d["score"] = run.config["threshold"]
@@ -564,12 +571,12 @@ def get_acdc_runs(
                     current_node = child
 
                     if result < threshold:
-                        corr.edges[child.name][child.index][parent.name][parent.index].present = False
+                        corr.edges[translate_name(child.name)][child.index][translate_name(parent.name)][parent.index].present = False
                         corr.remove_edge(
-                            current_node.name, current_node.index, parent.name, parent.index
+                            translate_name(current_node.name), current_node.index, translate_name(parent.name), parent.index
                         )
                     else:
-                        corr.edges[child.name][child.index][parent.name][parent.index].present = True
+                        corr.edges[translate_name(child.name)][child.index][translate_name(parent.name)][parent.index].present = True
                 print("Before copying: n_edges=", corr.count_no_edges())
 
                 corr_all_edges = corr.all_edges().items()
@@ -580,7 +587,8 @@ def get_acdc_runs(
                     edge.present = False
 
                 for tupl, edge in corr_all_edges:
-                    new_all_edges[tupl].present = edge.present
+                    t = (translate_name(tupl[0]), tupl[1], translate_name(tupl[2]), tupl[3])
+                    new_all_edges[t].present = edge.present
 
                 print("After copying: n_edges=", corr_to_copy.count_no_edges())
 
@@ -614,7 +622,8 @@ def get_acdc_runs(
                         edges_pth = pickle.load(fopenb)
 
             for t, _effect_size in edges_pth:
-                all_edges[t].present = True
+                tupl = (translate_name(t[0]), t[1], translate_name(t[2]), t[3])
+                all_edges[tupl].present = True
 
             corrs.append((corr, score_d))
             ids.append(run.id)
@@ -692,7 +701,7 @@ def get_sp_corrs(
     if run_filter is None:
         filtered_runs = runs[:clip]
     else:
-        filtered_runs = list(filter(run_filter, tqdm(runs[:clip])))
+        filtered_runs = list(filter(run_filter, runs[:clip]))
     print(f"loading {len(filtered_runs)} runs")
 
     if things is None:
@@ -702,7 +711,7 @@ def get_sp_corrs(
         ]
 
     corrs = []
-    for run in filtered_runs:
+    for run in tqdm(filtered_runs):
         try:
             nodes_to_mask_strings = run.summary["nodes_to_mask"]
         except KeyError:
@@ -753,7 +762,7 @@ def get_sixteen_heads_corrs(
     assert len(score_d_list) == len(nodes_names_indices) + 1
 
     corrs = [(correspondence_from_mask(model=model, nodes_to_mask=[], use_pos_embed=exp.use_pos_embed), {"score": 0.0, **score_d_list[0]})]
-    for (nodes, hook_name, idx, score), score_d in tqdm(zip(nodes_names_indices, score_d_list[1:])):
+    for (nodes, hook_name, idx, score), score_d in tqdm(list(zip(nodes_names_indices, score_d_list[1:]))):
         if score == "NaN":
             score = 0.0
         if things is None:
