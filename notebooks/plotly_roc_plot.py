@@ -30,6 +30,7 @@ import plotly.colors as pc
 parser = argparse.ArgumentParser()
 parser.add_argument('--arrows', action='store_true', help='Include help arrows')
 parser.add_argument('--hisp-yellow', action='store_true', help='make HISP yellow')
+parser.add_argument("--min-score", type=float, default=1e-6)
 
 if get_ipython() is not None:
     args = parser.parse_args([])
@@ -221,7 +222,12 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         for weights_type in weights_types:
             for (row, col), task_idx in rows_cols_task_idx:
                 metric_name = METRICS_FOR_TASK[task_idx][metric_idx]
-                scores = all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["score"]
+                scores = np.array(all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["score"])
+
+                if methodof == "ACDC":
+                    # Filter scores that are too small
+                    scores = scores[scores >= args.min_score]
+
                 log_scores = np.log10(scores)
                 log_scores = np.nan_to_num(log_scores, nan=0.0, neginf=0.0, posinf=0.0)
 
@@ -281,9 +287,18 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     y_key = "test_" + metric_name
 
                 this_data = all_data[weights_type][ablation_type]
-                x_data = this_data[task_idx][metric_name][alg_idx][x_key]
-                y_data = this_data[task_idx][metric_name][alg_idx][y_key]
-                scores = this_data[task_idx][metric_name][alg_idx]["score"]
+                x_data = np.array(this_data[task_idx][metric_name][alg_idx][x_key])
+                y_data = np.array(this_data[task_idx][metric_name][alg_idx][y_key])
+                scores = np.array(this_data[task_idx][metric_name][alg_idx]["score"])
+
+                if methodof == "ACDC":
+                    # Filter scores that are too small
+                    mask = scores >= args.min_score
+                    x_data = x_data[mask]
+                    y_data = y_data[mask]
+                    scores = scores[mask]
+                    del mask
+
 
                 log_scores = np.log10(scores)
                 # if alg_idx == "16H" and task_idx == "tracr-reverse":
@@ -549,7 +564,48 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     # smaller title font
                     fig.update_layout(title_font=dict(size=20)) # , row=row, col=col)
 
-                # add label to x axis
+    # Add horizontal lines with test performance on KL plots
+    if plot_type in ["metric_edges", "kl_edges"]:
+        for (row, col), task_idx in rows_cols_task_idx:
+            metric_name = METRICS_FOR_TASK[task_idx][metric_idx]
+            if plot_type == "metric_edges":
+                y_key = "test_" + metric_name
+
+            for weights_type, name, value in [
+                ("trained", "Clean", 1.0),
+                ("trained", "Canonical", 0.5),
+                ("reset", "Reset", 1.0),
+            ]:
+                try:
+                    this_data = all_data[weights_type][ablation_type][task_idx][metric_name]["CANONICAL"]
+                except KeyError:
+                    continue
+
+                scores = np.array(this_data["score"])
+                baseline_y = np.array(this_data[y_key])
+                mask = scores == value
+                assert mask.sum() == 1
+                y = baseline_y[mask][0]
+
+                fig.add_hline(
+                    y=y,
+                    line_dash="dot",
+                    row=row,
+                    col=col,
+                    annotation_text=name,
+                )
+                if (row, col) == (1, len(specs[0])-1):
+                    fig.add_trace(
+                        go.Scatter(
+                            x=[None],
+                            y=[None],
+                            mode="lines",
+                            name=name,
+                        ),
+                        row=row,
+                        col=col,
+                    )
+
 
     # move legend to left
     fig.update_layout(
