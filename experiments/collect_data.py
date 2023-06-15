@@ -15,7 +15,7 @@ TASKS = ["ioi", "docstring", "greaterthan", "induction"]
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
     "tracr-reverse": ["l2"],
-    "tracr-proportion": ["kl_div", "l2"],
+    "tracr-proportion": ["l2"],
     "induction": ["kl_div", "nll"],
     "docstring": ["kl_div", "docstring_metric"],
     "greaterthan": ["kl_div", "greaterthan"],
@@ -99,15 +99,16 @@ tasks_for = {
     "acdc": TASKS,
     "16h": TASKS,
     "sp": TASKS,
-    "canonical": ["greaterthan"],
+    "canonical": TASKS,
 }
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--i", type=int, default=0)
 parser.add_argument("--n", type=int, default=1)
 
-mod_idx = parser.parse_args().i
-num_processes = parser.parse_args().n
+args = parser.parse_args()
+mod_idx = args.i
+num_processes = args.n
 
 if __name__ == "__main__":
     for alg in ["canonical"]:
@@ -116,7 +117,7 @@ if __name__ == "__main__":
                 alg,
                 task,
                 KubernetesJob(
-                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:b353d83",
+                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:5afce00",
                     cpu=4,
                     gpu=0 if not IS_ADRIA or task.startswith("tracr") or alg not in ["acdc", "canonical"] else 1,
                     mount_training=False,
