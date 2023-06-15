@@ -96,7 +96,7 @@ def main(
 
 
 tasks_for = {
-    "acdc": TASKS,
+    "acdc": ["ioi", "greaterthan"],
     "16h": TASKS,
     "sp": TASKS,
     "canonical": TASKS,
@@ -119,7 +119,7 @@ if __name__ == "__main__":
                 KubernetesJob(
                     container="ghcr.io/rhaps0dy/automatic-circuit-discovery:e1884e4",
                     cpu=6,
-                    gpu=0, #  if not IS_ADRIA or task.startswith("tracr") or alg not in ["acdc", "canonical"] else 1,
+                    gpu=0 if not IS_ADRIA or task.startswith("tracr") or alg not in ["acdc", "canonical"] else 1,
                     mount_training=False,
                 ),
                 testing=False,
