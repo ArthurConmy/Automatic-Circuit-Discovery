@@ -13,7 +13,8 @@
 # ACDC_PROJECT_NAME
 # ACDC_RUN_FILTER 
 
-# # for SP # filters are more annoying since some things are nested in groups
+# # for SP # filters are more annoying since some t
+# hings are nested in groups
 # SP_PROJECT_NAME
 # SP_PRE_RUN_FILTER 
 # SP_RUN_FILTER
@@ -164,7 +165,7 @@ parser.add_argument("--only-save-canonical", action="store_true", help="Only sav
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task=tracr-reverse --metric=l2 --alg=acdc".split())
+    args = parser.parse_args("--task=greaterthan --metric=l2 --alg=acdc".split())
     if "arthur" not in __file__:
         __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
 else:
