@@ -21,6 +21,14 @@ from acdc.TLACDCEdge import (
     EdgeType,
 )  # these introduce several important classes !!!
 
+
+def translate_name(name):
+    """To ensure backwards compatibility with the old names (we changed hook_resid_mid -> hook_mlp_in)"""
+
+    if "hook_resid_mid" in name:
+        return name.replace("hook_resid_mid", "hook_mlp_in")
+    return name
+
 class OrderedDefaultdict(defaultdict):
     def __init__(self, *args, **kwargs):
         if sys.version_info < (3, 7):
