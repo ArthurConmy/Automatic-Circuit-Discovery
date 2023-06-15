@@ -221,7 +221,10 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         for weights_type in weights_types:
             for (row, col), task_idx in rows_cols_task_idx:
                 metric_name = METRICS_FOR_TASK[task_idx][metric_idx]
-                scores = all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["score"]
+                try:    
+                    scores = all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["score"]
+                except KeyError:
+                    raise KeyError(f"weights_type={weights_type}, ablation_type={ablation_type}, task_idx={task_idx}, metric_name={metric_name}, alg_idx={alg_idx}")
                 log_scores = np.log10(scores)
                 log_scores = np.nan_to_num(log_scores, nan=0.0, neginf=0.0, posinf=0.0)
 
@@ -592,9 +595,9 @@ PLOT_DIR = DATA_DIR.parent / "plots"
 PLOT_DIR.mkdir(exist_ok=True)
 
 all_dfs = []
-for metric_idx in [0, 1]:
-    for ablation_type in ["random_ablation", "zero_ablation"]:
-        for weights_type in ["reset", "trained"]:  # Didn't scramble the weights enough it seems
+for metric_idx in [0]: # [0, 1]:
+    for ablation_type in ["random_ablation"]: # ["random_ablation", "zero_ablation"]:
+        for weights_type in ["trained"]: # ["reset", "trained"]:  # Didn't scramble the weights enough it seems
             for plot_type in ["kl_edges", "precision_recall", "roc_nodes", "roc_edges", "metric_edges"]:
                 x_key, y_key = plot_type_keys[plot_type]
                 fig, df = make_fig(metric_idx=metric_idx, weights_types=["trained"] if weights_type == "trained" else ["trained", weights_type], ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type)
