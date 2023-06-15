@@ -519,7 +519,11 @@ def get_acdc_runs(
 
     for run in filtered_runs:
         score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
-        score_d["steps"] = run.summary["_step"]
+        try:
+            score_d["steps"] = run.summary["_step"]
+        except KeyError:
+            continue  # Run has crashed too much
+
         try:
             score_d["score"] = run.config["threshold"]
         except KeyError:
