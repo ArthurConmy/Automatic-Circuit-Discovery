@@ -67,6 +67,7 @@ import torch
 import huggingface_hub
 import pygraphviz as pgv
 from enum import Enum
+from dataclasses import dataclass
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -473,6 +474,14 @@ if ONLY_SAVE_CANONICAL:
     sys.exit(0)
 #%%
 
+@dataclass(frozen=True)
+class AcdcRunCandidate:
+    threshold: float
+    steps: int
+    run: wandb.apis.public.Run
+    score_d: dict
+    corr: TLACDCCorrespondence
+
 def get_acdc_runs(
     exp,
     project_name: str = ACDC_PROJECT_NAME,
@@ -499,8 +508,15 @@ def get_acdc_runs(
         filtered_runs = list(filter(run_filter, tqdm(list(runs)[:clip])))
     print(f"loading {len(filtered_runs)} runs with filter {pre_run_filter} and {run_filter}")
 
-    corrs = []
-    ids = []
+    threshold_to_run_map: dict[float, AcdcRunCandidate] = {}
+
+    def add_run_for_processing(candidate: AcdcRunCandidate):
+        if candidate.threshold not in threshold_to_run_map:
+            threshold_to_run_map[candidate.threshold] = candidate
+        else:
+            if candidate.steps > threshold_to_run_map[candidate.threshold].steps:
+                threshold_to_run_map[candidate.threshold] = candidate
+
     for run in filtered_runs:
         score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
         score_d["steps"] = run.summary["_step"]
@@ -586,8 +602,13 @@ def get_acdc_runs(
 
                 # Correct score_d to reflect the actual number of steps that we are collecting
                 score_d["steps"] = latest_fname_step
-                corrs.append((corr_to_copy, score_d))
-                ids.append(run.id)
+                add_run_for_processing(AcdcRunCandidate(
+                    threshold=threshold,
+                    steps=score_d["steps"],
+                    run=run,
+                    score_d=score_d,
+                    corr=corr_to_copy,
+                ))
 
             except (wandb.CommError, requests.exceptions.HTTPError) as e:
                 print(f"Error {e}, falling back to parsing output.log")
@@ -595,8 +616,13 @@ def get_acdc_runs(
                     with run.file("output.log").download(root=ROOT / run.id, replace=False, exist_ok=True) as f:
                         log_text = f.read()
                     exp.load_from_wandb_run(log_text)
-                    corrs.append((deepcopy(exp.corr), score_d))
-                    ids.append(run.id)
+                    add_run_for_processing(AcdcRunCandidate(
+                        threshold=threshold,
+                        steps=score_d["steps"],
+                        run=run,
+                        score_d=score_d,
+                        corr=deepcopy(exp.corr),
+                    ))
                 except Exception:
                     print(f"Loading run {run.name} with state={run.state} config={run.config} totally failed.")
                     continue
@@ -620,18 +646,27 @@ def get_acdc_runs(
                 n_from = n_from.replace("hook_resid_mid", "hook_mlp_in")
                 all_edges[(n_to, idx_to, n_from, idx_from)].present = True
 
-            corrs.append((corr, score_d))
-            ids.append(run.id)
+            add_run_for_processing(AcdcRunCandidate(
+                threshold=threshold,
+                steps=score_d["steps"],
+                run=run,
+                score_d=score_d,
+                corr=corr,
+            ))
 
+    # Now add the test_fns to the score_d of the remaining runs
+    def all_test_fns(data: torch.Tensor) -> dict[str, float]:
+        return {f"test_{name}": fn(data).item() for name, fn in things.test_metrics.items()}
 
-        def all_test_fns(data: torch.Tensor) -> dict[str, float]:
-            return {f"test_{name}": fn(data).item() for name, fn in things.test_metrics.items()}
+    all_candidates = list(threshold_to_run_map.values())
+    for candidate in all_candidates:
+        test_metrics = exp.call_metric_with_corr(candidate.corr, all_test_fns, things.test_data)
+        candidate.score_d.update(test_metrics)
+        print(f"Added run with threshold={candidate.threshold}, n_edges={candidate.corr.count_no_edges()}")
 
-        test_metrics = exp.call_metric_with_corr(corrs[-1][0], all_test_fns, things.test_data)
-        corrs[-1][1].update(test_metrics)
-        print(f"Added run with threshold={score_d['score']}, n_edges={corrs[-1][0].count_no_edges()}")
+    corrs = [(candidate.corr, candidate.score_d) for candidate in all_candidates]
     if return_ids:
-        return corrs, ids
+        return corrs, [candidate.run.id for candidate in all_candidates]
     return corrs
 
 #%%
