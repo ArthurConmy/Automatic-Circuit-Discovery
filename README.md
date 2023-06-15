@@ -34,6 +34,8 @@ poetry install
 sudo apt-get update && sudo apt-get install libgl1-mesa-glx graphviz build-essential graphviz-dev
 ```
 
+You may also need `apt-get install python3.x-dev` where `x` is your Python version (also see [the issue](https://github.com/ArthurConmy/Automatic-Circuit-Discovery/issues/57) and [pygraphviz installation troubleshooting](https://pygraphviz.github.io/documentation/stable/install.html))
+
 #### :apple: Mac OS X
 
 On Mac, you need to let pip (inside poetry) know about the path to the Graphviz libraries.
