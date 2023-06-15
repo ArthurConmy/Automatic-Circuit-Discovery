@@ -111,15 +111,15 @@ mod_idx = args.i
 num_processes = args.n
 
 if __name__ == "__main__":
-    for alg in ["acdc", "16h", "sp", "canonical"]:
+    for alg in ["acdc"]: # , "16h", "sp", "canonical"]:
         for task in tasks_for[alg]:
             main(
                 alg,
                 task,
                 KubernetesJob(
-                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:b2398fd",
-                    cpu=4,
-                    gpu=0 if not IS_ADRIA or task.startswith("tracr") or alg not in ["acdc", "canonical"] else 1,
+                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:e1884e4",
+                    cpu=6,
+                    gpu=0, #  if not IS_ADRIA or task.startswith("tracr") or alg not in ["acdc", "canonical"] else 1,
                     mount_training=False,
                 ),
                 testing=False,
