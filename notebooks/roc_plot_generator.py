@@ -503,6 +503,7 @@ def get_acdc_runs(
     ids = []
     for run in filtered_runs:
         score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
+        score_d["steps"] = run.summary["_step"]
         try:
             score_d["score"] = run.config["threshold"]
         except KeyError:
@@ -583,6 +584,8 @@ def get_acdc_runs(
 
                 print("After copying: n_edges=", corr_to_copy.count_no_edges())
 
+                # Correct score_d to reflect the actual number of steps that we are collecting
+                score_d["steps"] = latest_fname_step
                 corrs.append((corr_to_copy, score_d))
                 ids.append(run.id)
 
@@ -715,6 +718,7 @@ def get_sp_corrs(
             use_pos_embed = USE_POS_EMBED,
         )
         score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
+        score_d["steps"] = run.summary["_step"]
         score_d["score"] = run.config["lambda_reg"]
         corrs.append((corr, score_d))
 
