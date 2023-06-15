@@ -689,9 +689,11 @@ def get_canonical_corrs(exp):
 
     output = [
         (none_present_corr, {"score": 0.0}),
-        (deepcopy(canonical_circuit_subgraph), {"score": 0.5}),
         (all_present_corr, {"score": 1.0}),
     ]
+
+    if TASK != "induction":
+        output.insert(1, (deepcopy(canonical_circuit_subgraph), {"score": 0.5}))
 
     for corr, score_d in output:
         old_exp_corr = exp.corr

@@ -567,7 +567,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
     # Add horizontal lines with test performance on KL plots
     if plot_type in ["metric_edges", "kl_edges"]:
         for (row, col), task_idx in rows_cols_task_idx:
-            metric_name = METRICS_FOR_TASK[task_idx][metric_idx]
+            metric_name = METRICS_FOR_TASK[task_idx][1]
             if plot_type == "metric_edges":
                 y_key = "test_" + metric_name
 
@@ -576,15 +576,15 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                 ("trained", "Canonical", 0.5),
                 ("reset", "Reset", 1.0),
             ]:
-                try:
-                    this_data = all_data[weights_type][ablation_type][task_idx][metric_name]["CANONICAL"]
-                except KeyError:
-                    continue
+                this_data = all_data[weights_type][ablation_type][task_idx][metric_name]["CANONICAL"]
 
                 scores = np.array(this_data["score"])
                 baseline_y = np.array(this_data[y_key])
                 mask = scores == value
+                if mask.sum() == 0:
+                    continue
                 assert mask.sum() == 1
+
                 y = baseline_y[mask][0]
 
                 fig.add_hline(
