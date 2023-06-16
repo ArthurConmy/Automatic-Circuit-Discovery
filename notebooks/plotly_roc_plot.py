@@ -591,6 +591,8 @@ plot_type_keys = {
 
 #%%
 
+# make all the ROC plots
+
 PLOT_DIR = DATA_DIR.parent / "plots"
 PLOT_DIR.mkdir(exist_ok=True)
 
@@ -608,6 +610,36 @@ for metric_idx in [0]: # [0, 1]:
                 fig.write_image(PLOT_DIR / ("--".join([metric, weights_type, ablation_type, plot_type]) + ".pdf"))
                 # fig.show()
                 # raise Exception
+
+#%%
+
+# now also make the two induction plots
+
+
+    for method_idx in range(3):
+        fig.add_trace(
+            go.Scatter(
+                x=x_data,
+                y=y_data,
+                name=methodof,
+                mode="markers",
+                showlegend = False,
+                marker=dict(
+                    size=7,
+                    color=color,
+                    symbol=weights_type_symbols[weights_type][methodof],
+                    colorscale=colorscales[methodof],
+                    cmin=0.0,
+                    cmax=1.0,
+                ),
+                hovertext=[f"{score_name[methodof]}={t:e}" for t in scores],
+            ),
+            row=row,
+            col=col,
+        )
+
+
+#%%
 
 pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
 

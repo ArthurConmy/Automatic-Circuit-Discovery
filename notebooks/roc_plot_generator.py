@@ -911,6 +911,8 @@ def get_roc_figure(all_points, names): # TODO make the plots grey / black / yell
     roc_figure.update_yaxes(title_text="True positive rate")
     return roc_figure
 
+
+
 if OUT_FILE is None:
     fig = get_roc_figure(list(points.values()), list(points.keys()))
     fig.show()
