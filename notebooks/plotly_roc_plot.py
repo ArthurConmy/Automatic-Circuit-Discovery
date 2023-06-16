@@ -1,4 +1,7 @@
+#%%
+
 import os
+os.environ["ACCELERATE_DISABLE_RICH"] = "1"
 from IPython import get_ipython
 if get_ipython() is not None:
     get_ipython().magic('load_ext autoreload')
@@ -7,7 +10,10 @@ if get_ipython() is not None:
     __file__ = os.path.join(get_ipython().run_line_magic('pwd', ''), "notebooks", "plotly_roc_plot.py")
 
     from notebooks.emacs_plotly_render import set_plotly_renderer
-    if "adria" in __file__:
+
+    IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root") and not "aconmy" in __file__ # Arthur uses several machines...
+
+    if IS_ADRIA:
         set_plotly_renderer("emacs")
 
 import plotly
@@ -23,7 +29,7 @@ import plotly.express as px
 import pandas as pd
 import argparse
 import plotly.colors as pc
-
+import warnings
 
 # %%
 
@@ -38,7 +44,12 @@ else:
 
 # %%
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / "plots_data"
+if IS_ADRIA:
+    DATA_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / "plots_data"
+
+else:
+    DATA_DIR = Path(__file__).resolve().parent.parent.parent / "experiments" / "results" / "plots_data"
+
 all_data = {}
 
 for fname in os.listdir(DATA_DIR):
@@ -166,7 +177,23 @@ def discard_non_pareto_optimal(points, auxiliary, cmp="gt"):
 
 #%%
 
-def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("trained",), ablation_type="random_ablation", plot_type="roc_nodes", scale_min=0.0, scale_max=0.8):
+def make_fig(
+    metric_idx=0,
+    x_key="edge_fpr", 
+    y_key="edge_tpr", 
+    weights_types=("trained",), 
+    ablation_type="random_ablation", 
+    plot_type="roc_nodes", 
+    scale_min=0.0, 
+    scale_max=0.8,
+    metric_idx_list=None,
+):
+    assert (metric_idx is None) != (metric_idx_list is None), ("Either metric_idx or metric_idx_list must be specified", metric_idx, metric_idx_list)
+
+    if metric_idx is not None:
+        metric_idx_list = [metric_idx]
+        metric_idx = None
+
     TOP_MARGIN = -0.02 + 0.26 * len(weights_types)
     LEFT_MARGIN = -0.02
     RIGHT_MARGIN = 0.02 if y_key in ["edge_tpr", "node_tpr"] else 0.00
@@ -220,18 +247,20 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
 
         for weights_type in weights_types:
             for (row, col), task_idx in rows_cols_task_idx:
-                metric_name = METRICS_FOR_TASK[task_idx][metric_idx]
+                metric_names = [METRICS_FOR_TASK[task_idx][mi] for mi in metric_idx_list]
+                scores = []
                 try:    
-                    scores = all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["score"]
+                    scores = []
+                    for metric_name in metric_names:
+                        scores.extend(list(all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["score"]))
                 except KeyError:
-                    raise KeyError(f"weights_type={weights_type}, ablation_type={ablation_type}, task_idx={task_idx}, metric_name={metric_name}, alg_idx={alg_idx}")
+                    raise KeyError(f"weights_type={weights_type}, ablation_type={ablation_type}, task_idx={task_idx}, metric_name={metric_names}, alg_idx={alg_idx}")
                 log_scores = np.log10(scores)
                 log_scores = np.nan_to_num(log_scores, nan=0.0, neginf=0.0, posinf=0.0)
 
                 min_log_score = min(np.min(log_scores), min_log_score)
                 max_log_score = max(np.max(log_scores), max_log_score)
         bounds_for_alg[methodof] = (min_log_score, max_log_score)
-
 
     all_algs_min = min(v for (v, _) in bounds_for_alg.values())
     all_algs_max = max(v for (_, v) in bounds_for_alg.values())
@@ -279,14 +308,18 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         min_log_score, max_log_score = bounds_for_alg[methodof]
         for weights_type in weights_types:
             for (row, col), task_idx in rows_cols_task_idx:
-                metric_name = METRICS_FOR_TASK[task_idx][metric_idx]
-                if plot_type == "metric_edges":
-                    y_key = "test_" + metric_name
+                metric_names = [METRICS_FOR_TASK[task_idx][mi] for mi in metric_idx_list]
 
                 this_data = all_data[weights_type][ablation_type]
-                x_data = this_data[task_idx][metric_name][alg_idx][x_key]
-                y_data = this_data[task_idx][metric_name][alg_idx][y_key]
-                scores = this_data[task_idx][metric_name][alg_idx]["score"]
+                x_data = []
+                y_data = []
+                scores = []
+                for metric_name in metric_names:
+                    x_data.extend(this_data[task_idx][metric_name][alg_idx][x_key])
+                    if plot_type == "metric_edges":
+                        y_key = "test_" + metric_name
+                    y_data.extend(this_data[task_idx][metric_name][alg_idx][y_key])
+                    scores.extend(this_data[task_idx][metric_name][alg_idx]["score"])
 
                 log_scores = np.log10(scores)
                 # if alg_idx == "16H" and task_idx == "tracr-reverse":
@@ -402,8 +435,8 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                         normalized_log_scores = normalized_log_scores[:-1]
                         scores = scores[:-1]
 
-                    assert not np.any(~np.isfinite(x_data))
-                    assert not np.any(~np.isfinite(y_data))
+                    if np.any(~np.isfinite(x_data)): warnings.warn(str((x_data, len(x_data))))
+                    if np.any(~np.isfinite(y_data)): warnings.warn(str((y_data, len(y_data))))
 
                     color = normalized_log_scores
                 else:
@@ -597,12 +630,12 @@ PLOT_DIR = DATA_DIR.parent / "plots"
 PLOT_DIR.mkdir(exist_ok=True)
 
 all_dfs = []
-for metric_idx in [0]: # [0, 1]:
+for metric_idx in [None]:
     for ablation_type in ["random_ablation"]: # ["random_ablation", "zero_ablation"]:
         for weights_type in ["trained"]: # ["reset", "trained"]:  # Didn't scramble the weights enough it seems
             for plot_type in ["kl_edges", "precision_recall", "roc_nodes", "roc_edges", "metric_edges"]:
                 x_key, y_key = plot_type_keys[plot_type]
-                fig, df = make_fig(metric_idx=metric_idx, weights_types=["trained"] if weights_type == "trained" else ["trained", weights_type], ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type)
+                fig, df = make_fig(metric_idx=metric_idx, weights_types=["trained"] if weights_type == "trained" else ["trained", weights_type], ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type, metric_idx_list=None if metric_idx is not None else [0, 1])
                 if len(df):
                     all_dfs.append(df.T)
                     print(all_dfs[-1])
