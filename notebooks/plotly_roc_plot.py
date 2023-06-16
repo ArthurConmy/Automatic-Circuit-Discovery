@@ -257,6 +257,8 @@ def make_fig(
                 except KeyError:
                     raise KeyError(f"weights_type={weights_type}, ablation_type={ablation_type}, task_idx={task_idx}, metric_name={metric_names}, alg_idx={alg_idx}")
 
+                scores = np.array(scores)
+
                 if methodof == "ACDC":
                     # Filter scores that are too small
                     scores = scores[scores >= args.min_score]
@@ -327,6 +329,11 @@ def make_fig(
                         y_key = "test_" + metric_name
                     y_data.extend(this_data[task_idx][metric_name][alg_idx][y_key])
                     scores.extend(this_data[task_idx][metric_name][alg_idx]["score"])
+
+                # needed for indexing
+                scores = np.array(scores)
+                x_data = np.array(x_data)
+                y_data = np.array(y_data)
 
                 if methodof == "ACDC":
                     # Filter scores that are too small
