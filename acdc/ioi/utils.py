@@ -284,6 +284,9 @@ def get_ioi_true_edges(model):
                     corr.edges[layer_name_to][which_idx_to][layer_name_from][which_idx_from].present = True
 
     ret =  OrderedDict({(t[0], t[1].hashable_tuple, t[2], t[3].hashable_tuple): e.present for t, e in corr.all_edges().items() if e.present})
+    
+    print(len(ret))
+
     return ret
 
 
@@ -317,3 +320,7 @@ def ioi_group_colorscheme():
     for layer in range(12):
         scheme[f"<m{layer}>"] = "#f0f0f0"
     return scheme
+
+if __name__ == "__main__":
+    model = get_all_ioi_things(100,"cuda","kl_div").tl_model
+    get_ioi_true_edges(model)

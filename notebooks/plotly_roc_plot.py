@@ -36,7 +36,7 @@ import warnings
 parser = argparse.ArgumentParser()
 parser.add_argument('--arrows', action='store_true', help='Include help arrows')
 parser.add_argument('--hisp-yellow', action='store_true', help='make HISP yellow')
-parser.add_argument("--min-score", type=float, default=1e-6)
+parser.add_argument("--min-score", type=float, default=-1)
 
 if get_ipython() is not None:
     args = parser.parse_args([])
@@ -168,6 +168,8 @@ x_names = {
 
 def discard_non_pareto_optimal(points, auxiliary, cmp="gt"):
     ret = []
+    auxiliary = list(auxiliary)
+    assert len(list(points))==len(auxiliary)
     for (x, y), aux in zip(points, auxiliary):
         for x1, y1 in points:
             if x1 < x and getattr(y1, f"__{cmp}__")(y) and (x1, y1) != (x, y):
@@ -178,17 +180,28 @@ def discard_non_pareto_optimal(points, auxiliary, cmp="gt"):
 
 #%%
 
-def make_fig(
-    metric_idx=0,
-    x_key="edge_fpr", 
-    y_key="edge_tpr", 
-    weights_types=("trained",), 
-    ablation_type="random_ablation", 
-    plot_type="roc_nodes", 
-    scale_min=0.0, 
-    scale_max=0.8,
-    metric_idx_list=None,
-):
+# def make_fig(
+#     metric_idx=0,
+#     x_key="edge_fpr", 
+#     y_key="edge_tpr", 
+#     weights_types=("trained",), 
+#     ablation_type="random_ablation", 
+#     plot_type="roc_nodes", 
+#     scale_min=0.0, 
+#     scale_max=0.8,
+#     metric_idx_list=None,
+# ):
+metric_idx=None
+weights_types=["trained"] #  if weights_type == "trained" else ["trained", weights_type]
+ablation_type="random_ablation"
+x_key="edge_fpr"
+y_key="edge_tpr"
+plot_type="roc_edges"
+metric_idx_list=None if metric_idx is not None else [0, 1]
+scale_min=0.0 
+scale_max=0.8
+
+if True:
     assert (metric_idx is None) != (metric_idx_list is None), ("Either metric_idx or metric_idx_list must be specified", metric_idx, metric_idx_list)
 
     if metric_idx is not None:
@@ -344,11 +357,6 @@ def make_fig(
                     del mask
 
                 log_scores = np.log10(scores)
-                if alg_idx == "ACDC" and task_idx == "tracr-reverse" and ("fpr" in x_key or "tpr" in x_key):
-                    extra_points = [(0.0,0.0), (1.0,1.0)]
-                    for p in extra_points:
-                        if p not in points:
-                            points.append(p)
 
                 log_scores = np.nan_to_num(log_scores, nan=np.nan, neginf=-1e90, posinf=1e90)
                 normalized_log_scores = normalize(log_scores, min_log_score, max_log_score)
@@ -385,6 +393,9 @@ def make_fig(
                             assert False
                             print(e)
                             auc=-420.0
+
+                    # if alg_idx == "ACDC" and "tracr" in task_idx and ("fpr" in x_key or "tpr" in x_key):
+                    #     assert False
 
                     fig.add_trace(
                         go.Scatter(
@@ -679,7 +690,8 @@ def make_fig(
     assert anno["text"] == r"$\tau$"
     anno["y"] += 0.02
     ret = (fig, pd.concat(all_series, axis=1) if all_series else pd.DataFrame())
-    return ret
+    # return ret
+    fig.show()
 
 plot_type_keys = {
     "precision_recall": ("edge_tpr", "edge_precision"),
