@@ -1,4 +1,5 @@
 import os
+import warnings
 from IPython import get_ipython
 if get_ipython() is not None:
     get_ipython().magic('load_ext autoreload')
@@ -228,7 +229,9 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     # Filter scores that are too small
                     scores = scores[scores >= args.min_score]
 
-                log_scores = np.log10(scores)
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    log_scores = np.log10(scores)
                 log_scores = np.nan_to_num(log_scores, nan=0.0, neginf=0.0, posinf=0.0)
 
                 min_log_score = min(np.min(log_scores), min_log_score)
@@ -293,14 +296,16 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
 
                 if methodof == "ACDC":
                     # Filter scores that are too small
-                    mask = scores >= args.min_score
+                    mask = (scores >= args.min_score) | (~np.isfinite(scores))
                     x_data = x_data[mask]
                     y_data = y_data[mask]
                     scores = scores[mask]
                     del mask
 
 
-                log_scores = np.log10(scores)
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    log_scores = np.log10(scores)
                 # if alg_idx == "16H" and task_idx == "tracr-reverse":
                 #     import pdb; pdb.set_trace()
                 log_scores = np.nan_to_num(log_scores, nan=np.nan, neginf=-1e90, posinf=1e90)
@@ -318,11 +323,9 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                 points = list(zip(x_data, y_data))
                 if y_key not in ["node_tpr", "edge_tpr"]:
                     pareto_optimal = [] # list(sorted(points))  # Not actually pareto optimal but we want to plot all of them
-                    print("Yep")
                     pareto_log_scores = []
                     pareto_scores = []
                 else:
-                    print("Hehe", y_key)
                     pareto_optimal_aux = discard_non_pareto_optimal(points, zip(log_scores, scores))
                     pareto_optimal, aux = zip(*pareto_optimal_aux)
                     pareto_log_scores, pareto_scores = zip(*aux)
@@ -341,8 +344,8 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
 
                     fig.add_trace(
                         go.Scatter(
-                            x=list(x_data) + [1],
-                            y=list(y_data) + ([0] if plot_type == "precision_recall" else [1]),
+                            x=list(x_data),
+                            y=list(y_data),
                             name=methodof,
                             mode="lines",
                             line=dict(shape="hv", color=colors[methodof]),
