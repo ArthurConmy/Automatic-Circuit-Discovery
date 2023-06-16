@@ -29,7 +29,7 @@ poetry install
 
 ### Reproducing results
 
-To reproduce the Pareto Frontier of 
+To reproduce the Pareto Frontier of KL divergences against number of edges for ACDC runs, run `python experiments/launch.py`. Similarly, `python experiments/launch_sixteen_heads.py` and `python subnetwork_probing/train.py` were used to generate individual data points for the other methods.
 
 ### System Dependencies
 
