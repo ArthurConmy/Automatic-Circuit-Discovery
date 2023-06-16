@@ -30,7 +30,7 @@ import plotly.colors as pc
 parser = argparse.ArgumentParser()
 parser.add_argument('--arrows', action='store_true', help='Include help arrows')
 parser.add_argument('--hisp-yellow', action='store_true', help='make HISP yellow')
-parser.add_argument("--min-score", type=float, default=1e-6)
+parser.add_argument("--min-score", type=float, default=1e-15)
 
 if get_ipython() is not None:
     args = parser.parse_args([])
@@ -168,7 +168,7 @@ def discard_non_pareto_optimal(points, auxiliary, cmp="gt"):
 #%%
 
 def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("trained",), ablation_type="random_ablation", plot_type="roc_nodes", scale_min=0.01, scale_max=0.8):
-    TOP_MARGIN = -0.02 + 0.26 * len(weights_types)
+    TOP_MARGIN = -0.02 + 0.26 * len(weights_types) + (0.12 if plot_type in ("metric_edges", "kl_edges") else 0.0)
     LEFT_MARGIN = -0.02
     RIGHT_MARGIN = 0.02 if y_key in ["edge_tpr", "node_tpr"] else 0.00
     if plot_type in ["roc_nodes", "roc_edges", "precision_recall"]:
@@ -341,8 +341,8 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
 
                     fig.add_trace(
                         go.Scatter(
-                            x=x_data,
-                            y=y_data,
+                            x=list(x_data) + [1],
+                            y=list(y_data) + ([0] if plot_type == "precision_recall" else [1]),
                             name=methodof,
                             mode="lines",
                             line=dict(shape="hv", color=colors[methodof]),
@@ -434,7 +434,8 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                         mode="markers",
                         showlegend = False,
                         marker=dict(
-                            size=7,
+                            size=[3 if p in pareto_optimal else 7 for p in points],
+                            line=dict(width=0),
                             color=color,
                             symbol=weights_type_symbols[weights_type][methodof],
                             colorscale=colorscales[methodof],
@@ -569,12 +570,14 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         for (row, col), task_idx in rows_cols_task_idx:
             metric_name = METRICS_FOR_TASK[task_idx][1]
             if plot_type == "metric_edges":
-                y_key = "test_" + metric_name
+                y_key = "test_" + METRICS_FOR_TASK[task_idx][metric_idx]
+            else:
+                y_key = "test_" + METRICS_FOR_TASK[task_idx][0]
 
-            for weights_type, name, value in [
-                ("trained", "Clean", 1.0),
-                ("trained", "Canonical", 0.5),
-                ("reset", "Reset", 1.0),
+            for weights_type, name, value, line_dash, line_color in [
+                ("trained", "Clean", 1.0, "solid", "rgb(155, 106, 205)"),
+                ("trained", "Canonical", 0.5, "dashdot", "rgb(0, 0, 0)"),
+                ("reset", "Reset", 1.0, "dot", "rgb(155, 106, 205)"),
             ]:
                 this_data = all_data[weights_type][ablation_type][task_idx][metric_name]["CANONICAL"]
 
@@ -587,12 +590,17 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
 
                 y = baseline_y[mask][0]
 
+                line_style = dict(
+                    dash=line_dash,
+                    width=1.5,
+                    color=line_color,
+                )
+
                 fig.add_hline(
                     y=y,
-                    line_dash="dot",
+                    line=line_style,
                     row=row,
                     col=col,
-                    annotation_text=name,
                 )
                 if (row, col) == (1, len(specs[0])-1):
                     fig.add_trace(
@@ -601,6 +609,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                             y=[None],
                             mode="lines",
                             name=name,
+                            line=line_style,
                         ),
                         row=row,
                         col=col,
@@ -624,7 +633,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
     scale = 1.2
 
     # No title,
-    fig.update_layout(height=250*scale, width=scale*scale*500,
+    fig.update_layout(height=(300 if plot_type in ["kl_edges", "metric_edges"] else 250)*scale, width=scale*scale*500,
                       margin=dict(l=55, r=70, t=20, b=50)
                       )
     # MEGA HACK: add space between tau and colorbar
