@@ -163,7 +163,7 @@ parser.add_argument('--single-step', action='store_true', help='Use single step,
 if ipython is not None:
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
-    args = parser.parse_args( # TODO add back zero ablation
+    args = parser.parse_args(
         [line.strip() for line in r"""--task=induction\
 --zero-ablation\
 --threshold=0.5623\
@@ -266,12 +266,15 @@ else:
     raise ValueError(f"Unknown task {TASK}")
 
 
-validation_metric = things.validation_metric
+#%% [markdown]
+# <p> Let's define the four most important objects for ACDC experiments:
 
-toks_int_values = things.validation_data
-toks_int_values_other = things.validation_patch_data
+#%%
 
-tl_model = things.tl_model
+validation_metric = things.validation_metric # metric we use (e.g KL divergence)
+toks_int_values = things.validation_data # clean data x_i
+toks_int_values_other = things.validation_patch_data # corrupted data x_i'
+tl_model = things.tl_model # transformerlens model
 
 if RESET_NETWORK:
     reset_network(TASK, DEVICE, tl_model)

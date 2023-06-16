@@ -7,7 +7,8 @@ import shlex
 import random
 
 IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root")
-print("is adria:", IS_ADRIA)
+if IS_ADRIA:
+    print("WARNING: IS_ADRIA=True, using Adria's Docker container")
 
 #TASKS = ["ioi", "docstring", "greaterthan", "tracr-reverse", "tracr-proportion", "induction"]
 TASKS = ["ioi", "docstring", "greaterthan", "induction"]

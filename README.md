@@ -98,6 +98,8 @@ If you use ACDC, please reach out! You can reference the work as follows:
 
 [ x ] Delete `arthur-try-merge-tl` references from the repo
 
+[ ] Make a better `IS_ADRIA` solution
+
 [ ] Fix huge edge sizes in Induction Main example
 
 [ ] Find a better way to deal with the versioning on the Colabs installs...
