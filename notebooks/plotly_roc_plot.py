@@ -344,8 +344,12 @@ def make_fig(
                     del mask
 
                 log_scores = np.log10(scores)
-                # if alg_idx == "16H" and task_idx == "tracr-reverse":
-                #     import pdb; pdb.set_trace()
+                if alg_idx == "ACDC" and task_idx == "tracr-reverse" and ("fpr" in x_key or "tpr" in x_key):
+                    extra_points = [(0.0,0.0), (1.0,1.0)]
+                    for p in extra_points:
+                        if p not in points:
+                            points.append(p)
+
                 log_scores = np.nan_to_num(log_scores, nan=np.nan, neginf=-1e90, posinf=1e90)
                 normalized_log_scores = normalize(log_scores, min_log_score, max_log_score)
 
@@ -696,7 +700,7 @@ all_dfs = []
 for metric_idx in [None]:
     for ablation_type in ["random_ablation"]: # ["random_ablation", "zero_ablation"]:
         for weights_type in ["trained"]: # ["reset", "trained"]:  # Didn't scramble the weights enough it seems
-            for plot_type in ["kl_edges", "precision_recall", "roc_nodes", "roc_edges", "metric_edges"]:
+            for plot_type in ["roc_edges"]: # ["kl_edges", "precision_recall", "roc_nodes", "roc_edges", "metric_edges"]:
                 x_key, y_key = plot_type_keys[plot_type]
                 fig, df = make_fig(metric_idx=metric_idx, weights_types=["trained"] if weights_type == "trained" else ["trained", weights_type], ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type, metric_idx_list=None if metric_idx is not None else [0, 1])
                 if len(df):
