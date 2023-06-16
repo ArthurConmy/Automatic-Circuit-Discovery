@@ -10,6 +10,7 @@ This is the accompanying code to the paper "Towards Automated Circuit Discovery 
 
 * :zap: To run ACDC, see `acdc/main.py`, or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Main_Demo.ipynb">this Colab notebook</a>
 * :wrench: To see how edit edges in computational graphs in models, see `notebooks/editing_edges.py` or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Editing_Edges_Demo.ipynb">this Colab notebook</a>
+* :sparkle: To look at the abstractions we use to make ACDC, look at our upcoming notebook on them.
 
 This library builds upon the abstractions (`HookPoint`s and standardised `HookedTransformer`s) from [TransformerLens](https://github.com/neelnanda-io/TransformerLens) :mag_right:
 
@@ -25,6 +26,10 @@ cd Automatic-Circuit-Discovery
 poetry env use 3.10 # Python 3.10 is recommended but use any Python version >= 3.8
 poetry install
 ```
+
+### Reproducing results
+
+To reproduce the Pareto Frontier of 
 
 ### System Dependencies
 
@@ -97,6 +102,8 @@ If you use ACDC, please reach out! You can reference the work as follows:
 [ x ] Add `hook_mlp_in` to `TransformerLens` and delete `hook_resid_mid` (and test to ensure no bad things?)
 
 [ x ] Delete `arthur-try-merge-tl` references from the repo
+
+[ ] Make notebook on abstractions
 
 [ ] Make a better `IS_ADRIA` solution
 
