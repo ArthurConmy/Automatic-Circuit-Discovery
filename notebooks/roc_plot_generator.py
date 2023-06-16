@@ -31,7 +31,7 @@ if IPython.get_ipython() is not None:
 
 from copy import deepcopy
 from subnetwork_probing.train import correspondence_from_mask
-from acdc.acdc_utils import filter_nodes, get_edge_stats, get_node_stats, get_present_nodes, reset_network, translate_name
+from acdc.acdc_utils import filter_nodes, get_edge_stats, get_node_stats, get_present_nodes, reset_network
 import pandas as pd
 import gc
 import math
@@ -67,6 +67,7 @@ import torch
 import huggingface_hub
 import pygraphviz as pgv
 from enum import Enum
+from dataclasses import dataclass
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -155,7 +156,7 @@ parser.add_argument("--alg", type=str, default="none", choices=["none", "acdc", 
 parser.add_argument("--skip-sixteen-heads", action="store_true", help="Skip the 16 heads stuff")
 parser.add_argument("--skip-sp", action="store_true", help="Skip the SP stuff")
 parser.add_argument("--testing", action="store_true", help="Use testing data instead of validation data")
-parser.add_argument("--device", type=str, default="cuda")
+parser.add_argument("--device", type=str, default="cpu")
 parser.add_argument("--out-dir", type=str, default="DEFAULT")
 parser.add_argument('--torch-num-threads', type=int, default=0, help="How many threads to use for torch (0=all)")
 parser.add_argument('--seed', type=int, default=42, help="Random seed")
@@ -165,11 +166,8 @@ parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore 
 
 if IPython.get_ipython() is not None:
     args = parser.parse_args("--task=tracr-reverse --metric=l2 --alg=acdc".split())
-
-IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root") and not "aconmy" in __file__
-if IS_ADRIA:
-    __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
-
+    if "arthur" not in __file__:
+        __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
 else:
     args = parser.parse_args()
 
@@ -431,12 +429,12 @@ if TASK != "induction":
     exp.load_subgraph(d)
     canonical_circuit_subgraph = deepcopy(exp.corr)
     for t in exp.corr.all_edges().keys():
-        exp.corr.edges[translate_name(t[0])][t[1]][translate_name(t[2])][t[3]].present = True
+        exp.corr.edges[t[0]][t[1]][t[2]][t[3]].present = True
     canonical_circuit_subgraph_size = canonical_circuit_subgraph.count_no_edges()
 
     # and reset the sugbgraph...
     for t, e in exp.corr.all_edges().items():
-        exp.corr.edges[translate_name(t[0])][t[1]][translate_name(t[2])][t[3]].present = True
+        exp.corr.edges[t[0]][t[1]][t[2]][t[3]].present = True
 
     for edge in canonical_circuit_subgraph.all_edges().values():
         edge.effect_size = 1.0  # make it visible
@@ -476,6 +474,14 @@ if ONLY_SAVE_CANONICAL:
     sys.exit(0)
 #%%
 
+@dataclass(frozen=True)
+class AcdcRunCandidate:
+    threshold: float
+    steps: int
+    run: wandb.apis.public.Run
+    score_d: dict
+    corr: TLACDCCorrespondence
+
 def get_acdc_runs(
     exp,
     project_name: str = ACDC_PROJECT_NAME,
@@ -499,13 +505,25 @@ def get_acdc_runs(
     if run_filter is None:
         filtered_runs = list(runs)[:clip]
     else:
-        filtered_runs = list(filter(run_filter, list(runs)[:clip]))
+        filtered_runs = list(filter(run_filter, tqdm(list(runs)[:clip])))
     print(f"loading {len(filtered_runs)} runs with filter {pre_run_filter} and {run_filter}")
 
-    corrs = []
-    ids = []
-    for run in tqdm(filtered_runs):
+    threshold_to_run_map: dict[float, AcdcRunCandidate] = {}
+
+    def add_run_for_processing(candidate: AcdcRunCandidate):
+        if candidate.threshold not in threshold_to_run_map:
+            threshold_to_run_map[candidate.threshold] = candidate
+        else:
+            if candidate.steps > threshold_to_run_map[candidate.threshold].steps:
+                threshold_to_run_map[candidate.threshold] = candidate
+
+    for run in filtered_runs:
         score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
+        try:
+            score_d["steps"] = run.summary["_step"]
+        except KeyError:
+            continue  # Run has crashed too much
+
         try:
             score_d["score"] = run.config["threshold"]
         except KeyError:
@@ -566,12 +584,12 @@ def get_acdc_runs(
                     current_node = child
 
                     if result < threshold:
-                        corr.edges[translate_name(child.name)][child.index][translate_name(parent.name)][parent.index].present = False
+                        corr.edges[child.name][child.index][parent.name][parent.index].present = False
                         corr.remove_edge(
-                            translate_name(current_node.name), current_node.index, translate_name(parent.name), parent.index
+                            current_node.name, current_node.index, parent.name, parent.index
                         )
                     else:
-                        corr.edges[translate_name(child.name)][child.index][translate_name(parent.name)][parent.index].present = True
+                        corr.edges[child.name][child.index][parent.name][parent.index].present = True
                 print("Before copying: n_edges=", corr.count_no_edges())
 
                 corr_all_edges = corr.all_edges().items()
@@ -582,13 +600,19 @@ def get_acdc_runs(
                     edge.present = False
 
                 for tupl, edge in corr_all_edges:
-                    t = (translate_name(tupl[0]), tupl[1], translate_name(tupl[2]), tupl[3])
-                    new_all_edges[t].present = edge.present
+                    new_all_edges[tupl].present = edge.present
 
                 print("After copying: n_edges=", corr_to_copy.count_no_edges())
 
-                corrs.append((corr_to_copy, score_d))
-                ids.append(run.id)
+                # Correct score_d to reflect the actual number of steps that we are collecting
+                score_d["steps"] = latest_fname_step
+                add_run_for_processing(AcdcRunCandidate(
+                    threshold=threshold,
+                    steps=score_d["steps"],
+                    run=run,
+                    score_d=score_d,
+                    corr=corr_to_copy,
+                ))
 
             except (wandb.CommError, requests.exceptions.HTTPError) as e:
                 print(f"Error {e}, falling back to parsing output.log")
@@ -596,8 +620,13 @@ def get_acdc_runs(
                     with run.file("output.log").download(root=ROOT / run.id, replace=False, exist_ok=True) as f:
                         log_text = f.read()
                     exp.load_from_wandb_run(log_text)
-                    corrs.append((deepcopy(exp.corr), score_d))
-                    ids.append(run.id)
+                    add_run_for_processing(AcdcRunCandidate(
+                        threshold=threshold,
+                        steps=score_d["steps"],
+                        run=run,
+                        score_d=score_d,
+                        corr=deepcopy(exp.corr),
+                    ))
                 except Exception:
                     print(f"Loading run {run.name} with state={run.state} config={run.config} totally failed.")
                     continue
@@ -616,22 +645,32 @@ def get_acdc_runs(
                     with open(fopen.name, "rb") as fopenb:
                         edges_pth = pickle.load(fopenb)
 
-            for t, _effect_size in edges_pth:
-                tupl = (translate_name(t[0]), t[1], translate_name(t[2]), t[3])
-                all_edges[tupl].present = True
+            for (n_to, idx_to, n_from, idx_from), _effect_size in edges_pth:
+                n_to = n_to.replace("hook_resid_mid", "hook_mlp_in")
+                n_from = n_from.replace("hook_resid_mid", "hook_mlp_in")
+                all_edges[(n_to, idx_to, n_from, idx_from)].present = True
 
-            corrs.append((corr, score_d))
-            ids.append(run.id)
+            add_run_for_processing(AcdcRunCandidate(
+                threshold=threshold,
+                steps=score_d["steps"],
+                run=run,
+                score_d=score_d,
+                corr=corr,
+            ))
 
+    # Now add the test_fns to the score_d of the remaining runs
+    def all_test_fns(data: torch.Tensor) -> dict[str, float]:
+        return {f"test_{name}": fn(data).item() for name, fn in things.test_metrics.items()}
 
-        def all_test_fns(data: torch.Tensor) -> dict[str, float]:
-            return {f"test_{name}": fn(data).item() for name, fn in things.test_metrics.items()}
+    all_candidates = list(threshold_to_run_map.values())
+    for candidate in all_candidates:
+        test_metrics = exp.call_metric_with_corr(candidate.corr, all_test_fns, things.test_data)
+        candidate.score_d.update(test_metrics)
+        print(f"Added run with threshold={candidate.threshold}, n_edges={candidate.corr.count_no_edges()}")
 
-        test_metrics = exp.call_metric_with_corr(corrs[-1][0], all_test_fns, things.test_data)
-        corrs[-1][1].update(test_metrics)
-        print(f"Added run with threshold={score_d['score']}, n_edges={corrs[-1][0].count_no_edges()}")
+    corrs = [(candidate.corr, candidate.score_d) for candidate in all_candidates]
     if return_ids:
-        return corrs, ids
+        return corrs, [candidate.run.id for candidate in all_candidates]
     return corrs
 
 #%%
@@ -654,9 +693,11 @@ def get_canonical_corrs(exp):
 
     output = [
         (none_present_corr, {"score": 0.0}),
-        (deepcopy(canonical_circuit_subgraph), {"score": 0.5}),
         (all_present_corr, {"score": 1.0}),
     ]
+
+    if TASK != "induction":
+        output.insert(1, (deepcopy(canonical_circuit_subgraph), {"score": 0.5}))
 
     for corr, score_d in output:
         old_exp_corr = exp.corr
@@ -696,7 +737,7 @@ def get_sp_corrs(
     if run_filter is None:
         filtered_runs = runs[:clip]
     else:
-        filtered_runs = list(filter(run_filter, runs[:clip]))
+        filtered_runs = list(filter(run_filter, tqdm(runs[:clip])))
     print(f"loading {len(filtered_runs)} runs")
 
     if things is None:
@@ -706,7 +747,7 @@ def get_sp_corrs(
         ]
 
     corrs = []
-    for run in tqdm(filtered_runs):
+    for run in filtered_runs:
         try:
             nodes_to_mask_strings = run.summary["nodes_to_mask"]
         except KeyError:
@@ -718,6 +759,7 @@ def get_sp_corrs(
             use_pos_embed = USE_POS_EMBED,
         )
         score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
+        score_d["steps"] = run.summary["_step"]
         score_d["score"] = run.config["lambda_reg"]
         corrs.append((corr, score_d))
 
@@ -757,7 +799,7 @@ def get_sixteen_heads_corrs(
     assert len(score_d_list) == len(nodes_names_indices) + 1
 
     corrs = [(correspondence_from_mask(model=model, nodes_to_mask=[], use_pos_embed=exp.use_pos_embed), {"score": 0.0, **score_d_list[0]})]
-    for (nodes, hook_name, idx, score), score_d in tqdm(list(zip(nodes_names_indices, score_d_list[1:]))):
+    for (nodes, hook_name, idx, score), score_d in tqdm(zip(nodes_names_indices, score_d_list[1:])):
         if score == "NaN":
             score = 0.0
         if things is None:
@@ -910,8 +952,6 @@ def get_roc_figure(all_points, names): # TODO make the plots grey / black / yell
     roc_figure.update_xaxes(title_text="Precision")
     roc_figure.update_yaxes(title_text="True positive rate")
     return roc_figure
-
-
 
 if OUT_FILE is None:
     fig = get_roc_figure(list(points.values()), list(points.keys()))

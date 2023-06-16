@@ -36,6 +36,7 @@ import warnings
 parser = argparse.ArgumentParser()
 parser.add_argument('--arrows', action='store_true', help='Include help arrows')
 parser.add_argument('--hisp-yellow', action='store_true', help='make HISP yellow')
+parser.add_argument("--min-score", type=float, default=1e-6)
 
 if get_ipython() is not None:
     args = parser.parse_args([])
@@ -255,6 +256,11 @@ def make_fig(
                         scores.extend(list(all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["score"]))
                 except KeyError:
                     raise KeyError(f"weights_type={weights_type}, ablation_type={ablation_type}, task_idx={task_idx}, metric_name={metric_names}, alg_idx={alg_idx}")
+
+                if methodof == "ACDC":
+                    # Filter scores that are too small
+                    scores = scores[scores >= args.min_score]
+
                 log_scores = np.log10(scores)
                 log_scores = np.nan_to_num(log_scores, nan=0.0, neginf=0.0, posinf=0.0)
 
@@ -314,12 +320,21 @@ def make_fig(
                 x_data = []
                 y_data = []
                 scores = []
+                
                 for metric_name in metric_names:
                     x_data.extend(this_data[task_idx][metric_name][alg_idx][x_key])
                     if plot_type == "metric_edges":
                         y_key = "test_" + metric_name
                     y_data.extend(this_data[task_idx][metric_name][alg_idx][y_key])
                     scores.extend(this_data[task_idx][metric_name][alg_idx]["score"])
+
+                if methodof == "ACDC":
+                    # Filter scores that are too small
+                    mask = scores >= args.min_score
+                    x_data = x_data[mask]
+                    y_data = y_data[mask]
+                    scores = scores[mask]
+                    del mask
 
                 log_scores = np.log10(scores)
                 # if alg_idx == "16H" and task_idx == "tracr-reverse":
@@ -418,7 +433,7 @@ def make_fig(
                     }))
 
 
-                others = [(*p, *aux) for (p, *aux) in sorted(zip(points, log_scores, normalized_log_scores, scores), key=lambda x: -x[-1]) if p not in pareto_optimal]
+                others = [(*p, *aux) for (p, *aux) in sorted(zip(points, log_scores, normalized_log_scores, scores), key=lambda x: -x[-1])] #  if p not in pareto_optimal]
 
                 if others:
                     x_data, y_data, log_scores, normalized_log_scores, scores = zip(*others)
@@ -585,7 +600,48 @@ def make_fig(
                     # smaller title font
                     fig.update_layout(title_font=dict(size=20)) # , row=row, col=col)
 
-                # add label to x axis
+    # Add horizontal lines with test performance on KL plots
+    if plot_type in ["metric_edges", "kl_edges"]:
+        for (row, col), task_idx in rows_cols_task_idx:
+            metric_name = METRICS_FOR_TASK[task_idx][1]
+            if plot_type == "metric_edges":
+                y_key = "test_" + metric_name
+
+            for weights_type, name, value in [
+                ("trained", "Clean", 1.0),
+                ("trained", "Canonical", 0.5),
+                ("reset", "Reset", 1.0),
+            ]:
+                this_data = all_data[weights_type][ablation_type][task_idx][metric_name]["CANONICAL"]
+
+                scores = np.array(this_data["score"])
+                baseline_y = np.array(this_data[y_key])
+                mask = scores == value
+                if mask.sum() == 0:
+                    continue
+                assert mask.sum() == 1
+
+                y = baseline_y[mask][0]
+
+                fig.add_hline(
+                    y=y,
+                    line_dash="dot",
+                    row=row,
+                    col=col,
+                    annotation_text=name,
+                )
+                if (row, col) == (1, len(specs[0])-1):
+                    fig.add_trace(
+                        go.Scatter(
+                            x=[None],
+                            y=[None],
+                            mode="lines",
+                            name=name,
+                        ),
+                        row=row,
+                        col=col,
+                    )
+
 
     # move legend to left
     fig.update_layout(
