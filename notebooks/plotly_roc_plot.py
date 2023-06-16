@@ -2,19 +2,19 @@
 
 import os
 os.environ["ACCELERATE_DISABLE_RICH"] = "1"
+IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root") and not "aconmy" in __file__ # Arthur uses several machines...
+
 from IPython import get_ipython
-if get_ipython() is not None:
-    get_ipython().magic('load_ext autoreload')
-    get_ipython().magic('autoreload 2')
-
-    __file__ = os.path.join(get_ipython().run_line_magic('pwd', ''), "notebooks", "plotly_roc_plot.py")
-
-    from notebooks.emacs_plotly_render import set_plotly_renderer
-
-    IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root") and not "aconmy" in __file__ # Arthur uses several machines...
-
+ipython = get_ipython()
+if ipython is not None:
+    ipython.magic('load_ext autoreload')
+    ipython.magic('autoreload 2')
+    __file__ = os.path.join(ipython.run_line_magic('pwd', ''), "notebooks", "plotly_roc_plot.py")    
     if IS_ADRIA:
-        set_plotly_renderer("emacs")
+        from notebooks.emacs_plotly_render import set_plotly_renderer
+
+if IS_ADRIA:
+    set_plotly_renderer("emacs")
 
 import plotly
 import numpy as np
@@ -45,7 +45,7 @@ else:
 
 # %%
 
-if IS_ADRIA:
+if IS_ADRIA or ipython is None:
     DATA_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / "plots_data"
 
 else:
@@ -285,26 +285,26 @@ def make_fig(
         HEATMAP_ALGS = ["ACDC", "SP"]
     else:
         HEATMAP_ALGS = ["ACDC", "SP", "HISP"]
-    for i, methodof in enumerate(HEATMAP_ALGS):
-        alg_min, alg_max = bounds_for_alg[methodof]
-        # nums = normalize(heatmap_ys, alg_min, alg_max)
-        # nums[nums < scale_min] = np.nan
-        # nums[nums > 1] = np.nan
-        alg_ys = np.linspace(alg_min, alg_max, 100)
-        nums = np.linspace(scale_min, scale_max, len(alg_ys))
-        fig.add_trace(
-            go.Heatmap(
-                x=[i, i+0.95],
-                y=alg_ys,
-                z=nums[:, None],
-                colorscale=colorscales[methodof],
-                showscale=False,
-                zmin=0.0,
-                zmax=1.0,
-            ),
-            row=1,
-            col=len(specs[0]),
-        )
+    # for i, methodof in enumerate(HEATMAP_ALGS):
+    #     alg_min, alg_max = bounds_for_alg[methodof]
+    #     # nums = normalize(heatmap_ys, alg_min, alg_max)
+    #     # nums[nums < scale_min] = np.nan
+    #     # nums[nums > 1] = np.nan
+    #     alg_ys = np.linspace(alg_min, alg_max, 100)
+    #     nums = np.linspace(scale_min, scale_max, len(alg_ys))
+    #     fig.add_trace(
+    #         go.Heatmap(
+    #             x=[i, i+0.95],
+    #             y=alg_ys,
+    #             z=nums[:, None],
+    #             colorscale=colorscales[methodof],
+    #             showscale=False,
+    #             zmin=0.0,
+    #             zmax=1.0,
+    #         ),
+    #         row=1,
+    #         col=len(specs[0]),
+    #     )
     fig.update_xaxes(showline=False, zeroline=False, showgrid=False, row=1, col=len(specs[0]), showticklabels=False, ticks="")
     tickvals = list(range(int(np.floor(all_algs_min)), int(np.ceil(all_algs_max))))
     ticktext = [f"$10^{{{v}}}$" for v in tickvals]
@@ -704,14 +704,15 @@ for metric_idx in [None]:
                     print(all_dfs[-1])
                 metric = "kl" if metric_idx == 0 else "other"
                 fig.write_image(PLOT_DIR / ("--".join([metric, weights_type, ablation_type, plot_type]) + ".pdf"))
-                # fig.show()
+                fig.show()
                 # raise Exception
 
 #%%
 
 # now also make the two induction plots
+assert False, "Please actually make the plots below!!!"
 
-
+if True:
     for method_idx in range(3):
         fig.add_trace(
             go.Scatter(
