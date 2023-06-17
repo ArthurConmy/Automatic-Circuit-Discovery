@@ -27,10 +27,6 @@ poetry env use 3.10 # Python 3.10 is recommended but use any Python version >= 3
 poetry install
 ```
 
-### Reproducing results
-
-To reproduce the Pareto Frontier of KL divergences against number of edges for ACDC runs, run `python experiments/launch.py`. Similarly, `python experiments/launch_sixteen_heads.py` and `python subnetwork_probing/train.py` were used to generate individual data points for the other methods.
-
 ### System Dependencies
 
 #### :penguin: Ubuntu Linux
@@ -51,6 +47,9 @@ export CFLAGS="-I$(brew --prefix graphviz)/include"
 export LDFLAGS="-L$(brew --prefix graphviz)/lib"
 ```
 
+### Reproducing results
+
+To reproduce the Pareto Frontier of KL divergences against number of edges for ACDC runs, run `python experiments/launch.py`. Similarly, `python experiments/launch_sixteen_heads.py` and `python subnetwork_probing/train.py` were used to generate individual data points for the other methods.
 
 ## Tests
 
