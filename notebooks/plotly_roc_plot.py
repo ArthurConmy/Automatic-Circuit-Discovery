@@ -3,18 +3,24 @@
 import os
 os.environ["ACCELERATE_DISABLE_RICH"] = "1"
 IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root") and not "aconmy" in __file__ # Arthur uses several machines...
+print("WARNING: IS_ADRIA is", IS_ADRIA)
 
 from IPython import get_ipython
+from pathlib import Path
+from notebooks.emacs_plotly_render import set_plotly_renderer
+
 ipython = get_ipython()
 if ipython is not None:
     ipython.magic('load_ext autoreload')
     ipython.magic('autoreload 2')
-    __file__ = os.path.join(ipython.run_line_magic('pwd', ''), "notebooks", "plotly_roc_plot.py")    
-    if IS_ADRIA:
-        from notebooks.emacs_plotly_render import set_plotly_renderer
 
-if IS_ADRIA:
-    set_plotly_renderer("emacs")
+    initial_path = Path(get_ipython().run_line_magic('pwd', ''))
+    if str(initial_path.stem) == "notebooks":
+        initial_path = initial_path.parent
+    __file__ = str(initial_path / "notebooks" / "plotly_roc_plot.py")
+
+    if IS_ADRIA:
+          set_plotly_renderer("emacs")
 
 import plotly
 import numpy as np
@@ -191,7 +197,7 @@ def discard_non_pareto_optimal(points, auxiliary, cmp="gt"):
 #     scale_max=0.8,
 #     metric_idx_list=None,
 # ):
-metric_idx=None
+metric_idx=0
 weights_types=["trained"] #  if weights_type == "trained" else ["trained", weights_type]
 ablation_type="random_ablation"
 x_key="edge_fpr"
