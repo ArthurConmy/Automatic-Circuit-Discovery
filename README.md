@@ -10,6 +10,7 @@ This is the accompanying code to the paper "Towards Automated Circuit Discovery 
 
 * :zap: To run ACDC, see `acdc/main.py`, or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Main_Demo.ipynb">this Colab notebook</a>
 * :wrench: To see how edit edges in computational graphs in models, see `notebooks/editing_edges.py` or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Editing_Edges_Demo.ipynb">this Colab notebook</a>
+* :sparkle: To look at the abstractions we use to make ACDC, look at our upcoming notebook on them.
 
 This library builds upon the abstractions (`HookPoint`s and standardised `HookedTransformer`s) from [TransformerLens](https://github.com/neelnanda-io/TransformerLens) :mag_right:
 
@@ -34,6 +35,8 @@ poetry install
 sudo apt-get update && sudo apt-get install libgl1-mesa-glx graphviz build-essential graphviz-dev
 ```
 
+You may also need `apt-get install python3.x-dev` where `x` is your Python version (also see [the issue](https://github.com/ArthurConmy/Automatic-Circuit-Discovery/issues/57) and [pygraphviz installation troubleshooting](https://pygraphviz.github.io/documentation/stable/install.html))
+
 #### :apple: Mac OS X
 
 On Mac, you need to let pip (inside poetry) know about the path to the Graphviz libraries.
@@ -44,6 +47,9 @@ export CFLAGS="-I$(brew --prefix graphviz)/include"
 export LDFLAGS="-L$(brew --prefix graphviz)/lib"
 ```
 
+### Reproducing results
+
+To reproduce the Pareto Frontier of KL divergences against number of edges for ACDC runs, run `python experiments/launch.py`. Similarly, `python experiments/launch_sixteen_heads.py` and `python subnetwork_probing/train.py` were used to generate individual data points for the other methods.
 
 ## Tests
 
@@ -95,6 +101,8 @@ If you use ACDC, please reach out! You can reference the work as follows:
 [ x ] Add `hook_mlp_in` to `TransformerLens` and delete `hook_resid_mid` (and test to ensure no bad things?)
 
 [ x ] Delete `arthur-try-merge-tl` references from the repo
+
+[ ] Make notebook on abstractions
 
 [ ] Fix huge edge sizes in Induction Main example
 

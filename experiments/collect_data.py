@@ -6,8 +6,9 @@ from experiments.launcher import KubernetesJob, WandbIdentifier, launch
 import shlex
 import random
 
-IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root") and not "aconmy" in __file__
-print("is adria:", IS_ADRIA)
+IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root")
+if IS_ADRIA:
+    print("WARNING: IS_ADRIA=True, using Adria's Docker container")
 
 #TASKS = ["ioi", "docstring", "greaterthan", "tracr-reverse", "tracr-proportion", "induction"]
 TASKS = ["ioi", "docstring", "greaterthan", "induction"]
@@ -15,7 +16,7 @@ TASKS = ["ioi", "docstring", "greaterthan", "induction"]
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
     "tracr-reverse": ["l2"],
-    "tracr-proportion": ["l2"],
+    "tracr-proportion": ["kl_div", "l2"],
     "induction": ["kl_div", "nll"],
     "docstring": ["kl_div", "docstring_metric"],
     "greaterthan": ["kl_div", "greaterthan"],
@@ -34,7 +35,7 @@ def main(
     # num_processes = MPI.COMM_WORLD.Get_size()
 
     if IS_ADRIA:
-        OUT_RELPATH = Path(".cache") / "plots_data"
+        OUT_RELPATH = Path(".cache") / "plots_data_q_mlp"
         OUT_HOME_DIR = Path(os.environ["HOME"]) / OUT_RELPATH
     else:
         OUT_RELPATH = Path("experiments/results/arthur_plots_data") # trying to remove extra things from acdc/
@@ -96,29 +97,28 @@ def main(
 
 
 tasks_for = {
-    "acdc": ["ioi", "greaterthan"],
+    "acdc": TASKS,
     "16h": TASKS,
     "sp": TASKS,
-    "canonical": TASKS,
+    "canonical": ["greaterthan"],
 }
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--i", type=int, default=0)
 parser.add_argument("--n", type=int, default=1)
 
-args = parser.parse_args()
-mod_idx = args.i
-num_processes = args.n
+mod_idx = parser.parse_args().i
+num_processes = parser.parse_args().n
 
 if __name__ == "__main__":
-    for alg in ["acdc"]: # , "16h", "sp", "canonical"]:
+    for alg in ["canonical"]:
         for task in tasks_for[alg]:
             main(
                 alg,
                 task,
                 KubernetesJob(
-                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:e1884e4",
-                    cpu=6,
+                    container="ghcr.io/rhaps0dy/automatic-circuit-discovery:b353d83",
+                    cpu=4,
                     gpu=0 if not IS_ADRIA or task.startswith("tracr") or alg not in ["acdc", "canonical"] else 1,
                     mount_training=False,
                 ),

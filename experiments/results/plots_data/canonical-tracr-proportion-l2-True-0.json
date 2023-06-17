@@ -4,13 +4,6 @@
       "tracr-proportion": {
         "l2": {
           "CANONICAL": {
-            "test_l2": [
-              Infinity,
-              0.0,
-              0.0,
-              0.11851852387189865,
-              -Infinity
-            ],
             "score": [
               Infinity,
               1.0,
@@ -21,8 +14,15 @@
             "test_kl_div": [
               Infinity,
               0.0,
-              0.0869406908750534,
+              0.086940698325634,
               0.08642131090164185,
+              -Infinity
+            ],
+            "test_l2": [
+              Infinity,
+              0.0,
+              0.0,
+              0.11851852387189865,
               -Infinity
             ],
             "edge_fpr": [

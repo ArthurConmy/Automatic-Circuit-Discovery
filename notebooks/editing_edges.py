@@ -7,7 +7,7 @@
 #
 # <h3>Setup</h2>
 #
-# <p>Janky code to do different setup when run in a Colab notebook vs VSCode (adapted from e.g <a href="https://github.com/neelnanda-io/TransformerLens/blob/5c89b7583e73ce96db5e46ef86a14b15f303dde6/demos/Activation_Patching_in_TL_Demo.ipynb">this notebook</a>)</p> . 
+# <p>Janky code to do different setup when run in a Colab notebook vs VSCode (adapted from e.g <a href="https://github.com/neelnanda-io/TransformerLens/blob/5c89b7583e73ce96db5e46ef86a14b15f303dde6/demos/Activation_Patching_in_TL_Demo.ipynb">this notebook</a>)</p>
 # 
 # <p>You can ignore warnings that "packages were previously imported in this runtime"</p>
 
@@ -17,7 +17,7 @@ try:
     import google.colab
 
     IN_COLAB = True
-    print("Running as a Colab notebook. WARNING: you should switch to a High-RAM A100 (you can buy $10 of credits for this)")
+    print("Running as a Colab notebook")
 
     import subprocess # to install graphviz dependencies
     command = ['apt-get', 'install', 'graphviz-dev']
@@ -28,14 +28,12 @@ try:
 
     ipython.run_line_magic( # install ACDC
         "pip",
-        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@3aebc1c59",
+        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@9d5844a",
     )
 
 except Exception as e:
     IN_COLAB = False
-    print(
-        "Running as a Jupyter notebook - intended for development only! (This is also used for automatically generating notebook outputs)"
-    )
+    print("Running outside of Colab notebook")
 
     import numpy # crucial to not get cursed error
     import plotly
@@ -47,8 +45,11 @@ except Exception as e:
 
     ipython = get_ipython()
     if ipython is not None:
+        print("Running as a notebook")
         ipython.run_line_magic("load_ext", "autoreload")  # type: ignore
         ipython.run_line_magic("autoreload", "2")  # type: ignore
+    else:
+        print("Running as a .py script")
 
 
 # %% [markdown]
