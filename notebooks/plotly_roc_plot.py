@@ -1,15 +1,27 @@
+#%%
+
 import os
+os.environ["ACCELERATE_DISABLE_RICH"] = "1"
+
 import warnings
 from IPython import get_ipython
-if get_ipython() is not None:
-    get_ipython().magic('load_ext autoreload')
-    get_ipython().magic('autoreload 2')
+from pathlib import Path
+from notebooks.emacs_plotly_render import set_plotly_renderer
 
-    __file__ = os.path.join(get_ipython().run_line_magic('pwd', ''), "notebooks", "plotly_roc_plot.py")
+IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root") and not "aconmy" in __file__
 
-    from notebooks.emacs_plotly_render import set_plotly_renderer
-    if "adria" in __file__:
-        set_plotly_renderer("emacs")
+ipython = get_ipython()
+if ipython is not None:
+    ipython.magic('load_ext autoreload')
+    ipython.magic('autoreload 2')
+
+    initial_path = Path(get_ipython().run_line_magic('pwd', ''))
+    if str(initial_path.stem) == "notebooks":
+        initial_path = initial_path.parent
+    __file__ = str(initial_path / "notebooks" / "plotly_roc_plot.py")
+
+    if IS_ADRIA:
+          set_plotly_renderer("emacs")
 
 import plotly
 import numpy as np
@@ -24,7 +36,7 @@ import plotly.express as px
 import pandas as pd
 import argparse
 import plotly.colors as pc
-
+import warnings
 
 # %%
 
@@ -40,7 +52,12 @@ else:
 
 # %%
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / "plots_data"
+if IS_ADRIA or ipython is None:
+    DATA_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / "plots_data"
+
+else:
+    DATA_DIR = Path(__file__).resolve().parent.parent.parent / "experiments" / "results" / "plots_data"
+
 all_data = {}
 
 for fname in os.listdir(DATA_DIR):
@@ -97,9 +114,9 @@ methods = ["ACDC", "SP", "HISP"]
 
 if args.hisp_yellow:
     colorscale_names = {
-        "ACDC": "Blues_r",
+        "ACDC": "Purp",
         "SP": "Greens_r",
-        "HISP": "pinkyl",
+        "HISP": "YlOrBr",
     }
 else:
     colorscale_names = {
@@ -113,13 +130,18 @@ for methodof, name in colorscale_names.items():
     color_list = pc.get_colorscale(name)
     # Add black to the minimum
     colorscales[methodof] = [[0.0, "rgb(0, 0, 0)"],
-                             [1e-16, color_list[0][1]],
+                             [0.01, color_list[0][1]],
                              *color_list[1:]]
 
     if methodof == "HISP" and args.hisp_yellow:
         colorscales[methodof][1][1] = "rgb(255, 255, 0)"
 
-colors = {k: pc.sample_colorscale(v, 0.01 if k == "HISP" and args.hisp_yellow else 0.2)[0] for k, v in colorscales.items()}
+custom_color_scales = {
+    ("HISP", args.hisp_yellow): 0.02,
+    ("ACDC", args.hisp_yellow): 1.0,
+}
+
+colors = {k: pc.sample_colorscale(v, 0.2 if (k, args.hisp_yellow) not in custom_color_scales else custom_color_scales[(k, args.hisp_yellow)])[0] for k, v in colorscales.items()}
 
 symbol = {
     "ACDC": "circle",
@@ -293,6 +315,11 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                 x_data = np.array(this_data[task_idx][metric_name][alg_idx][x_key])
                 y_data = np.array(this_data[task_idx][metric_name][alg_idx][y_key])
                 scores = np.array(this_data[task_idx][metric_name][alg_idx]["score"])
+
+                if alg_idx.lower() in ["hisp", "16h"]:
+                    scores = np.array(this_data[task_idx][metric_name][alg_idx]["n_nodes"])
+                    for i in range(1, len(this_data[task_idx][metric_name][alg_idx]["n_nodes"])-1): # first and last broken I think
+                        scores[i] /= max(this_data[task_idx][metric_name][alg_idx]["n_nodes"][1:-1])
 
                 if methodof == "ACDC":
                     # Filter scores that are too small
