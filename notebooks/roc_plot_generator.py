@@ -756,10 +756,10 @@ def get_sixteen_heads_corrs(
 
     corrs = [(correspondence_from_mask(model=model, nodes_to_mask=[], use_pos_embed=exp.use_pos_embed), {"score": 0.0, **score_d_list[0]})]
     for enumerate_idx, ((nodes, hook_name, idx, score), score_d) in tqdm(enumerate(list(zip(nodes_names_indices, score_d_list[1:])))):
-        if score == "NaN":
-            score = 0.0
-        if score == 0.0:
-            score = enumerate_idx / length
+
+        # always make the score the percentage of nodes masked
+        score = enumerate_idx / length
+
         if things is None:
             corr = None
         else:
@@ -768,7 +768,7 @@ def get_sixteen_heads_corrs(
         score_d = {"score": score, **score_d}
         corrs.append((corr, score_d))
     return corrs
-
+    
 if "sixteen_heads_corrs" not in locals() and not SKIP_SIXTEEN_HEADS: # this is slow, so run once
     sixteen_heads_corrs = get_sixteen_heads_corrs()
     assert len(sixteen_heads_corrs) > 1

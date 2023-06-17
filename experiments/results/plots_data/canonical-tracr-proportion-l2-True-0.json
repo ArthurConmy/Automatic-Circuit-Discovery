@@ -11,18 +11,18 @@
               0.0,
               -Infinity
             ],
-            "test_l2": [
-              Infinity,
-              0.0,
-              0.0,
-              0.11851852387189865,
-              -Infinity
-            ],
             "test_kl_div": [
               Infinity,
               0.0,
               0.086940698325634,
               0.08642131090164185,
+              -Infinity
+            ],
+            "test_l2": [
+              Infinity,
+              0.0,
+              0.0,
+              0.11851852387189865,
               -Infinity
             ],
             "edge_fpr": [
