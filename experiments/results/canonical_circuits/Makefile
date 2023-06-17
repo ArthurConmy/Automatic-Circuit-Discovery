@@ -8,7 +8,7 @@ ioi.gv ioi_heads.gv ioi_heads_qkv.gv:
 	python ../../../notebooks/roc_plot_generator.py --task=ioi --only-save-canonical
 
 greaterthan.gv greaterthan_heads.gv greaterthan_heads_qkv.gv:
-	python ../../../notebooks/roc_plot_generator.py --task=greaterthan --only-save-canonical
+	python ../../../notebooks/roc_plot_generator.py --task=greaterthan --only-save-canonical --device=cuda
 
 docstring.gv:
 	python ../../../notebooks/roc_plot_generator.py --task=docstring --only-save-canonical

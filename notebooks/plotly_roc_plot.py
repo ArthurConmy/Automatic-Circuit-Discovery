@@ -2,9 +2,8 @@
 
 import os
 os.environ["ACCELERATE_DISABLE_RICH"] = "1"
-IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root") and not "aconmy" in __file__ # Arthur uses several machines...
-print("WARNING: IS_ADRIA is", IS_ADRIA)
 
+import warnings
 from IPython import get_ipython
 from pathlib import Path
 from notebooks.emacs_plotly_render import set_plotly_renderer
@@ -42,7 +41,7 @@ import warnings
 parser = argparse.ArgumentParser()
 parser.add_argument('--arrows', action='store_true', help='Include help arrows')
 parser.add_argument('--hisp-yellow', action='store_true', help='make HISP yellow')
-parser.add_argument("--min-score", type=float, default=-1)
+parser.add_argument("--min-score", type=float, default=1e-15)
 
 if get_ipython() is not None:
     args = parser.parse_args([])
@@ -214,7 +213,7 @@ if True:
         metric_idx_list = [metric_idx]
         metric_idx = None
 
-    TOP_MARGIN = -0.02 + 0.26 * len(weights_types)
+    TOP_MARGIN = -0.02 + 0.26 * len(weights_types) + (0.12 if plot_type in ("metric_edges", "kl_edges") else 0.0)
     LEFT_MARGIN = -0.02
     RIGHT_MARGIN = 0.02 if y_key in ["edge_tpr", "node_tpr"] else 0.00
     if plot_type in ["roc_nodes", "roc_edges", "precision_recall"]:
@@ -282,7 +281,9 @@ if True:
                     # Filter scores that are too small
                     scores = scores[scores >= args.min_score]
 
-                log_scores = np.log10(scores)
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    log_scores = np.log10(scores)
                 log_scores = np.nan_to_num(log_scores, nan=0.0, neginf=0.0, posinf=0.0)
 
                 min_log_score = min(np.min(log_scores), min_log_score)
@@ -356,13 +357,16 @@ if True:
 
                 if methodof == "ACDC":
                     # Filter scores that are too small
-                    mask = scores >= args.min_score
+                    mask = (scores >= args.min_score) | (~np.isfinite(scores))
                     x_data = x_data[mask]
                     y_data = y_data[mask]
                     scores = scores[mask]
                     del mask
 
-                log_scores = np.log10(scores)
+
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    log_scores = np.log10(scores)
 
                 log_scores = np.nan_to_num(log_scores, nan=np.nan, neginf=-1e90, posinf=1e90)
                 normalized_log_scores = normalize(log_scores, min_log_score, max_log_score)
@@ -379,11 +383,9 @@ if True:
                 points = list(zip(x_data, y_data))
                 if y_key not in ["node_tpr", "edge_tpr"]:
                     pareto_optimal = [] # list(sorted(points))  # Not actually pareto optimal but we want to plot all of them
-                    print("Yep")
                     pareto_log_scores = []
                     pareto_scores = []
                 else:
-                    print("Hehe", y_key)
                     pareto_optimal_aux = discard_non_pareto_optimal(points, zip(log_scores, scores))
                     pareto_optimal, aux = zip(*pareto_optimal_aux)
                     pareto_log_scores, pareto_scores = zip(*aux)
@@ -405,8 +407,8 @@ if True:
 
                     fig.add_trace(
                         go.Scatter(
-                            x=x_data,
-                            y=y_data,
+                            x=list(x_data),
+                            y=list(y_data),
                             name=methodof,
                             mode="lines",
                             line=dict(shape="hv", color=colors[methodof]),
@@ -498,7 +500,8 @@ if True:
                         mode="markers",
                         showlegend = False,
                         marker=dict(
-                            size=7,
+                            size=[3 if p in pareto_optimal else 7 for p in points],
+                            line=dict(width=0),
                             color=color,
                             symbol=weights_type_symbols[weights_type][methodof],
                             colorscale=colorscales[methodof],
@@ -633,12 +636,14 @@ if True:
         for (row, col), task_idx in rows_cols_task_idx:
             metric_name = METRICS_FOR_TASK[task_idx][1]
             if plot_type == "metric_edges":
-                y_key = "test_" + metric_name
+                y_key = "test_" + METRICS_FOR_TASK[task_idx][metric_idx]
+            else:
+                y_key = "test_" + METRICS_FOR_TASK[task_idx][0]
 
-            for weights_type, name, value in [
-                ("trained", "Clean", 1.0),
-                ("trained", "Canonical", 0.5),
-                ("reset", "Reset", 1.0),
+            for weights_type, name, value, line_dash, line_color in [
+                ("trained", "Clean", 1.0, "solid", "rgb(155, 106, 205)"),
+                ("trained", "Canonical", 0.5, "dashdot", "rgb(0, 0, 0)"),
+                ("reset", "Reset", 1.0, "dot", "rgb(155, 106, 205)"),
             ]:
                 this_data = all_data[weights_type][ablation_type][task_idx][metric_name]["CANONICAL"]
 
@@ -651,12 +656,17 @@ if True:
 
                 y = baseline_y[mask][0]
 
+                line_style = dict(
+                    dash=line_dash,
+                    width=1.5,
+                    color=line_color,
+                )
+
                 fig.add_hline(
                     y=y,
-                    line_dash="dot",
+                    line=line_style,
                     row=row,
                     col=col,
-                    annotation_text=name,
                 )
                 if (row, col) == (1, len(specs[0])-1):
                     fig.add_trace(
@@ -665,6 +675,7 @@ if True:
                             y=[None],
                             mode="lines",
                             name=name,
+                            line=line_style,
                         ),
                         row=row,
                         col=col,
@@ -688,7 +699,7 @@ if True:
     scale = 1.2
 
     # No title,
-    fig.update_layout(height=250*scale, width=scale*scale*500,
+    fig.update_layout(height=(300 if plot_type in ["kl_edges", "metric_edges"] else 250)*scale, width=scale*scale*500,
                       margin=dict(l=55, r=70, t=20, b=50)
                       )
     # MEGA HACK: add space between tau and colorbar

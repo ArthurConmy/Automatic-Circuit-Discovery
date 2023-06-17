@@ -33,31 +33,32 @@ from tabulate import tabulate
 
 def csv_to_latex_table(
     csv_filename, 
-    not_metric='kl_div', 
-    metric=None,
+    metric="kl_div",
     weights_type='trained', 
     ablation_type='random_ablation', 
     plot_type='roc_edges'
 ):
-    if (metric is None) == (not_metric is None):
-        raise Exception("Exactly one of 'metric' and 'not_metric' must be specified.")
+    # if (metric is None) == (not_metric is None):
+    #     raise Exception("Exactly one of 'metric' and 'not_metric' must be specified.")
 
     # Read the CSV data
     data = pd.read_csv(csv_filename)
 
     # Filter the data
     if metric is None:
-        data = data[(data['metric'] != not_metric) & 
-                    (data['weights_type'] == weights_type) & 
-                    (data['ablation_type'] == ablation_type) &  
-                    (data['plot_type'] == plot_type)
-                ]
-    else:
-        data = data[(data['metric'] == metric) &
-                    (data['weights_type'] == weights_type) &
-                    (data['ablation_type'] == ablation_type) &
-                    (data['plot_type'] == plot_type)
-                ]   
+        data = data[
+            (data['metric'] != "l2") & 
+            (data['weights_type'] == weights_type) & 
+            (data['ablation_type'] == ablation_type) &  
+            (data['plot_type'] == plot_type)
+        ]
+    else:   
+        data = data[
+            (data['metric'] == "l2") &
+            (data['weights_type'] == weights_type) &
+            (data['ablation_type'] == ablation_type) &
+            (data['plot_type'] == plot_type)
+        ]   
 
     # Group by 'task' and 'method' and compute the difference between the max and min 'AUC' within each group
     auc_diffs = data.groupby(['task', 'method'])['auc'].apply(lambda x: x.max() - x.min())
@@ -80,8 +81,7 @@ def csv_to_latex_table(
 
     # Convert the pivot table to LaTeX table format
     latex_table = tabulate(pivot_table, headers='keys', tablefmt='latex', floatfmt=".3f", missingval="N/A")
-
-    return latex_table
+    return latex_table.replace('task', "Task")
 
 # print(csv_to_latex_table('your_file.csv'))  # Replace 'your_file.csv' with your actual CSV file path
 print(csv_to_latex_table(fname, ablation_type="random_ablation", weights_type="trained"))

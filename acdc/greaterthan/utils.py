@@ -307,7 +307,6 @@ def get_greaterthan_true_edges(model):
             # print(e.edge_type)
 
     # Hanna et al have totally clean query inputs to AMID heads --- this is A LOT of edges so we add the MLP -> AMID Q edges
-
     MAX_AMID_LAYER = max([layer_idx for layer_idx, head_idx in CIRCUIT["AMID"]])
     # connect all MLPs before the AMID heads
     for mlp_sender_layer in range(0, MAX_AMID_LAYER):
