@@ -752,18 +752,20 @@ def get_sixteen_heads_corrs(
     test_keys = [k for k in run.summary.keys() if k.startswith("test")]
     score_d_list = list(run.scan_history(keys=test_keys, page_size=100000))
     assert len(score_d_list) == len(nodes_names_indices) + 1
+    length = len(nodes_names_indices)
 
     corrs = [(correspondence_from_mask(model=model, nodes_to_mask=[], use_pos_embed=exp.use_pos_embed), {"score": 0.0, **score_d_list[0]})]
-    for (nodes, hook_name, idx, score), score_d in tqdm(zip(nodes_names_indices, score_d_list[1:])):
+    for enumerate_idx, ((nodes, hook_name, idx, score), score_d) in tqdm(enumerate(list(zip(nodes_names_indices, score_d_list[1:])))):
         if score == "NaN":
             score = 0.0
+        if score == 0.0:
+            score = enumerate_idx / length
         if things is None:
             corr = None
         else:
             nodes_to_mask += list(map(parse_interpnode, nodes))
             corr = correspondence_from_mask(model=model, nodes_to_mask=nodes_to_mask, use_pos_embed=exp.use_pos_embed)
-        cum_score += score
-        score_d = {"score": cum_score, **score_d}
+        score_d = {"score": score, **score_d}
         corrs.append((corr, score_d))
     return corrs
 
