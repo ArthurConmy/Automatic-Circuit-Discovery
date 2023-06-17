@@ -180,8 +180,6 @@ x_names = {
 
 def discard_non_pareto_optimal(points, auxiliary, cmp="gt"):
     ret = []
-    auxiliary = list(auxiliary)
-    assert len(list(points))==len(auxiliary)
     for (x, y), aux in zip(points, auxiliary):
         for x1, y1 in points:
             if x1 < x and getattr(y1, f"__{cmp}__")(y) and (x1, y1) != (x, y):
@@ -192,33 +190,7 @@ def discard_non_pareto_optimal(points, auxiliary, cmp="gt"):
 
 #%%
 
-def make_fig(
-    metric_idx=0,
-    x_key="edge_fpr", 
-    y_key="edge_tpr", 
-    weights_types=("trained",), 
-    ablation_type="random_ablation", 
-    plot_type="roc_nodes", 
-    scale_min=0.0, 
-    scale_max=0.8,
-    metric_idx_list=None,
-):
-# metric_idx=0
-# weights_types=["trained"] #  if weights_type == "trained" else ["trained", weights_type]
-# ablation_type="random_ablation"
-# x_key="edge_fpr"
-# y_key="edge_tpr"
-# plot_type="roc_edges"
-# metric_idx_list=None if metric_idx is not None else [0, 1]
-# scale_min=0.0 
-# scale_max=0.8
-# if True:
-    assert (metric_idx is None) != (metric_idx_list is None), ("Either metric_idx or metric_idx_list must be specified", metric_idx, metric_idx_list)
-
-    if metric_idx is not None:
-        metric_idx_list = [metric_idx]
-        metric_idx = None
-
+def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("trained",), ablation_type="random_ablation", plot_type="roc_nodes", scale_min=0.01, scale_max=0.8):
     TOP_MARGIN = -0.02 + 0.26 * len(weights_types) + (0.12 if plot_type in ("metric_edges", "kl_edges") else 0.0)
     LEFT_MARGIN = -0.02
     RIGHT_MARGIN = 0.02 if y_key in ["edge_tpr", "node_tpr"] else 0.00
@@ -272,16 +244,8 @@ def make_fig(
 
         for weights_type in weights_types:
             for (row, col), task_idx in rows_cols_task_idx:
-                metric_names = [METRICS_FOR_TASK[task_idx][mi] for mi in metric_idx_list]
-                scores = []
-                try:    
-                    scores = []
-                    for metric_name in metric_names:
-                        scores.extend(list(all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["score"]))
-                except KeyError:
-                    raise KeyError(f"weights_type={weights_type}, ablation_type={ablation_type}, task_idx={task_idx}, metric_name={metric_names}, alg_idx={alg_idx}")
-
-                scores = np.array(scores)
+                metric_name = METRICS_FOR_TASK[task_idx][metric_idx]
+                scores = np.array(all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["score"])
 
                 if methodof == "ACDC":
                     # Filter scores that are too small
@@ -295,6 +259,7 @@ def make_fig(
                 min_log_score = min(np.min(log_scores), min_log_score)
                 max_log_score = max(np.max(log_scores), max_log_score)
         bounds_for_alg[methodof] = (min_log_score, max_log_score)
+
 
     all_algs_min = min(v for (v, _) in bounds_for_alg.values())
     all_algs_max = max(v for (_, v) in bounds_for_alg.values())
@@ -311,26 +276,26 @@ def make_fig(
         HEATMAP_ALGS = ["ACDC", "SP"]
     else:
         HEATMAP_ALGS = ["ACDC", "SP", "HISP"]
-    # for i, methodof in enumerate(HEATMAP_ALGS):
-    #     alg_min, alg_max = bounds_for_alg[methodof]
-    #     # nums = normalize(heatmap_ys, alg_min, alg_max)
-    #     # nums[nums < scale_min] = np.nan
-    #     # nums[nums > 1] = np.nan
-    #     alg_ys = np.linspace(alg_min, alg_max, 100)
-    #     nums = np.linspace(scale_min, scale_max, len(alg_ys))
-    #     fig.add_trace(
-    #         go.Heatmap(
-    #             x=[i, i+0.95],
-    #             y=alg_ys,
-    #             z=nums[:, None],
-    #             colorscale=colorscales[methodof],
-    #             showscale=False,
-    #             zmin=0.0,
-    #             zmax=1.0,
-    #         ),
-    #         row=1,
-    #         col=len(specs[0]),
-    #     )
+    for i, methodof in enumerate(HEATMAP_ALGS):
+        alg_min, alg_max = bounds_for_alg[methodof]
+        # nums = normalize(heatmap_ys, alg_min, alg_max)
+        # nums[nums < scale_min] = np.nan
+        # nums[nums > 1] = np.nan
+        alg_ys = np.linspace(alg_min, alg_max, 100)
+        nums = np.linspace(scale_min, scale_max, len(alg_ys))
+        fig.add_trace(
+            go.Heatmap(
+                x=[i, i+0.95],
+                y=alg_ys,
+                z=nums[:, None],
+                colorscale=colorscales[methodof],
+                showscale=False,
+                zmin=0.0,
+                zmax=1.0,
+            ),
+            row=1,
+            col=len(specs[0]),
+        )
     fig.update_xaxes(showline=False, zeroline=False, showgrid=False, row=1, col=len(specs[0]), showticklabels=False, ticks="")
     tickvals = list(range(int(np.floor(all_algs_min)), int(np.ceil(all_algs_max))))
     ticktext = [f"$10^{{{v}}}$" for v in tickvals]
@@ -342,32 +307,19 @@ def make_fig(
         min_log_score, max_log_score = bounds_for_alg[methodof]
         for weights_type in weights_types:
             for (row, col), task_idx in rows_cols_task_idx:
-                metric_names = [METRICS_FOR_TASK[task_idx][mi] for mi in metric_idx_list]
+                metric_name = METRICS_FOR_TASK[task_idx][metric_idx]
+                if plot_type == "metric_edges":
+                    y_key = "test_" + metric_name
 
                 this_data = all_data[weights_type][ablation_type]
-                x_data = []
-                y_data = []
-                scores = []
-                
-                for metric_name in metric_names:
-                    x_data.extend(this_data[task_idx][metric_name][alg_idx][x_key])
-                    if plot_type == "metric_edges":
-                        y_key = "test_" + metric_name
-                    y_data.extend(this_data[task_idx][metric_name][alg_idx][y_key])
+                x_data = np.array(this_data[task_idx][metric_name][alg_idx][x_key])
+                y_data = np.array(this_data[task_idx][metric_name][alg_idx][y_key])
+                scores = np.array(this_data[task_idx][metric_name][alg_idx]["score"])
 
-                    # let's just make the 16H 
-                    if alg_idx.lower() in ["hisp", "16h"]:
-                        scores.extend(this_data[task_idx][metric_name][alg_idx]["n_nodes"])
-
-                        for i in range(len(this_data[task_idx][metric_name][alg_idx]["n_nodes"])-1): # first and last broken I think
-                            scores[-i-1] /= max(this_data[task_idx][metric_name][alg_idx]["n_nodes"][1:-1])
-                    else:
-                        scores.extend(this_data[task_idx][metric_name][alg_idx]["score"])
-
-                # needed for indexing
-                scores = np.array(scores)
-                x_data = np.array(x_data)
-                y_data = np.array(y_data)
+                if alg_idx.lower() in ["hisp", "16h"]:
+                    scores = np.array(this_data[task_idx][metric_name][alg_idx]["n_nodes"])
+                    for i in range(1, len(this_data[task_idx][metric_name][alg_idx]["n_nodes"])-1): # first and last broken I think
+                        scores[i] /= max(this_data[task_idx][metric_name][alg_idx]["n_nodes"][1:-1])
 
                 if methodof == "ACDC":
                     # Filter scores that are too small
@@ -381,7 +333,8 @@ def make_fig(
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     log_scores = np.log10(scores)
-
+                # if alg_idx == "16H" and task_idx == "tracr-reverse":
+                #     import pdb; pdb.set_trace()
                 log_scores = np.nan_to_num(log_scores, nan=np.nan, neginf=-1e90, posinf=1e90)
                 normalized_log_scores = normalize(log_scores, min_log_score, max_log_score)
 
@@ -415,9 +368,6 @@ def make_fig(
                             assert False
                             print(e)
                             auc=-420.0
-
-                    # if alg_idx == "ACDC" and "tracr" in task_idx and ("fpr" in x_key or "tpr" in x_key):
-                    #     assert False
 
                     fig.add_trace(
                         go.Scatter(
@@ -494,8 +444,8 @@ def make_fig(
                         normalized_log_scores = normalized_log_scores[:-1]
                         scores = scores[:-1]
 
-                    if np.any(~np.isfinite(x_data)): warnings.warn(str((x_data, len(x_data))))
-                    if np.any(~np.isfinite(y_data)): warnings.warn(str((y_data, len(y_data))))
+                    assert not np.any(~np.isfinite(x_data))
+                    assert not np.any(~np.isfinite(y_data))
 
                     color = normalized_log_scores
                 else:
@@ -516,7 +466,7 @@ def make_fig(
                         marker=dict(
                             size=[3 if p in pareto_optimal else 7 for p in points],
                             line=dict(width=0),
-                            color=color*10,
+                            color=color,
                             symbol=weights_type_symbols[weights_type][methodof],
                             colorscale=colorscales[methodof],
                             cmin=0.0,
@@ -721,7 +671,6 @@ def make_fig(
     assert anno["text"] == r"$\tau$"
     anno["y"] += 0.02
     ret = (fig, pd.concat(all_series, axis=1) if all_series else pd.DataFrame())
-    ret[0].show()
     return ret
 
 plot_type_keys = {
@@ -734,56 +683,25 @@ plot_type_keys = {
 
 #%%
 
-# make all the ROC plots
-
 PLOT_DIR = DATA_DIR.parent / "plots"
 PLOT_DIR.mkdir(exist_ok=True)
 
 all_dfs = []
-for metric_idx in range(2):
+for metric_idx in [0, 1]:
     for ablation_type in ["random_ablation", "zero_ablation"]:
-        for weights_type in ["trained"]:  # Didn't scramble the weights enough it seems
-            for plot_type in ["roc_edges"]: # ["kl_edges", "precision_recall", "roc_nodes", "roc_edges", "metric_edges"]:
+        for weights_type in ["reset", "trained"]:  # Didn't scramble the weights enough it seems
+            for plot_type in ["kl_edges", "precision_recall", "roc_nodes", "roc_edges", "metric_edges"]:
                 x_key, y_key = plot_type_keys[plot_type]
-                fig, df = make_fig(metric_idx=metric_idx, weights_types=["trained"] if weights_type == "trained" else ["trained", weights_type], ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type, metric_idx_list=None if metric_idx is not None else [0, 1])
+                fig, df = make_fig(metric_idx=metric_idx, weights_types=["trained"] if weights_type == "trained" else ["trained", weights_type], ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type)
                 if len(df):
                     all_dfs.append(df.T)
                     print(all_dfs[-1])
                 metric = "kl" if metric_idx == 0 else "other"
                 fig.write_image(PLOT_DIR / ("--".join([metric, weights_type, ablation_type, plot_type]) + ".pdf"))
+                # fig.show()
+                # raise Exception
+
 pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
-
-#%%
-
-# now also make the two induction plots
-assert False, "Please actually make the plots below!!!"
-
-if True:
-    for method_idx in range(3):
-        fig.add_trace(
-            go.Scatter(
-                x=x_data,
-                y=y_data,
-                name=methodof,
-                mode="markers",
-                showlegend = False,
-                marker=dict(
-                    size=7,
-                    color=color,
-                    symbol=weights_type_symbols[weights_type][methodof],
-                    colorscale=colorscales[methodof],
-                    cmin=0.0,
-                    cmax=1.0,
-                ),
-                hovertext=[f"{score_name[methodof]}={t:e}" for t in scores],
-            ),
-            row=row,
-            col=col,
-        )
-
-
-#%%
-
 
 # %%
 
