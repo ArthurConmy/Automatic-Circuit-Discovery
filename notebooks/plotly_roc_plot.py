@@ -8,6 +8,8 @@ from IPython import get_ipython
 from pathlib import Path
 from notebooks.emacs_plotly_render import set_plotly_renderer
 
+IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root") and not "aconmy" in __file__
+
 ipython = get_ipython()
 if ipython is not None:
     ipython.magic('load_ext autoreload')
@@ -185,28 +187,27 @@ def discard_non_pareto_optimal(points, auxiliary, cmp="gt"):
 
 #%%
 
-# def make_fig(
-#     metric_idx=0,
-#     x_key="edge_fpr", 
-#     y_key="edge_tpr", 
-#     weights_types=("trained",), 
-#     ablation_type="random_ablation", 
-#     plot_type="roc_nodes", 
-#     scale_min=0.0, 
-#     scale_max=0.8,
-#     metric_idx_list=None,
-# ):
-metric_idx=0
-weights_types=["trained"] #  if weights_type == "trained" else ["trained", weights_type]
-ablation_type="random_ablation"
-x_key="edge_fpr"
-y_key="edge_tpr"
-plot_type="roc_edges"
-metric_idx_list=None if metric_idx is not None else [0, 1]
-scale_min=0.0 
-scale_max=0.8
-
-if True:
+def make_fig(
+    metric_idx=0,
+    x_key="edge_fpr", 
+    y_key="edge_tpr", 
+    weights_types=("trained",), 
+    ablation_type="random_ablation", 
+    plot_type="roc_nodes", 
+    scale_min=0.0, 
+    scale_max=0.8,
+    metric_idx_list=None,
+):
+# metric_idx=0
+# weights_types=["trained"] #  if weights_type == "trained" else ["trained", weights_type]
+# ablation_type="random_ablation"
+# x_key="edge_fpr"
+# y_key="edge_tpr"
+# plot_type="roc_edges"
+# metric_idx_list=None if metric_idx is not None else [0, 1]
+# scale_min=0.0 
+# scale_max=0.8
+# if True:
     assert (metric_idx is None) != (metric_idx_list is None), ("Either metric_idx or metric_idx_list must be specified", metric_idx, metric_idx_list)
 
     if metric_idx is not None:
@@ -707,8 +708,8 @@ if True:
     assert anno["text"] == r"$\tau$"
     anno["y"] += 0.02
     ret = (fig, pd.concat(all_series, axis=1) if all_series else pd.DataFrame())
-    # return ret
-    fig.show()
+    ret[0].show()
+    return ret
 
 plot_type_keys = {
     "precision_recall": ("edge_tpr", "edge_precision"),
@@ -726,7 +727,7 @@ PLOT_DIR = DATA_DIR.parent / "plots"
 PLOT_DIR.mkdir(exist_ok=True)
 
 all_dfs = []
-for metric_idx in [None]:
+for metric_idx in range(2):
     for ablation_type in ["random_ablation"]: # ["random_ablation", "zero_ablation"]:
         for weights_type in ["trained"]: # ["reset", "trained"]:  # Didn't scramble the weights enough it seems
             for plot_type in ["roc_edges"]: # ["kl_edges", "precision_recall", "roc_nodes", "roc_edges", "metric_edges"]:
@@ -737,8 +738,6 @@ for metric_idx in [None]:
                     print(all_dfs[-1])
                 metric = "kl" if metric_idx == 0 else "other"
                 fig.write_image(PLOT_DIR / ("--".join([metric, weights_type, ablation_type, plot_type]) + ".pdf"))
-                fig.show()
-                # raise Exception
 
 #%%
 

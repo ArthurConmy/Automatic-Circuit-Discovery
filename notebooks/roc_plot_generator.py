@@ -24,6 +24,8 @@
 
 import collections
 import IPython
+import os 
+os.environ["ACCELERATE_DISABLE_RICH"] = "1"
 
 if IPython.get_ipython() is not None:
     IPython.get_ipython().run_line_magic("load_ext", "autoreload")  # type: ignore
@@ -165,7 +167,7 @@ parser.add_argument("--only-save-canonical", action="store_true", help="Only sav
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task=greaterthan --metric=greaterthan --alg=acdc --device=cuda".split())
+    args = parser.parse_args("--task=tracr-proportion --metric=l2 --alg=16h --device=cuda".split())
     if "arthur" not in __file__:
         __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
 else:
@@ -260,6 +262,7 @@ ROOT.mkdir(exist_ok=True)
 
 if TASK == "docstring":
     num_examples = 50
+
     seq_len = 41
     things = get_all_docstring_things(num_examples=num_examples, seq_len=seq_len, device=DEVICE,
                                                 metric_name=METRIC, correct_incorrect_wandb=False)
@@ -284,6 +287,7 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
         get_true_edges = get_tracr_reverse_edges
         num_examples = 6
         SP_PRE_RUN_FILTER["group"] = "tracr-shuffled-redo-2"
+        SIXTEEN_HEADS_PRE_RUN_FILTER["group"] = "sixteen-heads"        
     else:
         raise NotImplementedError("not a tracr task")
 
@@ -472,7 +476,6 @@ if TASK != "induction":
 
 if ONLY_SAVE_CANONICAL:
     sys.exit(0)
-#%%
 
 #%%
 
@@ -782,6 +785,9 @@ def get_sixteen_heads_corrs(
 ):
     api = wandb.Api()
     runs = api.runs(project_name, filters=pre_run_filter)
+    if things.tl_model.cfg.d_model < 42: # this is the two tracr models
+        # filter some early 16H runs I did out 
+        runs = [run for run in runs if str(run.user) != '<User arthurconmy>']
     if run_filter is None:
         run = runs[0]
     else:
