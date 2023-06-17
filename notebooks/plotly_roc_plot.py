@@ -114,9 +114,9 @@ methods = ["ACDC", "SP", "HISP"]
 
 if args.hisp_yellow:
     colorscale_names = {
-        "ACDC": "Blues_r",
+        "ACDC": "Purp",
         "SP": "Greens_r",
-        "HISP": "pinkyl",
+        "HISP": "YlOrBr",
     }
 else:
     colorscale_names = {
@@ -130,13 +130,18 @@ for methodof, name in colorscale_names.items():
     color_list = pc.get_colorscale(name)
     # Add black to the minimum
     colorscales[methodof] = [[0.0, "rgb(0, 0, 0)"],
-                             [1e-16, color_list[0][1]],
+                             [0.01, color_list[0][1]],
                              *color_list[1:]]
 
     if methodof == "HISP" and args.hisp_yellow:
         colorscales[methodof][1][1] = "rgb(255, 255, 0)"
 
-colors = {k: pc.sample_colorscale(v, 0.01 if k == "HISP" and args.hisp_yellow else 0.2)[0] for k, v in colorscales.items()}
+custom_color_scales = {
+    ("HISP", args.hisp_yellow): 0.02,
+    ("ACDC", args.hisp_yellow): 1.0,
+}
+
+colors = {k: pc.sample_colorscale(v, 0.2 if (k, args.hisp_yellow) not in custom_color_scales else custom_color_scales[(k, args.hisp_yellow)])[0] for k, v in colorscales.items()}
 
 symbol = {
     "ACDC": "circle",
@@ -349,7 +354,15 @@ def make_fig(
                     if plot_type == "metric_edges":
                         y_key = "test_" + metric_name
                     y_data.extend(this_data[task_idx][metric_name][alg_idx][y_key])
-                    scores.extend(this_data[task_idx][metric_name][alg_idx]["score"])
+
+                    # let's just make the 16H 
+                    if alg_idx.lower() in ["hisp", "16h"]:
+                        scores.extend(this_data[task_idx][metric_name][alg_idx]["n_nodes"])
+
+                        for i in range(len(this_data[task_idx][metric_name][alg_idx]["n_nodes"])-1): # first and last broken I think
+                            scores[-i-1] /= max(this_data[task_idx][metric_name][alg_idx]["n_nodes"][1:-1])
+                    else:
+                        scores.extend(this_data[task_idx][metric_name][alg_idx]["score"])
 
                 # needed for indexing
                 scores = np.array(scores)
@@ -503,7 +516,7 @@ def make_fig(
                         marker=dict(
                             size=[3 if p in pareto_optimal else 7 for p in points],
                             line=dict(width=0),
-                            color=color,
+                            color=color*10,
                             symbol=weights_type_symbols[weights_type][methodof],
                             colorscale=colorscales[methodof],
                             cmin=0.0,
@@ -728,8 +741,8 @@ PLOT_DIR.mkdir(exist_ok=True)
 
 all_dfs = []
 for metric_idx in range(2):
-    for ablation_type in ["random_ablation"]: # ["random_ablation", "zero_ablation"]:
-        for weights_type in ["trained"]: # ["reset", "trained"]:  # Didn't scramble the weights enough it seems
+    for ablation_type in ["random_ablation", "zero_ablation"]:
+        for weights_type in ["trained"]:  # Didn't scramble the weights enough it seems
             for plot_type in ["roc_edges"]: # ["kl_edges", "precision_recall", "roc_nodes", "roc_edges", "metric_edges"]:
                 x_key, y_key = plot_type_keys[plot_type]
                 fig, df = make_fig(metric_idx=metric_idx, weights_types=["trained"] if weights_type == "trained" else ["trained", weights_type], ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type, metric_idx_list=None if metric_idx is not None else [0, 1])
@@ -738,6 +751,7 @@ for metric_idx in range(2):
                     print(all_dfs[-1])
                 metric = "kl" if metric_idx == 0 else "other"
                 fig.write_image(PLOT_DIR / ("--".join([metric, weights_type, ablation_type, plot_type]) + ".pdf"))
+pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
 
 #%%
 
@@ -770,7 +784,6 @@ if True:
 
 #%%
 
-pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
 
 # %%
 

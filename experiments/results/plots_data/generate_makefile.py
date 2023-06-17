@@ -42,7 +42,8 @@ def main():
                 for zero_ablation in [0, 1]:
                     for task in TASKS:
                         for metric in METRICS_FOR_TASK[task]:
-                            if alg == "canonical" and metric == "kl_div":
+                            if alg == "canonical" and (task == "induction" or metric == "kl_div"):
+                                # No canonical circuit for induction
                                 # No need to repeat the canonical calculations for both train metrics
                                 # (they're the same, nothing is trained)
                                 continue

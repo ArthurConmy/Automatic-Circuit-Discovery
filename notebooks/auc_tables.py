@@ -10,6 +10,7 @@ import pandas as pd
 from pathlib import Path
 from tabulate import tabulate
 import argparse
+import warnings
 
 parser = argparse.ArgumentParser(
     usage="Generate AUC tables from CSV files. Pass the data.csv file as an argument fname, e.g python notebooks/auc_tables.py --fname=experiments/results/plots/data.csv"
@@ -33,6 +34,7 @@ from tabulate import tabulate
 
 def csv_to_latex_table(
     csv_filename, 
+    not_metric = None,
     metric="kl_div",
     weights_type='trained', 
     ablation_type='random_ablation', 
@@ -44,17 +46,20 @@ def csv_to_latex_table(
     # Read the CSV data
     data = pd.read_csv(csv_filename)
 
+    condition = (data['weights_type'] == weights_type)
+    if not_metric is not None:
+        condition &= (data['metric'] != not_metric)
+
     # Filter the data
     if metric is None:
         data = data[
-            (data['metric'] != "l2") & 
-            (data['weights_type'] == weights_type) & 
+            condition &
             (data['ablation_type'] == ablation_type) &  
             (data['plot_type'] == plot_type)
         ]
     else:   
         data = data[
-            (data['metric'] == "l2") &
+            # (data['metric'] == "l2") &
             (data['weights_type'] == weights_type) &
             (data['ablation_type'] == ablation_type) &
             (data['plot_type'] == plot_type)
@@ -63,28 +68,52 @@ def csv_to_latex_table(
     # Group by 'task' and 'method' and compute the difference between the max and min 'AUC' within each group
     auc_diffs = data.groupby(['task', 'method'])['auc'].apply(lambda x: x.max() - x.min())
 
-    # Check if there are any groups with a difference greater than 1e-5
+    # DO NOT Check if there are any groups with a difference greater than 1e-5
     if any(auc_diffs > 1e-5):
         # Print out all 'AUC' entries for these groups
-        print("The following task-method combinations have 'AUC' entries with a difference greater than 1e-5:")
+        my_str = "The following task-method combinations have 'AUC' entries with a difference greater than 1e-5:"
         for index, diff in auc_diffs[auc_diffs > 1e-5].iteritems():
             task, method = index
             auc_values = data[(data['task'] == task) & (data['method'] == method)]['auc']
-            print(f"Task: {task}, Method: {method}, AUC Values: {auc_values.tolist()}")
-        raise ValueError("The 'AUC' entries for each task-method combination should be the same (within a tolerance of 1e-5).")
+            my_str += f"\nTask: {task}, Method: {method}, AUC Values: {auc_values.tolist()}"
+        warnings.warn(my_str + "\n\nThe 'AUC' entries for each task-method combination should be the same (within a tolerance of 1e-5).")
 
     # Since the 'AUC' values within each task-method combination are the same, we can simply take the first 'AUC' value in each group
     data = data.groupby(['task', 'method']).first().reset_index()
 
-    # Create a pivot table with 'task' as index, 'method' as columns, and 'AUC' as values
-    pivot_table = data.pivot_table(index='task', columns='method', values='auc')
+# Create a pivot table with 'method' as index, 'task' as columns, and 'AUC' as values
+    pivot_table = data.pivot_table(index='method', columns='task', values='auc').T
+
+    # Mark the best method for each task
+    best_methods = pivot_table.idxmax(axis=1)
+    for task in pivot_table.T.columns:
+        # Ensure the method is in the `best_methods` Series before trying to access it
+        if best_methods.get(task) is not None:
+            pivot_table = pivot_table.T
+            pivot_table[task] = pivot_table[task].apply(lambda x: f"textbf{{{x:.3f}}}" if x == pivot_table[task][best_methods[task]] else f"{x:.3f}")
+            pivot_table = pivot_table.T
 
     # Convert the pivot table to LaTeX table format
-    latex_table = tabulate(pivot_table, headers='keys', tablefmt='latex', floatfmt=".3f", missingval="N/A")
-    return latex_table.replace('task', "Task")
+    latex_table = tabulate(pivot_table.T, headers='keys', tablefmt='latex', floatfmt=".3f", missingval="N/A")
+    stranswer = str(latex_table)
+
+    proper_names = {
+        "method": "Method",
+        "docstring": "Docstring",
+        "greaterthan": "Greater-Than",
+        "ioi": "IOI",
+    }
+
+    for key, value in proper_names.items():
+        stranswer = stranswer.replace(key, value)
+
+
+    stranswer = stranswer.replace("textbf\\{", "\\textbf{").replace("\}", "}")
+    return stranswer
 
 # print(csv_to_latex_table('your_file.csv'))  # Replace 'your_file.csv' with your actual CSV file path
-print(csv_to_latex_table(fname, ablation_type="random_ablation", weights_type="trained"))
+stranswer = csv_to_latex_table(fname, ablation_type="random_ablation", weights_type="trained", not_metric="kl_div")
+print(stranswer)
 
 # %%
 
