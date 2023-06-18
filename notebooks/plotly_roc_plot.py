@@ -283,7 +283,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         # subplot_titles=("First Subplot", "Second Subplot", "Third Subplot", "Fourth Subplot", "Fifth Subplot"),
         subplot_titles=subplot_titles,
         x_title=x_names[x_key],
-        y_title=x_names[y_key],
+        y_title=x_names[y_key] if plot_type != "kl_edges_induction" else "D_{KL}(G || H)",
         # title_font=dict(size=8),
     )
 
