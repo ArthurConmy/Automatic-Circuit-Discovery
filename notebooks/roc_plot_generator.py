@@ -23,8 +23,6 @@
 # SIXTEEN_HEADS_RUN
 
 import collections
-import os
-os.environ["ACCELERATE_DISABLE_RICH"] = "1"
 import IPython
 
 if IPython.get_ipython() is not None:
@@ -167,7 +165,7 @@ parser.add_argument("--only-save-canonical", action="store_true", help="Only sav
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task=tracr-proportion --metric=l2 --alg=canonical".split())
+    args = parser.parse_args("--task=tracr-reverse --metric=l2 --alg=acdc".split())
     if "arthur" not in __file__:
         __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
 else:
@@ -685,7 +683,6 @@ if not SKIP_ACDC: # this is slow, so run once
 # %%
 
 def get_canonical_corrs(exp):
-# if True:
     all_present_corr = deepcopy(exp.corr)
     for e in all_present_corr.all_edges().values():
         e.present = True
@@ -695,8 +692,8 @@ def get_canonical_corrs(exp):
         e.present = False
 
     output = [
-        (all_present_corr, {"score": 1.0}),
         (none_present_corr, {"score": 0.0}),
+        (all_present_corr, {"score": 1.0}),
     ]
 
     if TASK != "induction":
@@ -712,17 +709,10 @@ def get_canonical_corrs(exp):
                 add_receiver_hooks=True,
                 doing_acdc_runs=False,
             )
-            titems = list(things.test_metrics.items())
-            model_output, cache = exp.model.run_with_cache(
-                things.test_data,
-                # names_filter="",
-            )
-            # exp.model.reset_hooks()
-            for name, fn in titems:
-                score_d["test_"+name] = fn(model_output).item()
+            for name, fn in things.test_metrics.items():
+                score_d["test_"+name] = fn(exp.model(things.test_data)).item()
         finally:
             exp.corr = old_exp_corr
-        # assert False
     return output
 
 
