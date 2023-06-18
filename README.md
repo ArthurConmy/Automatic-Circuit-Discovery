@@ -27,6 +27,8 @@ poetry env use 3.10 # Python 3.10 is recommended but use any Python version >= 3
 poetry install
 ```
 
+On vast.ai machines (and perhaps other machines using Docker containers) you can get setup fast by running `poetry config virtualenvs.create false` instead of the `poetry env use 3.10` line.
+
 ### System Dependencies
 
 #### :penguin: Ubuntu Linux
