@@ -236,7 +236,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         subplot_titles = ("ioi", "greaterthan", "ioi", "greaterthan", r"$\tau$", "induction", "docstring", "induction", "docstring")
         subplot_titles = [TASK_NAMES.get(task_idx, task_idx) for task_idx in subplot_titles]
         for i in [0, 1, 5, 6]:
-            subplot_titles[i] += " (random)"
+            subplot_titles[i] += " (corrupted)"
         for i in [2, 3, 7, 8]:
             subplot_titles[i] += " (zero)"
     elif plot_type in ["kl_edges_induction", "metric_edges_induction"]:
@@ -244,9 +244,9 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
             ((1, 1), "induction"),
             ((1, 2), "induction"),
         ]
-        specs = [[{}, {}, {"t": TOP_MARGIN, "l": LEFT_MARGIN, "r": RIGHT_MARGIN}]]
-        column_widths = [0.48, 0.48, 0.04]
-        subplot_titles = (TASK_NAMES["induction"] + " (random)", TASK_NAMES["induction"] + " (zero)", r"$\tau$")
+        specs = [[{}, {}, {"t": 0.0, "l": -0.04, "r": RIGHT_MARGIN + 0.16}]]
+        column_widths = [0.41, 0.41, 0.18]
+        subplot_titles = (TASK_NAMES["induction"] + " (corrupted)", TASK_NAMES["induction"] + " (zero)", r"$\tau$")
     else:
         rows_cols_task_idx = [
             ((1, 1), "ioi"),
@@ -712,7 +712,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         legend=dict(
             orientation="v",
             yanchor="top",
-            y=1.1,
+            y=1.0,
             xanchor="left",
             x=0.92,
             font=dict(size=8),
@@ -727,7 +727,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         height = 300
         width = 500
     elif plot_type in ["kl_edges_induction", "metric_edges_induction"]:
-        height = 280
+        height = 190
         width = 500
     elif plot_type in ["kl_edges_4", "metric_edges_4"]:
         height = 290
