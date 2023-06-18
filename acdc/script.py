@@ -100,8 +100,8 @@ if __name__ == '__main__':
     jobs = []
 
     idx = 0
-    for task in ["tracr-reverse", "tracr-proportion"]:
-        for alg in ["acdc", "canonical"]:
+    for task in ["tracr-proportion"]:
+        for alg in ["canonical"]:
             jobs.append(pool.apply_async(run_roc_plot, (task, alg, idx%num_gpus)))
             idx+=1
 
@@ -212,7 +212,7 @@ if __name__ == '__main__':
 #     pool = multiprocessing.Pool(num_gpus * num_jobs_per_gpu)
 #     jobs = []
 
-#     for task in ["tracr-reverse", "tracr-proportion"]:
+#     for task in ["tracr-proportion", "tracr-reverse"]:
 #         for it in range(3, int(1e6)):
 #             curspace = deepcopy(the_curspace)
 
@@ -226,8 +226,8 @@ if __name__ == '__main__':
 
 #                 gpu_id = (threshold_idx // num_jobs_per_gpu) % num_gpus
 #                 idx+=1
-#                 if idx>33:
-#                     jobs.append(pool.apply_async(run_script, (task, threshold, gpu_id)))
+#                 # if idx>33:
+#                 jobs.append(pool.apply_async(run_script, (task, threshold, gpu_id)))
 
 #             if isinstance(curspace, list):
 #                 break
