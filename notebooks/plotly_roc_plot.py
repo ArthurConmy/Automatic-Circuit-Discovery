@@ -43,6 +43,7 @@ import warnings
 parser = argparse.ArgumentParser()
 parser.add_argument('--arrows', action='store_true', help='Include help arrows')
 parser.add_argument('--hisp-yellow', action='store_true', help='make HISP yellow')
+parser.add_argument("--percentage-annotation", action="store_true", help="Show percentage annotation")
 # Some ACDC tracr runs have its threshold go down to 1e-9 but that doesn't change results at all, we don't want to plot
 # them.
 parser.add_argument("--min-score", type=float, default=1e-6, help="minimum score cutoff for ACDC runs")
@@ -53,6 +54,12 @@ else:
     args = parser.parse_args()
 
 # %%
+
+PERCENTAGE_ANNOTATION = args.percentage_annotation
+if PERCENTAGE_ANNOTATION:
+    THRESHOLD_ANNOTATION = r"$\tau,\lambda,\%$"
+else:
+    THRESHOLD_ANNOTATION = r"$\tau,\lambda,\text{Score Sum}$"
 
 if IS_ADRIA or ipython is None:
     DATA_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / "plots_data"
@@ -216,7 +223,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         ]
         specs=[[{"rowspan": 2, "colspan": 2}, None, {}, {}, {"rowspan": 2, "colspan": 1, "t": TOP_MARGIN, "l": LEFT_MARGIN, "r": RIGHT_MARGIN}], [None, None, {}, {}, None]]
         column_widths = [0.24, 0.24, 0.24, 0.24, 0.04]
-        subplot_titles = ("ioi", "tracr-reverse", "tracr-proportion", r"$\tau,\lambda,\%$", "docstring", "greaterthan")
+        subplot_titles = ("ioi", "tracr-reverse", "tracr-proportion", THRESHOLD_ANNOTATION, "docstring", "greaterthan")
         subplot_titles = [TASK_NAMES.get(task_idx, task_idx) for task_idx in subplot_titles]
 
     elif plot_type in ["kl_edges_4", "metric_edges_4"]:
@@ -235,7 +242,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
             [{}, {}, {}, {}, None],
         ]
         column_widths = [0.24, 0.24, 0.24, 0.24, 0.04]
-        subplot_titles = ("ioi", "greaterthan", "ioi", "greaterthan", r"$\tau,\lambda,\%$", "induction", "docstring", "induction", "docstring")
+        subplot_titles = ("ioi", "greaterthan", "ioi", "greaterthan", THRESHOLD_ANNOTATION, "induction", "docstring", "induction", "docstring")
         subplot_titles = [TASK_NAMES.get(task_idx, task_idx) for task_idx in subplot_titles]
         for i in [0, 1, 5, 6]:
             subplot_titles[i] += " (corrupted)"
@@ -248,7 +255,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         ]
         specs = [[{}, {}, {"t": 0.0, "l": -0.04, "r": RIGHT_MARGIN + 0.16}]]
         column_widths = [0.41, 0.41, 0.18]
-        subplot_titles = (TASK_NAMES["induction"] + " (corrupted)", TASK_NAMES["induction"] + " (zero)", r"$\tau,\lambda,\%$")
+        subplot_titles = (TASK_NAMES["induction"] + " (corrupted)", TASK_NAMES["induction"] + " (zero)", THRESHOLD_ANNOTATION)
     else:
         rows_cols_task_idx = [
             ((1, 1), "ioi"),
@@ -261,7 +268,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         # t: top padding
         specs = [[{}, {}, {}, {"rowspan": 2, "colspan": 1, "t": TOP_MARGIN, "l": LEFT_MARGIN, "r": RIGHT_MARGIN}], [{}, {}, {}, None]]
         column_widths = [0.32, 0.32, 0.32, 0.04]
-        subplot_titles = ("ioi", "tracr-reverse", "tracr-proportion", r"$\tau,\lambda,\%$", "induction", "docstring", "greaterthan")
+        subplot_titles = ("ioi", "tracr-reverse", "tracr-proportion", THRESHOLD_ANNOTATION, "induction", "docstring", "greaterthan")
         subplot_titles = [TASK_NAMES.get(task_idx, task_idx) for task_idx in subplot_titles]
 
     rows_and_cols, task_idxs = list(zip(*rows_cols_task_idx))
@@ -304,7 +311,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
 
                 scores = np.array(all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["score"])
 
-                if alg_idx.lower() in ["hisp", "16h"]:
+                if PERCENTAGE_ANNOTATION and alg_idx.lower() in ["hisp", "16h"]:
                     scores = np.array(all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["n_nodes"])
                     for i in range(1, len(all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["n_nodes"])-1): # first and last broken I think
                         scores[i] /= max(all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["n_nodes"][1:-1])
@@ -390,7 +397,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                 y_data = np.array(this_data[task_idx][metric_name][alg_idx][y_key])
                 scores = np.array(this_data[task_idx][metric_name][alg_idx]["score"])
 
-                if alg_idx.lower() in ["hisp", "16h"]:
+                if PERCENTAGE_ANNOTATION and alg_idx.lower() in ["hisp", "16h"]:
                     scores = np.array(this_data[task_idx][metric_name][alg_idx]["n_nodes"])
                     for i in range(1, len(this_data[task_idx][metric_name][alg_idx]["n_nodes"])-1): 
                         # first and last broken I think
@@ -755,7 +762,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
     # MEGA HACK: add space between tau and colorbar
     for i in range(len(fig.layout.annotations)):
         anno = fig.layout.annotations[i]
-        if str(r"$\tau,\lambda,\%$") in str(anno["text"]):
+        if str(THRESHOLD_ANNOTATION) in str(anno["text"]):
             anno["y"] += 0.02
     ret = (fig, pd.concat(all_series, axis=1) if all_series else pd.DataFrame())
     return ret
