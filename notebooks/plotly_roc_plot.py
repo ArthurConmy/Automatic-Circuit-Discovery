@@ -197,7 +197,11 @@ def discard_non_pareto_optimal(points, auxiliary, cmp="gt"):
 #%%
 
 def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("trained",), ablation_type="random_ablation", plot_type="roc_nodes", scale_min=0.01, scale_max=0.8):
-    TOP_MARGIN = -0.02 + 0.26 * len(weights_types) + (0.12 if plot_type in ("metric_edges", "kl_edges", "kl_edges_4", "metric_edges_4") else 0.0)
+    TOP_MARGIN = (
+        -0.02
+        + 0.26 * len(weights_types)
+        + (0.12 if plot_type.startswith("metric_edges") or plot_type.startswith("kl_edges") else 0.0)
+    )
     LEFT_MARGIN = -0.02
     RIGHT_MARGIN = 0.02 if y_key in ["edge_tpr", "node_tpr"] else 0.00
     if plot_type in ["roc_nodes", "roc_edges", "precision_recall"]:
@@ -224,9 +228,10 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
             ((2, 3), "induction"),
             ((2, 4), "docstring"),
         ]
-        #move_down = {"t": 0.07, "b": -0.07}
-        move_down = {}
-        specs = [[move_down, move_down, move_down, move_down, {"rowspan": 2, "colspan": 1, "t": TOP_MARGIN, "l": LEFT_MARGIN, "r": RIGHT_MARGIN}], [{}, {}, {}, {}, None]]
+        specs = [
+            [{}, {}, {}, {}, {"rowspan": 2, "colspan": 1, "t": TOP_MARGIN, "l": LEFT_MARGIN, "r": RIGHT_MARGIN}],
+            [{}, {}, {}, {}, None],
+        ]
         column_widths = [0.24, 0.24, 0.24, 0.24, 0.04]
         subplot_titles = ("ioi", "greaterthan", "ioi", "greaterthan", r"$\tau$", "induction", "docstring", "induction", "docstring")
         subplot_titles = [TASK_NAMES.get(task_idx, task_idx) for task_idx in subplot_titles]
@@ -234,6 +239,14 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
             subplot_titles[i] += " (random)"
         for i in [2, 3, 7, 8]:
             subplot_titles[i] += " (zero)"
+    elif plot_type in ["kl_edges_induction", "metric_edges_induction"]:
+        rows_cols_task_idx = [
+            ((1, 1), "induction"),
+            ((1, 2), "induction"),
+        ]
+        specs = [[{}, {}, {"t": TOP_MARGIN, "l": LEFT_MARGIN, "r": RIGHT_MARGIN}]]
+        column_widths = [0.48, 0.48, 0.04]
+        subplot_titles = (TASK_NAMES["induction"] + " (random)", TASK_NAMES["induction"] + " (zero)", r"$\tau$")
     else:
         rows_cols_task_idx = [
             ((1, 1), "ioi"),
@@ -278,6 +291,11 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                 metric_name = METRICS_FOR_TASK[task_idx][metric_idx]
                 if plot_type in ["metric_edges_4", "kl_edges_4"]:
                     if col >= 3:
+                        ablation_type = "zero_ablation"
+                    else:
+                        ablation_type = "random_ablation"
+                elif plot_type in ["metric_edges_induction", "kl_edges_induction"]:
+                    if col == 2:
                         ablation_type = "zero_ablation"
                     else:
                         ablation_type = "random_ablation"
@@ -347,6 +365,11 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                 metric_name = METRICS_FOR_TASK[task_idx][metric_idx]
                 if plot_type in ["metric_edges_4", "kl_edges_4"]:
                     if col >= 3:
+                        ablation_type = "zero_ablation"
+                    else:
+                        ablation_type = "random_ablation"
+                elif plot_type in ["metric_edges_induction", "kl_edges_induction"]:
+                    if col == 2:
                         ablation_type = "zero_ablation"
                     else:
                         ablation_type = "random_ablation"
@@ -634,7 +657,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     fig.update_layout(title_font=dict(size=20)) # , row=row, col=col)
 
     # Add horizontal lines with test performance on KL plots
-    if plot_type in ["metric_edges", "kl_edges", "kl_edges_4", "metric_edges_4"]:
+    if plot_type.startswith("metric_edges") or plot_type.startswith("kl_edges"):
         for (row, col), task_idx in rows_cols_task_idx:
             metric_name = METRICS_FOR_TASK[task_idx][1]
             if plot_type == "metric_edges":
@@ -703,6 +726,9 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
     if plot_type in ["kl_edges", "metric_edges"]:
         height = 300
         width = 500
+    elif plot_type in ["kl_edges_induction", "metric_edges_induction"]:
+        height = 280
+        width = 500
     elif plot_type in ["kl_edges_4", "metric_edges_4"]:
         height = 290
         width = 550
@@ -728,6 +754,8 @@ plot_type_keys = {
     "metric_edges": ("n_edges", "test_loss"),
     "kl_edges_4": ("n_edges", "test_kl_div"),
     "metric_edges_4": ("n_edges", "test_loss"),
+    "kl_edges_induction": ("n_edges", "test_kl_div"),
+    "metric_edges_induction": ("n_edges", "test_loss"),
 }
 
 #%%
@@ -739,7 +767,7 @@ all_dfs = []
 for metric_idx in [0, 1]:
     for ablation_type in ["random_ablation", "zero_ablation"]:
         for weights_type in ["reset", "trained"]:  # Didn't scramble the weights enough it seems
-            for plot_type in ["metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "roc_edges", "metric_edges"]:
+            for plot_type in ["metric_edges_induction", "kl_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "roc_edges", "metric_edges"]:
                 x_key, y_key = plot_type_keys[plot_type]
                 fig, df = make_fig(metric_idx=metric_idx, weights_types=["trained"] if weights_type == "trained" else ["trained", weights_type], ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type)
                 if len(df):
