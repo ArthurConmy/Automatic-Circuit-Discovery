@@ -1,0 +1,59 @@
+File already exists, skipping
+File already exists, skipping
+File already exists, skipping
+dict_keys(['pos_embed.W_pos', 'embed.W_E', 'unembed.W_U', 'blocks.0.attn.W_K', 'blocks.0.attn.b_K', 'blocks.0.attn.W_Q', 'blocks.0.attn.b_Q', 'blocks.0.attn.W_V', 'blocks.0.attn.b_V', 'blocks.0.attn.W_O', 'blocks.0.attn.b_O', 'blocks.0.mlp.W_in', 'blocks.0.mlp.b_in', 'blocks.0.mlp.W_out', 'blocks.0.mlp.b_out', 'blocks.1.attn.W_K', 'blocks.1.attn.b_K', 'blocks.1.attn.W_Q', 'blocks.1.attn.b_Q', 'blocks.1.attn.W_V', 'blocks.1.attn.b_V', 'blocks.1.attn.W_O', 'blocks.1.attn.b_O', 'blocks.1.mlp.W_in', 'blocks.1.mlp.b_in', 'blocks.1.mlp.W_out', 'blocks.1.mlp.b_out'])
+Original Decoding: ['BOS', 1.0, 0.5, 0.3333333432674408, 0.5]
+Layer 0 Attn Out Equality Check: True
+Layer 0 MLP Out Equality Check: True
+Layer 1 Attn Out Equality Check: True
+Layer 1 MLP Out Equality Check: True
+dict_keys(['blocks.1.hook_resid_post', 'blocks.1.hook_mlp_out', 'blocks.1.hook_mlp_in', 'blocks.1.attn.hook_result', 'blocks.1.attn.hook_q', 'blocks.1.hook_q_input', 'blocks.1.attn.hook_k', 'blocks.1.hook_k_input', 'blocks.1.attn.hook_v', 'blocks.1.hook_v_input', 'blocks.0.hook_mlp_out', 'blocks.0.hook_mlp_in', 'blocks.0.attn.hook_result', 'blocks.0.attn.hook_q', 'blocks.0.hook_q_input', 'blocks.0.attn.hook_k', 'blocks.0.hook_k_input', 'blocks.0.attn.hook_v', 'blocks.0.hook_v_input', 'hook_embed', 'hook_pos_embed'])
+blocks.1.hook_resid_post
+blocks.1.hook_mlp_out
+blocks.1.mlp.hook_post
+blocks.1.mlp.hook_pre
+blocks.1.hook_mlp_in
+blocks.1.hook_resid_mid
+blocks.1.hook_attn_out
+blocks.1.attn.hook_result
+blocks.1.attn.hook_z
+blocks.1.attn.hook_pattern
+blocks.1.attn.hook_attn_scores
+blocks.1.attn.hook_v
+blocks.1.attn.hook_k
+blocks.1.attn.hook_q
+blocks.1.hook_v_input
+blocks.1.hook_k_input
+blocks.1.hook_q_input
+blocks.1.hook_resid_pre
+blocks.0.hook_resid_post
+blocks.0.hook_mlp_out
+blocks.0.mlp.hook_post
+blocks.0.mlp.hook_pre
+blocks.0.hook_mlp_in
+blocks.0.hook_resid_mid
+blocks.0.hook_attn_out
+blocks.0.attn.hook_result
+blocks.0.attn.hook_z
+blocks.0.attn.hook_pattern
+blocks.0.attn.hook_attn_scores
+blocks.0.attn.hook_v
+blocks.0.attn.hook_k
+blocks.0.attn.hook_q
+blocks.0.hook_v_input
+blocks.0.hook_k_input
+blocks.0.hook_q_input
+blocks.0.hook_resid_pre
+hook_pos_embed
+hook_embed
+self.current_node=TLACDCInterpNode(blocks.1.hook_resid_post, [:])
+Adding sender hooks...
+Done corrupting things
+Adding sender hooks...
+No edge 38
+Adding sender hooks...
+Done corrupting things
+Editing all edges...
+Done!
+remix_school-of-rock/arthur_tracr_fix {'config.task': 'tracr-proportion', 'config.metric': 'l2', 'config.zero_ablation': False, 'config.reset_network': 0}
+loading 0 runs with filter {'config.task': 'tracr-proportion', 'config.metric': 'l2', 'config.zero_ablation': False, 'config.reset_network': 0} and None

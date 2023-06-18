@@ -1,0 +1,8 @@
+No GPU/TPU found, falling back to CPU. (Set TF_CPP_MIN_LOG_LEVEL=0 and rerun for more info.)
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+Traceback (most recent call last):
+  File "/root/Automatic-Circuit-Discovery/acdc/../notebooks/roc_plot_generator.py", line 685, in <module>
+    assert len(acdc_corrs) > 1
+AssertionError
