@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser(
     usage="Generate AUC tables from CSV files. Pass the data.csv file as an argument fname, e.g python notebooks/auc_tables.py --fname=experiments/results/plots/data.csv"
 )
 parser.add_argument('--fname', type=str, default="../experiments/results/plots/data.csv")
-    
+
 if ipython is None:
     args = parser.parse_args()
 else: # make parsing arguments work in jupyter notebook
@@ -157,7 +157,7 @@ for weights_type in ["reset", "trained"]:
         texts[i] =  f"${row[key]:.2g}$ ($\pm{distance:.2g}$)"
         return i
 
-    df["text"] = df.apply(process_row, axis=1)
+    # df["text"] = df.apply(process_row, axis=1)
     out = df.drop("Unnamed: 0", axis=1).pivot_table(index=["task", "metric"],
                                             columns=["ablation_type", "method"],
                                             values="text")
