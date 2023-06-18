@@ -64,7 +64,8 @@ alg_names = {
 }
 
 TASK_NAMES = {
-    "ioi": "Circuit Recovery (IOI)",
+    # "ioi": "Circuit Recovery (IOI)",
+    "ioi": "IOI",
     "tracr-reverse": "tracr-reverse",
     "tracr-proportion": "tracr-xproportion",
     "docstring": "Docstring",
@@ -169,7 +170,7 @@ def discard_non_pareto_optimal(points, auxiliary, cmp="gt"):
 #%%
 
 def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("trained",), ablation_type="random_ablation", plot_type="roc_nodes", scale_min=0.01, scale_max=0.8):
-    TOP_MARGIN = -0.02 + 0.26 * len(weights_types) + (0.12 if plot_type in ("metric_edges", "kl_edges") else 0.0)
+    TOP_MARGIN = -0.02 + 0.26 * len(weights_types) + (0.12 if plot_type in ("metric_edges", "kl_edges", "kl_edges_4", "metric_edges_4") else 0.0)
     LEFT_MARGIN = -0.02
     RIGHT_MARGIN = 0.02 if y_key in ["edge_tpr", "node_tpr"] else 0.00
     if plot_type in ["roc_nodes", "roc_edges", "precision_recall"]:
@@ -182,6 +183,30 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         ]
         specs=[[{"rowspan": 2, "colspan": 2}, None, {}, {}, {"rowspan": 2, "colspan": 1, "t": TOP_MARGIN, "l": LEFT_MARGIN, "r": RIGHT_MARGIN}], [None, None, {}, {}, None]]
         column_widths = [0.24, 0.24, 0.24, 0.24, 0.04]
+        subplot_titles = ("ioi", "tracr-reverse", "tracr-proportion", r"$\tau$", "docstring", "greaterthan")
+        subplot_titles = [TASK_NAMES.get(task_idx, task_idx) for task_idx in subplot_titles]
+
+    elif plot_type in ["kl_edges_4", "metric_edges_4"]:
+        rows_cols_task_idx = [
+            ((1, 1), "ioi"),
+            ((1, 2), "greaterthan"),
+            ((2, 1), "induction"),
+            ((2, 2), "docstring"),
+            ((1, 3), "ioi"),
+            ((1, 4), "greaterthan"),
+            ((2, 3), "induction"),
+            ((2, 4), "docstring"),
+        ]
+        #move_down = {"t": 0.07, "b": -0.07}
+        move_down = {}
+        specs = [[move_down, move_down, move_down, move_down, {"rowspan": 2, "colspan": 1, "t": TOP_MARGIN, "l": LEFT_MARGIN, "r": RIGHT_MARGIN}], [{}, {}, {}, {}, None]]
+        column_widths = [0.24, 0.24, 0.24, 0.24, 0.04]
+        subplot_titles = ("ioi", "greaterthan", "ioi", "greaterthan", r"$\tau$", "induction", "docstring", "induction", "docstring")
+        subplot_titles = [TASK_NAMES.get(task_idx, task_idx) for task_idx in subplot_titles]
+        for i in [0, 1, 5, 6]:
+            subplot_titles[i] += " (random)"
+        for i in [2, 3, 7, 8]:
+            subplot_titles[i] += " (zero)"
     else:
         rows_cols_task_idx = [
             ((1, 1), "ioi"),
@@ -194,9 +219,10 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         # t: top padding
         specs = [[{}, {}, {}, {"rowspan": 2, "colspan": 1, "t": TOP_MARGIN, "l": LEFT_MARGIN, "r": RIGHT_MARGIN}], [{}, {}, {}, None]]
         column_widths = [0.32, 0.32, 0.32, 0.04]
+        subplot_titles = ("ioi", "tracr-reverse", "tracr-proportion", r"$\tau$", "induction", "docstring", "greaterthan")
+        subplot_titles = [TASK_NAMES.get(task_idx, task_idx) for task_idx in subplot_titles]
 
     rows_and_cols, task_idxs = list(zip(*rows_cols_task_idx))
-    task_names = [TASK_NAMES[i] for i in task_idxs]
 
     fig = make_subplots(
         rows=len(specs),
@@ -206,7 +232,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         column_widths=column_widths,
         print_grid=False,
         # subplot_titles=("First Subplot", "Second Subplot", "Third Subplot", "Fourth Subplot", "Fifth Subplot"),
-        subplot_titles=(*task_names[:3], r"$\tau$", *task_names[3:]),
+        subplot_titles=subplot_titles,
         x_title=x_names[x_key],
         y_title=x_names[y_key],
         # title_font=dict(size=8),
@@ -223,6 +249,12 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         for weights_type in weights_types:
             for (row, col), task_idx in rows_cols_task_idx:
                 metric_name = METRICS_FOR_TASK[task_idx][metric_idx]
+                if plot_type in ["metric_edges_4", "kl_edges_4"]:
+                    if col >= 3:
+                        ablation_type = "zero_ablation"
+                    else:
+                        ablation_type = "random_ablation"
+
                 scores = np.array(all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["score"])
 
                 if methodof == "ACDC":
@@ -286,7 +318,13 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         for weights_type in weights_types:
             for (row, col), task_idx in rows_cols_task_idx:
                 metric_name = METRICS_FOR_TASK[task_idx][metric_idx]
-                if plot_type == "metric_edges":
+                if plot_type in ["metric_edges_4", "kl_edges_4"]:
+                    if col >= 3:
+                        ablation_type = "zero_ablation"
+                    else:
+                        ablation_type = "random_ablation"
+
+                if plot_type.startswith("metric_edges"):
                     y_key = "test_" + metric_name
 
                 this_data = all_data[weights_type][ablation_type]
@@ -569,7 +607,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     fig.update_layout(title_font=dict(size=20)) # , row=row, col=col)
 
     # Add horizontal lines with test performance on KL plots
-    if plot_type in ["metric_edges", "kl_edges"]:
+    if plot_type in ["metric_edges", "kl_edges", "kl_edges_4", "metric_edges_4"]:
         for (row, col), task_idx in rows_cols_task_idx:
             metric_name = METRICS_FOR_TASK[task_idx][1]
             if plot_type == "metric_edges":
@@ -635,14 +673,23 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
 
     scale = 1.2
 
+    if plot_type in ["kl_edges", "metric_edges"]:
+        height = 300
+        width = 500
+    elif plot_type in ["kl_edges_4", "metric_edges_4"]:
+        height = 290
+        width = 550
+    else:
+        height = 250
+        width = 500
+
     # No title,
-    fig.update_layout(height=(300 if plot_type in ["kl_edges", "metric_edges"] else 250)*scale, width=scale*scale*500,
-                      margin=dict(l=55, r=70, t=20, b=50)
-                      )
+    fig.update_layout(height=height*scale, width=width*scale*scale, margin=dict(l=55, r=70, t=20, b=50))
     # MEGA HACK: add space between tau and colorbar
-    anno = fig.layout.annotations[3]
-    assert anno["text"] == r"$\tau$"
-    anno["y"] += 0.02
+    for i in range(len(fig.layout.annotations)):
+        anno = fig.layout.annotations[i]
+        if anno["text"] == r"$\tau$":
+            anno["y"] += 0.02
     ret = (fig, pd.concat(all_series, axis=1) if all_series else pd.DataFrame())
     return ret
 
@@ -652,6 +699,8 @@ plot_type_keys = {
     "roc_edges": ("edge_fpr", "edge_tpr"),
     "kl_edges": ("n_edges", "test_kl_div"),
     "metric_edges": ("n_edges", "test_loss"),
+    "kl_edges_4": ("n_edges", "test_kl_div"),
+    "metric_edges_4": ("n_edges", "test_loss"),
 }
 
 #%%
@@ -663,7 +712,7 @@ all_dfs = []
 for metric_idx in [0, 1]:
     for ablation_type in ["random_ablation", "zero_ablation"]:
         for weights_type in ["reset", "trained"]:  # Didn't scramble the weights enough it seems
-            for plot_type in ["kl_edges", "precision_recall", "roc_nodes", "roc_edges", "metric_edges"]:
+            for plot_type in ["metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "roc_edges", "metric_edges"]:
                 x_key, y_key = plot_type_keys[plot_type]
                 fig, df = make_fig(metric_idx=metric_idx, weights_types=["trained"] if weights_type == "trained" else ["trained", weights_type], ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type)
                 if len(df):
