@@ -47,6 +47,7 @@ class TLACDCInterpNode:
 def parse_interpnode(s: str) -> TLACDCInterpNode:
     try:
         name, idx = s.split("[")
+        name = name.replace("hook_resid_mid", "hook_mlp_in")
         try:
             idx = int(idx[-3:-1])
         except:

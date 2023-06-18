@@ -4,11 +4,11 @@
       "tracr-reverse": {
         "l2": {
           "CANONICAL": {
-            "score": [
+            "test_kl_div": [
               Infinity,
-              1.0,
-              0.5,
               0.0,
+              6.139742936284165e-09,
+              0.09246327728033066,
               -Infinity
             ],
             "test_l2": [
@@ -18,11 +18,11 @@
               0.33333295583724976,
               -Infinity
             ],
-            "test_kl_div": [
+            "score": [
               Infinity,
+              1.0,
+              0.5,
               0.0,
-              6.139742936284165e-09,
-              0.09246327728033066,
               -Infinity
             ],
             "edge_fpr": [

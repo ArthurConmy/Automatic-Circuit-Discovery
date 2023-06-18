@@ -11,18 +11,18 @@
               0.09246327728033066,
               -Infinity
             ],
-            "score": [
-              Infinity,
-              1.0,
-              0.5,
-              0.0,
-              -Infinity
-            ],
             "test_l2": [
               Infinity,
               0.33333295583724976,
               0.33333295583724976,
               0.33333295583724976,
+              -Infinity
+            ],
+            "score": [
+              Infinity,
+              1.0,
+              0.5,
+              0.0,
               -Infinity
             ],
             "edge_fpr": [

@@ -4,6 +4,13 @@
       "greaterthan": {
         "greaterthan": {
           "CANONICAL": {
+            "score": [
+              Infinity,
+              1.0,
+              0.5,
+              0.0,
+              -Infinity
+            ],
             "test_greaterthan": [
               Infinity,
               -0.8441364765167236,
@@ -16,13 +23,6 @@
               -3.7407914987852564e-08,
               15.975434303283691,
               11.382585525512695,
-              -Infinity
-            ],
-            "score": [
-              Infinity,
-              1.0,
-              0.5,
-              0.0,
               -Infinity
             ],
             "edge_fpr": [

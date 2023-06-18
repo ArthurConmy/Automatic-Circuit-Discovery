@@ -227,7 +227,7 @@ def extract_info(string):
         current_list_items = current_list_str.split(", ")
         current_list = [ast.literal_eval(item if item != "COL" else "None") for item in current_list_items]
 
-    return parent_name, parent_list, current_name, current_list
+    return parent_name.replace("hook_resid_mid", "hook_mlp_in"), parent_list, current_name.replace("hook_resid_mid", "hook_mlp_in"), current_list
 
 # ----------------------------------
 # Precision and recall etc metrics
