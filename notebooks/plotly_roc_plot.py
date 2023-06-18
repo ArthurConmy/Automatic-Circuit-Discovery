@@ -43,7 +43,9 @@ import warnings
 parser = argparse.ArgumentParser()
 parser.add_argument('--arrows', action='store_true', help='Include help arrows')
 parser.add_argument('--hisp-yellow', action='store_true', help='make HISP yellow')
-parser.add_argument("--min-score", type=float, default=1e-15)
+# Some ACDC tracr runs have its threshold go down to 1e-9 but that doesn't change results at all, we don't want to plot
+# them.
+parser.add_argument("--min-score", type=float, default=1e-6, help="minimum score cutoff for ACDC runs")
 
 if get_ipython() is not None:
     args = parser.parse_args([])
@@ -115,9 +117,9 @@ methods = ["ACDC", "SP", "HISP"]
 
 if args.hisp_yellow:
     colorscale_names = {
-        "ACDC": "Purp",
+        "ACDC": "Purp_r",
         "SP": "Greens_r",
-        "HISP": "YlOrBr",
+        "HISP": "YlOrBr_r",
     }
 else:
     colorscale_names = {
@@ -129,20 +131,23 @@ else:
 colorscales = {}
 for methodof, name in colorscale_names.items():
     color_list = pc.get_colorscale(name)
-    # Add black to the minimum
+    # Add black to the minimum, so that we can represent -infinity
     colorscales[methodof] = [[0.0, "rgb(0, 0, 0)"],
-                             [0.01, color_list[0][1]],
+                             # Make it not black as quickly as possible.
+                             [1e-16, color_list[0][1]],
                              *color_list[1:]]
 
     if methodof == "HISP" and args.hisp_yellow:
         colorscales[methodof][1][1] = "rgb(255, 255, 0)"
 
+# Want to sample here when making HISP yellow
 custom_color_scales = {
-    ("HISP", args.hisp_yellow): 0.02,
-    ("ACDC", args.hisp_yellow): 1.0,
+    ("HISP", True): 0.02,
+    ("ACDC", True): 0.02,
 }
 
-colors = {k: pc.sample_colorscale(v, 0.2 if (k, args.hisp_yellow) not in custom_color_scales else custom_color_scales[(k, args.hisp_yellow)])[0] for k, v in colorscales.items()}
+# Default location to sample: 0.2
+colors = {k: pc.sample_colorscale(v, custom_color_scales.get((k, args.hisp_yellow), 0.2))[0] for k, v in colorscales.items()}
 
 symbol = {
     "ACDC": "circle",
@@ -353,11 +358,6 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                 x_data = np.array(this_data[task_idx][metric_name][alg_idx][x_key])
                 y_data = np.array(this_data[task_idx][metric_name][alg_idx][y_key])
                 scores = np.array(this_data[task_idx][metric_name][alg_idx]["score"])
-
-                if alg_idx.lower() in ["hisp", "16h"]:
-                    scores = np.array(this_data[task_idx][metric_name][alg_idx]["n_nodes"])
-                    for i in range(1, len(this_data[task_idx][metric_name][alg_idx]["n_nodes"])-1): # first and last broken I think
-                        scores[i] /= max(this_data[task_idx][metric_name][alg_idx]["n_nodes"][1:-1])
 
                 if methodof == "ACDC":
                     # Filter scores that are too small
