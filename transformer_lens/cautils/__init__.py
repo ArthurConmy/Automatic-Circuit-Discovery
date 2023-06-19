@@ -1,4 +1,4 @@
-import warnings
+`import warnings
 from IPython import get_ipython
 ipython = get_ipython()
 
@@ -30,7 +30,7 @@ def to_tensor(
 ):
     return t.from_numpy(to_numpy(tensor))
 
-def imshow(
+def old_imshow(
     tensor, 
     **kwargs,
 ):

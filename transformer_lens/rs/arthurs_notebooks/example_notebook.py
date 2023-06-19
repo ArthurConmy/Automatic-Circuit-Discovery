@@ -20,7 +20,7 @@ first_hundred_direct_path = einops.einsum(
 )
 
 # plot it
-imshow(
+old_imshow(
     first_hundred_direct_path,
     x = tokens,
     y = tokens,
