@@ -7,4 +7,4 @@ if ipython is not None: # so this works as a script and in a notebook
     ipython.run_line_magic("load_ext", "autoreload")
     ipython.run_line_magic("autoreload", "2")
 
-from transformer_lens.cautils.script import *
+from transformer_lens.cautils.utils import *
