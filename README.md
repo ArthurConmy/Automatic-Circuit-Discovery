@@ -4,6 +4,8 @@ See `transformer_lens/rs/arthurs_notebooks/example_notebook.py` for example usag
 
 ## Setup:
 
+This setup relies on using an SSH key to access Github. 
+
 ```
 git clone git@github.com:ArthurConmy/TransformerLens.git
 cd TransformerLens

@@ -1,8 +1,7 @@
 import warnings
 
 # ensure there is no rich output
-warnings.warn("Disabling accelerate rich...")
-# do we even need this message though?
+warnings.warn("Doing ACCELERATE_DISABLE_RICH ...")
 
 import os
 os.environ["ACCELERATE_DISABLE_RICH"] = "1"
