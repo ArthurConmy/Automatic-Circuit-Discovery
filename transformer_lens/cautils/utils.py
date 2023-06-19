@@ -56,4 +56,4 @@ device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 from transformer_lens.cautils.path_patching import Node, IterNode, act_patch, path_patch
 from transformer_lens.cautils.plotly_utils import imshow, hist, line
-from transformer_lens.cautils.ioi_dataset import NAMES, IOIDataset
+from transformer_lens.cautils.ioi_dataset import NAMES, IOIDataset, generate_data_and_caches

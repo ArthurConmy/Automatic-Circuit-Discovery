@@ -5,7 +5,13 @@ import numpy as np
 from transformers import AutoTokenizer
 import random
 import copy
+from jaxtyping import Float
 import re
+from transformer_lens import HookedTransformer
+from functools import partial
+
+
+device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 def set_global_seed(seed: int):
     random.seed(seed)
@@ -15,7 +21,7 @@ def set_global_seed(seed: int):
     t.cuda.manual_seed_all(seed)
 
 set_global_seed(0)
-# TODO - for some reason global seeds still don't work in notebook, ABC dataset is different each time. need to fix this
+# TODO - for some reason global seeds still don't work in notebook, ABC dataset is different each time? need to fix this
 
 NAMES = [
     "Aaron",
@@ -714,3 +720,97 @@ class IOIDataset:
     def to(self, device):
         self.toks = self.toks.to(device)
         return self
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ========================================================
+
+# This is my (Callum's) super janky code to generate a bunch of datasets and caches (if it won't fit on the GPU if I do them all at once)
+# Used as follows: 
+
+# N = 100
+# ioi_dataset, abc_dataset, ioi_cache, abc_cache, ioi_metric_noising = generate_data_and_caches(N, verbose=True)
+
+
+def _logits_to_ave_logit_diff(logits: Float[t.Tensor, "batch seq d_vocab"], ioi_dataset: IOIDataset, per_prompt=False):
+    '''
+    Returns logit difference between the correct and incorrect answer.
+
+    If per_prompt=True, return the array of differences rather than the average.
+    '''
+
+    # Only the final logits are relevant for the answer
+    # Get the logits corresponding to the indirect object / subject tokens respectively
+    io_logits: Float[t.Tensor, "batch"] = logits[range(logits.size(0)), ioi_dataset.word_idx["end"], ioi_dataset.io_tokenIDs]
+    s_logits: Float[t.Tensor, "batch"] = logits[range(logits.size(0)), ioi_dataset.word_idx["end"], ioi_dataset.s_tokenIDs]
+    # Find logit difference
+    answer_logit_diff = io_logits - s_logits
+    return answer_logit_diff if per_prompt else answer_logit_diff.mean()
+
+
+
+def _ioi_metric_noising(
+        logits: Float[t.Tensor, "batch seq d_vocab"],
+        clean_logit_diff: float,
+        corrupted_logit_diff: float,
+        ioi_dataset: IOIDataset,
+    ) -> float:
+        '''
+        We calibrate this so that the value is 0 when performance isn't harmed (i.e. same as IOI dataset),
+        and -1 when performance has been destroyed (i.e. is same as ABC dataset).
+        '''
+        patched_logit_diff = _logits_to_ave_logit_diff(logits, ioi_dataset)
+        return ((patched_logit_diff - clean_logit_diff) / (clean_logit_diff - corrupted_logit_diff)).item()
+
+
+
+def generate_data_and_caches(N: int, model: HookedTransformer, verbose: bool = False, seed: int = 42):
+
+    ioi_dataset = IOIDataset(
+        prompt_type="mixed",
+        N=N,
+        tokenizer=model.tokenizer,
+        prepend_bos=False,
+        seed=seed,
+        device=str(device)
+    )
+
+    abc_dataset = ioi_dataset.gen_flipped_prompts("ABB->XYZ, BAB->XYZ")
+
+    model.reset_hooks(including_permanent=True)
+
+    ioi_logits_original, ioi_cache = model.run_with_cache(ioi_dataset.toks)
+    abc_logits_original, abc_cache = model.run_with_cache(abc_dataset.toks)
+
+    ioi_average_logit_diff = _logits_to_ave_logit_diff(ioi_logits_original, ioi_dataset).item()
+    abc_average_logit_diff = _logits_to_ave_logit_diff(abc_logits_original, ioi_dataset).item()
+
+    if verbose:
+        print(f"Average logit diff (IOI dataset): {ioi_average_logit_diff:.4f}")
+        print(f"Average logit diff (ABC dataset): {abc_average_logit_diff:.4f}")
+
+    ioi_metric_noising = partial(
+        _ioi_metric_noising,
+        clean_logit_diff=ioi_average_logit_diff,
+        corrupted_logit_diff=abc_average_logit_diff,
+        ioi_dataset=ioi_dataset,
+    )
+
+    return ioi_dataset, abc_dataset, ioi_cache, abc_cache, ioi_metric_noising
