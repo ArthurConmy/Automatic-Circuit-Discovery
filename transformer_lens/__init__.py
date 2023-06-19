@@ -1,3 +1,12 @@
+import warnings
+
+# ensure there is no rich output
+warnings.warn("Disabling accelerate rich...")
+# do we even need this message though?
+
+import os
+os.environ["ACCELERATE_DISABLE_RICH"] = "1"
+
 from . import hook_points
 from . import utils
 from . import evals

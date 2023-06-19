@@ -27,10 +27,6 @@ import transformer_lens
 from transformer_lens.ActivationCache import ActivationCache
 from transformer_lens import utils
 from transformer_lens.utils import to_numpy
-from transformer_lens.hackathon.sweep import sweep_train_model
-from transformer_lens.hackathon.model import AndModel, Config, get_all_data, get_all_outputs
-from transformer_lens.hackathon.train import TrainingConfig, train_model
-
 t.set_grad_enabled(False)
 
 # %%
@@ -63,7 +59,7 @@ def imshow(
 # %%
 
 model = transformer_lens.HookedTransformer.from_pretrained("gpt2-small")
-from transformer_lens.backup.ioi_dataset import IOIDataset, NAMES
+from transformer_lens.hackathon.ioi_dataset import IOIDataset, NAMES
 
 # %%
 

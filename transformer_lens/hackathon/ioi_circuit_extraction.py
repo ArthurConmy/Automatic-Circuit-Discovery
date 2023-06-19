@@ -1,3 +1,7 @@
+"""
+Copy and paste of Callum's IOI code
+"""
+
 from ioi_dataset import IOIDataset
 from transformer_lens import HookedTransformer, utils
 from transformer_lens.hook_points import HookPoint

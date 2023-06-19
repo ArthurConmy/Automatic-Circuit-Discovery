@@ -1,3 +1,7 @@
+"""
+Copy and paste of Callum's IOI code
+"""
+
 from typing import Union, List, Optional
 import warnings
 import torch as t
