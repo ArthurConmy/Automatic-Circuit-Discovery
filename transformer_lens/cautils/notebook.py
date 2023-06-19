@@ -1,3 +1,8 @@
+"""
+Same as transformer_lens.cautils.utils, but with autoreload magic
+"""
+
+
 import warnings
 from IPython import get_ipython
 ipython = get_ipython()

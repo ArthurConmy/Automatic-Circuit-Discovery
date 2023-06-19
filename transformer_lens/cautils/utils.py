@@ -1,3 +1,7 @@
+"""
+Main set of utils to import at the start of all scripts and notebooks
+"""
+
 import warnings
 
 import torch as t
