@@ -61,7 +61,7 @@ def imshow(
     fig.show()
 # %%
 
-model = transformer_lens.HookedTransformer.from_pretrained("gpt2-medium")
+model = transformer_lens.HookedTransformer.from_pretrained("gpt2-small")
 from transformer_lens.backup.ioi_dataset import IOIDataset, NAMES
 
 # %%
@@ -313,9 +313,9 @@ def get_EE_QK_circuit(
     head_idx,
     random_seeds: Optional[int] = 5,
     num_samples: Optional[int] = 500,
-    show_plot: bool = False,
     bags_of_words: Optional[List[List[int]]] = None, # each List is a List of unique tokens
     mean_version: bool = True,
+    show_plot: bool = False,
 ):
     assert (random_seeds is None and num_samples is None) != (bags_of_words is None), (random_seeds is None, num_samples is None, bags_of_words is None, "Must specify either random_seeds and num_samples or bag_of_words_version")
 
