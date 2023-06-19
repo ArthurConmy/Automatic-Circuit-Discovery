@@ -1,60 +1,6 @@
 # %%
 
-import os
-os.environ["ACCELERATE_DISABLE_RICH"] = "1"
-from typeguard import typechecked
-from transformer_lens import HookedTransformer
-from transformer_lens.hook_points import HookPoint
-from IPython import get_ipython
-ipython = get_ipython()
-ipython.run_line_magic("load_ext", "autoreload")
-ipython.run_line_magic("autoreload", "2")
-
-import torch as t
-import torch
-import einops
-import itertools
-import plotly.express as px
-import numpy as np
-from datasets import load_dataset
-from functools import partial
-from tqdm import tqdm
-from jaxtyping import Float, Int, jaxtyped
-from typing import Union, List, Dict, Tuple, Callable, Optional
-from torch import Tensor
-import gc
-import transformer_lens
-from transformer_lens.ActivationCache import ActivationCache
-from transformer_lens import utils
-from transformer_lens.utils import to_numpy
-t.set_grad_enabled(False)
-
-# %%
-
-def to_tensor(
-    tensor,
-):
-    return t.from_numpy(to_numpy(tensor))
-
-def imshow(
-    tensor, 
-    **kwargs,
-):
-    tensor = to_tensor(tensor)
-    zmax = tensor.abs().max().item()
-
-    if "zmin" not in kwargs:
-        kwargs["zmin"] = -zmax
-    if "zmax" not in kwargs:
-        kwargs["zmax"] = zmax
-    if "color_continuous_scale" not in kwargs:
-        kwargs["color_continuous_scale"] = "RdBu"
-
-    fig = px.imshow(
-        to_numpy(tensor),
-        **kwargs,
-    )
-    fig.show()
+from transformer_lens.cautils.notebook import *
 
 # %%
 
@@ -88,7 +34,6 @@ logits, cache = model.run_with_cache(
     ioi_dataset.toks,
     names_filter = lambda name: name.endswith("z"),
 )
-
 
 # %%
 

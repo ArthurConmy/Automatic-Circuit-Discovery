@@ -46,5 +46,13 @@ def old_imshow(
     )
     fig.show()
 
+def imshow(
+    tensor,
+    **kwargs,
+):
+    """TODO remove, waiting for new func here"""
+
+    return old_imshow(tensor, **kwargs)
+
 # TODO add Callum's nice hist functions
 # TODO add Callum's path patching function
