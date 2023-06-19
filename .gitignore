@@ -18,5 +18,3 @@ docs/build
 .coverage*
 .Ds_Store
 .pylintrc
-saved_models*
-saved_models/
