@@ -117,7 +117,7 @@ for i in range(model.cfg.n_layers):
 
 imshow(
     logit_attribution,
-    title="GPT-2 Medium head direct logit attribution",
+    title="GPT-2 Small head direct logit attribution",
 )
 # %%
 

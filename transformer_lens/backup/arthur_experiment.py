@@ -59,14 +59,15 @@ def imshow(
         **kwargs,
     )
     fig.show()
+
 # %%
 
-model = transformer_lens.HookedTransformer.from_pretrained("gpt2-medium")
+model = transformer_lens.HookedTransformer.from_pretrained("gpt2-small")
 from transformer_lens.backup.ioi_dataset import IOIDataset, NAMES
 
 # %%
 
-N = 10
+N = 100
 DEVICE = "cuda" if t.cuda.is_available() else "cpu"
 
 ioi_dataset = IOIDataset(
@@ -117,8 +118,9 @@ for i in range(model.cfg.n_layers):
 
 imshow(
     logit_attribution,
-    title="GPT-2 Medium head direct logit attribution",
+    title="GPT-2 Small head direct logit attribution",
 )
+
 # %%
 
 W_U = model.W_U
@@ -471,28 +473,17 @@ for num_samples, random_seeds in [
     
     imshow(results - results.mean(), title=f"num_samples={num_samples}, random_seeds={random_seeds}")
 
+#%% [markdown]
+# <p> Most of the experiments from here are Arthur's early experiments on 11.10 on the full distribution </p>
+
+logits, cache = model.run_with_cache(
+    ioi_dataset.toks,
+    names_filter = lambda name: name.endswith("hook_result"),
+)
+
 # %%
 
 unembedding = model.W_U.clone()
-logit_attribution = t.zeros((12, 12))
-for i in range(12):
-    end_logits = cache["result", i][t.arange(N), ioi_dataset.word_idx["end"], :, :]
-    out_dir = unembedding[:, ioi_dataset.io_tokenIDs] - unembedding[:, ioi_dataset.s_tokenIDs]
-
-    layer_attribution_old = einops.einsum(
-        end_logits,
-        out_dir,
-        "b n d, d b -> b n",
-    )
-
-    for j in range(12):
-        logit_attribution[i, j] = layer_attribution_old[:, j].mean()
-
-# %%
-
-imshow(
-    logit_attribution,
-)
 
 # %% [markdown]
 # <p> 10.7 is a fascinating head because it REVERSES direction in the backup step</p>
@@ -562,6 +553,7 @@ for i in tqdm(list(range(2)) + [5]):
     if tokens.shape[1] < 256: # lotsa short docs here
         print("SKIPPING short document", tokens.shape)
         continue
+
     tokens = tokens[0:1, :256]
 
     model.reset_hooks()
@@ -596,3 +588,5 @@ for i in tqdm(list(range(2)) + [5]):
                 print(model.tokenizer.decode(i))
 
 full_contributions = t.cat(contributions, dim=0)
+
+# %%
