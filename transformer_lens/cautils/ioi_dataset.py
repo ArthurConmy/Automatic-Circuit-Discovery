@@ -814,3 +814,7 @@ def generate_data_and_caches(N: int, model: HookedTransformer, verbose: bool = F
     )
 
     return ioi_dataset, abc_dataset, ioi_cache, abc_cache, ioi_metric_noising
+
+
+
+
