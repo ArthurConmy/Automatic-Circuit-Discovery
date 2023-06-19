@@ -13,14 +13,23 @@ import torch
 warnings.warn("Setting grad enabled false...")
 t.set_grad_enabled(False)
 
-import einops
+import numpy as np
+from jaxtyping import Float, Int, Bool, jaxtyped
+from typing import Union, List, Dict, Tuple, Callable, Optional, Any, Sequence, Iterable, Mapping, TypeVar, Generic, NamedTuple
+from torch import Tensor
+import torch.nn.functional as F
+from tqdm.auto import tqdm
+from rich import print as rprint
+from transformer_lens import utils, HookedTransformer, ActivationCache
 import plotly.express as px
 import plotly.graph_objects as go
-import numpy as np
+from plotly.subplots import make_subplots
 from functools import partial
-from tqdm import tqdm
-from jaxtyping import Float, Int, jaxtyped
-from typing import Union, List, Dict, Tuple, Callable, Optional, Any, Sequence, Iterable, Mapping, TypeVar, Generic, NamedTuple
+import re
+from pathlib import Path
+import einops
+from IPython.display import display, clear_output
+
 import transformer_lens
 from transformer_lens import *
 from transformer_lens.utils import *
@@ -50,5 +59,9 @@ def old_imshow(
     )
     fig.show()
 
-# TODO add Callum's nice hist functions
-# TODO add Callum's path patching function
+
+device = t.device("cuda" if t.cuda.is_available() else "cpu")
+
+from transformer_lens.cautils.path_patching import Node, IterNode, act_patch, path_patch
+from transformer_lens.cautils.plotly_utils import imshow, hist, line
+from transformer_lens.cautils.ioi_dataset import NAMES, IOIDataset
