@@ -2,7 +2,7 @@ Fork of the TransformerLens repo for Callum and Arthur's research sprint.
 
 See `transformer_lens/rs/arthurs_notebooks/example_notebook.py` for example usage.
 
-## Setup 
+## Setup:
 
 ```
 git clone git@github.com:ArthurConmy/TransformerLens.git
