@@ -64,11 +64,16 @@ from transformer_lens.cautils.path_patching import Node, IterNode, act_patch, pa
 from transformer_lens.cautils.plotly_utils import imshow, hist, line
 from transformer_lens.cautils.ioi_dataset import NAMES, IOIDataset
 
-def get_webtext(split: Literal["train", "test"] = "train") -> List[str]:
+def get_webtext(seed: int = 420) -> List[str]:
     """Get 10,000 sentences from the OpenWebText dataset"""
 
     # Let's see some WEBTEXT
     raw_dataset = load_dataset("stas/openwebtext-10k")
     train_dataset = raw_dataset["train"]
     dataset = [train_dataset[i]["text"] for i in range(len(train_dataset))]
+
+    # Shuffle the dataset (I don't want the Hitler thing being first so use a seeded shuffle)
+    np.random.seed(seed)
+    np.random.shuffle(dataset)
+
     return dataset
