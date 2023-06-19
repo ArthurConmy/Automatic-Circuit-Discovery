@@ -1,7 +1,7 @@
 #%% [markdown]
-# <h1> Example notebook for the acutils import * statement </h1>
+# <h1> Example notebook for the cautils import * statement </h1>
 
-from transformer_lens.acutils import *
+from transformer_lens.cautils import *
 
 #%%
 
