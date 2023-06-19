@@ -4,7 +4,7 @@ from transformer_lens.cautils.notebook import *
 
 # %%
 
-model = transformer_lens.HookedTransformer.from_pretrained("gpt2-small")
+model = transformer_lens.HookedTransformer.from_pretrained("stanford-crfm/battlestar-gpt2-small-x49")
 from transformer_lens.hackathon.ioi_dataset import IOIDataset, NAMES
 
 # %%
@@ -214,27 +214,27 @@ for i in tqdm(range(0, nrows + batch_size, batch_size)):
 
 # %%
 
-# sanity check this is the same 
+# # sanity check this is the same 
 
-def remove_pos_embed(z, hook):
-    return 0.0 * z
+# def remove_pos_embed(z, hook):
+#     return 0.0 * z
 
-# setup a forward pass that 
-model.reset_hooks()
-model.add_hook(
-    name="hook_pos_embed",
-    hook=remove_pos_embed,
-    level=1, # ???
-) 
-model.add_hook(
-    name=utils.get_act_name("pattern", 0),
-    hook=lock_attn,
-)
-logits, cache = model.run_with_cache(
-    torch.arange(1000).to(DEVICE).unsqueeze(0),
-    names_filter=lambda name: name=="blocks.1.hook_resid_pre",
-    return_type="logits",
-)
+# # setup a forward pass that 
+# model.reset_hooks()
+# model.add_hook(
+#     name="hook_pos_embed",
+#     hook=remove_pos_embed,
+#     level=1, # ???
+# ) 
+# model.add_hook(
+#     name=utils.get_act_name("pattern", 0),
+#     hook=lock_attn,
+# )
+# logits, cache = model.run_with_cache(
+#     torch.arange(1000).to(DEVICE).unsqueeze(0),
+#     names_filter=lambda name: name=="blocks.1.hook_resid_pre",
+#     return_type="logits",
+# )
 
 #%%
 
@@ -324,7 +324,7 @@ def get_single_example_plot(
         num_samples=None,
         show_plot=True,
         bags_of_words=[tokens],
-        mean_version=False,
+        mean_version=True,
     )
     imshow(
         pattern, 

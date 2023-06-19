@@ -100,16 +100,16 @@ def prediction_attention_real_sentences(
             partial(replace_with_unembedding, unembedding_head_idx=head_idx),
         )
 
-        # uh, so things will just attend to BOS unless we intervene ???
-        def attn_score_hook(z, hook, attn_score_head):
-            assert list(z.shape[2:]) == [seq_len - 1, seq_len - 1], (z.shape, (seq_len - 1, seq_len - 1))
-            z[0, attn_score_head, 0, :] = -1e9 # ??? why fail
-            return z
-            
-        model.add_hook(
-            f"blocks.{layer_idx}.attn.hook_attn_scores",
-            partial(attn_score_hook, attn_score_head=head_idx),
-        )
+        # # uh, so things will just attend to BOS unless we intervene ???
+        # def attn_score_hook(z, hook, attn_score_head):
+        #     assert list(z.shape[2:]) == [seq_len - 1, seq_len - 1], (z.shape, (seq_len - 1, seq_len - 1))
+        #     z[0, attn_score_head, :, 0] = -torch.inf # ??? why fail
+        #     print(z[0, 0, :16, :16])
+        #     return z
+        # model.add_hook(
+        #     f"blocks.{layer_idx}.attn.hook_attn_scores",
+        #     partial(attn_score_hook, attn_score_head=head_idx),
+        # )
 
         attn_pattern = t.zeros((seq_len - 1, seq_len - 1)) # used as a sort of cache
         def attn_pattern_hook(z, hook, attn_pattern_head):
@@ -130,7 +130,7 @@ def prediction_attention_real_sentences(
 
     if show_plot:
         imshow(
-            EE_QK_circuit_result[:, 1:],
+            EE_QK_circuit_result,
             labels={"x": "Source/Key Token (embedding)", "y": "Destination/Query Token (unembedding)"},
             title=f"EE QK circuit for head {layer_idx}.{head_idx}",
             width=700,
@@ -142,17 +142,24 @@ def prediction_attention_real_sentences(
 
 #%%
 
-tokens = [model.tokenizer.encode(data[i])[:20] for i in range(100) if len(model.tokenizer.encode(data[i])) >= 256]
-tokens = tokens[:1]
+data = ["Nothing is certain in this life except death and death"]
+tokens = [model.tokenizer.encode(data[i])[:20] for i in range(1) if len(model.tokenizer.encode(data[i])) >= 1]
+tokens = tokens
 words = [model.tokenizer.decode(token) for token in tokens[0]]
 
-result = prediction_attention_real_sentences(
-    10, 
-    7, 
-    tokens=tokens,
-    show_plot=True,
-    # x=words[:-1],
-    # y=words[:-1],
-)
+for batch_tokens in tokens[:5]:
+    words = [model.tokenizer.decode(token) for token in batch_tokens]
+
+    assert len(words) == len(batch_tokens), (len(words), len(batch_tokens))
+
+    result = prediction_attention_real_sentences(
+        10, 
+        7,
+        tokens=[batch_tokens],
+        show_plot=True,
+        x=words[:-1],
+        y=words[:-1],
+    )
 
 # %%
+
