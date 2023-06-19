@@ -27,3 +27,5 @@ imshow(
     labels = {"y": "Embedding token", "x": "Unembedding token"},
     title = "Direct path logit attribution",
 )
+
+# %%
