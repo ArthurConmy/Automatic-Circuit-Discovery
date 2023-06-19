@@ -11,7 +11,7 @@ t.set_grad_enabled(False)
 
 import numpy as np
 from jaxtyping import Float, Int, Bool, jaxtyped
-from typing import Union, List, Dict, Tuple, Callable, Optional, Any, Sequence, Iterable, Mapping, TypeVar, Generic, NamedTuple
+from typing import Union, List, Dict, Tuple, Callable, Optional, Any, Sequence, Iterable, Mapping, TypeVar, Generic, NamedTuple, Literal
 from torch import Tensor
 import torch.nn.functional as F
 from tqdm.auto import tqdm
@@ -24,11 +24,13 @@ from functools import partial
 import re
 from pathlib import Path
 import einops
+import itertools
 from IPython.display import display, clear_output
 
 import transformer_lens
 from transformer_lens import *
 from transformer_lens.utils import *
+from transformer_lens.hook_points import HookPoint
 
 def to_tensor(
     tensor,
@@ -61,3 +63,12 @@ device = t.device("cuda" if t.cuda.is_available() else "cpu")
 from transformer_lens.cautils.path_patching import Node, IterNode, act_patch, path_patch
 from transformer_lens.cautils.plotly_utils import imshow, hist, line
 from transformer_lens.cautils.ioi_dataset import NAMES, IOIDataset
+
+def get_webtext(split: Literal["train", "test"] = "train") -> List[str]:
+    """Get 10,000 sentences from the OpenWebText dataset"""
+
+    # Let's see some WEBTEXT
+    raw_dataset = load_dataset("stas/openwebtext-10k")
+    train_dataset = raw_dataset["train"]
+    dataset = [train_dataset[i]["text"] for i in range(len(train_dataset))]
+    return dataset

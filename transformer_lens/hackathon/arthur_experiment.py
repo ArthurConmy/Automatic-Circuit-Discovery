@@ -192,8 +192,7 @@ for i, s in enumerate(dataset):
 
 # %%
 
-# Calculate W_{TE} edit
-
+# Calculate W_{EE} edit
 batch_size = 1000
 nrows = model.cfg.d_vocab
 W_EE = t.zeros((nrows, model.cfg.d_model)).to(DEVICE)
@@ -417,6 +416,7 @@ for num_samples, random_seeds in [
 #%% [markdown]
 # <p> Most of the experiments from here are Arthur's early experiments on 11.10 on the full distribution </p>
 
+model.set_use_attn_result(True)
 logits, cache = model.run_with_cache(
     ioi_dataset.toks,
     names_filter = lambda name: name.endswith("hook_result"),
