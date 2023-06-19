@@ -346,7 +346,7 @@ class IterNode:
 
         # Figure out what the dimensions of the output will be (i.e. for our path patching iteration)
         self.shape_names = {}
-        for node in node_names:
+        for node in self.component_names:
             # Everything has a "layer" dim
             self.shape_names[node] = ["layer"]
             # Add "seq_pos", if required
