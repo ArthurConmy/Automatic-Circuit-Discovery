@@ -51,7 +51,7 @@ export LDFLAGS="-L$(brew --prefix graphviz)/lib"
 
 ### Reproducing results
 
-To reproduce the Pareto Frontier of KL divergences against number of edges for ACDC runs, run `python experiments/launch.py`. Similarly, `python experiments/launch_sixteen_heads.py` and `python subnetwork_probing/train.py` were used to generate individual data points for the other methods.
+To reproduce the Pareto Frontier of KL divergences against number of edges for ACDC runs, run `python experiments/launch_induction.py`. Similarly, `python experiments/launch_sixteen_heads.py` and `python subnetwork_probing/train.py` were used to generate individual data points for the other methods, using the CLI help. All these three commands can produce wandb runs. We use `notebooks/roc_plot_generator.py` to process data from wandb runs into JSON files (see `experiments/results/plots_data/Makefile` for the commands) and `notebooks/plotly_roc_plot.py` to produce plots from these JSON files.
 
 ## Tests
 
@@ -106,7 +106,7 @@ If you use ACDC, please reach out! You can reference the work as follows:
 
 [ ] Make notebook on abstractions
 
-[ ] Fix huge edge sizes in Induction Main example
+[ ] Fix huge edge sizes in Induction Main example and change that occurred
 
 [ ] Find a better way to deal with the versioning on the Colabs installs...
 
@@ -114,7 +114,7 @@ If you use ACDC, please reach out! You can reference the work as follows:
 
 [ ] Position-level experiments
 
-[ ] `tracr` and other dependencies better managed
+[ x ] `tracr` and other dependencies better managed
 
 [ ] Make SP tests work (lots outdated so skipped) - and check SubnetworkProbing installs properly (no __init__.pys !!!)
 
