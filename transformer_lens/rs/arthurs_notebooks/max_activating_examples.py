@@ -1,7 +1,9 @@
 #%% [markdown]
 # <h1> Max activating examples for 10.7 (by norm projection to logits)</h1>
 # <p> This is mostly stolen from the `arthur_experiment.py` notebook from the hackathon</p>
-# <p> Since TransformerLens normalizes the </p>
+#
+# <p> We find the examples for which (head_10_7_attn_result * W_U).norm() is maximised </p>
+# <p> Since TransformerLens subtracts the mean from output, this is a somewhat reasonable thing to do!s </p>
 
 from transformer_lens.cautils.notebook import * # use from transformer_lens.cautils.utils import * instead for the same effect without autoreload
 DEVICE = t.device("cuda" if t.cuda.is_available() else "cpu")
@@ -81,12 +83,14 @@ for i in tqdm(range(NUM_PROMPTS)):
             print("BOTTOM TOKENS")
             for tok in bottom_tokens:
                 print(model.tokenizer.decode(tok))
-
 # %% [markdown]
 
 # <p> Arthur's rough explanation of the three prompts:</p>
-# <p> |It|�|�|s| a| great| way| to| get| your| friends|,| -> | friends| repressed
-# <p> | Gender| in| Agriculture| Partnership| (|G|AP|)| is| �|�|trans|forming| agriculture|...| security|.|�|�| G| -> |AP| repressed
-# <p> | a| new| drug| called| se|l|um|et|in|ib| increases|...|Although| the| effects| of| -> | se| repressed
+# <p> |It|�|�|s| a| great| way| to| get| your| friends|,| -> | friends| repressed </p>
+# <p> | Gender| in| Agriculture| Partnership| (|G|AP|)| is| �|�|trans|forming| agriculture|...| security|.|�|�| G| -> |AP| repressed </p>
+# <p> | a| new| drug| called| se|l|um|et|in|ib| increases|...|Although| the| effects| of| -> | se| repressed </p>
+# 
+# <p> Manually checking, we attend to " friends" in the first case with 84% probs, </p>
+# <p> and we even attend with 50% probability all the way back from " of" (position 159) to " se" (position 98) in the third case, so long range! </p>
 
 #%%
