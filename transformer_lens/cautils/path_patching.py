@@ -346,7 +346,7 @@ class IterNode:
 
         # Figure out what the dimensions of the output will be (i.e. for our path patching iteration)
         self.shape_names = {}
-        for node in node_names:
+        for node in self.component_names:
             # Everything has a "layer" dim
             self.shape_names[node] = ["layer"]
             # Add "seq_pos", if required
@@ -758,6 +758,7 @@ def path_patch(
             for (seq_pos, sender_node) in sender_node_list:
                 results_dict[sender_node_name].append(path_patch_single(sender=sender_node, receiver=receiver_nodes, seq_pos=seq_pos))
                 progress_bar.update(1)
+                t.cuda.empty_cache()
         progress_bar.close()
         for node_name, node_shape_dict in sender_nodes.shape_values.items():
             if verbose: print(f"results[{node_name!r}].shape = ({', '.join(f'{s}={v}' for s, v in node_shape_dict.items())})")
@@ -844,6 +845,7 @@ def act_patch(
             node.seq_pos = seq_pos
             results_dict[node_name].append(act_patch_single(patching_nodes=node))
             progress_bar.update(1)
+            t.cuda.empty_cache()
     progress_bar.close()
     for node_name, node_shape_dict in patching_nodes.shape_values.items():
         if verbose: print(f"results[{node_name!r}].shape = ({', '.join(f'{s}={v}' for s, v in node_shape_dict.items())})")
