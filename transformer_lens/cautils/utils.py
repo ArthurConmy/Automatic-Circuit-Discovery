@@ -24,13 +24,8 @@ from functools import partial
 import re
 from pathlib import Path
 import einops
-<<<<<<< HEAD
-import itertools
-from IPython.display import display, clear_output
-=======
 from IPython.display import display, clear_output, HTML
 import circuitsvis as cv
->>>>>>> 29de9fc5e657fe2c8465a23bf5effbf1590c047c
 
 import transformer_lens
 from transformer_lens import *
