@@ -6,6 +6,7 @@ warnings.warn("Setting grad enabled false...")
 t.set_grad_enabled(False)
 
 import numpy as np
+from datasets import load_dataset
 from jaxtyping import Float, Int, Bool, jaxtyped
 from typing import Union, List, Dict, Tuple, Callable, Optional, Any, Sequence, Iterable, Mapping, TypeVar, Generic, NamedTuple
 from torch import Tensor
@@ -58,3 +59,17 @@ device = t.device("cuda" if t.cuda.is_available() else "cpu")
 from transformer_lens.cautils.path_patching import Node, IterNode, act_patch, path_patch
 from transformer_lens.cautils.plotly_utils import imshow, hist, line
 from transformer_lens.cautils.ioi_dataset import NAMES, IOIDataset, generate_data_and_caches
+
+def get_webtext(seed: int = 420) -> List[str]:
+    """Get 10,000 sentences from the OpenWebText dataset"""
+
+    # Let's see some WEBTEXT
+    raw_dataset = load_dataset("stas/openwebtext-10k")
+    train_dataset = raw_dataset["train"]
+    dataset = [train_dataset[i]["text"] for i in range(len(train_dataset))]
+
+    # Shuffle the dataset (I don't want the Hitler thing being first so use a seeded shuffle)
+    np.random.seed(seed)
+    np.random.shuffle(dataset)
+
+    return dataset
