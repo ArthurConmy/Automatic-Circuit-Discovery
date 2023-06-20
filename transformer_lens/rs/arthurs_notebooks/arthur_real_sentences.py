@@ -2,6 +2,7 @@
 # <h1> Example notebook for the cautils import * statement </h1>
 
 from transformer_lens.cautils.notebook import * # use from transformer_lens.cautils.utils import * instead for the same effect without autoreload
+from tqdm import tqdm
 DEVICE = "cuda"
 
 #%%
@@ -87,6 +88,11 @@ def prediction_attention_real_sentences(
 
         model.reset_hooks()
 
+        model.add_hook(
+            "blocks.0.attn.hook_pattern",
+            lock_attn, 
+        )
+
         for layer_to_zero_idx in range(1, layer_idx):
             for hook_name in [
                 f"blocks.{layer_to_zero_idx}.attn.hook_result",
@@ -168,15 +174,14 @@ for batch_tokens in tokens[:5]:
 # Feed in EACH (?) word in the sentence as the unembedding token
 # Measure attention batch to the unembedding token...
 
-
 SEQ_LEN = 20
-OWT_SAMPLES = 2
+OWT_SAMPLES = 8
 
 global_results = torch.zeros(
-    (model.cfg.n_layers, model.cfg.n_heads
+    (model.cfg.n_layers, model.cfg.n_heads),
 )
 
-for layer, head in tqdm(list(itertools.product(range(model.cfg.n_layers), range(model.cfg.n_heads)))):
+for layer, head in tqdm(list(itertools.product(range(1, model.cfg.n_layers), range(model.cfg.n_heads)))): # TODO tqdm not working???
     owt_samples_left = OWT_SAMPLES
     owt_idx = -1
 
@@ -205,8 +210,11 @@ for layer, head in tqdm(list(itertools.product(range(model.cfg.n_layers), range(
                 unembedding_indices=[[tokens[word_idx] for _ in range(len(tokens))]],
             )
 
-            cur_score = result[-1, word_idx]
-            score += cur_score
-            score_denom += 1
+            for query_idx in range(word_idx, len(tokens)):
+                cur_score = result[query_idx, word_idx]
+                score += cur_score
+                score_denom += 1
+    
+    global_results[layer, head] = score / score_denom
 
 #%%

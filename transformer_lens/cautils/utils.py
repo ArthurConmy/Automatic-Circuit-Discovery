@@ -13,6 +13,7 @@ import numpy as np
 from jaxtyping import Float, Int, Bool, jaxtyped
 from typing import Union, List, Dict, Tuple, Callable, Optional, Any, Sequence, Iterable, Mapping, TypeVar, Generic, NamedTuple, Literal
 from torch import Tensor
+import itertools
 import torch.nn.functional as F
 from tqdm.auto import tqdm
 from rich import print as rprint
@@ -77,3 +78,19 @@ def get_webtext(seed: int = 420) -> List[str]:
     np.random.shuffle(dataset)
 
     return dataset
+
+def lock_attn(
+    attn_patterns: Float[t.Tensor, "batch head_idx dest_pos src_pos"],
+    hook: HookPoint,
+    ablate: bool = False,
+) -> Float[t.Tensor, "batch head_idx dest_pos src_pos"]:
+    """Hook to lock the attention patterns to the identity matrix"""
+
+    assert isinstance(attn_patterns, Float[t.Tensor, "batch head_idx dest_pos src_pos"])
+    assert hook.layer() == 0
+
+    batch, n_heads, seq_len = attn_patterns.shape[:3]
+    attn_new = einops.repeat(t.eye(seq_len), "dest src -> batch head_idx dest src", batch=batch, head_idx=n_heads).clone().to(attn_patterns.device)
+    if ablate:
+        attn_new = attn_new * 0
+    return attn_new
