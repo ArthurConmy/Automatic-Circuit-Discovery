@@ -9,7 +9,9 @@ DEVICE = "cuda"
 #%%
 
 # load a model
-model = HookedTransformer.from_pretrained("gpt2-small").to(DEVICE)
+# MODEL_NAME = "gpt2"
+MODEL_NAME = "solu-10l"
+model = HookedTransformer.from_pretrained(MODEL_NAME).to(DEVICE)
 model.set_use_attn_result(True)
 model.set_use_split_qkv_input(True)
 
@@ -28,25 +30,26 @@ W_U = model.W_U.clone()
 
 # %%
 
-# Calculate W_{EE} edit
-batch_size = 1000
-nrows = model.cfg.d_vocab
-W_EE = t.zeros((nrows, model.cfg.d_model)).to(DEVICE)
+if "gpt" in model.cfg.model_name:
+    # Calculate W_{EE} edit
+    batch_size = 1000
+    nrows = model.cfg.d_vocab
+    W_EE = t.zeros((nrows, model.cfg.d_model)).to(DEVICE)
 
-for i in tqdm(range(0, nrows + batch_size, batch_size)):
-    cur_range = t.tensor(range(i, min(i + batch_size, nrows)))
-    if len(cur_range)>0:
-        embeds = W_E[cur_range].unsqueeze(0)
-        pre_attention = model.blocks[0].ln1(embeds)
-        post_attention = einops.einsum(
-            pre_attention, 
-            model.W_V[0],
-            model.W_O[0],
-            "b s d_model, num_heads d_model d_head, num_heads d_head d_model_out -> b s d_model_out",
-        )
-        normalized_resid_mid = model.blocks[0].ln2(post_attention + embeds)
-        resid_post = model.blocks[0].mlp(normalized_resid_mid)
-        W_EE[cur_range.to(DEVICE)] = resid_post
+    for i in tqdm(range(0, nrows + batch_size, batch_size)):
+        cur_range = t.tensor(range(i, min(i + batch_size, nrows)))
+        if len(cur_range)>0:
+            embeds = W_E[cur_range].unsqueeze(0)
+            pre_attention = model.blocks[0].ln1(embeds)
+            post_attention = einops.einsum(
+                pre_attention, 
+                model.W_V[0],
+                model.W_O[0],
+                "b s d_model, num_heads d_model d_head, num_heads d_head d_model_out -> b s d_model_out",
+            )
+            normalized_resid_mid = model.blocks[0].ln2(post_attention + embeds)
+            resid_post = model.blocks[0].mlp(normalized_resid_mid)
+            W_EE[cur_range.to(DEVICE)] = resid_post
 
 # %%
 
@@ -151,8 +154,11 @@ def prediction_attention_real_sentences(
 # Measure attention batch to the unembedding token...
 
 SEQ_LEN = 20
-LAYER = 10
-HEAD = 7
+
+LAYER_IDX, HEAD_IDX = {
+    "SoLU_10L1280W_C4_Code": (9, 18),
+    "gpt2": (10, 7),
+}[model.cfg.model_name]
 
 score = 0
 score_denom = 0
@@ -172,8 +178,8 @@ for prompt in data:
 
     for word_idx, word in enumerate(set(words[1:])): # ignore BOS
         result = prediction_attention_real_sentences(
-            LAYER,
-            HEAD,
+            LAYER_IDX,
+            HEAD_IDX,
             tokens=[tokens],
             show_plot=False,
             unembedding_indices=[[model.tokenizer.encode(word)[0] for _ in range(len(tokens))]],
@@ -192,7 +198,6 @@ for prompt in data:
     if len(all_rwords)>20:
         break
 
-
 #%%
 
 print(vanilla_words[18])
@@ -200,6 +205,8 @@ rprint(all_rwords[18])
 
 #%%
 
+# WARNING: from here and below the method should probably be ignored, was quite a faff (though we did separate a/ the/ be etc from other proper nouns and things!!!)
+# 
 # now look at dataset statistics for words that occur frequently
 # for prompt in tqdm(full_data):
 #     tokens = model.to_tokens(prompt, prepend_bos=True)[0]
@@ -402,6 +409,5 @@ extreme_words = words[:CUTOFF] + words[-CUTOFF:]
 
 fig = go.Figure()
 fig.add_trace(go.Bar(y=extreme_means, name="count", text=extreme_words)) #, texttemplate="%{x}", textfont_size=20))
-
 
 # %%

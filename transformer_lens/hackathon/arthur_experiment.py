@@ -58,7 +58,9 @@ def imshow(
 
 # %%
 
-model = transformer_lens.HookedTransformer.from_pretrained("gpt2-small")
+# MODEL_NAME = "gpt2-small"
+MODEL_NAME = "solu-10l"
+model = transformer_lens.HookedTransformer.from_pretrained(MODEL_NAME)
 from transformer_lens.hackathon.ioi_dataset import IOIDataset, NAMES
 
 # %%
@@ -67,10 +69,11 @@ N = 100
 DEVICE = "cuda" if t.cuda.is_available() else "cpu"
 
 ioi_dataset = IOIDataset(
-    prompt_type="mixed",
+    prompt_type="mixed" if model.cfg.tokenizer_name == "gpt2" else "BABA", # hacky fix for solu-10l IOi tokenization
     N=N,
     tokenizer=model.tokenizer,
     prepend_bos=True,
+    nb_templates=None if model.cfg.tokenizer_name == "gpt2" else 1,
     seed=1,
     device=DEVICE,
 )
@@ -88,7 +91,6 @@ logits, cache = model.run_with_cache(
     ioi_dataset.toks,
     names_filter = lambda name: name.endswith("z"),
 )
-
 
 # %%
 
@@ -119,9 +121,16 @@ imshow(
 
 # %%
 
+LAYER_IDX, HEAD_IDX = {
+    "SoLU_10L1280W_C4_Code": (8, 16), # (8, 16) is somewhat cheaty
+    "gpt2": (10, 7),
+}[model.cfg.model_name]
+
+
 W_U = model.W_U
-W_Q_ten_seven = model.W_Q[10, 7]
-W_K_ten_seven = model.W_K[10, 7]
+W_Q_negative = model.W_Q[LAYER_IDX, HEAD_IDX]
+W_K_negative = model.W_K[LAYER_IDX, HEAD_IDX]
+
 W_E = model.W_E
 
 # ! question - what's the approximation of GPT2-small's embedding?
@@ -133,7 +142,7 @@ W_E = model.W_E
 
 from transformer_lens import FactoredMatrix
 
-full_QK_circuit = FactoredMatrix(W_U.T @ W_Q_ten_seven, W_K_ten_seven.T @ W_E.T)
+full_QK_circuit = FactoredMatrix(W_U.T @ W_Q_negative, W_K_negative.T @ W_E.T)
 
 indices = t.randint(0, model.cfg.d_vocab, (250,))
 full_QK_circuit_sample = full_QK_circuit.A[indices, :] @ full_QK_circuit.B[:, indices]
@@ -247,62 +256,65 @@ for i, s in enumerate(dataset):
 
 # %%
 
-# Calculate W_{TE} edit
+if "gpt" in model.cfg.model_name: # sigh, tied embeddings
+    # Calculate W_{EE} edit
+    batch_size = 1000
+    nrows = model.cfg.d_vocab
+    W_EE = t.zeros((nrows, model.cfg.d_model)).to(DEVICE)
 
-batch_size = 1000
-nrows = model.cfg.d_vocab
-W_EE = t.zeros((nrows, model.cfg.d_model)).to(DEVICE)
+    for i in tqdm(range(0, nrows + batch_size, batch_size)):
+        cur_range = t.tensor(range(i, min(i + batch_size, nrows)))
+        if len(cur_range)>0:
+            embeds = W_E[cur_range].unsqueeze(0)
+            pre_attention = model.blocks[0].ln1(embeds)
+            post_attention = einops.einsum(
+                pre_attention, 
+                model.W_V[0],
+                model.W_O[0],
+                "b s d_model, num_heads d_model d_head, num_heads d_head d_model_out -> b s d_model_out",
+            )
+            normalized_resid_mid = model.blocks[0].ln2(post_attention + embeds)
+            resid_post = model.blocks[0].mlp(normalized_resid_mid)
+            W_EE[cur_range.to(DEVICE)] = resid_post
 
-for i in tqdm(range(0, nrows + batch_size, batch_size)):
-    cur_range = t.tensor(range(i, min(i + batch_size, nrows)))
-    if len(cur_range)>0:
-        embeds = W_E[cur_range].unsqueeze(0)
-        pre_attention = model.blocks[0].ln1(embeds)
-        post_attention = einops.einsum(
-            pre_attention, 
-            model.W_V[0],
-            model.W_O[0],
-            "b s d_model, num_heads d_model d_head, num_heads d_head d_model_out -> b s d_model_out",
-        )
-        normalized_resid_mid = model.blocks[0].ln2(post_attention + embeds)
-        resid_post = model.blocks[0].mlp(normalized_resid_mid)
-        W_EE[cur_range.to(DEVICE)] = resid_post
+else: 
+    W_EE = W_E # untied embeddings so no need to calculate!
 
 # %%
 
-# sanity check this is the same 
+if "gpt" in model.cfg.model_name: # sigh, tied embeddings
+    # sanity check this is the same 
 
-def remove_pos_embed(z, hook):
-    return 0.0 * z
+    def remove_pos_embed(z, hook):
+        return 0.0 * z
 
-# setup a forward pass that 
-model.reset_hooks()
-model.add_hook(
-    name="hook_pos_embed",
-    hook=remove_pos_embed,
-    level=1, # ???
-) 
-model.add_hook(
-    name=utils.get_act_name("pattern", 0),
-    hook=lock_attn,
-)
-logits, cache = model.run_with_cache(
-    torch.arange(1000).to(DEVICE).unsqueeze(0),
-    names_filter=lambda name: name=="blocks.1.hook_resid_pre",
-    return_type="logits",
-)
+    # setup a forward pass that 
+    model.reset_hooks()
+    model.add_hook(
+        name="hook_pos_embed",
+        hook=remove_pos_embed,
+        level=1, # ???
+    ) 
+    model.add_hook(
+        name=utils.get_act_name("pattern", 0),
+        hook=lock_attn,
+    )
+    logits, cache = model.run_with_cache(
+        torch.arange(1000).to(DEVICE).unsqueeze(0),
+        names_filter=lambda name: name=="blocks.1.hook_resid_pre",
+        return_type="logits",
+    )
 
-#%%
 
-W_EE_test = cache["blocks.1.hook_resid_pre"].squeeze(0)
-W_EE_prefix = W_EE_test[:1000]
+    W_EE_test = cache["blocks.1.hook_resid_pre"].squeeze(0)
+    W_EE_prefix = W_EE_test[:1000]
 
-assert torch.allclose(
-    W_EE_prefix,
-    W_EE_test,
-    atol=1e-4,
-    rtol=1e-4,
-)   
+    assert torch.allclose(
+        W_EE_prefix,
+        W_EE_test,
+        atol=1e-4,
+        rtol=1e-4,
+    )   
 
 # %%
 
@@ -336,6 +348,7 @@ def get_EE_QK_circuit(
 
         n_layers, n_heads, d_model, d_head = model.W_Q.shape
 
+        assert False, "TODO: add Q and K and V biases???"
         EE_QK_circuit_sample = einops.einsum(
             EE_QK_circuit.A[indices, :],
             EE_QK_circuit.B[:, indices],
@@ -390,12 +403,17 @@ def get_single_example_plot(
         labels = {"y": "Query (W_U)", "x": "Key (W_EE)"},
     )
 
-for layer, head in [
-    (9, 9),
-    (8, 10),
-    (10, 7), 
-    (11, 10),
-]:
+NAME_MOVERS = {
+    "gpt2-small": [(9, 9), (10, 0), (9, 6)],
+    "SoLU_10L1280W_C4_Code": [(7, 12), (5, 4), (8, 3)],
+}[model.cfg.model_name]
+
+NEGATIVE_NAME_MOVERS = {
+    "gpt2-small": [(LAYER_IDX, HEAD_IDX), (11, 10)],
+    "SoLU_10L1280W_C4_Code": [(LAYER_IDX, HEAD_IDX), (9, 15)], # second one on this one IOI prompt only...
+}[model.cfg.model_name]
+
+for layer, head in NAME_MOVERS + NEGATIVE_NAME_MOVERS:
     get_single_example_plot(layer, head)
 
 # %%
@@ -428,8 +446,8 @@ while len(bags_of_words) < OUTER_LEN:
 for idx in range(OUTER_LEN):
     print(model.tokenizer.decode(bags_of_words[idx]), "ye")
     softmaxed_attn = get_EE_QK_circuit(
-        10,
-        7,
+        LAYER_IDX,
+        HEAD_IDX,
         show_plot=True,
         num_samples=None,
         random_seeds=None,

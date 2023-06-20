@@ -10,7 +10,9 @@ DEVICE = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 #%%
 
-model = HookedTransformer.from_pretrained("gpt2-small", device=DEVICE)
+# MODEL_NAME = "gpt2"
+MODEL_NAME = "solu-10l" # WARNING: this model does not seem to have interpretable directions
+model = HookedTransformer.from_pretrained(MODEL_NAME, device=DEVICE)
 model.set_use_attn_result(True)
 
 #%%
@@ -19,8 +21,10 @@ data = get_webtext()
 
 #%%
 
-LAYER_IDX = 10
-HEAD_IDX = 7
+LAYER_IDX, HEAD_IDX = {
+    "SoLU_10L1280W_C4_Code": (9, 18),
+    "gpt2": (10, 7),
+}[model.cfg.model_name]
 unembedding = model.W_U.clone()
 HEAD_HOOK_NAME = f"blocks.{LAYER_IDX}.attn.hook_result"
 
@@ -36,13 +40,12 @@ HEAD_HOOK_NAME = f"blocks.{LAYER_IDX}.attn.hook_result"
 # 
 # ' blacks', ' are', ' arrested', ' for', ' marijuana', ' possession', ' between', ' four', ' and', ' twelve', ' times', ' more', ' than'] -> 10.7 REPRESSES " blacks"
 
-contributions = []
-
-NORM_CUTOFF = 90
+NORM_CUTOFF = 90 if model.cfg.model_name == "gpt2" else 90
 DOCUMENT_PREFIX_LENGTH = 256 # use this so the prompts we pass to the model aren't too big
 PRINTING_CONTEXT_PREFIX = 70 # need to be long for prompt three
 NUM_PROMPTS = 10
 NUM_TOP_TOKENS = 10
+contributions = []
 
 for i in tqdm(range(NUM_PROMPTS)):
     tokens = model.tokenizer(
@@ -66,6 +69,7 @@ for i in tqdm(range(NUM_PROMPTS)):
         unembedding,
         "s d, d V -> s V",
     )
+    contributions.append(contribution)
 
     for j in range(tokens.shape[-1]):
         if contribution[j].norm().item() > NORM_CUTOFF:
@@ -85,12 +89,26 @@ for i in tqdm(range(NUM_PROMPTS)):
                 print(model.tokenizer.decode(tok))
 # %% [markdown]
 
-# <p> Arthur's rough explanation of the three prompts:</p>
+contribution_norms = [
+    elem.norm().item() for elem in contribution for contribution in contributions 
+]
+
+#%%
+
+hist(
+    contribution_norms,
+)
+
+#%%
+
+# <p> Arthur's rough explanation of the three prompts FOR GPT-2 SMALL:</p>
 # <p> |It|�|�|s| a| great| way| to| get| your| friends|,| -> | friends| repressed </p>
 # <p> | Gender| in| Agriculture| Partnership| (|G|AP|)| is| �|�|trans|forming| agriculture|...| security|.|�|�| G| -> |AP| repressed </p>
 # <p> | a| new| drug| called| se|l|um|et|in|ib| increases|...|Although| the| effects| of| -> | se| repressed </p>
 # 
 # <p> Manually checking, we attend to " friends" in the first case with 84% probs, </p>
 # <p> and we even attend with 50% probability all the way back from " of" (position 159) to " se" (position 98) in the third case, so long range! </p>
+# 
+# <p> Sadly, solu-10l's extremal examples are not as interpretable as gpt-2's (in either direction...) </p>
 
 #%%
