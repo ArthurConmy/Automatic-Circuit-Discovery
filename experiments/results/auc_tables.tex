@@ -1,0 +1,46 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{multirow}
+\begin{document}
+
+WARNING: you need to add some vertical and horizontal rows for this to look good
+
+\begin{table}
+\caption{Key=auc, weights\_type=trained, Random Ablation}
+\begin{tabular}{llllllll}
+\toprule
+ &  & \multicolumn{3}{r}{roc\_edges} & \multicolumn{3}{r}{roc\_nodes} \\
+ &  & ACDC & HISP & SP & ACDC & HISP & SP \\
+metric\_pretty & task &  &  &  &  &  &  \\
+\midrule
+\multirow[c]{3}{*}{KL} & docstring & 0.434 & 0.183 & \textbf{0.937} & 0.391 & 0.178 & \textbf{0.928} \\
+ & greaterthan & \textbf{0.883} & 0.279 & 0.820 & \textbf{0.890} & 0.384 & 0.838 \\
+ & ioi & 0.868 & 0.239 & \textbf{0.888} & \textbf{0.873} & 0.339 & 0.852 \\
+\multirow[c]{5}{*}{Loss} & docstring & \textbf{0.972} & 0.177 & 0.942 & 0.938 & 0.170 & \textbf{0.941} \\
+ & greaterthan & 0.461 & 0.275 & \textbf{0.848} & 0.766 & 0.374 & \textbf{0.830} \\
+ & ioi & 0.589 & 0.227 & \textbf{0.837} & 0.777 & 0.283 & \textbf{0.814} \\
+ & tracr-proportion & 0.600 & \textbf{0.679} & 0.400 & 0.727 & \textbf{0.909} & 0.716 \\
+ & tracr-reverse & 0.200 & \textbf{0.656} & 0.416 & 0.312 & \textbf{0.750} & 0.533 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\begin{table}
+\caption{Key=auc, weights\_type=trained, Zero Ablation}
+\begin{tabular}{llllllll}
+\toprule
+ &  & \multicolumn{3}{r}{roc\_edges} & \multicolumn{3}{r}{roc\_nodes} \\
+ &  & ACDC & HISP & SP & ACDC & HISP & SP \\
+metric\_pretty & task &  &  &  &  &  &  \\
+\midrule
+\multirow[c]{3}{*}{KL} & docstring & \textbf{0.585} & 0.183 & 0.428 & 0.190 & 0.178 & \textbf{0.420} \\
+ & greaterthan & 0.276 & \textbf{0.279} & 0.163 & \textbf{0.653} & 0.384 & 0.134 \\
+ & ioi & 0.226 & 0.239 & \textbf{0.702} & 0.511 & 0.339 & \textbf{0.638} \\
+\multirow[c]{5}{*}{Loss} & docstring & \textbf{0.816} & 0.177 & 0.482 & \textbf{0.845} & 0.170 & 0.398 \\
+ & greaterthan & 0.159 & 0.275 & \textbf{0.715} & 0.317 & 0.374 & \textbf{0.597} \\
+ & ioi & 0.403 & 0.227 & \textbf{0.598} & \textbf{0.541} & 0.283 & 0.507 \\
+ & tracr-proportion & \textbf{1.000} & 0.679 & 0.561 & \textbf{1.000} & 0.909 & 0.875 \\
+ & tracr-reverse & \textbf{1.000} & 0.656 & 0.692 & \textbf{1.000} & 0.750 & 0.947 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\end{document}
