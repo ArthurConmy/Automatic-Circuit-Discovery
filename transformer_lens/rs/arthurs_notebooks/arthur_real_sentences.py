@@ -173,7 +173,7 @@ SEQ_LEN = 20
 OWT_SAMPLES = 2
 
 global_results = torch.zeros(
-    (model.cfg.n_layers, model.cfg.n_heads_)
+    (model.cfg.n_layers, model.cfg.n_heads
 )
 
 for layer, head in tqdm(list(itertools.product(range(model.cfg.n_layers), range(model.cfg.n_heads)))):
