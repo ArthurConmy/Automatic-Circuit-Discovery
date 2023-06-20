@@ -193,3 +193,6 @@ for prompt in data:
 
 
 #%%
+
+print(vanilla_words[18])
+rprint(all_rwords[18])
