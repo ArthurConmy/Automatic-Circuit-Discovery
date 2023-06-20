@@ -1,6 +1,7 @@
 # %% [markdown]
 # <h1> Example notebook for the cautils import * statement </h1>
 
+import token
 from transformer_lens.cautils.notebook import * # use from transformer_lens.cautils.utils import * instead for the same effect without autoreload
 from tqdm import tqdm
 DEVICE = "cuda"
@@ -201,7 +202,150 @@ rprint(all_rwords[18])
 
 # now look at dataset statistics for words that occur frequently
 
-for prompt in tqdm(full_data):
+# for prompt in tqdm(full_data):
+#     tokens = model.to_tokens(prompt, prepend_bos=True)[0]
+
+# %%
+
+def get_word_ratios(
+    data: List[str],
+    window: int = 20
+):
+    ratios_tensor = t.zeros((model.cfg.d_vocab, 3)).int().to(device)
+    # cols are (token appears, token is in last 20, token appears AND is in last 20)
+
+    for prompt in tqdm(data):
+        tokens = model.to_tokens(prompt, prepend_bos=True)[0]
+
+        for idx, token in enumerate(tokens):
+            ratios_tensor[token, 0] += 1
+            last_window_tokens = tokens[max(0, idx-window): idx]
+            ratios_tensor[list(set(last_window_tokens)), 1] += 1
+            if token in last_window_tokens:
+                ratios_tensor[token, 2] += 1
+    
+    return ratios_tensor.unbind(-1)
+
+
+token_freq, token_freq_last_20, token_freq_and_last_20 = get_word_ratios(full_data[:100])
+
+# %%
+
+total_num_tokens = sum([len(model.to_str_tokens(i)) for i in full_data[:100]])
+
+token_appears = token_freq > 10
+
+tokens_which_appear = t.nonzero(token_appears).squeeze()
+words_which_appear = model.to_str_tokens(tokens_which_appear)
+
+nz_token_freq = token_freq[token_appears]
+nz_token_freq_last_20 = token_freq_last_20[token_appears]
+nz_token_freq_and_last_20 = token_freq_and_last_20[token_appears]
+
+
+ratio = (total_num_tokens * nz_token_freq_and_last_20) / (nz_token_freq * nz_token_freq_last_20)
+
+# %%
+
+hist(t.log(ratio + 1), nbins=2500)
+
+# %%
+
+def sample_words(
+    ratio: Tensor = t.log(ratio + 1), 
+    words_which_appear: List[str] = words_which_appear,
+    n: int = 10,
+    cutoff_pt : float = 0.01
+):
+    indices_below = t.nonzero(ratio < cutoff_pt).squeeze().tolist()
+    indices_above = t.nonzero(ratio >= cutoff_pt).squeeze().tolist()
+
+    assert len(indices_below) >= n
+    assert len(indices_above) >= n
+
+    indices_below = np.random.choice(indices_below, size=n, replace=False).tolist()
+    indices_above = np.random.choice(indices_above, size=n, replace=False).tolist()
+    
+    return indices_below, indices_above
+
+indices_below, indices_above = sample_words()
+
+print([words_which_appear[i] for i in indices_below])
+print([words_which_appear[i] for i in indices_above])
+
+# TODO - maybe return here and try and actually calculate the update ratio (rather than just intuiting it, which is what we'll try now)
+
+# %%
+
+non_update_word_lists = {
+    " the": " the dog jumped over the fence.",
+    " and": " she picked up the book and started reading.",
+    " to": " he walked to the store.",
+    " in": " she was in the kitchen.",
+    " of": "He drank a glass of water.",
+    " Thus": " Thus, we conclude our experiment with significant results.",
+    # " Whence": " Whence did you arrive at this conclusion?",
+    " Hence": " Hence, it is evident that the research hypothesis was incorrect.",
+    # " Therefore": " The evidence was inconclusive; therefore, we cannot assert the suspect's guilt.",
+    " Nonetheless": " Nonetheless, despite the initial setbacks, the project was a success.",
+}
+
+update_word_lists = {
+    " John": " John was reading a book when suddenly, John heard a strange noise.",
+    " Maria": " Maria loves playing the piano and, moreover, Maria also enjoys painting.",
+    " city": " The city was full of lights, making the city look like a sparkling diamond.",
+    " ball": " The ball rolled away, so the dog chased the ball all the way to the park.",
+    " Python": " Python is a popular language for programming. In fact, Python is known for its simplicity.",
+    " President": " The President announced new policies today. Many are waiting to see how the President's decisions will affect the economy.",
+    " Bitcoin": " Bitcoin's value has been increasing rapidly. Investors are closely watching Bitcoin's performance.",
+    " dog": " The dog wagged its tail happily. Seeing the dog so excited, the children started laughing.",
+    " cake": " The cake looked delicious. Everyone at the party was eager to taste the cake.",
+    " book": " The book was so captivating, I couldn't put the book down.",
+    " house": " The house was quiet. Suddenly, a noise from the upstairs of the house startled everyone.",
+    " car": " The car pulled into the driveway. Everyone rushed out to see the new car.",
+    " computer": " The computer screen flickered. She rebooted the computer hoping to resolve the issue.",
+    " key": " She lost the key to her apartment. She panicked when she realized she had misplaced the key.",
+    " apple": " He took a bite of the apple. The apple was crisp and delicious.",
+    " phone": " The phone rang in the middle of the night. She picked up the phone with a groggy hello.",
+    " train": " The train was late. The passengers were annoyed because the train was delayed by an hour.",
+}
+
+LAYER = 10
+HEAD = 7
+
+score = 0
+score_denom = 0
+
+all_rwords = []
+vanilla_words = []
+
+all_word_data = {}
+
+for word, prompt in {**non_update_word_lists, **update_word_lists}.items():
+
     tokens = model.to_tokens(prompt, prepend_bos=True)[0]
+    word_token_idx = model.to_tokens(word, prepend_bos=False)[0]
+    try:
+        assert word_token_idx in tokens
+    except:
+        print(f"Word {word} not in prompt {prompt}")
+        continue
+    word_indices = [i for i, token in enumerate(tokens) if token == word_token_idx]
+
+    result = prediction_attention_real_sentences(
+        LAYER,
+        HEAD,
+        tokens=[tokens],
+        show_plot=False,
+        unembedding_indices=[[word_token_idx for _ in range(len(tokens))]],
+    )
+    
+    all_word_data[word] = result[-1, word_indices].sum()
+
+# %%
+
+keys, values = zip(*all_word_data.items())
+
+px.bar(y=[v.log().item() for v in values], x=keys)
 
 # %%
