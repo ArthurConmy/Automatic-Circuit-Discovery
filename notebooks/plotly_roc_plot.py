@@ -67,8 +67,7 @@ if IS_ADRIA or ipython is None:
 else:
     DATA_DIR = Path(__file__).resolve().parent.parent.parent / "experiments" / "results" / "plots_data"
 
-X_LABELS = [1, 2, 5, 10, 20, 50, 100, 200]
-
+X_TICKVALS = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]
 all_data = {}
 
 for fname in os.listdir(DATA_DIR):
@@ -190,7 +189,7 @@ x_names = {
     "n_edges": "Number of edges",
     "n_nodes": "Number of nodes",
     "test_kl_div": "KL(model, ablated)",
-    "test_loss": "test loss",
+    "test_loss": "Task-specific test loss",
 }
 
 def discard_non_pareto_optimal(points, auxiliary, cmp="gt"):
@@ -207,9 +206,9 @@ def discard_non_pareto_optimal(points, auxiliary, cmp="gt"):
 
 def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("trained",), ablation_type="random_ablation", plot_type="roc_nodes", scale_min=0.01, scale_max=0.8):
     TOP_MARGIN = (
-        -0.02
+        0.09
         + 0.26 * len(weights_types)
-        + (0.12 if plot_type.startswith("metric_edges") or plot_type.startswith("kl_edges") else 0.0)
+        + (0.10 if plot_type.startswith("metric_edges") or plot_type.startswith("kl_edges") else 0.0)
     )
     LEFT_MARGIN = -0.02
     RIGHT_MARGIN = 0.02 if y_key in ["edge_tpr", "node_tpr"] else 0.00
@@ -254,7 +253,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
             ((1, 2), "induction"),
         ]
         specs = [[{}, {}, {"t": 0.0, "l": -0.04, "r": RIGHT_MARGIN + 0.16}]]
-        column_widths = [0.41, 0.41, 0.18]
+        column_widths = [0.40, 0.40, 0.20]
         subplot_titles = (TASK_NAMES["induction"] + " (corrupted)", TASK_NAMES["induction"] + " (zero)", THRESHOLD_ANNOTATION)
     else:
         rows_cols_task_idx = [
@@ -283,7 +282,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         # subplot_titles=("First Subplot", "Second Subplot", "Third Subplot", "Fourth Subplot", "Fifth Subplot"),
         subplot_titles=subplot_titles,
         x_title=x_names[x_key],
-        y_title=x_names[y_key] if plot_type != "kl_edges_induction" else "D_{KL}(G || H)",
+        y_title=x_names[y_key],
         # title_font=dict(size=8),
     )
 
@@ -369,7 +368,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
     fig.update_xaxes(showline=False, zeroline=False, showgrid=False, row=1, col=len(specs[0]), showticklabels=False, ticks="")
     tickvals = list(range(int(np.floor(all_algs_min)), int(np.ceil(all_algs_max))))
     ticktext = [f"$10^{{{v}}}$" for v in tickvals]
-    fig.update_yaxes(showline=False, zeroline=False, showgrid=False, row=1, col=len(specs[0]), side="right",
+    fig.update_yaxes(showline=False, zeroline=False, showgrid=True, row=1, col=len(specs[0]), side="right",
                      range=[all_algs_min, all_algs_max], tickvals=tickvals, ticktext=ticktext)
 
 
@@ -649,7 +648,10 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                         fig.update_yaxes(visible=True, row=row, col=col, tickangle=-45)
 
                     if x_key == "n_edges":
-                        fig.update_xaxes(type='log', row=row, col=col, ticktext=X_LABELS, tickvals=X_LABELS)
+                        if plot_type.endswith("_induction"):
+                            fig.update_xaxes(type='log', row=row, col=col, ticktext=X_TICKVALS, tickvals=X_TICKVALS)
+                        else:
+                            fig.update_xaxes(type='log', row=row, col=col, tickangle=0)
                     else:
                         fig.update_xaxes(dtick=0.25, range=[-0.05, 1.05], row=row, col=col)
 
@@ -669,7 +671,10 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                         fig.update_yaxes(visible=True, row=row, col=col, tickangle=-45)
 
                     if x_key == "n_edges":
-                        fig.update_xaxes(type='log', row=row, col=col, tickvals=X_LABELS, ticktext=X_LABELS)
+                        if plot_type.endswith("_induction"):
+                            fig.update_xaxes(type='log', row=row, col=col, ticktext=X_TICKVALS, tickvals=X_TICKVALS)
+                        else:
+                            fig.update_xaxes(type='log', row=row, col=col, tickangle=0)
                     else:
                         fig.update_xaxes(visible=True, row=row, col=col, tickvals=[0, 0.25, 0.5, 0.75, 1.], ticktext=["0", "", "0.5", "", "1"], range=[-0.05, 1.05])
 
