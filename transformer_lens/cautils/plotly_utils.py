@@ -47,6 +47,7 @@ def hist(tensor, renderer=None, **kwargs):
     if isinstance(tensor, list):
         if isinstance(tensor[0], t.Tensor): arr = [to_numpy(tn) for tn in tensor]
         elif isinstance(tensor[0], list): arr = [np.array(tn) for tn in tensor]
+        else: arr = np.array(tensor)
     else:
         arr = to_numpy(tensor)
     kwargs_post = {k: v for k, v in kwargs.items() if k in update_layout_set}
