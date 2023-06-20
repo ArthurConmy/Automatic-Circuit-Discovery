@@ -375,7 +375,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                         ablation_type = "random_ablation"
 
                 if plot_type.startswith("metric_edges"):
-                    y_key = "test_" + metric_name
+                    y_key = "test_" + METRICS_FOR_TASK[task_idx][1]
 
                 this_data = all_data[weights_type][ablation_type]
                 x_data = np.array(this_data[task_idx][metric_name][alg_idx][x_key])
@@ -661,7 +661,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         for (row, col), task_idx in rows_cols_task_idx:
             metric_name = METRICS_FOR_TASK[task_idx][1]
             if plot_type == "metric_edges":
-                y_key = "test_" + METRICS_FOR_TASK[task_idx][metric_idx]
+                y_key = "test_" + METRICS_FOR_TASK[task_idx][1]
             else:
                 y_key = "test_" + METRICS_FOR_TASK[task_idx][0]
 
