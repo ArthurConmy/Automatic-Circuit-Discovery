@@ -10,6 +10,8 @@ from datasets import load_dataset
 from jaxtyping import Float, Int, Bool, jaxtyped
 from typing import Union, List, Dict, Tuple, Callable, Optional, Any, Sequence, Iterable, Mapping, TypeVar, Generic, NamedTuple
 from torch import Tensor
+from torch.utils.data import Dataset, DataLoader
+from torch.distributions.categorical import Categorical
 import torch.nn.functional as F
 from tqdm.auto import tqdm
 from rich import print as rprint
