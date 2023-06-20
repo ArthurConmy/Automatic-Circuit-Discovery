@@ -20,7 +20,8 @@ from functools import partial
 import re
 from pathlib import Path
 import einops
-from IPython.display import display, clear_output
+from IPython.display import display, clear_output, HTML
+import circuitsvis as cv
 
 import transformer_lens
 from transformer_lens import *

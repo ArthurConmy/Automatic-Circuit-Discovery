@@ -453,7 +453,7 @@ def get_word_idxs(prompts, word_list, tokenizer):
 
 
 def get_end_idxs(toks, tokenizer, name_tok_len=1, prepend_bos=False):
-    relevant_idx = int(prepend_bos)
+    relevant_idx = int(prepend_bos and (tokenizer.eos_token_id == tokenizer.pad_token_id))
     # if the sentence begins with an end token
     # AND the model pads at the end with the same end token,
     # then we need make special arrangements
@@ -544,7 +544,7 @@ class IOIDataset:
             or prepend_bos == False
             or tokenizer.bos_token_id == tokenizer.eos_token_id
         ):
-            warnings.warn("Probably word_idx will be calculated incorrectly due to this formatting")
+            warnings.warn("Possibly word_idx will be calculated incorrectly due to this formatting")
         self.has_been_flipped = has_been_flipped
         assert not (symmetric and prompt_type == "ABC")
         assert (
@@ -781,13 +781,13 @@ def _ioi_metric_noising(
 
 
 
-def generate_data_and_caches(N: int, model: HookedTransformer, verbose: bool = False, seed: int = 42):
+def generate_data_and_caches(N: int, model: HookedTransformer, verbose: bool = False, seed: int = 42, prepend_bos: bool = False):
 
     ioi_dataset = IOIDataset(
         prompt_type="mixed",
         N=N,
         tokenizer=model.tokenizer,
-        prepend_bos=False,
+        prepend_bos=prepend_bos,
         seed=seed,
         device=str(device)
     )
