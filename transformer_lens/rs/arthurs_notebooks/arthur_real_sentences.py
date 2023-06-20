@@ -352,7 +352,7 @@ px.bar(y=[v.log().item() for v in values], x=keys)
 
 attentions = defaultdict(list)
 
-for prompt_idx, prompt in tqdm(enumerate(data[:1000])):
+for prompt_idx, prompt in tqdm(enumerate(data[:100])):
     tokens = model.to_tokens(prompt, prepend_bos=True)[0][: (len(tokens) // SEQ_LEN) * SEQ_LEN]
     for window_start_idx in range(0, len(tokens), SEQ_LEN):
         window_tokens = tokens[window_start_idx : window_start_idx + SEQ_LEN]
