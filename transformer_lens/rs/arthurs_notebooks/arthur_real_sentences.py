@@ -345,15 +345,17 @@ for word, prompt in {**non_update_word_lists, **update_word_lists}.items():
 
 keys, values = zip(*all_word_data.items())
 
-px.bar(y=[v.log().item() for v in values], x=keys)
+px.bar(y=[v.log().item() for v in values], x=keys, title="Log of in-the-wild prediction-attention scores for GPT-generated sentences", labels={"x": "Word", "y": "Log-attention"})
 
 # %% [markdown]
 # <p> Okay cool this method works well so let's just do this on random webtext </p>
 
+SEQ_LEN = 20
 attentions = defaultdict(list)
 
 for prompt_idx, prompt in tqdm(enumerate(data[:100])):
-    tokens = model.to_tokens(prompt, prepend_bos=True)[0][: (len(tokens) // SEQ_LEN) * SEQ_LEN]
+    tokens = model.to_tokens(prompt, prepend_bos=True)[0]
+    tokens = tokens[: (len(tokens) // SEQ_LEN) * SEQ_LEN]
     for window_start_idx in range(0, len(tokens), SEQ_LEN):
         window_tokens = tokens[window_start_idx : window_start_idx + SEQ_LEN]
         window_end_token = window_tokens[-1]
@@ -366,17 +368,40 @@ for prompt_idx, prompt in tqdm(enumerate(data[:100])):
             show_plot=False,
             unembedding_indices=[[window_end_token for _ in range(len(window_tokens))]],
         )
-
         attentions[window_end_token.item()].append(result[-1, word_indices].sum().item())
+
+print(attentions)
 
 # %%
 
 len_attentions = defaultdict(int)
 for k, v in attentions.items():
     len_attentions[len(v)] += 1
-assert len(len_attentions) == 1 # ?????
+# assert len(len_attentions) == 1 # ?????
 
 hist(
     t.tensor(list(len_attentions.values())),
 )
+# %%
+
+
+attentions_filtered = {
+    k: v for (k, v) in attentions.items() if len(v) >= 1
+}
+mean_attn_values = [t.tensor(v).mean().item() for (k, v) in attentions_filtered.items()]
+words = [model.to_str_tokens(t.tensor([k]), prepend_bos=False)[0] for k in attentions_mean.keys()]
+
+tuples = list(zip(mean_attn_values, words))
+tuples.sort(key=lambda x: -x[0])
+
+mean_attn_values, words = zip(*tuples)
+
+CUTOFF = 20
+extreme_means = list(mean_attn_values[:CUTOFF]) + (t.tensor(mean_attn_values[-CUTOFF:]) - .1).tolist()
+extreme_words = words[:CUTOFF] + words[-CUTOFF:]
+
+fig = go.Figure()
+fig.add_trace(go.Bar(y=extreme_means, name="count", text=extreme_words)) #, texttemplate="%{x}", textfont_size=20))
+
+
 # %%
