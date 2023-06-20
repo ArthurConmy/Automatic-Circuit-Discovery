@@ -15,10 +15,10 @@ model.set_use_split_qkv_input(True)
 #%%
 # <p> Load some data with unique sentences </p>
 
-data = get_webtext()
+full_data = get_webtext()
 TOTAL_OWT_SAMPLES = 100
 SEQ_LEN = 20
-full_data = data[:TOTAL_OWT_SAMPLES]
+data = full_data[:TOTAL_OWT_SAMPLES]
 
 # %%
 
@@ -196,3 +196,12 @@ for prompt in data:
 
 print(vanilla_words[18])
 rprint(all_rwords[18])
+
+#%%
+
+# now look at dataset statistics for words that occur frequently
+
+for prompt in tqdm(full_data):
+    tokens = model.to_tokens(prompt, prepend_bos=True)[0]
+
+# %%
