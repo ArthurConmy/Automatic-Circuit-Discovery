@@ -156,37 +156,40 @@ HEAD = 7
 score = 0
 score_denom = 0
 
+all_rwords = []
+vanilla_words = []
+
 for prompt in data:
     tokens = model.to_tokens(prompt, prepend_bos=True)[0][:SEQ_LEN]
     words = [model.tokenizer.decode(token) for token in tokens]
+    word_indices = {word: [] for word in set(words)}
 
-    for word_idx in range(1, SEQ_LEN):
+    for idx, word in enumerate(words):
+        word_indices[word].append(idx)
+
+    word_attention = {word: 0.0 for word in set(words)}
+
+    for word_idx, word in enumerate(set(words[1:])): # ignore BOS
         result = prediction_attention_real_sentences(
             LAYER,
             HEAD,
             tokens=[tokens],
             show_plot=False,
-            x=words,
-            y=words,
-            title = model.tokenizer.decode(tokens[word_idx]),
-            unembedding_indices=[[tokens[word_idx] for _ in range(len(tokens))]],
+            unembedding_indices=[[model.tokenizer.encode(word)[0] for _ in range(len(tokens))]],
         )
-
-        imshow(
-            result,
-            title = words[word_idx],
-            x=words,
-            y=words,
-            title="Attention",
-            xlabel="Key:",
-            ylabel=f"Query Position (the q_input is {words[word_idx]})",
-        )
-        assert False
-
-        for query_idx in range(word_idx, len(tokens)):
-            cur_score = result[query_idx, word_idx]
-            score += cur_score
-            score_denom += 1
+        
+        word_attention[word] = result[-1, word_indices[word]].sum()
+    
+    rwords = ""
+    for word in words:
+        if word_attention[word] > 0.8:
+            rwords += f"[bold dark_orange u]{word}[/]"
+        else:
+            rwords += word
+    all_rwords.append(rwords)
+    vanilla_words.append("".join(words))
+    if len(all_rwords)>20:
+        break
 
 
 #%%
