@@ -1,4 +1,4 @@
-#%% [markdown]
+# %% [markdown]
 # <h1> Example notebook for the cautils import * statement </h1>
 
 from transformer_lens.cautils.notebook import * # use from transformer_lens.cautils.utils import * instead for the same effect without autoreload
@@ -12,14 +12,20 @@ model = HookedTransformer.from_pretrained("gpt2-small").to(DEVICE)
 model.set_use_attn_result(True)
 model.set_use_split_qkv_input(True)
 
-data = get_webtext()
-
 #%%
+# <p> Load some data with unique sentences </p>
+
+data = get_webtext()
+TOTAL_OWT_SAMPLES = 100
+SEQ_LEN = 20
+full_data = data[:TOTAL_OWT_SAMPLES]
+
+# %%
 
 W_E = model.W_E.clone()
 W_U = model.W_U.clone()
 
-#%%
+# %%
 
 # Calculate W_{EE} edit
 batch_size = 1000
@@ -46,24 +52,20 @@ for i in tqdm(range(0, nrows + batch_size, batch_size)):
 def prediction_attention_real_sentences(
     layer_idx,
     head_idx,
-    tokens: Optional[List[List[int]]] = None, # each List is a List of unique tokens
+    tokens: Optional[List[List[int]]] = None,
     show_plot: bool = False,
     unembedding_indices: Optional[List[int]] = None,
     **kwargs,
 ):
-# layer_idx = 10
-# head_idx = 7
-# # tokens = tokens
-# mean_version = False
-# show_plot = True
-# if True:
     """Based off get_EE_QK_circuit from commit 4b32e53804764    
     Variable naming: maybe sentence_tokens should be called prompt_tokens instead?"""
+
+    assert len(tokens) == 1, len(tokens)
 
     if unembedding_indices is None:
         print("Using the next tokens as the unembeddings")
 
-    random_seeds = len(tokens) # eh not quite random seeds but whatever
+    num_prompts = len(tokens) # eh not quite random seeds but whatever
     assert all([len(sentence_tokens) == len(tokens[0])] for sentence_tokens in tokens), "Must have same number of tokens in each sentence"
     
     seq_len = len(tokens[0])
@@ -73,8 +75,7 @@ def prediction_attention_real_sentences(
     n_layers, n_heads, d_model, d_head = model.W_Q.shape
     EE_QK_circuit_result = t.zeros((seq_len, seq_len))
 
-    for prompt_idx in range(random_seeds):
-
+    for prompt_idx in range(num_prompts):
         # Zero out the relevant things
         # (this deals with biases much more nicely too...)
         # Then get the attentions, then we're done
@@ -128,7 +129,7 @@ def prediction_attention_real_sentences(
         model(input_tokens)
         EE_QK_circuit_result += cached_attn_pattern.cpu()
 
-    EE_QK_circuit_result /= random_seeds
+    EE_QK_circuit_result /= num_prompts
 
     if show_plot:
         imshow(
@@ -142,79 +143,50 @@ def prediction_attention_real_sentences(
 
     return EE_QK_circuit_result
 
-#%% [markdown]
-# <p> We see that when death is a confident prediction, 10.7 indeed attends to " death" </p>
-
-new_data = ["Nothing is certain in this life except death and death"]
-tokens = [model.tokenizer.encode(new_data[i])[:20] for i in range(1) if len(model.tokenizer.encode(data[i])) >= 1]
-tokens = tokens
-words = [model.tokenizer.decode(token) for token in tokens[0]]
-
-for batch_tokens in tokens[:5]:
-    words = [model.tokenizer.decode(token) for token in batch_tokens]
-
-    assert len(words) == len(batch_tokens), (len(words), len(batch_tokens))
-
-    for i in range(len(words)-1):
-        result = prediction_attention_real_sentences(
-            10, 
-            7,
-            tokens=[batch_tokens],
-            show_plot=True,
-            x=words[:-1],
-            y=words[:-1],
-            title = words[i],
-            # unembedding_indices=[[batch_tokens[i] for _ in range(len(words)-1)]],
-        )
-
 # %% [markdown]
 
 # Experiment setup:
 # Feed in web text examples
-# Feed in EACH (?) word in the sentence as the unembedding token
 # Measure attention batch to the unembedding token...
 
 SEQ_LEN = 20
-OWT_SAMPLES = 8
+LAYER = 10
+HEAD = 7
 
-global_results = torch.zeros(
-    (model.cfg.n_layers, model.cfg.n_heads),
-)
+score = 0
+score_denom = 0
 
-for layer, head in tqdm(list(itertools.product(range(1, model.cfg.n_layers), range(model.cfg.n_heads)))): # TODO tqdm not working???
-    owt_samples_left = OWT_SAMPLES
-    owt_idx = -1
+for prompt in data:
+    tokens = model.to_tokens(prompt, prepend_bos=True)[0][:SEQ_LEN]
+    words = [model.tokenizer.decode(token) for token in tokens]
 
-    score = 0
-    score_denom = 0
+    for word_idx in range(1, SEQ_LEN):
+        result = prediction_attention_real_sentences(
+            LAYER,
+            HEAD,
+            tokens=[tokens],
+            show_plot=False,
+            x=words,
+            y=words,
+            title = model.tokenizer.decode(tokens[word_idx]),
+            unembedding_indices=[[tokens[word_idx] for _ in range(len(tokens))]],
+        )
 
-    while owt_samples_left > 0:
-        owt_idx += 1
-        tokens = model.tokenizer.encode(data[owt_idx])[:SEQ_LEN]
-        words = [model.tokenizer.decode(token) for token in tokens]
+        imshow(
+            result,
+            title = words[word_idx],
+            x=words,
+            y=words,
+            title="Attention",
+            xlabel="Key:",
+            ylabel=f"Query Position (the q_input is {words[word_idx]})",
+        )
+        assert False
 
-        if len(set(words)) != SEQ_LEN:
-            print("Non-unique words in sentence, sad")
-            continue
+        for query_idx in range(word_idx, len(tokens)):
+            cur_score = result[query_idx, word_idx]
+            score += cur_score
+            score_denom += 1
 
-        owt_samples_left -= 1
-        for word_idx in range(1, SEQ_LEN):
-            result = prediction_attention_real_sentences(
-                layer,
-                head,
-                tokens=[tokens],
-                show_plot=False,
-                x=words,
-                y=words,
-                title = model.tokenizer.decode(tokens[word_idx]),
-                unembedding_indices=[[tokens[word_idx] for _ in range(len(tokens))]],
-            )
-
-            for query_idx in range(word_idx, len(tokens)):
-                cur_score = result[query_idx, word_idx]
-                score += cur_score
-                score_denom += 1
-    
-    global_results[layer, head] = score / score_denom
 
 #%%
