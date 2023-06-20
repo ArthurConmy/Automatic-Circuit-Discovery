@@ -1,6 +1,60 @@
 # %%
 
-from transformer_lens.cautils.notebook import *
+import os
+os.environ["ACCELERATE_DISABLE_RICH"] = "1"
+from typeguard import typechecked
+from transformer_lens import HookedTransformer
+from transformer_lens.hook_points import HookPoint
+from IPython import get_ipython
+ipython = get_ipython()
+ipython.run_line_magic("load_ext", "autoreload")
+ipython.run_line_magic("autoreload", "2")
+
+import torch as t
+import torch
+import einops
+import itertools
+import plotly.express as px
+import numpy as np
+from datasets import load_dataset
+from functools import partial
+from tqdm import tqdm
+from jaxtyping import Float, Int, jaxtyped
+from typing import Union, List, Dict, Tuple, Callable, Optional
+from torch import Tensor
+import gc
+import transformer_lens
+from transformer_lens.ActivationCache import ActivationCache
+from transformer_lens import utils
+from transformer_lens.utils import to_numpy
+t.set_grad_enabled(False)
+
+# %%
+
+def to_tensor(
+    tensor,
+):
+    return t.from_numpy(to_numpy(tensor))
+
+def imshow(
+    tensor, 
+    **kwargs,
+):
+    tensor = to_tensor(tensor)
+    zmax = tensor.abs().max().item()
+
+    if "zmin" not in kwargs:
+        kwargs["zmin"] = -zmax
+    if "zmax" not in kwargs:
+        kwargs["zmax"] = zmax
+    if "color_continuous_scale" not in kwargs:
+        kwargs["color_continuous_scale"] = "RdBu"
+
+    fig = px.imshow(
+        to_numpy(tensor),
+        **kwargs,
+    )
+    fig.show()
 
 # %%
 
@@ -34,6 +88,7 @@ logits, cache = model.run_with_cache(
     ioi_dataset.toks,
     names_filter = lambda name: name.endswith("z"),
 )
+
 
 # %%
 
@@ -174,72 +229,6 @@ def fwd_pass_lock_attn0_to_self(
 raw_dataset = load_dataset("stas/openwebtext-10k")
 train_dataset = raw_dataset["train"]
 dataset = [train_dataset[i]["text"] for i in range(len(train_dataset))]
-unembedding = model.W_U.clone()
-
-# %%
-
-# In this cell I look at the sequence positions where the
-# NORM of the 10.7 output (divided by the layer norm scale)
-# is very large across several documents
-# 
-# we find that 
-# i) just like in IOI, the top tokens are not interpretable and the bottom tokens repress certain tokens in prompt
-# ii) unlike in IOI it seems that it is helpfully blocks the wrong tokens from prompt from being activated - example:
-# 
-# ' blacks', ' are', ' arrested', ' for', ' marijuana', ' possession', ' between', ' four', ' and', ' twelve', ' times', ' more', ' than'] -> 10.7 REPRESSES " blacks"
-
-contributions = []
-dataset = ["John grabbed the shopping bag and took out the bread and the milk"]
-model.set_use_attn_result(True)
-
-for i in tqdm(list(range(2)) + [5]):
-    tokens = model.tokenizer(
-        dataset[i], 
-        return_tensors="pt", 
-        truncation=True, 
-        padding=True
-    )["input_ids"].to(DEVICE)
-    
-    # if tokens.shape[1] < 256: # lotsa short docs here
-    #     print("SKIPPING short document", tokens.shape)
-    #     continue
-
-    tokens = tokens[0:1, :256]
-
-    model.reset_hooks()
-    logits, cache = model.run_with_cache(
-        tokens,
-        names_filter = lambda name: name in [f"blocks.10.attn.hook_result", "ln_final.hook_scale"],
-    )
-    output = cache[f"blocks.10.attn.hook_result"][0, :, 7] / cache["ln_final.hook_scale"][0, :, 0].unsqueeze(dim=-1) # account for layer norm scaling
-    
-    contribution = einops.einsum(
-        output,
-        unembedding,
-        "s d, d V -> s V",
-    )
-    contributions.append(contribution.clone())
-
-    for j in range(256):
-        # if contribution[j].norm().item() > 80:
-            print(model.to_str_tokens(tokens[0, j-30: j+1]))
-            print(model.tokenizer.decode(tokens[0, j+1]))
-            print()
-
-            top_tokens = t.topk(contribution[j], 10).indices
-            bottom_tokens = t.topk(-contribution[j], 10).indices
-
-            print("TOP TOKENS")
-            for i in top_tokens:
-                print(model.tokenizer.decode(i))
-            print()
-            print("BOTTOM TOKENS")
-            for i in bottom_tokens:
-                print(model.tokenizer.decode(i))
-
-full_contributions = t.cat(contributions, dim=0)
-# imshow(full_contributions)
-import sys; sys.exit(0)
 
 # %%
 
@@ -258,7 +247,8 @@ for i, s in enumerate(dataset):
 
 # %%
 
-# Calculate W_{EE} edit
+# Calculate W_{TE} edit
+
 batch_size = 1000
 nrows = model.cfg.d_vocab
 W_EE = t.zeros((nrows, model.cfg.d_model)).to(DEVICE)
@@ -280,27 +270,27 @@ for i in tqdm(range(0, nrows + batch_size, batch_size)):
 
 # %%
 
-# # sanity check this is the same 
+# sanity check this is the same 
 
-# def remove_pos_embed(z, hook):
-#     return 0.0 * z
+def remove_pos_embed(z, hook):
+    return 0.0 * z
 
-# # setup a forward pass that 
-# model.reset_hooks()
-# model.add_hook(
-#     name="hook_pos_embed",
-#     hook=remove_pos_embed,
-#     level=1, # ???
-# ) 
-# model.add_hook(
-#     name=utils.get_act_name("pattern", 0),
-#     hook=lock_attn,
-# )
-# logits, cache = model.run_with_cache(
-#     torch.arange(1000).to(DEVICE).unsqueeze(0),
-#     names_filter=lambda name: name=="blocks.1.hook_resid_pre",
-#     return_type="logits",
-# )
+# setup a forward pass that 
+model.reset_hooks()
+model.add_hook(
+    name="hook_pos_embed",
+    hook=remove_pos_embed,
+    level=1, # ???
+) 
+model.add_hook(
+    name=utils.get_act_name("pattern", 0),
+    hook=lock_attn,
+)
+logits, cache = model.run_with_cache(
+    torch.arange(1000).to(DEVICE).unsqueeze(0),
+    names_filter=lambda name: name=="blocks.1.hook_resid_pre",
+    return_type="logits",
+)
 
 #%%
 
@@ -390,7 +380,7 @@ def get_single_example_plot(
         num_samples=None,
         show_plot=True,
         bags_of_words=[tokens],
-        mean_version=True,
+        mean_version=False,
     )
     imshow(
         pattern, 
@@ -482,7 +472,6 @@ for num_samples, random_seeds in [
 #%% [markdown]
 # <p> Most of the experiments from here are Arthur's early experiments on 11.10 on the full distribution </p>
 
-model.set_use_attn_result(True)
 logits, cache = model.run_with_cache(
     ioi_dataset.toks,
     names_filter = lambda name: name.endswith("hook_result"),
@@ -549,8 +538,6 @@ dataset = [train_dataset[i]["text"] for i in range(len(train_dataset))]
 
 contributions = []
 
-dataset = ["John grabbed the shopping bag and took out the bread and the milk"]
-
 for i in tqdm(list(range(2)) + [5]):
     tokens = model.tokenizer(
         dataset[i], 
@@ -580,7 +567,7 @@ for i in tqdm(list(range(2)) + [5]):
     contributions.append(contribution.clone())
 
     for j in range(256):
-        # if contribution[j].norm().item() > 80:
+        if contribution[j].norm().item() > 80:
             print(model.to_str_tokens(tokens[0, j-30: j+1]))
             print(model.tokenizer.decode(tokens[0, j+1]))
             print()
