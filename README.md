@@ -10,6 +10,7 @@ This is the accompanying code to the paper "Towards Automated Circuit Discovery 
 
 * :zap: To run ACDC, see `acdc/main.py`, or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Main_Demo.ipynb">this Colab notebook</a>
 * :wrench: To see how edit edges in computational graphs in models, see `notebooks/editing_edges.py` or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Editing_Edges_Demo.ipynb">this Colab notebook</a>
+* :sparkle: To look at the abstractions we use to make ACDC, look at our upcoming notebook on them.
 
 This library builds upon the abstractions (`HookPoint`s and standardised `HookedTransformer`s) from [TransformerLens](https://github.com/neelnanda-io/TransformerLens) :mag_right:
 
@@ -26,6 +27,8 @@ poetry env use 3.10 # Python 3.10 is recommended but use any Python version >= 3
 poetry install
 ```
 
+On vast.ai machines (and perhaps other machines using Docker containers) you can get setup fast by running `poetry config virtualenvs.create false` instead of the `poetry env use 3.10` line.
+
 ### System Dependencies
 
 #### :penguin: Ubuntu Linux
@@ -33,6 +36,8 @@ poetry install
 ```bash
 sudo apt-get update && sudo apt-get install libgl1-mesa-glx graphviz build-essential graphviz-dev
 ```
+
+You may also need `apt-get install python3.x-dev` where `x` is your Python version (also see [the issue](https://github.com/ArthurConmy/Automatic-Circuit-Discovery/issues/57) and [pygraphviz installation troubleshooting](https://pygraphviz.github.io/documentation/stable/install.html))
 
 #### :apple: Mac OS X
 
@@ -44,6 +49,9 @@ export CFLAGS="-I$(brew --prefix graphviz)/include"
 export LDFLAGS="-L$(brew --prefix graphviz)/lib"
 ```
 
+### Reproducing results
+
+To reproduce the Pareto Frontier of KL divergences against number of edges for ACDC runs, run `python experiments/launch_induction.py`. Similarly, `python experiments/launch_sixteen_heads.py` and `python subnetwork_probing/train.py` were used to generate individual data points for the other methods, using the CLI help. All these three commands can produce wandb runs. We use `notebooks/roc_plot_generator.py` to process data from wandb runs into JSON files (see `experiments/results/plots_data/Makefile` for the commands) and `notebooks/plotly_roc_plot.py` to produce plots from these JSON files.
 
 ## Tests
 
@@ -96,7 +104,9 @@ If you use ACDC, please reach out! You can reference the work as follows:
 
 [ x ] Delete `arthur-try-merge-tl` references from the repo
 
-[ ] Fix huge edge sizes in Induction Main example
+[ ] Make notebook on abstractions
+
+[ ] Fix huge edge sizes in Induction Main example and change that occurred
 
 [ ] Find a better way to deal with the versioning on the Colabs installs...
 
@@ -104,7 +114,7 @@ If you use ACDC, please reach out! You can reference the work as follows:
 
 [ ] Position-level experiments
 
-[ ] `tracr` and other dependencies better managed
+[ x ] `tracr` and other dependencies better managed
 
 [ ] Make SP tests work (lots outdated so skipped) - and check SubnetworkProbing installs properly (no __init__.pys !!!)
 

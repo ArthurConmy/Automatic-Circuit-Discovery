@@ -13,7 +13,7 @@ try:
     import google.colab
 
     IN_COLAB = True
-    print("Running as a Colab notebook. WARNING: you should switch to a High-RAM A100 (you can buy $10 of credits for this). We're working on a low-memory version")
+    print("Running as a Colab notebook")
 
     import subprocess # to install graphviz dependencies
     command = ['apt-get', 'install', 'graphviz-dev']
@@ -27,14 +27,12 @@ try:
 
     ipython.run_line_magic( # install ACDC
         "pip",
-        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@541ea29",
+        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@9d5844a",
     )
 
 except Exception as e:
     IN_COLAB = False
-    print(
-        "Running as a Jupyter notebook - intended for development only! (This is also used for automatically generating notebook outputs)"
-    )
+    print("Running as a outside of colab")
 
     import numpy # crucial to not get cursed error
     import plotly
@@ -42,13 +40,19 @@ except Exception as e:
     plotly.io.renderers.default = "colab"  # added by Arthur so running as a .py notebook with #%% generates .ipynb notebooks that display in colab
     # disable this option when developing rather than generating notebook outputs
 
+    import os # make images folder
+    if not os.path.exists("ims/"):
+        os.mkdir("ims/")
+
     from IPython import get_ipython
 
     ipython = get_ipython()
     if ipython is not None:
-        from acdc.acdc_graphics import show
+        print("Running as a notebook")
         ipython.run_line_magic("load_ext", "autoreload")  # type: ignore
         ipython.run_line_magic("autoreload", "2")  # type: ignore
+    else:
+        print("Running as a script")
 
 # %% [markdown]
 # <h2>Imports etc</h2>
@@ -163,10 +167,10 @@ parser.add_argument('--single-step', action='store_true', help='Use single step,
 if ipython is not None:
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
-    args = parser.parse_args( # TODO add back zero ablation
+    args = parser.parse_args(
         [line.strip() for line in r"""--task=induction\
 --zero-ablation\
---threshold=0.5623\
+--threshold=0.71\
 --indices-mode=reverse\
 --first-cache-cpu=False\
 --second-cache-cpu=False\
@@ -266,12 +270,15 @@ else:
     raise ValueError(f"Unknown task {TASK}")
 
 
-validation_metric = things.validation_metric
+#%% [markdown]
+# <p> Let's define the four most important objects for ACDC experiments:
 
-toks_int_values = things.validation_data
-toks_int_values_other = things.validation_patch_data
+#%%
 
-tl_model = things.tl_model
+validation_metric = things.validation_metric # metric we use (e.g KL divergence)
+toks_int_values = things.validation_data # clean data x_i
+toks_int_values_other = things.validation_patch_data # corrupted data x_i'
+tl_model = things.tl_model # transformerlens model
 
 if RESET_NETWORK:
     reset_network(TASK, DEVICE, tl_model)

@@ -423,6 +423,13 @@ class TLACDCExperiment:
             )
             # we now add the saving hooks AFTER we've zeroed out activations
 
+        if self.use_pos_embed and not self.zero_ablation:    
+            def scramble_positions(z, hook):
+                return shuffle_tensor(z, seed=49)
+            self.model.add_hook(
+                "hook_pos_embed",
+                scramble_positions,
+            )
         self.model.cache_all(self.global_cache.corrupted_cache)
         corrupt_stuff = self.model(self.ref_ds)
 
@@ -431,11 +438,6 @@ class TLACDCExperiment:
 
         if self.corrupted_cache_cpu:
             self.global_cache.to("cpu", which_caches="second")
-
-        if self.use_pos_embed and not self.zero_ablation:
-            # make all positions the same shuffled set of positions
-            # if we used zero ablation, they are all zeroed which is great
-            self.global_cache.corrupted_cache["hook_pos_embed"][:] = shuffle_tensor(self.global_cache.corrupted_cache["hook_pos_embed"][0], seed=49) 
 
         self.model.reset_hooks()
 
