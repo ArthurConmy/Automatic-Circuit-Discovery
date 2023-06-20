@@ -20,6 +20,7 @@ from torch.distributions.categorical import Categorical
 import torch.nn.functional as F
 from tqdm.auto import tqdm
 from rich import print as rprint
+from collections import defaultdict
 from transformer_lens import utils, HookedTransformer, ActivationCache
 import plotly.express as px
 import plotly.graph_objects as go

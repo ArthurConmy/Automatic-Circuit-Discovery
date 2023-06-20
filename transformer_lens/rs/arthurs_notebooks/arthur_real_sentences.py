@@ -201,7 +201,6 @@ rprint(all_rwords[18])
 #%%
 
 # now look at dataset statistics for words that occur frequently
-
 # for prompt in tqdm(full_data):
 #     tokens = model.to_tokens(prompt, prepend_bos=True)[0]
 
@@ -348,4 +347,36 @@ keys, values = zip(*all_word_data.items())
 
 px.bar(y=[v.log().item() for v in values], x=keys)
 
+# %% [markdown]
+# <p> Okay cool this method works well so let's just do this on random webtext </p>
+
+attentions = defaultdict(list)
+
+for prompt_idx, prompt in tqdm(enumerate(data[:1000])):
+    tokens = model.to_tokens(prompt, prepend_bos=True)[0][: (len(tokens) // SEQ_LEN) * SEQ_LEN]
+    for window_start_idx in range(0, len(tokens), SEQ_LEN):
+        window_tokens = tokens[window_start_idx : window_start_idx + SEQ_LEN]
+        window_end_token = window_tokens[-1]
+        word_indices = [i for i, token in enumerate(window_tokens) if token == window_end_token]
+
+        result = prediction_attention_real_sentences(
+            LAYER,
+            HEAD,
+            tokens=[window_tokens],
+            show_plot=False,
+            unembedding_indices=[[window_end_token for _ in range(len(window_tokens))]],
+        )
+
+        attentions[window_end_token.item()].append(result[-1, word_indices].sum().item())
+
+# %%
+
+len_attentions = defaultdict(int)
+for k, v in attentions.items():
+    len_attentions[len(v)] += 1
+assert len(len_attentions) == 1 # ?????
+
+hist(
+    t.tensor(list(len_attentions.values())),
+)
 # %%
