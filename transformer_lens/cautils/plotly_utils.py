@@ -28,6 +28,8 @@ def imshow(tensor, renderer=None, **kwargs):
         kwargs_post["margin"] = dict.fromkeys(list("tblr"), kwargs_post["margin"])
     fig = px.imshow(to_numpy(tensor), color_continuous_midpoint=0.0, **kwargs_pre)
     if facet_labels:
+        if "facet_col_wrap" in kwargs_pre:
+            facet_labels = reorder_list_in_plotly_way(facet_labels, kwargs_pre["facet_col_wrap"])
         for i, label in enumerate(facet_labels):
             fig.layout.annotations[i]['text'] = label
     if border:
@@ -42,6 +44,17 @@ def imshow(tensor, renderer=None, **kwargs):
             i += 1
     fig.update_layout(**kwargs_post)
     fig.show(renderer=renderer)
+
+
+def reorder_list_in_plotly_way(L: list, col_wrap: int):
+    '''
+    Helper function, because Plotly orders figures in an annoying way when there's column wrap.
+    '''
+    L_new = []
+    while len(L) > 0:
+        L_new.extend(L[-col_wrap:])
+        L = L[:-col_wrap]
+    return L_new
 
 def hist(tensor, renderer=None, **kwargs):
     if isinstance(tensor, list):
