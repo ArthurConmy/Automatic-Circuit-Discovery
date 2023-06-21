@@ -126,9 +126,7 @@ def show(
             g_pos = pgv.AGraph()
             g_pos.read(fpath)
             for node in g_pos.nodes():
-                if not node.name.startswith("<m"):
-                    pos = node.attr["pos"]
-                    node_pos[node.name] = pos
+                node_pos[node.name] = node.attr["pos"]
 
     # create all nodes
     for child_hook_name in correspondence.edges:
@@ -169,7 +167,7 @@ def show(
                         g.add_edge(
                             parent_name,
                             child_name,
-                            penwidth=str(max(minimum_penwidth, edge.effect_size)),
+                            penwidth=str(max(minimum_penwidth, edge.effect_size) * 2),
                             color=colors[parent_name],
                         )
 

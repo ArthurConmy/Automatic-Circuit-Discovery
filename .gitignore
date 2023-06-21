@@ -11,6 +11,7 @@ transformer_lens/media/
 profile*.json
 *.png
 *.gv
+!experiments/results/canonical_circuits/*/layout.gv
 __pycache__
 Testing_Notebook.ipynb
 
