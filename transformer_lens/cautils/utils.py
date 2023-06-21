@@ -98,3 +98,8 @@ def lock_attn(
     if ablate:
         attn_new = attn_new * 0
     return attn_new
+
+NEG_HEADS = { # intended usage: `layer_idx, head_idx = NEG_HEADS[model.cfg.model_name]`
+    "SoLU_10L1280W_C4_Code": (9, 18),
+    "gpt2": (10, 7),
+}

@@ -455,9 +455,8 @@ for idx in range(OUTER_LEN):
         mean_version=False,
     )
 
-#%%
-
-# observe that a large value of num_samples gives better results
+#%% [markdown]
+# <p> Observe that a large value of num_samples gives better results </p>
 
 for num_samples, random_seeds in [
     (2**i, 2**(10-i)) for i in range(4, 11)
