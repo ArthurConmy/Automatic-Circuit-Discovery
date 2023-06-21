@@ -1,6 +1,8 @@
 # %% [markdown]
-# <h1> Generate a plot that shows linear response to the unembedding stimulus </h1>
+# <h1> Look into the effect of interpolating the components of various residual stream vectors </h1>
 # <p> With large attention range even for small tweaks to stimulus (~10% increases) </p>
+# WARNING not using effective embedding 
+# TODO add MLP ONLY baseline
 
 from transformer_lens.cautils.notebook import *  # use from transformer_lens.cautils.utils import * instead for the same effect without autoreload
 import gc
@@ -13,10 +15,9 @@ MODEL_NAME = "gpt2-small"
 model = HookedTransformer.from_pretrained(MODEL_NAME, device=DEVICE)
 model.set_use_attn_result(True)
 model.set_use_split_qkv_input(True)
+model.set_use_split_qkv_normalized_input(True) # new flag who dis
 
 # %%
-
-# data = get_webtext()
 
 update_word_lists = {
     " John": " John was reading a book when suddenly John heard a strange noise",
@@ -50,9 +51,63 @@ update_tokens = {
 unembedding = model.W_U.clone()
 LAYER_IDX, HEAD_IDX = NEG_HEADS[model.cfg.model_name]
 
+#%%
+
+# Arthur makes a hook with tons of assertions so hopefully nothing goes wrong
+# We only use it later, but declaring here makes syntax not defined show maybe?
+
+def component_adjuster(
+    z, 
+    hook, 
+    d_model,
+    expected_component,
+    unit_direction,
+    mu,
+    update_token_positions,
+):
+    assert z[0, update_token_positions[-1]-1, HEAD_IDX].shape == unit_direction.shape
+    assert abs(z[0, update_token_positions[-1]-1, HEAD_IDX].norm().item() - d_model**0.5) < 1e-5
+    component = einops.einsum(
+        z[0, update_token_positions[-1]-1, HEAD_IDX], 
+        unit_direction,
+        "i, i ->",
+    )
+    assert abs(component.item() - expected_component) < 1e-5, (component.item(), expected_component)
+
+    # delete the current_unit_direction component
+    z[0, update_token_positions[-1]-1, HEAD_IDX] -= current_unit_direction * component
+    orthogonal_component = z[0, update_token_positions[-1]-1, HEAD_IDX].norm().item()
+
+    # rescale the orthogonal component
+    j = (d_model - mu**2 * component**2)**0.5 / orthogonal_component
+
+    z[0, update_token_positions[-1]-1, HEAD_IDX] *= j
+
+    # re-add the current_unit_direction component
+    z[0, update_token_positions[-1]-1, HEAD_IDX] += current_unit_direction * component * mu
+
+    # we should now be variance 1 again
+    assert abs(z[0, update_token_positions[-1]-1, HEAD_IDX].norm().item() - d_model**0.5) < 1e-5
+
+    return z
+
 # %%
 
-attn_paids = []
+# Let's cache 
+# 1. `blocks.1.hook_resid_pre` at earlier position
+# 2. `blocks.10.hook_resid_pre` at earlier position
+# 
+# To compare to the unembedding
+
+saved_unit_directions = {
+    "blocks.1.hook_resid_pre": [],
+    "blocks.10.hook_resid_pre": [],
+    "unembedding": [],
+}
+
+def normalize(tens):
+    assert len(tens.shape) == 1
+    return tens/tens.norm()
 
 for update_token_idx, (update_token, prompt_tokens) in enumerate(update_tokens.items()):
     update_token_positions = (
@@ -60,109 +115,108 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(update_tokens.i
     )
     prompt_words = [model.tokenizer.decode(token) for token in prompt_tokens]
 
-    hook_pattern = f"blocks.{LAYER_IDX}.attn.hook_pattern"
     logits, cache = model.run_with_cache(
         prompt_tokens.to(DEVICE),
-        names_filter=lambda name: name in [hook_pattern],
+        names_filter=lambda name: name in list(saved_unit_directions.keys()),
     )
-    attn = cache[hook_pattern][0, HEAD_IDX, :, :].detach().cpu()
-    attn_paid_to_update_token = attn[
-        update_token_positions[-1] - 1, update_token_positions
-    ].sum()
-    attn_paids.append(attn_paid_to_update_token)
 
-    if update_token_idx > 7:
-        imshow(
-            attn,
-            title=f"attn paid to {prompt_tokens[update_token_positions]}",
-            x=[f"{idx}_{word}" for idx, word in enumerate(prompt_words)],
-            y=[f"{idx}_{word}" for idx, word in enumerate(prompt_words)],
-            labels={"x": "Key", "y": "Query"},
-            font=dict(size=8),
+    for name in list(saved_unit_directions.keys()):
+        if name == "unembedding":
+            continue
+        saved_unit_directions[name].append(normalize(cache[name][0, update_token_positions[0]]).detach().cpu().clone())
+
+    saved_unit_directions["unembedding"].append(normalize(unembedding[:, update_token]).detach().cpu().clone())
+
+#%%
+
+# at first I'll just look at components... then do the full interpolation plot
+
+component_data = {
+    key: [] for key in saved_unit_directions.keys()
+}
+
+for update_token_idx, (update_token, prompt_tokens) in enumerate(
+    update_tokens.items()
+):
+    update_token_positions = (
+        (prompt_tokens == update_token).nonzero().squeeze().tolist()
+    )
+    prompt_words = [model.tokenizer.decode(token) for token in prompt_tokens]
+    unembedding_vector = unembedding[:, update_token]
+    update_word = list(update_word_lists.keys())[update_token_idx]
+
+    for unit_direction_string in saved_unit_directions.keys():
+        current_unit_direction = saved_unit_directions[unit_direction_string][update_token_idx].to(DEVICE)
+        assert abs(current_unit_direction.norm().item() - 1) < 1e-5
+
+        # def increase_component(z, hook, mu):
+        #     assert z[0, 0].shape == unembedding_vector.shape
+        #     z[0, update_token_positions[-1] - 1] += unembedding_vector * mu
+        #     return z
+
+        # def decrease_component(z, hook, mu):
+        #     z[0, update_token_positions[-1] - 1] -= unembedding_vector * mu
+        #     return z
+
+        logits, cache = model.run_with_cache(
+            prompt_tokens.to(DEVICE),
+            names_filter=lambda name: name in [f"blocks.{LAYER_IDX}.hook_q_normalized_input"],
         )
 
-# %%
+        normalized_residual_stream = cache[f"blocks.{LAYER_IDX}.hook_q_normalized_input"][0, update_token_positions[-1] - 1, HEAD_IDX]
+        assert abs(normalized_residual_stream.norm().item() - (model.cfg.d_model)**0.5) < 1e-5
 
-px.bar(
-    x=list(update_word_lists.keys()),
-    y=attn_paids,
-)  # TBH it seems somewhat lowish? Callum doesn't think so that much
+        component_data[unit_direction_string].append(
+            einops.einsum(
+                normalized_residual_stream,
+                current_unit_direction,
+                "i, i ->",
+            ).item()
+        )
 
-# %% [markdown]
+#%%
 
-the_components = []
-the_normalized_components = []
-scales = []
-
-for update_token_idx, (update_token, prompt_tokens) in enumerate(update_tokens.items()):
-    update_token_positions = (
-        (prompt_tokens == update_token).nonzero().squeeze().tolist()
-    )
-    prompt_words = [model.tokenizer.decode(token) for token in prompt_tokens]
-
-    hook_pre = f"blocks.{LAYER_IDX}.hook_resid_pre"
-    hook_scale = f"blocks.{LAYER_IDX}.ln1.hook_scale"
-    logits, cache = model.run_with_cache(
-        prompt_tokens.to(DEVICE),
-        names_filter=lambda name: name in [hook_pre, hook_scale],
-    )
-    scales.append(cache[hook_scale])
-
-    residual_stream_vector = cache[hook_pre][0, update_token_positions[-1] - 1].clone()
-
-    pre = cache[hook_pre]
-    # fake layer norm
-    pre = pre / pre.norm(dim=-1, keepdim=True)
-    normalized_residual_stream_vector = pre[0, update_token_positions[-1] - 1]
-
-    unembedding_component = einops.einsum(
-        residual_stream_vector,
-        unembedding[:, update_token],
-        "d, d ->",
-    ).item()
-    normalized_unembedding_component = einops.einsum(
-        normalized_residual_stream_vector,
-        unembedding[:, update_token],
-        "d, d ->",
-    ).item()
-
-    the_normalized_components.append(normalized_unembedding_component)
-    the_components.append(unembedding_component)
-
-# %%
-
-px.scatter(
-    x=attn_paids,
-    y=the_normalized_components,
-    text=list(update_word_lists.keys()),
-    labels={"x": "Attention Paid", "y": "Unembedding Component"},
+hist(
+    list(component_data.values()),
+    # labels={"variable": "Version", "value": "Attn diff (positive ⇒ more attn paid to IO than S1)"},
+    title=f"Component sizes of various directions; remember the norm is {(model.cfg.d_model)**0.5:.2f}. Hooks refer to the values *at the earlier position in sentence*",
+    names = list(component_data.keys()),
+    width=800,
+    height=600,
+    opacity=0.7,
+    marginal="box",
+    template="simple_white"
 )
 
-# %%
+#%%
 
-new_attn_paids = []
-new_normalized_components = []
-titles = []
-colors = []
 SCALE_FACTORS = [0.0, 0.5, 0.8, 0.9, 0.99, 1.0, 1.01, 1.1, 1.15, 1.2, 1.25, 1.5, 2.0]
-COLORS = [
+ALL_COLORS = [
     "red",
     "orange",
-    "yellow",
     "green",
     "blue",
     "purple",
-    "black",
     "gray",
     "pink",
     "brown",
     "cyan",
     "magenta",
     "teal",
+    "olive",
+    "navy",
+    "maroon",
+    "lime",
+    "black",
+    "yellow",
 ]
-assert len(SCALE_FACTORS) == len(COLORS), (len(SCALE_FACTORS), len(COLORS))
+assert len(ALL_COLORS) == len(update_tokens), (len(ALL_COLORS), len(update_tokens))
 
-for scale_factor, color in tqdm(list(zip(SCALE_FACTORS, COLORS))):
+attentions_paid: Dict[Tuple[str, str, float], float] = {
+    # tuple of update_word, unit_direction_string, scale_factor to attention paid
+}
+
+for scale_factor in tqdm(SCALE_FACTORS):
     for update_token_idx, (update_token, prompt_tokens) in enumerate(
         update_tokens.items()
     ):
@@ -173,54 +227,46 @@ for scale_factor, color in tqdm(list(zip(SCALE_FACTORS, COLORS))):
         unembedding_vector = unembedding[:, update_token]
         update_word = list(update_word_lists.keys())[update_token_idx]
 
-        def increase_component(z, hook, mu):
-            assert z[0, 0].shape == unembedding_vector.shape
-            z[0, update_token_positions[-1] - 1] += unembedding_vector * mu
-            return z
+        for unit_direction_string in saved_unit_directions.keys():
 
-        def decrease_component(z, hook, mu):
-            z[0, update_token_positions[-1] - 1] -= unembedding_vector * mu
-            return z
+            # we need intervene on the forward pass to adjust the magnitude of the components here
 
-        hook_pattern = f"blocks.{LAYER_IDX}.attn.hook_pattern"
-        model.reset_hooks()
-        mu = float(
-            scale_factor
-            * the_components[update_token_idx]
-            / unembedding_vector.norm().item()
-        )
-        model.add_hook(
-            f"blocks.{LAYER_IDX}.hook_resid_pre", partial(increase_component, mu=mu)
-        )
-        model.add_hook(
-            f"blocks.{LAYER_IDX}.hook_resid_mid", partial(decrease_component, mu=mu)
-        )
-        logits, cache = model.run_with_cache(
-            prompt_tokens.to(DEVICE),
-            names_filter=lambda name: name in [hook_pattern, hook_scale, hook_pre],
-        )
-        attn = cache[hook_pattern][0, HEAD_IDX, :, :].detach().cpu()
-        attn_paid_to_update_token = attn[
-            update_token_positions[-1] - 1, update_token_positions
-        ].sum()
-        new_attn_paids.append(attn_paid_to_update_token)
+            current_unit_direction = saved_unit_directions[unit_direction_string][update_token_idx].to(DEVICE)
 
-        pre = cache[hook_pre][0, update_token_positions[-1] - 1].clone()
-        # fake layer norm
-        normalized_pre = pre / pre.norm(dim=-1, keepdim=True)
-        normalized_unembedding_component = einops.einsum(
-            normalized_pre,
-            unembedding[:, update_token]
-            / unembedding[:, update_token]
-            .norm()
-            .item(),  # TODO should this be scaled???
-            "d, d ->",
-        ).item()
-        new_normalized_components.append(normalized_unembedding_component)
+            expected_component=component_data[unit_direction_string][update_token_idx]
+            if expected_component * scale_factor > model.cfg.d_model**0.5: # rip
+                continue
 
-        # ugh surely a better way of making plots...
-        titles.append(update_word + f" {scale_factor}")
-        colors.append(color)
+            model.reset_hooks()
+            model.add_hook(
+                f"blocks.{LAYER_IDX}.hook_q_normalized_input",
+                partial(
+                    component_adjuster,
+                    d_model=model.cfg.d_model,
+                    expected_component=expected_component,
+                    mu=scale_factor,
+                    unit_direction=current_unit_direction,
+                    update_token_positions=update_token_positions,
+                )
+            )
+
+            hook_pattern = f"blocks.{LAYER_IDX}.attn.hook_pattern"
+
+            logits, cache = model.run_with_cache(
+                prompt_tokens.to(DEVICE),
+                names_filter=lambda name: name in [hook_pattern],
+            )
+            attn = cache[hook_pattern][0, HEAD_IDX, :, :].detach().cpu()
+            attn_paid_to_update_token = attn[
+                update_token_positions[-1] - 1, update_token_positions
+            ].sum().item()
+            attentions_paid[
+                (
+                    update_word,
+                    unit_direction_string,
+                    scale_factor,
+                )
+            ] = attn_paid_to_update_token
 
 # %%
 
@@ -228,39 +274,60 @@ for scale_factor, color in tqdm(list(zip(SCALE_FACTORS, COLORS))):
 fig = go.Figure()
 CUTOFF = 6
 
-for update_token_idx, (update_token, prompt_tokens) in enumerate(
-    list(update_tokens.items())[:CUTOFF]
-):
-    x_values_current = [
-        new_normalized_components[i]
-        for i in range(
-            update_token_idx, len(new_normalized_components), len(update_tokens)
+TEXTURES = {
+    key: ["solid", "dot", "dash"][idx] for idx, key in enumerate(saved_unit_directions.keys())
+}
+
+for unit_direction_string in saved_unit_directions.keys():
+    for update_token_idx, (update_token, prompt_tokens) in enumerate(
+        list(update_tokens.items())[:CUTOFF]
+    ):
+        update_word = list(update_word_lists.keys())[update_token_idx]
+
+        if update_word not in [
+            " city",
+            " ball",
+            " Python",
+            " President",
+        ]: # these are fairly representative and don't clutter the plot
+            continue
+
+        y=[]
+        for scale_factor in SCALE_FACTORS:
+            if (update_word, unit_direction_string, scale_factor) in attentions_paid:
+                y.append(attentions_paid[(update_word, unit_direction_string, scale_factor)])
+
+        fig.add_trace(
+            go.Scatter(
+                x=[scale_factor * component_data[unit_direction_string][update_token_idx] for scale_factor in SCALE_FACTORS][:len(y)],
+                y=y,
+                mode="lines+markers",
+                text=[
+                    f"{update_word=} {unit_direction_string=} {scale_factor=:.2f}"
+                    for scale_factor in SCALE_FACTORS
+                ][:len(y)],
+                line=dict(color=ALL_COLORS[update_token_idx], dash=TEXTURES[unit_direction_string]),
+                name=f"{update_word=} {unit_direction_string=}",
+            )
         )
-    ]
-    y_values_current = [
-        (new_attn_paids[i] / (1 - new_attn_paids[i])).log()
-        for i in range(update_token_idx, len(new_attn_paids), len(update_tokens))
-    ]
-    color = COLORS[update_token_idx]
-    fig.add_trace(
-        go.Scatter(
-            x=x_values_current,
-            y=y_values_current,
-            mode="lines+markers",
-            text=[
-                titles[update_token_idx + len(update_tokens) * ii]
-                for ii in range(len(x_values_current))
-            ],
-            line=dict(color=color),
-            name=titles[update_token_idx][:-4],
-        )
+
+# Add an x axis line at the max component, sqrt(d_model) and text
+fig.add_trace(
+    go.Scatter(
+        x=[model.cfg.d_model**0.5, model.cfg.d_model**0.5],
+        y=[0, 1.0],
+        mode="lines",
+        line=dict(color="black", dash="dash"),
+        name="Max component",
     )
+)
+
 
 # Update layout
 fig.update_layout(
-    title="Attention Paid vs Unembedding Component (Labels give how much we scaled the component by)",
-    yaxis_title="Log ODDS Attention Paid",
-    xaxis_title='Normalized Unembedding Component in Normalized Unembedding direction ("alpha tilde")',
+    title="Attention Paid vs Unembedding Component (see labels)",
+    yaxis_title="Attention Paid",
+    xaxis_title=f'Component in Normalized {LAYER_IDX}.{HEAD_IDX} Query Input ("alpha tilde")',
 )
 
 fig.update_layout(
@@ -268,6 +335,7 @@ fig.update_layout(
     width=1000,
     height=600,
 )
+
 fig.show()
 
 # %%
