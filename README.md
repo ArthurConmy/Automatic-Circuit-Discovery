@@ -13,4 +13,9 @@ git checkout researchsprint
 pip install -e .
 ```
 
+## Difference from [the main branch of TransformerLens](https://github.com/neelnanda-io/TransformerLens)
+
+1. We set the `ACCELERATE_DISABLE_RICH` environment variable in `transformer_lens/__init__.py` to `"1"` to stop an annoying reformatting of notebook error messages
+2. We add the `qkv_normalized_input` hooks that can be optionally added to models
+
 ## [See the main TransformerLens README here](https://github.com/neelnanda-io/TransformerLens)
