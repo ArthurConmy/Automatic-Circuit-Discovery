@@ -62,6 +62,8 @@ def get_hook_name_filter(model: HookedTransformer):
             return False
         elif any([name.endswith(f"{c}_input") for c in "qkv"]) and (not model.cfg.use_split_qkv_input):
             return False
+        elif any([name.endswith(f"{c}_normalized_input") for c in "qkv"]) and (not model.cfg.use_split_qkv_normalized_input):
+            return False
         elif name.endswith("hook)tokens") and (not model.cfg.use_hook_tokens):
             return False
         return True

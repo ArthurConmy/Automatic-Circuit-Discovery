@@ -863,6 +863,10 @@ class TransformerBlock(nn.Module):
         self.hook_k_input = HookPoint()  # [batch, pos, d_model]
         self.hook_v_input = HookPoint()  # [batch, pos, d_model]
 
+        self.hook_q_normalized_input = HookPoint()  # [batch, pos, d_model]
+        self.hook_k_normalized_input = HookPoint()  # [batch, pos, d_model]
+        self.hook_v_normalized_input = HookPoint()  # [batch, pos, d_model]
+
         self.hook_attn_out = HookPoint()  # [batch, pos, d_model]
 
         self.hook_mlp_in = HookPoint()  # [batch, pos, d_model]
@@ -870,6 +874,7 @@ class TransformerBlock(nn.Module):
         self.hook_resid_pre = HookPoint()  # [batch, pos, d_model]
         if not self.cfg.attn_only and not self.cfg.parallel_attn_mlp:
             self.hook_resid_mid = HookPoint()  # [batch, pos, d_model]
+            self.hook_normalized_resid_mid = HookPoint()  # [batch, pos, d_model]
         self.hook_resid_post = HookPoint()  # [batch, pos, d_model]
 
     def forward(
@@ -912,16 +917,18 @@ class TransformerBlock(nn.Module):
             if shortformer_pos_embed is not None:
                 shortformer_pos_embed = add_head_dimension(shortformer_pos_embed)
 
+        query_input = self.ln1(query_input) + (0.0 if shortformer_pos_embed is None else shortformer_pos_embed)
+        key_input = self.ln1(key_input) + (0.0 if shortformer_pos_embed is None else shortformer_pos_embed)
+        value_input = self.ln1(value_input)
+
         attn_out = self.hook_attn_out(
             # hook the residual stream states that are used to calculate the
             # queries, keys and values, independently.
             # Then take the layer norm of these inputs, and pass these to the attention module.
             self.attn(
-                query_input=self.ln1(query_input)
-                + (0.0 if shortformer_pos_embed is None else shortformer_pos_embed),
-                key_input=self.ln1(key_input)
-                + (0.0 if shortformer_pos_embed is None else shortformer_pos_embed),
-                value_input=self.ln1(value_input),
+                query_input=query_input if not self.cfg.use_split_qkv_normalized_input else self.hook_q_normalized_input(query_input),
+                key_input=key_input if not self.cfg.use_split_qkv_normalized_input else self.hook_k_normalized_input(key_input),
+                value_input=value_input if not self.cfg.use_split_qkv_normalized_input else self.hook_v_normalized_input(value_input),
                 past_kv_cache_entry=past_kv_cache_entry,
             )
         )  # [batch, pos, d_model]

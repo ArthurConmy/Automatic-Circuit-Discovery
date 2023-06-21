@@ -184,6 +184,10 @@ class HookedTransformer(HookedRootModule):
             assert (
                 self.cfg.use_split_qkv_input
             ), f"Cannot add hook {hook_point_name} if use_split_qkv_input is False"
+        if hook_point_name.endswith(("hook_q_normalized_input", "hook_k_normalized_input", "hook_v_normalized_input")):
+            assert (
+                self.cfg.use_split_qkv_normalized_input
+            ), f"Cannot add hook {hook_point_name} if use_split_qkv_normalized_input is False"
 
     @overload
     def forward(
@@ -1349,6 +1353,16 @@ class HookedTransformer(HookedRootModule):
         Toggles whether to allow editing of inputs to each attention head.
         """
         self.cfg.use_split_qkv_input = use_split_qkv_input
+
+    def set_use_split_qkv_normalized_input(self, use_split_qkv_normalized_input: bool):
+        """
+        Toggles whether to allow editing of inputs to each attention head AFTER LAYER NORM.
+        """
+
+        if use_split_qkv_normalized_input:
+            assert self.cfg.use_split_qkv_input, "You need to split qkv input to split qkv normalized input!!!"
+
+        self.cfg.use_split_qkv_normalized_input = use_split_qkv_normalized_input
 
     def process_weights_(
         self,

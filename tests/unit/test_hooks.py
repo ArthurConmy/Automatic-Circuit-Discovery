@@ -142,6 +142,11 @@ def test_conditional_hooks():
     with pytest.raises(AssertionError):
         model.add_hook("blocks.0.hook_q_input", identity_hook)
 
+    model.reset_hooks()
+    model.set_use_split_qkv_normalized_input(False)
+    with pytest.raises(AssertionError):
+        model.add_hook("blocks.0.hook_q_normalized_input", identity_hook)
+
     # now when we set these conditions to true, should be no errors!
 
     model.reset_hooks()
@@ -151,6 +156,10 @@ def test_conditional_hooks():
     model.reset_hooks()
     model.set_use_split_qkv_input(True)
     model.add_hook("blocks.0.hook_q_input", identity_hook)
+
+    model.reset_hooks()
+    model.set_use_split_qkv_normalized_input(True) # needs to come after 
+    model.add_hook("blocks.0.hook_q_normalized_input", identity_hook)
 
     # check that things are the right shape
 
