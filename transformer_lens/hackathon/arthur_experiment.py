@@ -122,7 +122,7 @@ imshow(
 # %%
 
 LAYER_IDX, HEAD_IDX = {
-    "SoLU_10L1280W_C4_Code": (8, 16), # (8, 16) is somewhat cheaty
+    "SoLU_10L1280W_C4_Code": (9, 18), # (9, 18) is somewhat cheaty
     "gpt2": (10, 7),
 }[model.cfg.model_name]
 
@@ -348,7 +348,7 @@ def get_EE_QK_circuit(
 
         n_layers, n_heads, d_model, d_head = model.W_Q.shape
 
-        assert False, "TODO: add Q and K and V biases???"
+        # assert False, "TODO: add Q and K and V biases???"
         EE_QK_circuit_sample = einops.einsum(
             EE_QK_circuit.A[indices, :],
             EE_QK_circuit.B[:, indices],
@@ -485,7 +485,7 @@ for num_samples, random_seeds in [
         )
         results[layer, head] = trace / softmaxed_attn.shape[0] # average attention on "diagonal"
     
-    imshow(results - results.mean(), title=f"num_samples={num_samples}, random_seeds={random_seeds}")
+    imshow(results, title=f"num_samples={num_samples}, random_seeds={random_seeds}")
 
 #%% [markdown]
 # <p> Most of the experiments from here are Arthur's early experiments on 11.10 on the full distribution </p>
