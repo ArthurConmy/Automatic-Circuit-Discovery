@@ -155,11 +155,7 @@ def prediction_attention_real_sentences(
 
 SEQ_LEN = 20
 
-LAYER_IDX, HEAD_IDX = {
-    "SoLU_10L1280W_C4_Code": (9, 18),
-    "gpt2": (10, 7),
-}[model.cfg.model_name]
-
+LAYER_IDX, HEAD_IDX = NEG_HEADS[model.cfg.model_name]
 score = 0
 score_denom = 0
 

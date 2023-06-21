@@ -10,14 +10,14 @@ DEVICE = t.device("cuda" if t.cuda.is_available() else "cpu")
 
 #%%
 
-# MODEL_NAME = "gpt2"
-MODEL_NAME = "solu-10l" # WARNING: this model does not seem to have interpretable directions
+MODEL_NAME = "gpt2"
+# MODEL_NAME = "solu-10l" # WARNING: this model does not seem to have interpretable directions
 model = HookedTransformer.from_pretrained(MODEL_NAME, device=DEVICE)
 model.set_use_attn_result(True)
 
 #%%
 
-data = get_webtext()
+data = get_webtext(seed=5)
 
 #%%
 
