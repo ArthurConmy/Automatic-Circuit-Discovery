@@ -77,12 +77,12 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(update_tokens.i
 px.bar(
     x=list(update_word_lists.keys()),
     y=attn_paids,
-) 
+) # TBH it seems somewhat lowish? Callum doesn't think so that much
 
 # %% [markdown]
-# <p> Frustratingly that doesn't seem like much???
 
 the_components = []
+the_normalized_components = []
 scales = []
 
 for update_token_idx, (update_token, prompt_tokens) in enumerate(update_tokens.items()):
@@ -95,26 +95,34 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(update_tokens.i
         prompt_tokens.to(DEVICE),
         names_filter=lambda name: name in [hook_pre, hook_scale],
     )
+    scales.append(cache[hook_scale])
+
+    residual_stream_vector = cache[hook_pre][0, update_token_positions[-1]-1].clone()
 
     pre = cache[hook_pre]
     # fake layer norm
     pre = pre / pre.norm(dim=-1, keepdim=True)
-
-    scales.append(cache[hook_scale])
-
-    residual_stream_vector = pre[0, update_token_positions[-1]-1]
+    normalized_residual_stream_vector = pre[0, update_token_positions[-1]-1]
+    
     unembedding_component = einops.einsum(
         residual_stream_vector,
         unembedding[:, update_token],
         "d, d ->",
     ).item()
+    normalized_unembedding_component = einops.einsum(
+        normalized_residual_stream_vector,
+        unembedding[:, update_token],
+        "d, d ->",
+    ).item()
+
+    the_normalized_components.append(normalized_unembedding_component)
     the_components.append(unembedding_component)
 
 #%%
 
 px.scatter(
     x=attn_paids,
-    y=the_components,
+    y=the_normalized_components,
     text=list(update_word_lists.keys()),
     labels = {"x": "Attention Paid", "y": "Unembedding Component"},
 )
@@ -122,47 +130,75 @@ px.scatter(
 # %%
 
 new_attn_paids = []
+new_normalized_components = []
+titles = []
+colors = []
+SCALE_FACTORS = [0.0, 0.5, 0.8, 0.9, 0.99, 1.0, 1.01, 1.1, 1.15, 1.2, 1.25, 1.5, 2.0]
+COLORS = ["red", "orange", "yellow", "green", "blue", "purple", "black", "gray", "pink", "brown", "cyan", "magenta", "teal"]
+assert len(SCALE_FACTORS) == len(COLORS), (len(SCALE_FACTORS), len(COLORS))
 
-for update_token_idx, (update_token, prompt_tokens) in enumerate(update_tokens.items()):
-    update_token_positions = (prompt_tokens == update_token).nonzero().squeeze().tolist()
-    prompt_words = [model.tokenizer.decode(token) for token in prompt_tokens]
-    unembedding_vector = unembedding[:, update_token]
+for scale_factor, color in tqdm(list(zip(SCALE_FACTORS, COLORS))):
+    for update_token_idx, (update_token, prompt_tokens) in enumerate(update_tokens.items()):
+        update_token_positions = (prompt_tokens == update_token).nonzero().squeeze().tolist()
+        prompt_words = [model.tokenizer.decode(token) for token in prompt_tokens]
+        unembedding_vector = unembedding[:, update_token]
+        update_word = list(update_word_lists.keys())[update_token_idx]
 
-    def increase_component(z, hook, mu):
-        assert z[0, 0].shape == unembedding_vector.shape
-        z[0, update_token_positions[-1]-1] += unembedding_vector * mu * scales[update_token_idx][0, update_token_positions[-1]-1, HEAD_IDX].item()
-        return z
-    def decrease_component(z, hook, mu):
-        z[0, update_token_positions[-1]-1] -= unembedding_vector * mu * scales[update_token_idx][0, update_token_positions[-1]-1, HEAD_IDX]
-        return z
+        def increase_component(z, hook, mu):
+            assert z[0, 0].shape == unembedding_vector.shape
+            z[0, update_token_positions[-1]-1] += unembedding_vector * mu
+            return z
+        def decrease_component(z, hook, mu):
+            z[0, update_token_positions[-1]-1] -= unembedding_vector * mu
+            return z
 
-    hook_pattern = f"blocks.{LAYER_IDX}.attn.hook_pattern"
-    model.reset_hooks()
-    model.add_hook(f"blocks.{LAYER_IDX}.hook_resid_pre", partial(increase_component, mu=0.5)) # TODO fix somewhat bug with scale factor now changing
-    model.add_hook(f"blocks.{LAYER_IDX}.hook_resid_mid", partial(decrease_component, mu=0.5))
-    logits, cache = model.run_with_cache(
-        prompt_tokens.to(DEVICE),
-        names_filter=lambda name: name in [hook_pattern],
-    )
-    attn = cache[hook_pattern][0, HEAD_IDX, :, :].detach().cpu()
-    attn_paid_to_update_token = attn[update_token_positions[-1]-1, update_token_positions].sum()
-    new_attn_paids.append(attn_paid_to_update_token)
-
-    if update_token_idx>7:
-        imshow(
-            attn,
-            title=f"attn paid to {prompt_tokens[update_token_positions]}",
-            x=[f"{idx}_{word}" for idx, word in enumerate(prompt_words)],
-            y=[f"{idx}_{word}" for idx, word in enumerate(prompt_words)],
-            labels={"x": "Key", "y": "Query"},
-            font=dict(size=8),
+        hook_pattern = f"blocks.{LAYER_IDX}.attn.hook_pattern"
+        model.reset_hooks()
+        mu = float(scale_factor * the_components[update_token_idx] / unembedding_vector.norm().item())
+        model.add_hook(f"blocks.{LAYER_IDX}.hook_resid_pre", partial(increase_component, mu=mu))
+        model.add_hook(f"blocks.{LAYER_IDX}.hook_resid_mid", partial(decrease_component, mu=mu))
+        logits, cache = model.run_with_cache(
+            prompt_tokens.to(DEVICE),
+            names_filter=lambda name: name in [hook_pattern],
         )
+        attn = cache[hook_pattern][0, HEAD_IDX, :, :].detach().cpu()
+        attn_paid_to_update_token = attn[update_token_positions[-1]-1, update_token_positions].sum()
+        new_attn_paids.append(attn_paid_to_update_token)
+
+        # ugh surely a better way of making plots...
+        titles.append(update_word + f" {scale_factor}")
+        colors.append(color)
+
 # %%
 
+y_values = [c*scale_factor for scale_factor in SCALE_FACTORS for c in the_components]
 px.scatter(
-    x=attn_paids + new_attn_paids,
-    y=the_components + [c+0.5 for c in the_components], #  + 0.5),
-    text=list(update_word_lists.keys()) + ["BOOSTED " + wordies for wordies in list(update_word_lists.keys())],
-) # TODO make this more legit
+    x=new_attn_paids,
+    y=y_values,
+    text=titles,
+    title="Clusterfuck version",
+    color=colors,
+    labels = {"x": "Attention Paid", "y": "Unembedding Component"},
+)
+
+# %%
+
+# Prepare the figure
+fig = go.Figure()
+CUTOFF = 6
+
+for update_token_idx, (update_token, prompt_tokens) in enumerate(list(update_tokens.items())[:CUTOFF]):
+    # extract the data for this update_token
+    x_values = [new_attn_paids[i] for i in range(update_token_idx, len(new_attn_paids), len(update_tokens))]
+    y_values_current = [y_values[i] for i in range(update_token_idx, len(y_values), len(update_tokens))]
+    color = COLORS[update_token_idx % len(COLORS)]  # using colors in a cyclic manner
+    fig.add_trace(go.Scatter(x=x_values, y=y_values_current, mode='lines+markers', text=[titles[update_token_idx + len(update_tokens) * ii] for ii in range(len(x_values))], line=dict(color=color), name=titles[update_token_idx][:-4]))
+
+# Update layout
+fig.update_layout(title='Attention Paid vs Unembedding Component (Labels give how much we scaled the component by)',
+                  xaxis_title='Attention Paid',
+                  yaxis_title='Unembedding Component')
+
+fig.show()
 
 # %%
