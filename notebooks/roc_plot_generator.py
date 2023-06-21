@@ -393,8 +393,9 @@ exp = TLACDCExperiment(
     early_exit=SKIP_ACDC and SKIP_CANONICAL,
     using_wandb=False,
     zero_ablation=bool(ZERO_ABLATION),
-    ds=things.test_data,
-    ref_ds=things.test_patch_data,
+    # Process very little data if just building the canonical graph
+    ds=things.test_data[slice(1) if ONLY_SAVE_CANONICAL else slice(None)],
+    ref_ds=things.test_patch_data[slice(1) if ONLY_SAVE_CANONICAL else slice(None)],
     metric=things.validation_metric,
     second_metric=None,
     verbose=True,
