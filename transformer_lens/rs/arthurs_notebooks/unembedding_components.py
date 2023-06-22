@@ -79,7 +79,7 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(
     prompt_words = [model.tokenizer.decode(token) for token in prompt_tokens]
     unembedding_vector = unembedding[:, update_token]
     update_word = list(update_word_lists.keys())[update_token_idx]
-    position = update_token_positions[-1]-1 if MODE=="query" else update_token_positions[0]
+    position = update_token_positions[-1]-1
 
     logits, cache = model.run_with_cache(
         prompt_tokens,
@@ -171,11 +171,12 @@ def component_adjuster(
 # To compare to the unembedding
 
 
-if (MODE=="key"): 
+if MODE=="key": 
     saved_unit_directions = {
         "blocks.0.hook_resid_pre": [],
         "blocks.0.hook_mlp_out": [],
         "blocks.1.hook_resid_pre": [],
+        "unembedding": [],
     }
 
 else:
@@ -206,8 +207,7 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(update_tokens.i
         
         saved_unit_directions[name].append(normalize(cache[name][0, update_token_positions[0]]).detach().cpu().clone())
 
-    if not (MODE=="key"):
-        saved_unit_directions["unembedding"].append(normalize(unembedding[:, update_token]).detach().cpu().clone())
+    saved_unit_directions["unembedding"].append(normalize(unembedding[:, update_token]).detach().cpu().clone())
 
 #%%
 
@@ -357,7 +357,7 @@ fig = go.Figure()
 CUTOFF = 5
 
 TEXTURES = {
-    key: ["solid", "dot", "dash"][idx] for idx, key in enumerate(saved_unit_directions.keys())
+    key: ["solid", "dot", "dash", "dashdot"][idx] for idx, key in enumerate(saved_unit_directions.keys())
 }
 
 for unit_direction_string in saved_unit_directions.keys():
@@ -402,7 +402,7 @@ for sign in [-1.0, 1.0]:
 
 # Update layout
 fig.update_layout(
-    title="Attention Paid vs Unembedding component when varying alpha tilde by -2 to +2 its original component",
+    title="Attention Paid vs Unembedding component when varying alpha tilde by 0 to +2 its original component",
     yaxis_title="Attention Paid",
     xaxis_title=f'Component in Normalized {LAYER_IDX}.{HEAD_IDX} Query Input ("alpha tilde")',
 )
