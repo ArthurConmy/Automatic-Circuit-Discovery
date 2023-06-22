@@ -5,7 +5,6 @@
 # TODO add MLP ONLY baseline
 
 from transformer_lens.cautils.notebook import *  # use from transformer_lens.cautils.utils import * instead for the same effect without autoreload
-import gc
 
 DEVICE = t.device("cuda" if t.cuda.is_available() else "cpu")
 
@@ -17,6 +16,7 @@ model.set_use_attn_result(True)
 model.set_use_split_qkv_input(True)
 model.set_use_split_qkv_normalized_input(True) # new flag who dis
 USE_NAME_MOVER = False
+MODE="key" # TODO implement value
 
 # %%
 
@@ -79,6 +79,7 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(
     prompt_words = [model.tokenizer.decode(token) for token in prompt_tokens]
     unembedding_vector = unembedding[:, update_token]
     update_word = list(update_word_lists.keys())[update_token_idx]
+    position = update_token_positions[-1]-1 if not (MODE=="query") else update_token_positions[0]
 
     logits, cache = model.run_with_cache(
         prompt_tokens,
@@ -99,13 +100,20 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(
             res[LAYER_IDX, HEAD_IDX] = comp.item()
 
         comp = einops.einsum(
-            cache[f"blocks.{LAYER_IDX}.hook_mlp_out"][0, update_token_positions[-1]-1], 
+            cache[f"blocks.{LAYER_IDX}.hook_mlp_out"][0, position], 
             unembedding_vector,
             "i, i ->",
         )
         res[LAYER_IDX, -1] = comp.item()
     
-    imshow(res, title=" ".join(prompt_words))
+    res[0, 12] = 30.0 # so things are roughly same scale
+    imshow(
+        res, title="|".join(prompt_words),
+        labels={"x": "Head", "y": "Layer"},
+        # x=list(range(12)) + ["MLP"],
+    )
+    # if update_token_idx > 3:
+    #     break
 
 # %%
 
@@ -126,29 +134,31 @@ def component_adjuster(
     mu,
     update_token_positions,
 ):
-    assert z[0, update_token_positions[-1]-1, HEAD_IDX].shape == unit_direction.shape
-    assert abs(z[0, update_token_positions[-1]-1, HEAD_IDX].norm().item() - d_model**0.5) < 1e-4
+    position = update_token_positions[-1]-1 if (MODE=="query") else update_token_positions[0]
+
+    assert z[0, position, HEAD_IDX].shape == unit_direction.shape
+    assert abs(z[0, position, HEAD_IDX].norm().item() - d_model**0.5) < 1e-4
     component = einops.einsum(
-        z[0, update_token_positions[-1]-1, HEAD_IDX], 
+        z[0, position, HEAD_IDX], 
         unit_direction,
         "i, i ->",
     )
     assert abs(component.item() - expected_component) < 1e-4, (component.item(), expected_component)
 
     # delete the current_unit_direction component
-    z[0, update_token_positions[-1]-1, HEAD_IDX] -= current_unit_direction * component
-    orthogonal_component = z[0, update_token_positions[-1]-1, HEAD_IDX].norm().item()
+    z[0, position, HEAD_IDX] -= current_unit_direction * component
+    orthogonal_component = z[0, position, HEAD_IDX].norm().item()
 
     # rescale the orthogonal component
     j = (d_model - mu**2 * component**2)**0.5 / orthogonal_component
 
-    z[0, update_token_positions[-1]-1, HEAD_IDX] *= j
+    z[0, position, HEAD_IDX] *= j
 
     # re-add the current_unit_direction component
-    z[0, update_token_positions[-1]-1, HEAD_IDX] += current_unit_direction * component * mu
+    z[0, position, HEAD_IDX] += current_unit_direction * component * mu
 
     # we should now be variance 1 again
-    assert abs(z[0, update_token_positions[-1]-1, HEAD_IDX].norm().item() - d_model**0.5) < 1e-4
+    assert abs(z[0, position, HEAD_IDX].norm().item() - d_model**0.5) < 1e-4
 
     return z
 
@@ -160,11 +170,19 @@ def component_adjuster(
 # 
 # To compare to the unembedding
 
-saved_unit_directions = {
-    "blocks.1.hook_resid_pre": [],
-    f"blocks.{LAYER_IDX}.hook_resid_pre": [],
-    "unembedding": [],
-}
+
+if (MODE=="key"): 
+    saved_unit_directions = {
+        "blocks.0.hook_resid_pre": [],
+        "blocks.0.hook_mlp_out": [],
+    }
+
+else:
+    saved_unit_directions = {
+        "blocks.1.hook_resid_pre": [],
+        f"blocks.{LAYER_IDX}.hook_resid_pre": [],
+        "unembedding": [],
+    }
 
 def normalize(tens):
     assert len(tens.shape) == 1
@@ -184,9 +202,11 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(update_tokens.i
     for name in list(saved_unit_directions.keys()):
         if name == "unembedding":
             continue
+        
         saved_unit_directions[name].append(normalize(cache[name][0, update_token_positions[0]]).detach().cpu().clone())
 
-    saved_unit_directions["unembedding"].append(normalize(unembedding[:, update_token]).detach().cpu().clone())
+    if not (MODE=="key"):
+        saved_unit_directions["unembedding"].append(normalize(unembedding[:, update_token]).detach().cpu().clone())
 
 #%%
 
@@ -195,6 +215,8 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(update_tokens.i
 component_data = {
     key: [] for key in saved_unit_directions.keys()
 }
+
+INPUT_HOOK = f"blocks.{LAYER_IDX}.hook_q_normalized_input" if not (MODE=="key") else f"blocks.{LAYER_IDX}.hook_k_normalized_input"
 
 for update_token_idx, (update_token, prompt_tokens) in enumerate(
     update_tokens.items()
@@ -210,21 +232,12 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(
         current_unit_direction = saved_unit_directions[unit_direction_string][update_token_idx].to(DEVICE)
         assert abs(current_unit_direction.norm().item() - 1) < 1e-4
 
-        # def increase_component(z, hook, mu):
-        #     assert z[0, 0].shape == unembedding_vector.shape
-        #     z[0, update_token_positions[-1] - 1] += unembedding_vector * mu
-        #     return z
-
-        # def decrease_component(z, hook, mu):
-        #     z[0, update_token_positions[-1] - 1] -= unembedding_vector * mu
-        #     return z
-
         logits, cache = model.run_with_cache(
             prompt_tokens.to(DEVICE),
-            names_filter=lambda name: name in [f"blocks.{LAYER_IDX}.hook_q_normalized_input"],
+            names_filter=lambda name: name == INPUT_HOOK,
         )
 
-        normalized_residual_stream = cache[f"blocks.{LAYER_IDX}.hook_q_normalized_input"][0, update_token_positions[-1] - 1, HEAD_IDX]
+        normalized_residual_stream = cache[INPUT_HOOK][0, (update_token_positions[-1] - 1) if not (MODE=="key") else (update_token_positions[0]), HEAD_IDX]
         assert abs(normalized_residual_stream.norm().item() - (model.cfg.d_model)**0.5) < 1e-4
 
         component_data[unit_direction_string].append(
@@ -235,7 +248,7 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(
             ).item()
         )
 
-#%%
+ #%%
 
 hist(
     list(component_data.values()),
@@ -251,7 +264,11 @@ hist(
 
 #%%
 
-SCALE_FACTORS = [0.0, 0.5, 0.8, 0.9, 0.99, 1.0, 1.01, 1.1, 1.15, 1.2, 1.25, 1.5, 2.0] if not USE_NAME_MOVER else torch.arange(-2, 2, 0.25).tolist()
+SCALE_FACTORS = [0.0, 0.5, 0.8, 0.9, 0.99, 1.0, 1.01, 1.1, 1.15, 1.2, 1.25, 1.5, 2.0] if not USE_NAME_MOVER else torch.arange(-2, 2, 1).tolist()
+
+# if (MODE=="key"):
+    # SCALE_FACTORS = torch.arange(-5, 20, 1).tolist()
+
 ALL_COLORS = [
     "red",
     "orange",
@@ -287,10 +304,13 @@ for scale_factor in tqdm(SCALE_FACTORS):
         prompt_words = [model.tokenizer.decode(token) for token in prompt_tokens]
         unembedding_vector = unembedding[:, update_token]
         update_word = list(update_word_lists.keys())[update_token_idx]
+        position = update_token_positions[-1]-1 if not (MODE=="key") else update_token_positions[0]
 
         for unit_direction_string in saved_unit_directions.keys():
 
             # we need intervene on the forward pass to adjust the magnitude of the components here
+            if unit_direction_string == "blocks.0.hook_resid_pre":
+                continue
 
             current_unit_direction = saved_unit_directions[unit_direction_string][update_token_idx].to(DEVICE)
 
@@ -300,7 +320,7 @@ for scale_factor in tqdm(SCALE_FACTORS):
 
             model.reset_hooks()
             model.add_hook(
-                f"blocks.{LAYER_IDX}.hook_q_normalized_input",
+                INPUT_HOOK,
                 partial(
                     component_adjuster,
                     d_model=model.cfg.d_model,
@@ -319,7 +339,7 @@ for scale_factor in tqdm(SCALE_FACTORS):
             )
             attn = cache[hook_pattern][0, HEAD_IDX, :, :].detach().cpu()
             attn_paid_to_update_token = attn[
-                update_token_positions[-1] - 1, update_token_positions
+                update_token_positions[-1]-1, update_token_positions
             ].sum().item()
             attentions_paid[
                 (
@@ -333,7 +353,7 @@ for scale_factor in tqdm(SCALE_FACTORS):
 
 # Prepare the figure
 fig = go.Figure()
-CUTOFF = 6
+CUTOFF = 1000
 
 TEXTURES = {
     key: ["solid", "dot", "dash"][idx] for idx, key in enumerate(saved_unit_directions.keys())
