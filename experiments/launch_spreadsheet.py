@@ -14,7 +14,7 @@ METRICS_FOR_TASK = {
 
 CPU = 4
 
-def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_kubernetes: bool, reset_networks: bool, use_gpu: bool=True):
+def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_kubernetes: bool, reset_networks: bool, abs_value_threshold: bool, use_gpu: bool=True):
     NUM_SPACINGS = 5 if reset_networks else 21
     base_thresholds = 10 ** np.linspace(-4, 0, 21)
 
@@ -114,7 +114,8 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
                         ]
                         if zero_ablation:
                             command.append("--zero-ablation")
-
+                        if abs_value_threshold:
+                            command.append("--abs-value-threshold")
                         commands.append(command)
 
     launch(
@@ -122,7 +123,7 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
         name="acdc-spreadsheet",
         job=None
         if not use_kubernetes
-        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.8.0", cpu=CPU, gpu=int(use_gpu)),
+        else KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:181999f", cpu=CPU, gpu=int(use_gpu)),
         check_wandb=wandb_identifier,
         just_print_commands=False,
     )
@@ -131,12 +132,13 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
 if __name__ == "__main__":
     for reset_networks in [False]:
         main(
-            ["ioi", "greaterthan"],
-            "acdc-ioi-gt-redo2",
-            f"agarriga-ioi-res{int(reset_networks)}-{{i:05d}}",
+            TASKS=["ioi"],
+            group_name="abs-value",
+            run_name=f"agarriga-ioi-res{int(reset_networks)}-{{i:05d}}",
             testing=False,
             use_kubernetes=True,
             reset_networks=reset_networks,
+            abs_value_threshold=True,
             use_gpu=True,
         )
 
