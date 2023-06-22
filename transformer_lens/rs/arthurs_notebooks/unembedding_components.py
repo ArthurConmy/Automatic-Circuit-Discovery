@@ -17,6 +17,8 @@ model.set_use_split_qkv_input(True)
 model.set_use_split_qkv_normalized_input(True) # new flag who dis
 USE_NAME_MOVER = False
 MODE="key" # TODO implement value
+SHOW_LOADS = False
+# TODO implement runtime checkingor whatever
 
 # %%
 
@@ -107,11 +109,13 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(
         res[LAYER_IDX, -1] = comp.item()
     
     res[0, 12] = 30.0 # so things are roughly same scale
-    imshow(
-        res, title="|".join(prompt_words),
-        labels={"x": "Head", "y": "Layer"},
-        # x=list(range(12)) + ["MLP"],
-    )
+
+    if SHOW_LOADS:
+        imshow(
+            res, title="|".join(prompt_words),
+            labels={"x": "Head", "y": "Layer"},
+            # x=list(range(12)) + ["MLP"],
+        )
     # if update_token_idx > 3:
     #     break
 
@@ -146,16 +150,16 @@ def component_adjuster(
     assert abs(component.item() - expected_component) < 1e-4, (component.item(), expected_component)
 
     # delete the current_unit_direction component
-    z[0, position, HEAD_IDX] -= current_unit_direction * component
+    z[0, position, HEAD_IDX] -= unit_direction * component
     orthogonal_component = z[0, position, HEAD_IDX].norm().item()
 
     # rescale the orthogonal component
     j = (d_model - mu**2 * component**2)**0.5 / orthogonal_component
-
     z[0, position, HEAD_IDX] *= j
 
+
     # re-add the current_unit_direction component
-    z[0, position, HEAD_IDX] += current_unit_direction * component * mu
+    z[0, position, HEAD_IDX] += unit_direction * component * mu
 
     # we should now be variance 1 again
     assert abs(z[0, position, HEAD_IDX].norm().item() - d_model**0.5) < 1e-4
@@ -265,7 +269,7 @@ hist(
 
 #%%
 
-SCALE_FACTORS = [0.0, 0.5, 0.8, 0.9, 0.99, 1.0, 1.01, 1.1, 1.15, 1.2, 1.25, 1.5, 2.0] if not USE_NAME_MOVER else torch.arange(-2, 2, 1).tolist()
+SCALE_FACTORS = [0.0, 0.5, 0.99, 1.0, 1.01, 1.1, 1.25, 1.5, 2.0] if not USE_NAME_MOVER else torch.arange(-2, 2, 1).tolist()
 
 # if (MODE=="key"):
     # SCALE_FACTORS = torch.arange(-5, 20, 1).tolist()
@@ -329,7 +333,8 @@ for scale_factor in tqdm(SCALE_FACTORS):
                     mu=scale_factor,
                     unit_direction=current_unit_direction,
                     update_token_positions=update_token_positions,
-                )
+                ),
+                level=1,
             )
 
             hook_pattern = f"blocks.{LAYER_IDX}.attn.hook_pattern"
@@ -339,9 +344,10 @@ for scale_factor in tqdm(SCALE_FACTORS):
                 names_filter=lambda name: name in [hook_pattern],
             )
             attn = cache[hook_pattern][0, HEAD_IDX, :, :].detach().cpu()
+            assert len(update_token_positions) == 2 
             attn_paid_to_update_token = attn[
-                update_token_positions[-1]-1, update_token_positions
-            ].sum().item()
+                update_token_positions[-1]-1, update_token_positions[0]
+            ].item()
             attentions_paid[
                 (
                     update_word,
