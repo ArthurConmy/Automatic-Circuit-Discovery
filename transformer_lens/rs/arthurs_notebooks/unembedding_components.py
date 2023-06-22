@@ -16,8 +16,10 @@ model.set_use_attn_result(True)
 model.set_use_split_qkv_input(True)
 model.set_use_split_qkv_normalized_input(True) # new flag who dis
 USE_NAME_MOVER = False
-MODE="key" # TODO implement value
+MODE="query" # TODO implement value
+assert MODE in ["query", "key"]
 SHOW_LOADS = False
+LOCK_QUERY_WU = False
 # TODO implement runtime checkingor whatever
 
 # %%
@@ -81,7 +83,7 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(
     prompt_words = [model.tokenizer.decode(token) for token in prompt_tokens]
     unembedding_vector = unembedding[:, update_token]
     update_word = list(update_word_lists.keys())[update_token_idx]
-    position = update_token_positions[-1]-1
+    position = update_token_positions[-1]-1 if MODE == "query" else update_token_positions[0]
 
     logits, cache = model.run_with_cache(
         prompt_tokens,
@@ -186,12 +188,11 @@ if MODE=="key":
 else:
     saved_unit_directions = {
         "blocks.1.hook_resid_pre": [],
-        f"blocks.{LAYER_IDX}.hook_resid_pre": [],
         "unembedding": [],
     }
 
 def normalize(tens):
-    assert len(tens.shape) == 1
+    assert len(list(tens.shape)) == 1
     return tens/tens.norm()
 
 for update_token_idx, (update_token, prompt_tokens) in enumerate(update_tokens.items()):
@@ -209,7 +210,8 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(update_tokens.i
         if name == "unembedding":
             continue
         
-        saved_unit_directions[name].append(normalize(cache[name][0, update_token_positions[0]]).detach().cpu().clone())
+        position = update_token_positions[-1]-1 if MODE=="query" else update_token_positions[0]
+        saved_unit_directions[name].append(normalize(cache[name][0, position]).detach().cpu().clone())
 
     saved_unit_directions["unembedding"].append(normalize(unembedding[:, update_token]).detach().cpu().clone())
 
@@ -220,8 +222,7 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(update_tokens.i
 component_data = {
     key: [] for key in saved_unit_directions.keys()
 }
-
-INPUT_HOOK = f"blocks.{LAYER_IDX}.hook_q_normalized_input" if not (MODE=="key") else f"blocks.{LAYER_IDX}.hook_k_normalized_input"
+INPUT_HOOK = f"blocks.{LAYER_IDX}.hook_{MODE.lower()[:1]}_normalized_input"
 
 for update_token_idx, (update_token, prompt_tokens) in enumerate(
     update_tokens.items()
@@ -242,7 +243,8 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(
             names_filter=lambda name: name == INPUT_HOOK,
         )
 
-        normalized_residual_stream = cache[INPUT_HOOK][0, (update_token_positions[-1] - 1) if not (MODE=="key") else (update_token_positions[0]), HEAD_IDX]
+        position = update_token_positions[-1] - 1 if MODE=="query" else update_token_positions[0]
+        normalized_residual_stream = cache[INPUT_HOOK][0, position, HEAD_IDX]
         assert abs(normalized_residual_stream.norm().item() - (model.cfg.d_model)**0.5) < 1e-4
 
         component_data[unit_direction_string].append(
@@ -272,7 +274,7 @@ hist(
 SCALE_FACTORS = [0.0, 0.5, 0.99, 1.0, 1.01, 1.1, 1.25, 1.5, 2.0] if not USE_NAME_MOVER else torch.arange(-2, 2, 1).tolist()
 
 # if (MODE=="key"):
-    # SCALE_FACTORS = torch.arange(-5, 20, 1).tolist()
+#     SCALE_FACTORS = torch.arange(-5, 20, 1).tolist()
 
 ALL_COLORS = [
     "red",
@@ -314,8 +316,8 @@ for scale_factor in tqdm(SCALE_FACTORS):
         for unit_direction_string in saved_unit_directions.keys():
 
             # we need intervene on the forward pass to adjust the magnitude of the components here
-            if unit_direction_string == "blocks.0.hook_resid_pre":
-                continue
+            # if unit_direction_string == "blocks.0.hook_resid_pre":
+                # continue
 
             current_unit_direction = saved_unit_directions[unit_direction_string][update_token_idx].to(DEVICE)
 
@@ -324,6 +326,17 @@ for scale_factor in tqdm(SCALE_FACTORS):
                 continue
 
             model.reset_hooks()
+
+            if LOCK_QUERY_WU:
+                def set_to_unembedding(z, hook, direction, update_token_positions):
+                    assert list(z.shape)[2:] == [model.cfg.n_heads, model.cfg.d_model], list(z.shape)
+                    z[0, update_token_positions[-1]-1, HEAD_IDX, :] = direction.clone()
+                    return z
+                model.add_hook(
+                    f"blocks.{LAYER_IDX}.hook_q_input",
+                    partial(set_to_unembedding, direction=saved_unit_directions["unembedding"][update_token_idx], update_token_positions=update_token_positions),
+                )
+
             model.add_hook(
                 INPUT_HOOK,
                 partial(
@@ -360,7 +373,7 @@ for scale_factor in tqdm(SCALE_FACTORS):
 
 # Prepare the figure
 fig = go.Figure()
-CUTOFF = 5
+# CUTOFF = 
 
 TEXTURES = {
     key: ["solid", "dot", "dash", "dashdot"][idx] for idx, key in enumerate(saved_unit_directions.keys())
@@ -368,7 +381,7 @@ TEXTURES = {
 
 for unit_direction_string in saved_unit_directions.keys():
     for update_token_idx, (update_token, prompt_tokens) in enumerate(
-        list(update_tokens.items())[:CUTOFF]
+        list(update_tokens.items())[-5:]
     ):
         update_word = list(update_word_lists.keys())[update_token_idx]
 
@@ -410,7 +423,7 @@ for sign in [-1.0, 1.0]:
 fig.update_layout(
     title="Attention Paid vs Unembedding component when varying alpha tilde by 0 to +2 its original component",
     yaxis_title="Attention Paid",
-    xaxis_title=f'Component in Normalized {LAYER_IDX}.{HEAD_IDX} Query Input ("alpha tilde")',
+    xaxis_title=f'Component in Normalized {LAYER_IDX}.{HEAD_IDX} {MODE} Input ("alpha tilde")',
 )
 
 fig.update_layout(
