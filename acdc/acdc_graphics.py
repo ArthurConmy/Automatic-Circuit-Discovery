@@ -99,11 +99,12 @@ def show(
     show_full_index: bool = True,
     remove_self_loops: bool = True,
     remove_qkv: bool = False,
+    layout: str="dot",
 ) -> pgv.AGraph:
     """
     Colorscheme: a color for each node name, or a string corresponding to a cmapy color scheme
     """
-    g = pgv.AGraph(directed=True, bgcolor="transparent", overlap="false", splines="true", layout="neato")
+    g = pgv.AGraph(directed=True, bgcolor="transparent", overlap="false", splines="true", layout=layout)
 
     groups = {}
     if isinstance(colorscheme, str):

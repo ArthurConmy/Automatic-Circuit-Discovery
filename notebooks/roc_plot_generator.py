@@ -451,6 +451,7 @@ if TASK != "induction":
             fname=CANONICAL_OUT_DIR / f"{TASK}.gv",
             colorscheme=colorscheme,
             show_full_index=False,
+            layout="neato" if TASK in ["ioi", "greaterthan"] else "dot",
         )
 
         if TASK in ["ioi", "greaterthan"]:
@@ -465,6 +466,7 @@ if TASK != "induction":
                 show_full_index=False,
                 remove_self_loops=True,
                 remove_qkv=False,
+                layout="dot",
             )
             show(
                 no_mlp,
@@ -473,6 +475,7 @@ if TASK != "induction":
                 show_full_index=False,
                 remove_self_loops=True,
                 remove_qkv=True,
+                layout="dot",
             )
 
 if ONLY_SAVE_CANONICAL:
