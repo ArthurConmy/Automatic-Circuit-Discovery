@@ -80,7 +80,7 @@ ioi_dataset = IOIDataset(
 
 #%%
 
-model.set_use_attn_result(False)
+model.set_use_attn_result(True)
 model.set_use_split_qkv_input(True)
 
 # %%
@@ -543,6 +543,98 @@ raw_dataset = load_dataset("stas/openwebtext-10k")
 train_dataset = raw_dataset["train"]
 dataset = [train_dataset[i]["text"] for i in range(len(train_dataset))]
 
+dataset = [
+    """Mormon Church Opens in Ozark as Mormon Faith Grows VideoOZARK, Mo. -- A new Mormon church has opened 
+its doors in Ozark.It's the new home for the Ozark and Nixa congregations of The Church of Jesus Christ of the 
+Latter-Day Saints.The growth of the Mormon faith has created a need for the new church in our area.The LDS church 
+in Ozark has had its doors open for about two weeks now.Between the Nixa and Ozark wards, there are about 800 
+people who have already joined."It's a worldwide congregation of about 15 million people and growing," said Ozark 
+Ward Bishop Robert Guison.And the growth has been proven here in the Ozarks with a need for the brand new 
+church."When i was young growing up in Monett, we had to come to Springfield," said Bishop Guison. "There are now 
+seven stakes and each stake is approximately six to seven congregations-- so that's how much it's grown in my 
+lifetime-- just in this area-- so there's been a tremendous amount of growth.""It's been exciting to see the growth
+and people moving to the area," said Nixa Ward Bishop Michael Barker. "But also the natural growth from families --
+and also those that choose to join the Mormon faith-- those that choose to investigate and join themselves to the 
+church-- it's been fun."Before, those of the Mormon faith in Nixa and Ozark had to drive to Springfield."Then, as 
+the need grew, we were too crowded in that building," said Bishop Guison. "So the next choice was what would be the
+most benefit to members and the community? That's why this location was chosen.""It gives a foundation to our 
+faith, a sense of permanence," said Bishop""",
+    """Hire a senior Perl / Python programmer today; download my up-to-date resume (PDF)A scorpion giving 
+birthThanks for the digg! Anyway, to answer some question I noticed in the comments: the babies do not come out of 
+the mouth of the mother, but from an opening near the pectines (featherlike structures underneath the scorpion). 
+The first photo on Scans of Diplocentrus species shows the pectines to the left and the right of a rectangular 
+piece with a "half-round dent". The dent is where the opening is located.The mother might eat her babies, but this 
+mostly happens when she is stressed too much. If you're interested in scorpions in general (or other arachnids like
+tarantulas, vinegaroons, etc), this site has a lot of related photos, nature walks, etc. The easiest way to find 
+something of interest is to use google, for example: site:johnbokma.com scorpions.RelatedToday, after Esme and I 
+had returned from some shopping at Wal-Mart, I discovered that one scorpion was giving birth: a Diplocentrus 
+species, probably Diplocentrus melici, which we had captured the 23rd of April, 2006. Later that day we captured 
+another female. The latter gave birth some time ago, but shortly after died. My best guess is that it somehow got 
+ill, and aborted the""",
+    """*10 P.M. Update*Texas A&M's former mascot, Reveille VII, has died.The former First Lady of Aggieland 
+died Thursday morning after undergoing emergency surgery at the Texas A&M Veterinary Hospital.Reveille VII served 
+as Texas A&M's Mascot from 2001 to 2008.She died after complications from an ulcer and pneumonia.Now the former 
+highest ranking member of the Corps of Cadets is being remembered for her contributions to the Aggie spirit.She 
+came our way from Florida becoming Texas A&M's 7th mascot Reveille in May 2001.A precious puppy that would become 
+the First Lady of the Corps of Cadets.James Mulvey was a member of the Corps when News 3 interviewed him in 2006 
+and was proud to be her handler."I leave the dorm about 15 minutes early. I know somebody or a group of people is 
+going to stop me," he said at the time.From chewing on Bevo along the sidelines during the Lone Star Showdown to 
+even special birthday parties like her 10th in October 2010.Reveille posed for many pictures but was known to bark 
+at strangers."That is her paw, her official paw print," said Tina Gardner as she looked through a scrapbook.Tina 
+and Paul Gardner of College Station took care of her in her retirement years from 2008 till her passing.She became 
+ill this week and Thursday morning died of complications from an ulcer.'I wouldn't say she was spoiled. She was 
+definitely regal," said Paul Gardner."She was spoiled," laughed Tina.Recently Reveille began water treadmill 
+treatment at the Texas A&M Vet School for arthritis.The Gardners were already planning her 13th birthday for this 
+fall and were planning a "Bark mitzvah," as they are Jewish."Maybe she wanted the party part of the "Bark mitzvah,"
+but she really didn't want to have to learn the Hebrew part and so she just chose to go to heaven early," added 
+Tina Gardner.Funeral arrangements have not been set yet but are expected to happen in September once school resumes
+with a final resting place in front of Kyle Field looking at the scoreboard.She would have turned 13 on October 
+9th.The Gardners say the Reveille Cemetery will not be impacted by renovations at Kyle Field.Texas A&M Corps of 
+Cadets StatementThe Office of the Commandant and the Corps of Cadets are deeply saddened to hear of the passing of 
+Reveille VII, the former ��First Lady of Aggieland�� today in College Station. As Aggies we are all very proud of 
+our mascot, and we have great respect for her and all the tradition that she represents. We in the Corps of Cadets 
+are especially fond of Reveille, as she has been part of the Corps from the beginning, lives with the Corps every 
+day as a member of Company E-2, marches with the Corps at all march-ins and parades, and is the highest ranking 
+member of the Corps of Cadets. We will remember with great fondness all the joy that Reveille VII brought to all 
+Aggies during her time as our mascot, and will remember her excited barks every time our football team scored a 
+touchdown. We know that she will continue to do so in the future as she joins the other Reveilles in the North end 
+of Kyle Field where she will always be able to see the scoreboard and bark for her team. Rest in Peace Miss 
+Reveille. You will be missed but never forgotten…Reveille*Previous Story*The former mascot of Texas A&M, Reveille 
+VII, has died, according to the university.Reveille was taken to the veterinary school on campus earlier in the 
+week and eventually had to undergo emergency surgery. She died Thursday morning.The collie was born on October 9, 
+2000. She was bred in Florida and located by the university after a nationwide search. She officially became A&M's 
+seventh mascot by the Reveille name in May 2001.Reveille VII retired in the summer of 2008, and had been living 
+with local residents Paul and Tina Gardner.Details on services for the dog are still being worked out.Known as the 
+First Lady of Aggieland and the highest ranking member of the university's Corps of Cadets, the Reveille serving as
+the mascot lives with a cadet on campus and goes to classes with the student.The""",
+    """Senators send letter to Roger GoodellSteve Delsohn reports the details surrounding the domestic 
+violence charge against Panthers DE Greg Hardy.Sixteen female U.S. senators have sent a letter to commissioner 
+Roger Goodell calling for a "real zero-tolerance policy" against domestic violence in the NFL.The letter was sent 
+to Goodell on Thursday. In it, the senators say they were "shocked and disgusted" by the video released Monday of 
+former Baltimore Ravens running back Ray Rice striking his then-fiancée Janay Palmer in an Atlantic City, New 
+Jersey, casino elevator and a subsequent report by The Associated Press that a league executive received the video 
+from a law enforcement official in April."We are deeply concerned that the NFL's new policy, announced last month, 
+would allow a player to commit a violent act against a woman and return after a short suspension," the letter 
+reads. "If you violently assault a woman, you shouldn't get a second chance to play football in the NFL."The NFL's 
+current policy sends a terrible message to players, fans and all Americans that even after committing a horrific 
+act of violence, you can quickly be back on the field."The letter ends with a call for the NFL "to institute a real
+zero-tolerance policy and send a strong message that the league will not tolerate violence against women by its 
+players, who are role models for children across America."The letter was put together by Sen. Barbara Boxer, 
+D-Calif., and was signed by 14 Democrats and two Republicans.President Barack Obama's press secretary released a 
+statement earlier in the week, calling the issue of domestic violence "bigger than football.""The president is the 
+father of two daughters. And like any American, he believes that domestic violence is contemptible and unacceptable
+in a civilized society," the statement said. "Hitting a woman is not something a real man does, and that's true 
+whether or not an act of violence happens in the public eye, or, far too often, behind closed doors. Stopping 
+domestic violence is something that's bigger than football -- and all of us have a responsibility to put a stop to 
+it."Ray Anderson, formerly the vice president of football operations under Goodell, expressed his displeasure with 
+the turn of events inside league headquarters."I am personally very disappointed that the leadership at the NFL's 
+New York office seems to be swirling around in chaos," Anderson told Arizona Sports 98.7 FM. "That's sad, because 
+there are too many good people working there that don't deserve that and I'll just leave it at that."Anderson later
+added, "In my time in the league, I thought there was an appropriate moral compass. I struggle now because I'm not 
+sure I have as much faith that is occurring."The NFL has denied receiving the""",
+    """"""
+]
+
 # %%
 
 # In this cell I look at the sequence positions where the
@@ -557,7 +649,7 @@ dataset = [train_dataset[i]["text"] for i in range(len(train_dataset))]
 
 contributions = []
 
-for i in tqdm(list(range(2)) + [5]):
+for i in tqdm(range(100)):
     tokens = model.tokenizer(
         dataset[i], 
         return_tensors="pt", 
@@ -565,11 +657,11 @@ for i in tqdm(list(range(2)) + [5]):
         padding=True
     )["input_ids"].to(DEVICE)
     
-    if tokens.shape[1] < 256: # lotsa short docs here
-        print("SKIPPING short document", tokens.shape)
-        continue
+    # if tokens.shape[1] < 256: # lotsa short docs here
+    #     print("SKIPPING short document", tokens.shape)
+    #     continue
 
-    tokens = tokens[0:1, :256]
+    tokens = tokens[0:1]
 
     model.reset_hooks()
     logits, cache = model.run_with_cache(
@@ -585,10 +677,10 @@ for i in tqdm(list(range(2)) + [5]):
     )
     contributions.append(contribution.clone())
 
-    for j in range(256):
-        if contribution[j].norm().item() > 80:
+    for j in range(len(contribution)):
+        if j == len(contribution)-1: # contribution[j].norm().item() > 80:
             print(model.to_str_tokens(tokens[0, j-30: j+1]))
-            print(model.tokenizer.decode(tokens[0, j+1]))
+            # print(model.tokenizer.decode(tokens[0, j+1]))
             print()
 
             top_tokens = t.topk(contribution[j], 10).indices
