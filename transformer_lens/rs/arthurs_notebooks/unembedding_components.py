@@ -79,7 +79,7 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(
     prompt_words = [model.tokenizer.decode(token) for token in prompt_tokens]
     unembedding_vector = unembedding[:, update_token]
     update_word = list(update_word_lists.keys())[update_token_idx]
-    position = update_token_positions[-1]-1 if not (MODE=="query") else update_token_positions[0]
+    position = update_token_positions[-1]-1 if MODE=="query" else update_token_positions[0]
 
     logits, cache = model.run_with_cache(
         prompt_tokens,
@@ -134,7 +134,7 @@ def component_adjuster(
     mu,
     update_token_positions,
 ):
-    position = update_token_positions[-1]-1 if (MODE=="query") else update_token_positions[0]
+    position = update_token_positions[-1]-1 if MODE=="query" else update_token_positions[0]
 
     assert z[0, position, HEAD_IDX].shape == unit_direction.shape
     assert abs(z[0, position, HEAD_IDX].norm().item() - d_model**0.5) < 1e-4
@@ -175,6 +175,7 @@ if (MODE=="key"):
     saved_unit_directions = {
         "blocks.0.hook_resid_pre": [],
         "blocks.0.hook_mlp_out": [],
+        "blocks.1.hook_resid_pre": [],
     }
 
 else:
@@ -353,7 +354,7 @@ for scale_factor in tqdm(SCALE_FACTORS):
 
 # Prepare the figure
 fig = go.Figure()
-CUTOFF = 1000
+CUTOFF = 5
 
 TEXTURES = {
     key: ["solid", "dot", "dash"][idx] for idx, key in enumerate(saved_unit_directions.keys())
