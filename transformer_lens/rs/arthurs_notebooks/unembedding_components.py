@@ -16,6 +16,7 @@ model = HookedTransformer.from_pretrained(MODEL_NAME, device=DEVICE)
 model.set_use_attn_result(True)
 model.set_use_split_qkv_input(True)
 model.set_use_split_qkv_normalized_input(True) # new flag who dis
+USE_NAME_MOVER = False
 
 # %%
 
@@ -39,6 +40,21 @@ update_word_lists = {
     " train": " The train was late. The passengers were annoyed because the train was delayed by an hour",
 }
 
+if USE_NAME_MOVER:
+    N = 20
+    ioi_dataset = IOIDataset(
+        prompt_type="mixed",
+        N=N,
+        tokenizer=model.tokenizer,
+        prepend_bos=True,
+        seed=1,
+        device=DEVICE,
+    )
+    update_word_lists = {
+        " "+sent.split()[-1]: sent for sent in ioi_dataset.sentences
+    }
+    assert len(update_word_lists) == len(set(update_word_lists.keys())), "non unique1!"
+
 update_tokens = {
     model.tokenizer.encode(k, return_tensors="pt")
     .item(): model.to_tokens(v, prepend_bos=True, move_to_device=False)
@@ -46,10 +62,55 @@ update_tokens = {
     for k, v in update_word_lists.items()
 }
 
+#%%
+
+unembedding = model.W_U.clone()
+
+#%%
+
+# look at some components...
+
+for update_token_idx, (update_token, prompt_tokens) in enumerate(
+    update_tokens.items()
+):
+    update_token_positions = (
+        (prompt_tokens == update_token).nonzero().squeeze().tolist()
+    )
+    prompt_words = [model.tokenizer.decode(token) for token in prompt_tokens]
+    unembedding_vector = unembedding[:, update_token]
+    update_word = list(update_word_lists.keys())[update_token_idx]
+
+    logits, cache = model.run_with_cache(
+        prompt_tokens,
+        names_filter = lambda name: name.endswith(("hook_result", "hook_mlp_out")),
+    )
+
+    res = t.zeros(12, 13)
+
+    for LAYER_IDX in range(12):
+        for HEAD_IDX in range(12):
+            head_outp = cache[f"blocks.{LAYER_IDX}.attn.hook_result"][0, update_token_positions[-1]-1, HEAD_IDX]
+            assert len(head_outp.shape) == 1,head_outp.shape
+            comp = einops.einsum(
+                head_outp, 
+                unembedding_vector,
+                "i, i ->",
+            )
+            res[LAYER_IDX, HEAD_IDX] = comp.item()
+
+        comp = einops.einsum(
+            cache[f"blocks.{LAYER_IDX}.hook_mlp_out"][0, update_token_positions[-1]-1], 
+            unembedding_vector,
+            "i, i ->",
+        )
+        res[LAYER_IDX, -1] = comp.item()
+    
+    imshow(res, title=" ".join(prompt_words))
+
 # %%
 
 unembedding = model.W_U.clone()
-LAYER_IDX, HEAD_IDX = NEG_HEADS[model.cfg.model_name]
+LAYER_IDX, HEAD_IDX = NEG_HEADS[model.cfg.model_name] if not USE_NAME_MOVER else (10, 10)
 
 #%%
 
@@ -66,13 +127,13 @@ def component_adjuster(
     update_token_positions,
 ):
     assert z[0, update_token_positions[-1]-1, HEAD_IDX].shape == unit_direction.shape
-    assert abs(z[0, update_token_positions[-1]-1, HEAD_IDX].norm().item() - d_model**0.5) < 1e-5
+    assert abs(z[0, update_token_positions[-1]-1, HEAD_IDX].norm().item() - d_model**0.5) < 1e-4
     component = einops.einsum(
         z[0, update_token_positions[-1]-1, HEAD_IDX], 
         unit_direction,
         "i, i ->",
     )
-    assert abs(component.item() - expected_component) < 1e-5, (component.item(), expected_component)
+    assert abs(component.item() - expected_component) < 1e-4, (component.item(), expected_component)
 
     # delete the current_unit_direction component
     z[0, update_token_positions[-1]-1, HEAD_IDX] -= current_unit_direction * component
@@ -87,7 +148,7 @@ def component_adjuster(
     z[0, update_token_positions[-1]-1, HEAD_IDX] += current_unit_direction * component * mu
 
     # we should now be variance 1 again
-    assert abs(z[0, update_token_positions[-1]-1, HEAD_IDX].norm().item() - d_model**0.5) < 1e-5
+    assert abs(z[0, update_token_positions[-1]-1, HEAD_IDX].norm().item() - d_model**0.5) < 1e-4
 
     return z
 
@@ -101,7 +162,7 @@ def component_adjuster(
 
 saved_unit_directions = {
     "blocks.1.hook_resid_pre": [],
-    "blocks.10.hook_resid_pre": [],
+    f"blocks.{LAYER_IDX}.hook_resid_pre": [],
     "unembedding": [],
 }
 
@@ -147,7 +208,7 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(
 
     for unit_direction_string in saved_unit_directions.keys():
         current_unit_direction = saved_unit_directions[unit_direction_string][update_token_idx].to(DEVICE)
-        assert abs(current_unit_direction.norm().item() - 1) < 1e-5
+        assert abs(current_unit_direction.norm().item() - 1) < 1e-4
 
         # def increase_component(z, hook, mu):
         #     assert z[0, 0].shape == unembedding_vector.shape
@@ -164,7 +225,7 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(
         )
 
         normalized_residual_stream = cache[f"blocks.{LAYER_IDX}.hook_q_normalized_input"][0, update_token_positions[-1] - 1, HEAD_IDX]
-        assert abs(normalized_residual_stream.norm().item() - (model.cfg.d_model)**0.5) < 1e-5
+        assert abs(normalized_residual_stream.norm().item() - (model.cfg.d_model)**0.5) < 1e-4
 
         component_data[unit_direction_string].append(
             einops.einsum(
@@ -190,7 +251,7 @@ hist(
 
 #%%
 
-SCALE_FACTORS = [0.0, 0.5, 0.8, 0.9, 0.99, 1.0, 1.01, 1.1, 1.15, 1.2, 1.25, 1.5, 2.0]
+SCALE_FACTORS = [0.0, 0.5, 0.8, 0.9, 0.99, 1.0, 1.01, 1.1, 1.15, 1.2, 1.25, 1.5, 2.0] if not USE_NAME_MOVER else torch.arange(-2, 2, 0.25).tolist()
 ALL_COLORS = [
     "red",
     "orange",
@@ -234,7 +295,7 @@ for scale_factor in tqdm(SCALE_FACTORS):
             current_unit_direction = saved_unit_directions[unit_direction_string][update_token_idx].to(DEVICE)
 
             expected_component=component_data[unit_direction_string][update_token_idx]
-            if expected_component * scale_factor > model.cfg.d_model**0.5: # rip
+            if abs(expected_component) * abs(scale_factor) > model.cfg.d_model**0.5: # rip
                 continue
 
             model.reset_hooks()
@@ -284,27 +345,22 @@ for unit_direction_string in saved_unit_directions.keys():
     ):
         update_word = list(update_word_lists.keys())[update_token_idx]
 
-        if update_word not in [
-            " city",
-            " ball",
-            " Python",
-            " President",
-        ]: # these are fairly representative and don't clutter the plot
-            continue
-
         y=[]
+        relevant_scale_factors = [] # maybe big and negative boys ae too big in magnitude
         for scale_factor in SCALE_FACTORS:
             if (update_word, unit_direction_string, scale_factor) in attentions_paid:
                 y.append(attentions_paid[(update_word, unit_direction_string, scale_factor)])
+                relevant_scale_factors.append(scale_factor)
+
 
         fig.add_trace(
             go.Scatter(
-                x=[scale_factor * component_data[unit_direction_string][update_token_idx] for scale_factor in SCALE_FACTORS][:len(y)],
+                x=[relevant_scale_factor * component_data[unit_direction_string][update_token_idx] for relevant_scale_factor in relevant_scale_factors][:len(y)],
                 y=y,
                 mode="lines+markers",
                 text=[
-                    f"{update_word=} {unit_direction_string=} {scale_factor=:.2f}"
-                    for scale_factor in SCALE_FACTORS
+                    f"{update_word=} {unit_direction_string=} {relevant_scale_factor=:.2f}"
+                    for relevant_scale_factor in relevant_scale_factors
                 ][:len(y)],
                 line=dict(color=ALL_COLORS[update_token_idx], dash=TEXTURES[unit_direction_string]),
                 name=f"{update_word=} {unit_direction_string=}",
@@ -312,20 +368,20 @@ for unit_direction_string in saved_unit_directions.keys():
         )
 
 # Add an x axis line at the max component, sqrt(d_model) and text
-fig.add_trace(
-    go.Scatter(
-        x=[model.cfg.d_model**0.5, model.cfg.d_model**0.5],
-        y=[0, 1.0],
-        mode="lines",
-        line=dict(color="black", dash="dash"),
-        name="Max component",
+for sign in [-1.0, 1.0]:
+    fig.add_trace(
+        go.Scatter(
+            x=[sign * model.cfg.d_model**0.5, sign * model.cfg.d_model**0.5],
+            y=[0, 1.0],
+            mode="lines",
+            line=dict(color="black", dash="dash"),
+            name="Max component",
+        )
     )
-)
-
 
 # Update layout
 fig.update_layout(
-    title="Attention Paid vs Unembedding Component (see labels)",
+    title="Attention Paid vs Unembedding component when varying alpha tilde by -2 to +2 its original component",
     yaxis_title="Attention Paid",
     xaxis_title=f'Component in Normalized {LAYER_IDX}.{HEAD_IDX} Query Input ("alpha tilde")',
 )

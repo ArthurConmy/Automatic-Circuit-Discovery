@@ -11,6 +11,7 @@ t.set_grad_enabled(False)
 
 import numpy as np
 from datasets import load_dataset
+from copy import deepcopy
 from jaxtyping import Float, Int, Bool, jaxtyped
 from typing import Union, List, Dict, Tuple, Callable, Optional, Any, Sequence, Iterable, Mapping, TypeVar, Generic, NamedTuple, Literal
 from torch import Tensor

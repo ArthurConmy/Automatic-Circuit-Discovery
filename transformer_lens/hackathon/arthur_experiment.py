@@ -58,8 +58,8 @@ def imshow(
 
 # %%
 
-# MODEL_NAME = "gpt2-small"
-MODEL_NAME = "solu-10l"
+MODEL_NAME = "gpt2-small"
+# MODEL_NAME = "solu-10l"
 model = transformer_lens.HookedTransformer.from_pretrained(MODEL_NAME)
 from transformer_lens.hackathon.ioi_dataset import IOIDataset, NAMES
 
@@ -274,7 +274,7 @@ if "gpt" in model.cfg.model_name: # sigh, tied embeddings
                 "b s d_model, num_heads d_model d_head, num_heads d_head d_model_out -> b s d_model_out",
             )
             normalized_resid_mid = model.blocks[0].ln2(post_attention + embeds)
-            resid_post = model.blocks[0].mlp(normalized_resid_mid)
+            resid_post = model.blocks[0].mlp(normalized_resid_mid) # TODO not resid post!!!
             W_EE[cur_range.to(DEVICE)] = resid_post
 
 else: 
@@ -404,12 +404,12 @@ def get_single_example_plot(
     )
 
 NAME_MOVERS = {
-    "gpt2-small": [(9, 9), (10, 0), (9, 6)],
+    "gpt2": [(9, 9), (10, 0), (9, 6)],
     "SoLU_10L1280W_C4_Code": [(7, 12), (5, 4), (8, 3)],
 }[model.cfg.model_name]
 
 NEGATIVE_NAME_MOVERS = {
-    "gpt2-small": [(LAYER_IDX, HEAD_IDX), (11, 10)],
+    "gpt2": [(LAYER_IDX, HEAD_IDX), (11, 10)],
     "SoLU_10L1280W_C4_Code": [(LAYER_IDX, HEAD_IDX), (9, 15)], # second one on this one IOI prompt only...
 }[model.cfg.model_name]
 
@@ -457,6 +457,8 @@ for idx in range(OUTER_LEN):
 
 #%% [markdown]
 # <p> Observe that a large value of num_samples gives better results </p>
+
+# WARNING: ! below here is with random words
 
 for num_samples, random_seeds in [
     (2**i, 2**(10-i)) for i in range(4, 11)
