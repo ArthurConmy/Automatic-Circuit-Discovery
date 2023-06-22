@@ -6,6 +6,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
+import re
 
 t.set_grad_enabled(False)
 
@@ -46,6 +47,8 @@ def imshow(tensor, renderer=None, **kwargs):
     fig.show(renderer=renderer)
 
 
+
+
 def reorder_list_in_plotly_way(L: list, col_wrap: int):
     '''
     Helper function, because Plotly orders figures in an annoying way when there's column wrap.
@@ -56,6 +59,9 @@ def reorder_list_in_plotly_way(L: list, col_wrap: int):
         L = L[:-col_wrap]
     return L_new
 
+
+
+
 def hist(tensor, renderer=None, **kwargs):
     if isinstance(tensor, list):
         if isinstance(tensor[0], t.Tensor): arr = [to_numpy(tn) for tn in tensor]
@@ -65,6 +71,7 @@ def hist(tensor, renderer=None, **kwargs):
         arr = to_numpy(tensor)
     kwargs_post = {k: v for k, v in kwargs.items() if k in update_layout_set}
     kwargs_pre = {k: v for k, v in kwargs.items() if k not in update_layout_set}
+    add_mean_line = kwargs_pre.pop("add_mean_line", False)
     names = kwargs_pre.pop("names", None)
     if "barmode" not in kwargs_post:
         kwargs_post["barmode"] = "overlay"
@@ -73,10 +80,19 @@ def hist(tensor, renderer=None, **kwargs):
     if "margin" in kwargs_post and isinstance(kwargs_post["margin"], int):
         kwargs_post["margin"] = dict.fromkeys(list("tblr"), kwargs_post["margin"])
     fig = px.histogram(x=arr, **kwargs_pre).update_layout(**kwargs_post)
+    if add_mean_line:
+        if arr.ndim == 1:
+            fig.add_vline(x=arr.mean(), line_width=3, line_dash="dash", line_color="black", annotation_text=f"Mean = {arr.mean():.3f}", annotation_position="top")
+        elif arr.ndim == 2:
+            for i in range(arr.shape[0]):
+                fig.add_vline(x=arr[i].mean(), line_width=3, line_dash="dash", line_color="black", annotation_text=f"Mean = {arr.mean():.3f}", annotation_position="top")
     if names is not None:
         for i in range(len(fig.data)):
             fig.data[i]["name"] = names[i // 2]
     fig.show(renderer)
+
+
+
 
 def line(y: Union[t.Tensor, List[t.Tensor]], renderer=None, **kwargs):
     '''
@@ -120,3 +136,30 @@ def line(y: Union[t.Tensor, List[t.Tensor]], renderer=None, **kwargs):
         if names is not None:
             fig.for_each_trace(lambda trace: trace.update(name=names.pop(0)))
         fig.show(renderer)
+
+
+def scatter(x, y, renderer=None, **kwargs):
+    x = to_numpy(x)
+    y = to_numpy(y)
+    add_line = None
+    if "add_line" in kwargs:
+        add_line = kwargs.pop("add_line")
+    kwargs_post = {k: v for k, v in kwargs.items() if k in update_layout_set}
+    kwargs_pre = {k: v for k, v in kwargs.items() if k not in update_layout_set}
+    if "margin" in kwargs_post and isinstance(kwargs_post["margin"], int):
+        kwargs_post["margin"] = dict.fromkeys(list("tblr"), kwargs_post["margin"])
+    fig = px.scatter(y=y, x=x, **kwargs_pre).update_layout(**kwargs_post)
+    if add_line is not None:
+        xrange = fig.layout.xaxis.range or [x.min(), x.max()]
+        yrange = fig.layout.yaxis.range or [y.min(), y.max()]
+        add_line = add_line.replace(" ", "")
+        if add_line in ["x=y", "y=x"]:
+            fig.add_trace(go.Scatter(mode='lines', x=xrange, y=xrange, showlegend=False))
+        elif re.match("(x|y)=", add_line):
+            try: c = float(add_line.split("=")[1])
+            except: raise ValueError(f"Unrecognized add_line: {add_line}. Please use either 'x=y' or 'x=c' or 'y=c' for some float c.")
+            x, y = ([c, c], yrange) if add_line[0] == "x" else (xrange, [c, c])
+            fig.add_trace(go.Scatter(mode='lines', x=x, y=y, showlegend=False))
+        else:
+            raise ValueError(f"Unrecognized add_line: {add_line}. Please use either 'x=y' or 'x=c' or 'y=c' for some float c.")
+    fig.show(renderer)
