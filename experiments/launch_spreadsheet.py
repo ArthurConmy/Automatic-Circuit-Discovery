@@ -6,10 +6,10 @@ from typing import List
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
     "tracr-reverse": ["l2"],
-    "tracr-proportion": ["kl_div", "l2"],
+    "tracr-proportion": ["l2"],
     "induction": ["kl_div", "nll"],
     "docstring": ["kl_div", "docstring_metric"],
-    "greaterthan": ["greaterthan"],  # "kl_div"
+    "greaterthan": ["kl_div", "greaterthan"],
 }
 
 CPU = 4
@@ -30,7 +30,7 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
     for reset_network in [int(reset_networks)]:
         for zero_ablation in [0]:
             for task in TASKS:
-                for metric in ["kl_div"]: # METRICS_FOR_TASK[task]:
+                for metric in METRICS_FOR_TASK[task]:
 
                     if task.startswith("tracr"):
                         # Typical metric value range: 0.0-0.1
