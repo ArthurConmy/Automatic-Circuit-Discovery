@@ -16,7 +16,7 @@ model.set_use_attn_result(True)
 model.set_use_split_qkv_input(True)
 model.set_use_split_qkv_normalized_input(True) # new flag who dis
 USE_NAME_MOVER = False
-MODE="query" # TODO implement value
+MODE="key" # TODO implement value
 assert MODE in ["query", "key"]
 SHOW_LOADS = False
 LOCK_QUERY_WU = False
