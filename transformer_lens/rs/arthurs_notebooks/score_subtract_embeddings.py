@@ -175,6 +175,9 @@ def plot_random_sample(
             ) / (model.cfg.d_head ** 0.5)
 
             results.append(attention_scores)
+
+            curt = einops.einsum
+
         results_for_each_batch.append(t.stack(results, dim=0))
     results = sum(results_for_each_batch) / len(results_for_each_batch) # oh right, sum over the list means adding tensors
 

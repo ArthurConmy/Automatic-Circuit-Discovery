@@ -20,7 +20,7 @@ USE_NAME_MOVER = False
 MODE = "key"  # TODO implement value
 assert MODE in ["query", "key"]
 SHOW_LOADS = False
-LOCK_QUERY_WU = True
+LOCK_QUERY_WU = False
 # TODO implement runtime checking or whatever
 
 # %%
@@ -426,10 +426,10 @@ for scale_factor in tqdm(SCALE_FACTORS):
 
 # Prepare the figure
 fig = go.Figure()
-show = list(range(0, 4))
+show = list(range(2, 6))
 
 TEXTURES = {
-    key: ["solid", "dot", "dash", "dashdot"][idx % 4]
+    key: ["dash", "solid", "dot", "dashdot"][idx % 4]
     for idx, key in enumerate(saved_unit_directions.keys())
 }
 
