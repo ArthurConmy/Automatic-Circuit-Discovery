@@ -1,4 +1,4 @@
-from typing import Union, List, Optional
+from typing import Union, List, Optional, Tuple, Callable
 import warnings
 import torch as t
 import numpy as np
@@ -7,7 +7,7 @@ import random
 import copy
 from jaxtyping import Float
 import re
-from transformer_lens import HookedTransformer
+from transformer_lens import ActivationCache, HookedTransformer
 from functools import partial
 
 
@@ -781,7 +781,9 @@ def _ioi_metric_noising(
 
 
 
-def generate_data_and_caches(N: int, model: HookedTransformer, verbose: bool = False, seed: int = 42, prepend_bos: bool = False):
+def generate_data_and_caches(
+    N: int, model: HookedTransformer, verbose: bool = False, seed: int = 42, prepend_bos: bool = False
+) -> Tuple[IOIDataset, IOIDataset, ActivationCache, ActivationCache, Callable]:
 
     ioi_dataset = IOIDataset(
         prompt_type="mixed",

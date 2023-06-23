@@ -49,6 +49,7 @@ def imshow(tensor, renderer=None, **kwargs):
             i += 1
     fig.update_layout(**kwargs_post)
     fig.show(renderer=renderer)
+    return fig
 
 
 
