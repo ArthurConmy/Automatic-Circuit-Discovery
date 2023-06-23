@@ -15,8 +15,10 @@ device = t.device("cuda") if t.cuda.is_available() else t.device("cpu")
 update_layout_set = {
     "xaxis_range", "yaxis_range", "hovermode", "xaxis_title", "yaxis_title", "colorbar", "colorscale", "coloraxis", "title_x", "bargap", "bargroupgap", "xaxis_tickformat",
     "yaxis_tickformat", "title_y", "legend_title_text", "xaxis_showgrid", "xaxis_gridwidth", "xaxis_gridcolor", "yaxis_showgrid", "yaxis_gridwidth", "yaxis_gridcolor",
-    "showlegend", "xaxis_tickmode", "yaxis_tickmode", "xaxis_tickangle", "yaxis_tickangle", "margin", "xaxis_visible", "yaxis_visible", "bargap", "bargroupgap", "font"
+    "showlegend", "xaxis_tickmode", "yaxis_tickmode", "xaxis_tickangle", "yaxis_tickangle", "margin", "xaxis_visible", "yaxis_visible", "bargap", "bargroupgap", "font",
+    "modebar_add"
 }
+
 
 def imshow(tensor, renderer=None, **kwargs):
     kwargs_post = {k: v for k, v in kwargs.items() if k in update_layout_set}
@@ -27,6 +29,8 @@ def imshow(tensor, renderer=None, **kwargs):
         kwargs_pre["color_continuous_scale"] = "RdBu"
     if "margin" in kwargs_post and isinstance(kwargs_post["margin"], int):
         kwargs_post["margin"] = dict.fromkeys(list("tblr"), kwargs_post["margin"])
+    if "modebar_add" not in kwargs_post:
+        kwargs_post["modebar_add"] = ['drawline', 'drawopenpath', 'drawclosedpath', 'drawcircle', 'drawrect', 'eraseshape']
     fig = px.imshow(to_numpy(tensor), color_continuous_midpoint=0.0, **kwargs_pre)
     if facet_labels:
         if "facet_col_wrap" in kwargs_pre:
@@ -71,6 +75,8 @@ def hist(tensor, renderer=None, **kwargs):
         arr = to_numpy(tensor)
     kwargs_post = {k: v for k, v in kwargs.items() if k in update_layout_set}
     kwargs_pre = {k: v for k, v in kwargs.items() if k not in update_layout_set}
+    if "modebar_add" not in kwargs_post:
+        kwargs_post["modebar_add"] = ['drawline', 'drawopenpath', 'drawclosedpath', 'drawcircle', 'drawrect', 'eraseshape']
     add_mean_line = kwargs_pre.pop("add_mean_line", False)
     names = kwargs_pre.pop("names", None)
     if "barmode" not in kwargs_post:
@@ -111,6 +117,8 @@ def line(y: Union[t.Tensor, List[t.Tensor]], renderer=None, **kwargs):
         )
     if "hovermode" not in kwargs_post:
         kwargs_post["hovermode"] = "x unified"
+    if "modebar_add" not in kwargs_post:
+        kwargs_post["modebar_add"] = ['drawline', 'drawopenpath', 'drawclosedpath', 'drawcircle', 'drawrect', 'eraseshape']
     if "use_secondary_yaxis" in kwargs_pre and kwargs_pre["use_secondary_yaxis"]:
         del kwargs_pre["use_secondary_yaxis"]
         if "labels" in kwargs_pre:
@@ -126,13 +134,13 @@ def line(y: Union[t.Tensor, List[t.Tensor]], renderer=None, **kwargs):
         y1 = to_numpy(y[1])
         x0, x1 = kwargs_pre.pop("x", [np.arange(len(y0)), np.arange(len(y1))])
         name0, name1 = kwargs_pre.pop("names", ["yaxis1", "yaxis2"])
-        fig.add_trace(go.Scatter(y=y0, x=x0, name=name0), secondary_y=False)
-        fig.add_trace(go.Scatter(y=y1, x=x1, name=name1), secondary_y=True)
+        fig.add_trace(go.Scatter(y=y0, x=x0, name=name0, **kwargs_pre), secondary_y=False)
+        fig.add_trace(go.Scatter(y=y1, x=x1, name=name1, **kwargs_pre), secondary_y=True)
         fig.show(renderer)
     else:
         y = list(map(to_numpy, y)) if isinstance(y, list) and not (isinstance(y[0], int) or isinstance(y[0], float)) else to_numpy(y)
-        fig = px.line(y=y, **kwargs_pre).update_layout(**kwargs_post)
         names = kwargs_pre.pop("names", None)
+        fig = px.line(y=y, **kwargs_pre).update_layout(**kwargs_post)
         if names is not None:
             fig.for_each_trace(lambda trace: trace.update(name=names.pop(0)))
         fig.show(renderer)
@@ -146,6 +154,8 @@ def scatter(x, y, renderer=None, **kwargs):
         add_line = kwargs.pop("add_line")
     kwargs_post = {k: v for k, v in kwargs.items() if k in update_layout_set}
     kwargs_pre = {k: v for k, v in kwargs.items() if k not in update_layout_set}
+    if "modebar_add" not in kwargs_post:
+        kwargs_post["modebar_add"] = ['drawline', 'drawopenpath', 'drawclosedpath', 'drawcircle', 'drawrect', 'eraseshape']
     if "margin" in kwargs_post and isinstance(kwargs_post["margin"], int):
         kwargs_post["margin"] = dict.fromkeys(list("tblr"), kwargs_post["margin"])
     fig = px.scatter(y=y, x=x, **kwargs_pre).update_layout(**kwargs_post)

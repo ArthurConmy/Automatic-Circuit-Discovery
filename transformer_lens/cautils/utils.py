@@ -21,6 +21,7 @@ from torch.distributions.categorical import Categorical
 import torch.nn.functional as F
 from tqdm.auto import tqdm
 from rich import print as rprint
+from rich.table import Table, Column
 from collections import defaultdict
 from transformer_lens import utils, HookedTransformer, ActivationCache, FactoredMatrix
 import plotly.express as px
