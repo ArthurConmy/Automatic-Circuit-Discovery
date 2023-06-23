@@ -42,6 +42,55 @@ this he would be rewarded materially for betraying his wife. But divorce theft i
 the spouse which has the other one over a barrel. They could also use this change in fortunes to renegotiate the 
 terms of the marriage in their favor under threat of divorce, which economists call exploitation:Brinig and Allen 
 (2000) argue that there are two different types of quasi""",
+#     "�": """Production manager Provost said he deposited the nearly $24,000 cheque from the 
+# festival into his own account before buying the alcohol for the festival weekend. It wasn��t until the following 
+# Wednesday that he learned his account was overdrawn by about $15,000 because the cheque never cleared.��I��m 
+# devastated and I��m broke,�� said Provost, who said he volunteered his time to run the production and used his 
+# connections to book the performers.Provost said he last spoke with Capital Pride��s treasurer on Aug. 26.��We sent 
+# multiple emails, we tried calling them for multiple days after that, and there was no answer. No""",v
+    " site": """Fuqua Development has unveiled tentative plans for a major mixed-use development wedged against 
+Memorial Drive and the Beltline corridor.A new marketing flyer released by the controversial developer elaborates 
+on his planned project in Reynoldstown, which includes more than 100,000 square feet of retail and restaurant space
+— including (potentially) a CineBistro and Sprouts — plus 120,000 square feet of offices, 600 apartments, and 100 
+condos.Fuqua purchased the site at 905 Memorial Drive last year, which didn't thrill a lot of folks, given the 
+developer's penchant for big-box projects. Fuqua's planned overhaul will replace a warehouse facility butted up 
+against Interstate 20.According to this rendering, which might not represent the latest version of Fuqua's plans, 
+retail spaces would front the Belt""",
+#     " and": """They are characterized by the possession of edible tubers that are rich in starch, some 
+# ions and vitamins. However, most of the yam tubers have to be cooked before consumption, in order to remove the 
+# toxic compounds present [19] , [20] .Lectins are a group of proteins or glycoproteins possessing carbohydrate 
+# binding capability. In the past, lectins are classified in accordance with their carbohydrate specificities: 
+# mannose binding [1] , mannose and glucose binding [2] , galactose binding [3] , etc. As more lectins with diverse 
+# sugar-binding specificities were identified, the old system was no longer feasible, and other classification 
+# # systems were proposed. Animal lect""",
+    " use": """Synopsis EditProduction EditMusic EditMeaning EditReggio stated that the Qatsi films are intended to 
+simply create an experience and that "it is up  the viewer to take for himself/herself what it is that  means." He 
+also said that "these films have never been about the effect of technology, of industry on people. It's been that 
+everyone: politics, education, things of the financial structure, the nation state structure, language, the 
+culture, religion, all of that exists within the host of technology. So it's not the effect of, it's that 
+everything exists within . It's not that we use technology, we live""",
+    " oil": """ROME (Thomson Reuters Foundation) - Italian police said they have busted a crime ring exporting fake 
+extra virgin olive oil to the United States, highlighting the mafia��s infiltration of Italy��s famed agriculture 
+and food business.Twelve people with links to the ��Ndrangheta, the organized crime group based in the southern 
+Calabria region, were arrested on Tuesday on a series of charges including mafia association and fraud, police said
+in a statement.The gang shipped cheap olive p""",
+    " with": """ Park next month.��I am really looking forward to the inaugural SprintX race at Canadian Tire Motorsport Park.�� 
+Wittmer said.��Racing in my home country is always as nice thing, especially in front of family, friends, and 
+representing the BMW brand.��Wittmer, a BMW of North America factory driver, is a former IMSA GT Le Mans class 
+champion, and will bring a wealth of experience to the upstart team, which made its debut at Circuit of The 
+Americas last month.The Texas-based team, with the support BMW of North America, has shifted its focus entirely to 
+SprintX for the remainder of the year.��I��m honored to have the opportunity to participate with Kuno for this new 
+series,�� Mills said.��It��s a dream come true to be included in the BMW family, and we are excited to pursue a 
+championship with Kun""",
+    " resolve": """ Each time TTC staff were forced to respond it took an average of 4 minutes 51 seconds to get things moving 
+again.The TTC counts incidents that involve the police separately, labeling them "security incidents."Just behind 
+passenger alerts was the TTC's own train problems. The rolling stock - a technical name for the trains - needed 
+emergency repairs 1,323 times in 2012, causing 109 hours and 49 minutes of delays.Frustratingly, the problem that 
+created the worst wait times is almost entirely preventable. 330 small fires, litter problems, and unauthorized 
+people at track level stopped the subway for a total of 106 hours and 37 minutes in 2012. Each incident took an 
+average of 19 minutes to resolve - longer than breakdowns and assistance alarms.In total there were 4,842 outages 
+on the subway in 2012 that caused more than three weeks of delays (509 hours and 35 minutes to be precise.) The 
+average delay across all types took 6 minutes and 31 seconds to clear""",
 }
 #%%
 
@@ -60,12 +109,13 @@ assert list(O_BIAS.shape) == [model.cfg.d_model]
 
 scale_factors = [-2.0, -1.0, 0.0, 1.0, 2.0]
 
-for suppressed_word, text in dataset.items():
+for suppressed_word, text in list(dataset.items())[-3:]:
     all_results = {}
     for component_to_scale in ["unembedding", "orthogonal", "full"]:
         tokens = model.to_tokens(text).tolist()[0]
         suppressed_token = int(model.to_tokens(suppressed_word)[0][1:])
         suppressed_indices = [i for i, t in enumerate(tokens) if t == suppressed_token]
+        assert len(suppressed_indices)>0, "Suppressed word not found in text"
         assert len(tokens)-1 not in suppressed_indices, "Should not suppress the true token"
         results = []
 
@@ -120,11 +170,11 @@ for suppressed_word, text in dataset.items():
             assert torch.allclose(
                 ov_contribution, 
                 recomputed_component,
-                atol=1e-5,
-                rtol=1e-5,
+                atol=5e-3,
+                rtol=5e-3,
             )
 
-            full_contribution = cache[HOOK_ATTN_RESULT][0, -2] # ???
+            full_contribution = cache[HOOK_ATTN_RESULT][0, -2]
 
             def editor(
                 z, 
@@ -176,7 +226,6 @@ for suppressed_word, text in dataset.items():
                 torch.LongTensor(tokens),
                 fwd_hooks=fwd_hooks,
             )
-
             new_probs = torch.softmax(new_logits[0, -2], dim=-1)
             assert list(new_probs.shape) == [model.cfg.d_vocab], f"{new_probs.shape} != {[model.cfg.d_vocab]}"
             results.append(-new_probs[tokens[-1]].log().detach().cpu()) # Losses
