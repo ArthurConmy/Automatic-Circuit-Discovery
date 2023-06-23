@@ -54,6 +54,7 @@ PATTERN_HOOK_NAME = f"blocks.{LAYER_IDX}.attn.hook_pattern"
 HOOK_ATTN_OUT = f"blocks.{LAYER_IDX}.hook_attn_out"
 O_MATRIX = model.W_O[LAYER_IDX, HEAD_IDX] # [d_head, d_model]
 O_BIAS = model.b_O[LAYER_IDX] # [d_model]
+HOOK_ATTN_RESULT = f"blocks.{LAYER_IDX}.attn.hook_result"
 assert list(O_BIAS.shape) == [model.cfg.d_model]
 # ! no bias added
 
@@ -61,7 +62,7 @@ scale_factors = [-2.0, -1.0, 0.0, 1.0, 2.0]
 
 for suppressed_word, text in dataset.items():
     all_results = {}
-    for component_to_scale in ["unembedding", "orthogonal"]:
+    for component_to_scale in ["unembedding", "orthogonal", "full"]:
         tokens = model.to_tokens(text).tolist()[0]
         suppressed_token = int(model.to_tokens(suppressed_word)[0][1:])
         suppressed_indices = [i for i, t in enumerate(tokens) if t == suppressed_token]
@@ -73,7 +74,7 @@ for suppressed_word, text in dataset.items():
             model.reset_hooks()
             logits, cache = model.run_with_cache(
                 torch.LongTensor(tokens),
-                names_filter = lambda name: name in [PATTERN_HOOK_NAME, V_HOOK_NAME, HOOK_ATTN_OUT],
+                names_filter = lambda name: name in [PATTERN_HOOK_NAME, V_HOOK_NAME, HOOK_ATTN_OUT, HOOK_ATTN_RESULT],
             )
             v_act = cache[V_HOOK_NAME][0, :, HEAD_IDX] # [batch, pos, head_index, d_head]
                                                     # this has bias added
@@ -123,6 +124,8 @@ for suppressed_word, text in dataset.items():
                 rtol=1e-5,
             )
 
+            full_contribution = cache[HOOK_ATTN_RESULT][0, -2] # ???
+
             def editor(
                 z, 
                 hook, 
@@ -144,19 +147,34 @@ for suppressed_word, text in dataset.items():
 
             model.reset_hooks()
 
-            EDITING_IN_HOOK = f"blocks.{LAYER_IDX}.hook_resid_mid"
-            # EDITING_IN_HOOK = f"blocks.{model.cfg.n_layers-1}.hook_resid_post"
+            # EDITING_IN_HOOK = f"blocks.{LAYER_IDX}.hook_resid_mid"
+            EDITING_IN_HOOK = f"blocks.{model.cfg.n_layers-1}.hook_resid_post"
 
-            new_logits = model.run_with_hooks(
-                torch.LongTensor(tokens),
-                fwd_hooks=[(EDITING_IN_HOOK, partial(
+            if component_to_scale == "unembedding" or component_to_scale == "orthogonal":
+                fwd_hooks = [(EDITING_IN_HOOK, partial(
                     editor,
                     cached_contribution = ov_contribution,
                     unembedding_component = unembedding_component * (scale_factor if component_to_scale == "unembedding" else 1.0),
                     unembedding_unit_vector = unembedding_unit_vector,
                     orthogonal_component = orthogonal_component * (scale_factor if component_to_scale == "orthogonal" else 1.0),
                     orthogonal_vector = orthogonal_vector,
-                ))], 
+                ))]
+
+            else:
+                fwd_hooks = [
+                    (EDITING_IN_HOOK, partial(
+                        editor,
+                        cached_contribution = cache[HOOK_ATTN_RESULT][0, -2, HEAD_IDX],
+                        unembedding_component = scale_factor,
+                        unembedding_unit_vector = cache[HOOK_ATTN_RESULT][0, -2, HEAD_IDX],
+                        orthogonal_component = 0.0,
+                        orthogonal_vector = 0.0,
+                    )),
+                ]
+
+            new_logits = model.run_with_hooks(
+                torch.LongTensor(tokens),
+                fwd_hooks=fwd_hooks,
             )
 
             new_probs = torch.softmax(new_logits[0, -2], dim=-1)
@@ -169,9 +187,10 @@ for suppressed_word, text in dataset.items():
     ax = fig.add_subplot(111)
     ax.plot(scale_factors, all_results["unembedding"], label="unembedding")
     ax.plot(scale_factors, all_results["orthogonal"], label="orthogonal")
+    ax.plot(scale_factors, all_results["full"], label="full")
     ax.set_xlabel("Scale factor")
     ax.set_ylabel("Loss")
-    ax.set_title(f"{suppressed_word=} {int(unembedding_component.item())=} {int(orthogonal_component.item())=}") #  {model.to_string(suppressed_word)}")
+    ax.set_title(f"{suppressed_word=} {int(unembedding_component.item())=} {int(orthogonal_component.item())=} {EDITING_IN_HOOK=}") #  {model.to_string(suppressed_word)}")
     ax.legend()
 
     plt.show()
