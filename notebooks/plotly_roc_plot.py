@@ -685,7 +685,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
     if plot_type.startswith("metric_edges") or plot_type.startswith("kl_edges"):
         for (row, col), task_idx in rows_cols_task_idx:
             metric_name = METRICS_FOR_TASK[task_idx][1]
-            if plot_type == "metric_edges":
+            if plot_type.startswith("metric_edges"):
                 y_key = "test_" + METRICS_FOR_TASK[task_idx][1]
             else:
                 y_key = "test_" + METRICS_FOR_TASK[task_idx][0]
