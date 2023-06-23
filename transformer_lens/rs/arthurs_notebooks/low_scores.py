@@ -1,15 +1,6 @@
-# %% [markdown]
-# <h1> Look into the effect of interpolating the components of various residual stream vectors </h1>
-# <p> With large attention range even for small tweaks to stimulus (~10% increases) </p>
-# WARNING not using effective embedding
-# TODO add MLP ONLY baseline
-# TODO do this with attention scores
-
 from transformer_lens.cautils.notebook import *  # use from transformer_lens.cautils.utils import * instead for the same effect without autoreload
 
 DEVICE = t.device("cuda" if t.cuda.is_available() else "cpu")
-
-# %%
 
 MODEL_NAME = "gpt2-small"
 model = HookedTransformer.from_pretrained(MODEL_NAME, device=DEVICE)
@@ -20,10 +11,8 @@ USE_NAME_MOVER = False
 MODE = "key"  # TODO implement value
 assert MODE in ["query", "key"]
 SHOW_LOADS = False
-LOCK_QUERY_WU = False
+LOCK_QUERY_WU = True
 # TODO implement runtime checking or whatever
-
-# %%
 
 update_word_lists = {
     " John": " John was reading a book when suddenly John heard a strange noise",
@@ -65,11 +54,7 @@ update_tokens = {
     for k, v in update_word_lists.items()
 }
 
-# %%
-
 unembedding = model.W_U.clone()
-
-# %%
 
 # look at some components...
 
@@ -123,14 +108,10 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(update_tokens.i
     # if update_token_idx > 3:
     #     break
 
-# %%
-
 unembedding = model.W_U.clone()
 LAYER_IDX, HEAD_IDX = (
     NEG_HEADS[model.cfg.model_name] if not USE_NAME_MOVER else (10, 10)
 )
-
-# %%
 
 # Arthur makes a hook with tons of assertions so hopefully nothing goes wrong
 # We only use it later, but declaring here makes syntax not defined show maybe?
@@ -178,9 +159,6 @@ def component_adjuster(
     assert abs(z[0, position, HEAD_IDX].norm().item() - d_model**0.5) < 3e-3, abs(z[0, position, HEAD_IDX].norm().item() - d_model**0.5)
 
     return z
-
-
-# %%
 
 # Let's cache some things to use as components
 
@@ -236,8 +214,6 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(update_tokens.i
         normalize(unembedding[:, update_token]).detach().cpu().clone()
     )
 
-# %%
-
 # at first I'll just look at components... then do the full interpolation plot
 
 component_data = {key: [] for key in saved_unit_directions.keys()}
@@ -281,24 +257,8 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(update_tokens.i
             ).item()
         )
 
-# %%
-
-hist(
-    list(component_data.values()),
-    # labels={"variable": "Version", "value": "Attn diff (positive ⇒ more attn paid to IO than S1)"},
-    title=f"Component sizes of various directions; remember the norm is {(model.cfg.d_model)**0.5:.2f}. Hooks refer to the values *at the earlier position in sentence*",
-    names=list(component_data.keys()),
-    width=800,
-    height=600,
-    opacity=0.7,
-    marginal="box",
-    template="simple_white",
-)
-
-# %%
-
 SCALE_FACTORS = (
-    torch.arange(0, 2, 0.5).tolist() + [None]
+    [None] + torch.arange(0, 2, 0.5).tolist()
     # [0.0, 0.5, 0.99, 1.0, 1.01, 1.1, 1.25, 1.5, 2.0]
     if not USE_NAME_MOVER
     else torch.arange(-2, 2, 1).tolist()
@@ -385,7 +345,7 @@ for scale_factor in tqdm(SCALE_FACTORS):
                         set_to_unembedding,
                         direction=saved_unit_directions["unembedding"][
                             update_token_idx
-                        ] * model.cfg.d_model**0.5,
+                        ],
                         update_token_positions=update_token_positions,
                     ),
                 )
@@ -422,19 +382,16 @@ for scale_factor in tqdm(SCALE_FACTORS):
                 )
             ] = attn_score_on_update_token
 
-# %%
-
 # Prepare the figure
 fig = go.Figure()
-show = list(range(2, 6))
+show = list(range(2, 4))
 
 TEXTURES = {
-    key: ["dash", "solid", "dot", "dashdot"][idx % 4]
+    key: ["solid", "dot", "dash", "dashdot"][idx % 4]
     for idx, key in enumerate(saved_unit_directions.keys())
 }
 
-strs = list(saved_unit_directions.keys())
-for unit_direction_string in strs[2:4]: # + strs[]:
+for unit_direction_string in list(saved_unit_directions.keys())[:4]:
     for update_token_idx, (update_token, prompt_tokens) in enumerate(
         list(update_tokens.items())
     ):
@@ -492,7 +449,7 @@ for sign in [-1.0, 1.0]:
 
 # Update layout
 fig.update_layout(
-    title=f"Varying alpha tilde by {str(SCALE_FACTORS[:2])[:-1]}, ...{str(SCALE_FACTORS[-2:])[1:]} times its original component",
+    title="Attention Scores vs Unembedding component when varying alpha tilde by 0 to +2 its original component",
     yaxis_title="Attention Scores",
     xaxis_title=f'Component in Normalized {LAYER_IDX}.{HEAD_IDX} {MODE} Input ("alpha tilde")',
 )
@@ -516,5 +473,3 @@ fig.show(
         ]
     }
 )
-
-# %%
