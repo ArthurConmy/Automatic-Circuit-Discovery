@@ -945,10 +945,27 @@ def get_roc_figure(all_points, names): # TODO make the plots grey / black / yell
     """Points are (false positive rate, true positive rate)"""
     roc_figure = go.Figure()
     for points, name in zip(all_points, names):
+        try: # TODO test this try block
+            points[0].keys()     
+    
+        except:
+            x = [p[0] for p in points]
+            y = [p[1] for p in points]
+
+        else:
+            x=None
+            y=None
+            for key in points[0].keys():
+                if "fpr" in key:
+                    x = [p[key] for p in points]
+                if "tpr" in key:
+                    y = [p[key] for p in points]
+            assert x is not None and y is not None, "Could not process with either indices or keys"
+        
         roc_figure.add_trace(
             go.Scatter(
-                x=[p[0] for p in points],
-                y=[p[1] for p in points],
+                x=x,
+                y=y,
                 mode="lines",
                 line=dict(shape='hv'),  # Adding this line will make the curve stepped.
                 name=name,
