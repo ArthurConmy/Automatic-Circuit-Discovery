@@ -454,6 +454,14 @@ if TASK != "induction":
             layout="neato" if TASK in ["ioi", "greaterthan"] else "dot",
         )
 
+        show(
+            canonical_circuit_subgraph,
+            fname=CANONICAL_OUT_DIR / f"{TASK}_mlp.gv",
+            colorscheme=colorscheme,
+            show_full_index=False,
+            remove_qkv=True,
+        )
+
         if TASK in ["ioi", "greaterthan"]:
             no_mlp = deepcopy(canonical_circuit_subgraph)
             for (n_to, _, n_from, _), e in no_mlp.all_edges().items():

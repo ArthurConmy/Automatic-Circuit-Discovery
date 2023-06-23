@@ -245,6 +245,7 @@ def l2_metric(  # this is for proportion... it's unclear how to format this tbh 
     proc = logits[:, 1:]
     if take_element_zero:
         proc = proc[:, :, 0] # output 0 contains the proportion of the token "x" (== 3)
+    assert proc.shape == model_out.shape
     if return_one_element:
         return ((proc - model_out) ** 2).mean()
     else:
