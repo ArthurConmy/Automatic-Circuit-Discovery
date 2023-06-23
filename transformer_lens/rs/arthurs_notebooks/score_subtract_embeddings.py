@@ -75,8 +75,28 @@ dataset = get_webtext()
 #%%
 
 bags_of_words = []
-OUTER_LEN = 100
+OUTER_LEN = 10
 INNER_LEN = 10
+
+dataset = list({
+    " John": " John was reading a book when suddenly John heard a strange noise",
+    " Maria": " Maria loves playing the piano and, moreover Maria also enjoys painting",
+    " city": " The city was full of lights, making the city look like a sparkling diamond",
+    " ball": " The ball rolled away, so the dog chased the ball all the way to the park",
+    " Python": " Python is a popular language for programming. In fact, Python is known for its simplicity",
+    " President": " The President announced new policies today. Many are waiting to see how the President's decisions will affect the economy",
+    " Bitcoin": " Bitcoin's value has been increasing rapidly. Investors are closely watching Bitcoin's performance",
+    " dog": " The dog wagged its tail happily. Seeing the dog so excited, the children started laughing",
+    " cake": " The cake looked delicious. Everyone at the party was eager to taste the cake today",
+    " book": " The book was so captivating, I couldn't put the book down",
+    " house": " The house was quiet. Suddenly, a noise from the upstairs of the house startled everyone",
+    " car": " The car pulled into the driveway. Everyone rushed out to see the new car today",
+    " computer": " The computer screen flickered. She rebooted the computer hoping to resolve the issue",
+    " key": " She lost the key to her apartment. She panicked when she realized she had misplaced the key today",
+    " apple": " He took a bite of the apple. The apple was crisp and delicious",
+    " phone": " The phone rang in the middle of the night. She picked up the phone with a groggy hello",
+    " train": " The train was late. The passengers were annoyed because the train was delayed by an hour",
+}.values())
 
 idx = -1
 while len(bags_of_words) < OUTER_LEN:
