@@ -43,7 +43,6 @@ import warnings
 parser = argparse.ArgumentParser()
 parser.add_argument('--arrows', action='store_true', help='Include help arrows')
 parser.add_argument('--hisp-yellow', action='store_true', help='make HISP yellow')
-parser.add_argument("--percentage-annotation", action="store_true", help="Show percentage annotation")
 # Some ACDC tracr runs have its threshold go down to 1e-9 but that doesn't change results at all, we don't want to plot
 # them.
 parser.add_argument("--min-score", type=float, default=1e-6, help="minimum score cutoff for ACDC runs")
@@ -55,11 +54,10 @@ else:
 
 # %%
 
-PERCENTAGE_ANNOTATION = args.percentage_annotation
-if PERCENTAGE_ANNOTATION:
-    THRESHOLD_ANNOTATION = r"$\tau,\lambda,\%$"
-else:
-    THRESHOLD_ANNOTATION = r"$\tau,\lambda,\text{Score Sum}$"
+GRIDCOLOR = "rgba(220,220,220,1)"
+ZEROLINECOLOR = "rgba(180,180,180,1)"
+THRESHOLD_ANNOTATION_TWO = r"$\tau,\lambda$"
+THRESHOLD_ANNOTATION = r"$\tau,\lambda,\%$"
 
 if IS_ADRIA or ipython is None:
     DATA_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / "plots_data"
@@ -133,7 +131,7 @@ else:
     colorscale_names = {
         "ACDC": "YlOrRd_r",
         "SP": "Greens_r",
-        "HISP": "Blues_r",
+        "HISP": "Blues",
     }
 
 colorscales = {}
@@ -152,6 +150,7 @@ for methodof, name in colorscale_names.items():
 custom_color_scales = {
     ("HISP", True): 0.02,
     ("ACDC", True): 0.02,
+    ("HISP", False): 0.8,
 }
 
 # Default location to sample: 0.2
@@ -204,7 +203,8 @@ def discard_non_pareto_optimal(points, auxiliary, cmp="gt"):
 
 #%%
 
-def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("trained",), ablation_type="random_ablation", plot_type="roc_nodes", scale_min=0.01, scale_max=0.8):
+def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("trained",), ablation_type="random_ablation", plot_type="roc_nodes", scale_max=1.0):
+    scale_min = 0.01 if args.hisp_yellow else 0.2
     TOP_MARGIN = (
         0.09
         + 0.26 * len(weights_types)
@@ -222,7 +222,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         ]
         specs=[[{"rowspan": 2, "colspan": 2}, None, {}, {}, {"rowspan": 2, "colspan": 1, "t": TOP_MARGIN, "l": LEFT_MARGIN, "r": RIGHT_MARGIN}], [None, None, {}, {}, None]]
         column_widths = [0.24, 0.24, 0.24, 0.24, 0.04]
-        subplot_titles = ("ioi", "tracr-reverse", "tracr-proportion", THRESHOLD_ANNOTATION, "docstring", "greaterthan")
+        subplot_titles = ("ioi", "tracr-reverse", "tracr-proportion", THRESHOLD_ANNOTATION_TWO, "docstring", "greaterthan")
         subplot_titles = [TASK_NAMES.get(task_idx, task_idx) for task_idx in subplot_titles]
 
     elif plot_type in ["kl_edges_4", "metric_edges_4"]:
@@ -310,19 +310,20 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
 
                 scores = np.array(all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["score"])
 
-                if PERCENTAGE_ANNOTATION and alg_idx.lower() in ["hisp", "16h"]:
+                if methodof == "HISP":
                     scores = np.array(all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["n_nodes"])
-                    for i in range(1, len(all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["n_nodes"])-1): # first and last broken I think
-                        scores[i] /= max(all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["n_nodes"][1:-1])
-                        scores[i] *= 100
+                    nanmax_scores = np.max(np.nan_to_num(scores, nan=-np.inf, neginf=-np.inf, posinf=-np.inf))
+                    scores *= 100 / nanmax_scores
 
-                if methodof == "ACDC":
-                    # Filter scores that are too small
-                    scores = scores[scores >= args.min_score]
+                    log_scores = scores  # Use linear scale for colors
+                else:
+                    if methodof == "ACDC":
+                        # Filter scores that are too small
+                        scores = scores[scores >= args.min_score]
 
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    log_scores = np.log10(scores)
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")
+                        log_scores = np.log10(scores)
                 log_scores = np.nan_to_num(log_scores, nan=0.0, neginf=0.0, posinf=0.0)
 
                 min_log_score = min(np.min(log_scores), min_log_score)
@@ -330,9 +331,8 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         bounds_for_alg[methodof] = (min_log_score, max_log_score)
 
 
-    all_algs_min = min(v for (v, _) in bounds_for_alg.values())
-    all_algs_max = max(v for (_, v) in bounds_for_alg.values())
-    heatmap_ys = np.linspace(all_algs_min, all_algs_max, 300)
+    all_algs_min = min(np.log10(np.clip(v, a_min=1, a_max=None)) if k == "HISP" else v for k, (v, _) in bounds_for_alg.items())
+    all_algs_max = max(np.log10(v) if k == "HISP" else v for k, (_, v) in bounds_for_alg.items())
 
     def normalize(x, x_min, x_max):
         if (x_max - x_min) < 1e-8:
@@ -351,6 +351,8 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         # nums[nums < scale_min] = np.nan
         # nums[nums > 1] = np.nan
         alg_ys = np.linspace(alg_min, alg_max, 100)
+        if methodof == "HISP":
+            alg_ys = np.log10(alg_ys)
         nums = np.linspace(scale_min, scale_max, len(alg_ys))
         fig.add_trace(
             go.Heatmap(
@@ -365,11 +367,13 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
             row=1,
             col=len(specs[0]),
         )
-    fig.update_xaxes(showline=False, zeroline=False, showgrid=False, row=1, col=len(specs[0]), showticklabels=False, ticks="")
+    fig.update_xaxes(showline=False, zeroline=False, showgrid=False, row=1, col=len(specs[0]), showticklabels=False, ticks="",
+                     gridcolor=GRIDCOLOR, zerolinecolor=ZEROLINECOLOR, zerolinewidth=1)
     tickvals = list(range(int(np.floor(all_algs_min)), int(np.ceil(all_algs_max))))
     ticktext = [f"$10^{{{v}}}$" for v in tickvals]
     fig.update_yaxes(showline=False, zeroline=False, showgrid=True, row=1, col=len(specs[0]), side="right",
-                     range=[all_algs_min, all_algs_max], tickvals=tickvals, ticktext=ticktext)
+                     range=[all_algs_min, all_algs_max], tickvals=tickvals, ticktext=ticktext,
+                     gridcolor=GRIDCOLOR, zerolinecolor=ZEROLINECOLOR, zerolinewidth=1)
 
 
     for alg_idx, methodof in alg_names.items():
@@ -396,25 +400,25 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                 y_data = np.array(this_data[task_idx][metric_name][alg_idx][y_key])
                 scores = np.array(this_data[task_idx][metric_name][alg_idx]["score"])
 
-                if PERCENTAGE_ANNOTATION and alg_idx.lower() in ["hisp", "16h"]:
+                if methodof == "HISP":
                     scores = np.array(this_data[task_idx][metric_name][alg_idx]["n_nodes"])
-                    for i in range(1, len(this_data[task_idx][metric_name][alg_idx]["n_nodes"])-1): 
-                        # first and last broken I think
-                        scores[i] /= max(this_data[task_idx][metric_name][alg_idx]["n_nodes"][1:-1])
-                        scores[i] *= 100
+                    nanmax_scores = np.max(np.nan_to_num(scores, nan=-np.inf, neginf=-np.inf, posinf=-np.inf))
+                    scores *= 100 / nanmax_scores
 
-                if methodof == "ACDC":
-                    # Filter scores that are too small
-                    mask = (scores >= args.min_score) | (~np.isfinite(scores))
-                    x_data = x_data[mask]
-                    y_data = y_data[mask]
-                    scores = scores[mask]
-                    del mask
+                    log_scores = scores  # use linear scale for colors
+                else:
+                    if methodof == "ACDC":
+                        # Filter scores that are too small
+                        mask = (scores >= args.min_score) | (~np.isfinite(scores))
+                        x_data = x_data[mask]
+                        y_data = y_data[mask]
+                        scores = scores[mask]
+                        del mask
 
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")
+                        log_scores = np.log10(scores)
 
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    log_scores = np.log10(scores)
                 # if alg_idx == "16H" and task_idx == "tracr-reverse":
                 #     import pdb; pdb.set_trace()
                 log_scores = np.nan_to_num(log_scores, nan=np.nan, neginf=-1e90, posinf=1e90)
@@ -660,7 +664,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     # # add label to y axis
                     # fig.update_yaxes(title_text="True positive rate", row=row, col=col)
 
-                    fig.update_layout(title_font=dict(size=1)) # , row=row, col=col)
+                    fig.update_layout(title_font=dict(size=1), plot_bgcolor="rgba(0,0,0,0)")
 
 
                 else:
@@ -679,7 +683,9 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                         fig.update_xaxes(visible=True, row=row, col=col, tickvals=[0, 0.25, 0.5, 0.75, 1.], ticktext=["0", "", "0.5", "", "1"], range=[-0.05, 1.05])
 
                     # smaller title font
-                    fig.update_layout(title_font=dict(size=20)) # , row=row, col=col)
+                    fig.update_layout(title_font=dict(size=20), plot_bgcolor="rgba(0,0,0,0)")
+                fig.update_xaxes(gridcolor=GRIDCOLOR, zerolinecolor=ZEROLINECOLOR, zerolinewidth=1, row=row, col=col)
+                fig.update_yaxes(gridcolor=GRIDCOLOR, zerolinecolor=ZEROLINECOLOR, zerolinewidth=1, row=row, col=col)
 
     # Add horizontal lines with test performance on KL plots
     if plot_type.startswith("metric_edges") or plot_type.startswith("kl_edges"):
