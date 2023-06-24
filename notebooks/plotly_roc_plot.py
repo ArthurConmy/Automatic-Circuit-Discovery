@@ -56,7 +56,6 @@ else:
 
 GRIDCOLOR = "rgba(220,220,220,1)"
 ZEROLINECOLOR = "rgba(180,180,180,1)"
-THRESHOLD_ANNOTATION_TWO = r"$\tau,\lambda$"
 THRESHOLD_ANNOTATION = r"$\tau,\lambda,\%$"
 
 if IS_ADRIA or ipython is None:
@@ -222,7 +221,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         ]
         specs=[[{"rowspan": 2, "colspan": 2}, None, {}, {}, {"rowspan": 2, "colspan": 1, "t": TOP_MARGIN, "l": LEFT_MARGIN, "r": RIGHT_MARGIN}], [None, None, {}, {}, None]]
         column_widths = [0.24, 0.24, 0.24, 0.24, 0.04]
-        subplot_titles = ("ioi", "tracr-reverse", "tracr-proportion", THRESHOLD_ANNOTATION_TWO, "docstring", "greaterthan")
+        subplot_titles = ("ioi", "tracr-reverse", "tracr-proportion", THRESHOLD_ANNOTATION, "docstring", "greaterthan")
         subplot_titles = [TASK_NAMES.get(task_idx, task_idx) for task_idx in subplot_titles]
 
     elif plot_type in ["kl_edges_4", "metric_edges_4"]:
@@ -341,10 +340,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
             out = (x - x_min) / (x_max - x_min) * (scale_max - scale_min)  + scale_min
         return out
 
-    if y_key in ["node_tpr", "edge_tpr"]:
-        HEATMAP_ALGS = ["ACDC", "SP"]
-    else:
-        HEATMAP_ALGS = ["ACDC", "SP", "HISP"]
+    HEATMAP_ALGS = ["ACDC", "SP", "HISP"]
     for i, methodof in enumerate(HEATMAP_ALGS):
         alg_min, alg_max = bounds_for_alg[methodof]
         # nums = normalize(heatmap_ys, alg_min, alg_max)
@@ -393,7 +389,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                         ablation_type = "random_ablation"
 
                 if plot_type.startswith("metric_edges"):
-                    y_key = "test_" + METRICS_FOR_TASK[task_idx][1]
+                    y_key = "test_" + METRICS_FOR_TASK[task_idx][1] # gets overwritten to "test NLL" 
 
                 this_data = all_data[weights_type][ablation_type]
                 x_data = np.array(this_data[task_idx][metric_name][alg_idx][x_key])
