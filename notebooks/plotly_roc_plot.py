@@ -367,13 +367,15 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
             row=1,
             col=len(specs[0]),
         )
-    fig.update_xaxes(showline=False, zeroline=False, showgrid=False, row=1, col=len(specs[0]), showticklabels=False, ticks="",
-                     gridcolor=GRIDCOLOR, zerolinecolor=ZEROLINECOLOR, zerolinewidth=1)
+    fig.update_xaxes(showline=False, zeroline=False, showgrid=False, row=1, col=len(specs[0]), showticklabels=False, ticks="")
     tickvals = list(range(int(np.floor(all_algs_min)), int(np.ceil(all_algs_max))))
     ticktext = [f"$10^{{{v}}}$" for v in tickvals]
     fig.update_yaxes(showline=False, zeroline=False, showgrid=True, row=1, col=len(specs[0]), side="right",
-                     range=[all_algs_min, all_algs_max], tickvals=tickvals, ticktext=ticktext,
-                     gridcolor=GRIDCOLOR, zerolinecolor=ZEROLINECOLOR, zerolinewidth=1)
+                     range=[all_algs_min, all_algs_max], tickvals=tickvals, ticktext=ticktext)
+
+    if not args.hisp_yellow:
+        fig.update_xaxes(gridcolor=GRIDCOLOR, zerolinecolor=ZEROLINECOLOR, zerolinewidth=1)
+        fig.update_yaxes(gridcolor=GRIDCOLOR, zerolinecolor=ZEROLINECOLOR, zerolinewidth=1)
 
 
     for alg_idx, methodof in alg_names.items():
@@ -664,8 +666,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     # # add label to y axis
                     # fig.update_yaxes(title_text="True positive rate", row=row, col=col)
 
-                    fig.update_layout(title_font=dict(size=1), plot_bgcolor="rgba(0,0,0,0)")
-
+                    fig.update_layout(title_font=dict(size=1))
 
                 else:
                     # If the subplot is not the large plot, hide its axes
@@ -683,9 +684,13 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                         fig.update_xaxes(visible=True, row=row, col=col, tickvals=[0, 0.25, 0.5, 0.75, 1.], ticktext=["0", "", "0.5", "", "1"], range=[-0.05, 1.05])
 
                     # smaller title font
-                    fig.update_layout(title_font=dict(size=20), plot_bgcolor="rgba(0,0,0,0)")
-                fig.update_xaxes(gridcolor=GRIDCOLOR, zerolinecolor=ZEROLINECOLOR, zerolinewidth=1, row=row, col=col)
-                fig.update_yaxes(gridcolor=GRIDCOLOR, zerolinecolor=ZEROLINECOLOR, zerolinewidth=1, row=row, col=col)
+                    fig.update_layout(title_font=dict(size=20))
+
+                if not args.hisp_yellow:
+                    fig.update_xaxes(gridcolor=GRIDCOLOR, zerolinecolor=ZEROLINECOLOR, zerolinewidth=1, row=row, col=col)
+                    fig.update_yaxes(gridcolor=GRIDCOLOR, zerolinecolor=ZEROLINECOLOR, zerolinewidth=1, row=row, col=col)
+                    fig.update_layout(plot_bgcolor="rgba(0,0,0,0)")
+
 
     # Add horizontal lines with test performance on KL plots
     if plot_type.startswith("metric_edges") or plot_type.startswith("kl_edges"):
