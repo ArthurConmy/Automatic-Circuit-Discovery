@@ -42,10 +42,9 @@ def hook_fn_generic_patching_from_context(activation: Float[Tensor, "..."], hook
     '''Patches activations from hook context, if they are there.'''
     if name in hook.ctx:
         if add:
-            activation += hook.ctx[name]
+            activation = activation + hook.ctx[name]
         else:
             activation[:] = hook.ctx[name][:]
-        hook.clear_context()
     return activation
 
 def get_hook_name_filter(model: HookedTransformer):
@@ -597,29 +596,42 @@ def _path_patch_single(
             sender_diffs[sender_node] = diff
 
 
-        # Calculate the sum_over_senders {new_sender_output - orig_sender_output} for every receiver, by taking all the senders before the receiver
+        # Calculate the sum_over_senders{new_sender_output-orig_sender_output} for every receiver, by taking all the senders before the receiver
         # We add this diff into the hook context, 
         for sender_node, diff in sender_diffs.items():
 
-            for receiver_node in receiver_nodes:
+            for i, receiver_node in enumerate(receiver_nodes):
                 
                 # If there's no causal path from sender -> receiver, we skip
                 if not (sender_node < receiver_node):
                     continue
 
                 # q/k/v should be converted into q_input/k_input/v_input
-                if receiver_node.component_name in "qkv":
+                if receiver_node.component_name in ["q", "k", "v", "q_input", "k_input", "v_input"]:
+
                     assert model.cfg.use_split_qkv_input, "Direct patching (direct_includes_mlps=False) requires use_split_qkv_input=True. Please change your model config."
-                    receiver_node = Node(f"{receiver_node.component_name}_input", layer=receiver_node.layer, head=receiver_node.head)
+
+                    # Only need to convert once (this edits the receiver_nodes list)
+                    if receiver_node.component_name in ["q", "k", "v"]:
+                        receiver_node = Node(f"{receiver_node.component_name}_input", layer=receiver_node.layer, head=receiver_node.head)
+                        receiver_nodes[i] = receiver_node
+
                     # If this is the first time we've used a receiver node within this activation, we populate the context dict
+                    # (and add hooks to eventually do patching)
                     if len(model.hook_dict[receiver_node.activation_name].ctx) == 0:
                         model.hook_dict[receiver_node.activation_name].ctx["receiver_activations"] = t.zeros_like(orig_cache[receiver_node.activation_name])
+                        model.add_hook(
+                            receiver_node.activation_name,
+                            partial(hook_fn_generic_patching_from_context, name="receiver_activations", add=True), 
+                            level=1
+                        )
+
                     head_slice = slice(None) if (receiver_node.head is None) else [receiver_node.head]
                     model.hook_dict[receiver_node.activation_name].ctx["receiver_activations"][batch_indices, seq_pos_indices, head_slice] += diff.unsqueeze(-2)
                 
                 # The remaining case (given that we aren't handling "pre" here) is when receiver is resid_pre/mid/post
                 else:
-                    assert "resid_" in receiver_node.component_name, receiver_node.component_name
+                    assert "resid_" in receiver_node.component_name
                     # If this is the first time we've used a receiver node within this activation, we populate the context dict
                     if len(model.hook_dict[receiver_node.activation_name].ctx) == 0:
                         model.hook_dict[receiver_node.activation_name].ctx["receiver_activations"] = t.zeros_like(orig_cache[receiver_node.activation_name])
@@ -627,25 +639,7 @@ def _path_patch_single(
                 
 
 
-        # Lastly, we add the hooks for patching receivers (this is a bit different depending on our alg)
-        for node in receiver_nodes:
-            model.add_hook(
-                node.activation_name,
-                partial(hook_fn_generic_patching_from_context, name="receiver_activations", add=True), 
-                level=1
-            )
-
-
-
-
-
-
     # Run model on orig with receiver nodes patched from previously cached values.
-    # We do this by just having a single hook function: patch from the hook context, if we added it to the context (while caching receivers in the previous step)
-    # model.add_hook(
-    #     get_hook_name_filter(model), 
-    #     partial(hook_fn_generic_patching_from_context, name="receiver_activations", add=not(direct_includes_mlps)), level=1
-    # )
     if apply_metric_to_cache:
         _, cache = model.run_with_cache(orig_input, return_type=None)
         model.reset_hooks()

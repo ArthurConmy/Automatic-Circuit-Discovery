@@ -101,6 +101,7 @@ def entropy_measure(
         )
 
         results.append((resid_entropies_mean, entropy_diffs_mean, entropy_marginals_mean))
+        t.cuda.empty_cache()
 
     resid_entropies_mean, entropy_diffs_mean, entropy_marginals_mean = list(zip(*results))
     resid_entropies_mean = sum(resid_entropies_mean) / len(resid_entropies_mean)
@@ -116,19 +117,10 @@ def concat_lists(list_of_lists):
 
 
 
-def make_entropy_plots(
+def make_entropy_resid_plots(
     resid_entropies: Float[Tensor, "resid_position"],
-    entropy_diffs: Float[Tensor, "layers heads_and_mlps"],
-    model: HookedTransformer,
-    title: Optional[str] = None,
+    static: bool = False,
 ):
-    (resid_position,) = resid_entropies.shape
-    (layers, heads_and_mlps) = entropy_diffs.shape
-
-    assert layers == model.cfg.n_layers
-    assert resid_position == layers * 2 + 1
-    assert heads_and_mlps == model.cfg.n_heads + 1
-
     resid_entropies_diffs = resid_entropies[1:] - resid_entropies[:-1]
     resid_entropies_attn_diffs, resid_entropies_mlp_diffs = resid_entropies_diffs[::2].tolist(), resid_entropies_diffs[1::2].tolist()
 
@@ -140,37 +132,70 @@ def make_entropy_plots(
         title="Increase in entropy at each layer & component (logit lens)", 
         labels={"value": "Entropy diff", "index": "Layer", "variable": "Component"},
         template="simple_white",
-        names=["Attention", "MLPs"]
+        names=["Attention", "MLPs"],
+        static=static
     )
+
+
+
+def make_entropy_plots(
+    entropy_diffs: Float[Tensor, "layers heads_and_mlps"],
+    entropy_marginals: Float[Tensor, "layers heads_and_mlps"],
+    model: HookedTransformer,
+    title: Optional[str] = None,
+    static: bool = False
+):
+    (layers, heads_and_mlps) = entropy_marginals.shape
+
+    assert layers == model.cfg.n_layers
+    assert heads_and_mlps == model.cfg.n_heads + 1
+    assert entropy_diffs.shape == entropy_marginals.shape
+
+    entropy = t.stack([entropy_diffs, entropy_marginals], dim=0)
 
     title = f" ({title})" if (title is not None) else ""
-    imshow(
-        entropy_diffs, 
-        width=600,
+    fig_list = []
+    fig_list.append(imshow(
+        entropy, 
+        facet_col=0,
+        facet_labels=["Diff (pre/post)", "Marginal (wrt final logits)"],
+        width=1000,
         title="Reduction in entropy as a consequence of each head" + title,
         border=True,
-        labels={"x": "Head", "y": "Layer"}
-    )
+        labels={"x": "Heads (+ MLP)", "y": "Layer"},
+        draw=True,
+        return_fig=True
+    ))
 
-    zmax = entropy_diffs[:, :-1].abs().max().item()
-    imshow(
-        entropy_diffs[:, :-1],
-        width=600, 
+    zmax = entropy[..., :-1].abs().max().item()
+    fig_list.append(imshow(
+        entropy[..., :-1],
+        facet_col=0,
+        facet_labels=["Diff (pre/post)", "Marginal (wrt final logits)"],
+        width=1000, 
         title="Remove MLPs" + title, 
         border=True, 
         zmin=-zmax, 
         zmax=zmax, 
-        labels={"x": "Head", "y": "Layer"}
-    )
+        labels={"x": "Heads", "y": "Layer"},
+        draw=True,
+        return_fig=True
+    ))
 
-    entropy_increases = entropy_diffs[:, :-1] * (entropy_diffs[:, :-1] > 0)
+    entropy_increases = entropy[..., :-1] * (entropy[..., :-1] > 0)
     zmax = entropy_increases.max().item()
-    imshow(
+    fig_list.append(imshow(
         entropy_increases, 
-        width=600, 
+        facet_col=0,
+        facet_labels=["Diff (pre/post)", "Marginal (wrt final logits)"],
+        width=1000, 
         title="Only showing entropy increases" + title, 
         border=True, 
         zmin=-zmax, 
         zmax=zmax, 
-        labels={"x": "Head", "y": "Layer"}
-    )
+        labels={"x": "Heads", "y": "Layer"},
+        draw=True,
+        return_fig=True
+    ))
+
+    return fig_list
