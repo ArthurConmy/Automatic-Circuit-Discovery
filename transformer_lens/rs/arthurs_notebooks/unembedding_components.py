@@ -20,7 +20,7 @@ USE_NAME_MOVER = False
 MODE = "key"  # TODO implement value
 assert MODE in ["query", "key"]
 SHOW_LOADS = False
-LOCK_QUERY_WU = False
+LOCK_QUERY_WU = True
 # TODO implement runtime checking or whatever
 
 # %%
@@ -129,7 +129,6 @@ unembedding = model.W_U.clone()
 LAYER_IDX, HEAD_IDX = (
     NEG_HEADS[model.cfg.model_name] if not USE_NAME_MOVER else (10, 10)
 )
-
 # %%
 
 # Arthur makes a hook with tons of assertions so hopefully nothing goes wrong
@@ -181,8 +180,9 @@ def component_adjuster(
 
 
 # %%
-
 # Let's cache some things to use as components
+
+EMBEDDING_LAYER_BEFORE_NEGATIVE_HOOK_NAME = f"blocks.{LAYER_IDX}.hook_resid_pre"
 
 if MODE == "key":
     saved_unit_directions = {
@@ -190,9 +190,10 @@ if MODE == "key":
         "blocks.0.hook_mlp_out": [],
         "blocks.1.hook_resid_pre": [],
         "unembedding": [],
+        "embedding_layer_before_negative": [],
     }
 
-    for layer in range(2): # think about early layer contributions to residual stream
+    for layer in range(1): # MLP 0 and Attn 0 are somewhat interesting
         saved_unit_directions[f"blocks.{layer}.hook_attn_out"] = []
         saved_unit_directions[f"blocks.{layer}.hook_mlp_out"] = []
 
@@ -220,7 +221,7 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(update_tokens.i
     )
 
     for name in list(saved_unit_directions.keys()):
-        if name == "unembedding":
+        if name in ["unembedding", "embedding_layer_before_negative"]:
             continue
 
         position = (
@@ -232,9 +233,25 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(update_tokens.i
             normalize(cache[name][0, position]).detach().cpu().clone()
         )
 
-    saved_unit_directions["unembedding"].append(
-        normalize(unembedding[:, update_token]).detach().cpu().clone()
-    )
+    if "unembedding" in saved_unit_directions.keys():
+        saved_unit_directions["unembedding"].append(
+            normalize(unembedding[:, update_token]).detach().cpu().clone()
+        )
+
+    if "embedding_layer_before_negative" in saved_unit_directions.keys():
+        short_prompt_tokens = model.to_tokens("The").tolist()[0] + [update_token]
+        assert len(short_prompt_tokens) == 3
+        assert all([isinstance(token, int) for token in short_prompt_tokens]), short_prompt_tokens
+
+        model.reset_hooks()
+        logits, cache = model.run_with_cache(
+            torch.tensor(short_prompt_tokens).to(DEVICE),
+            names_filter=lambda name: name == EMBEDDING_LAYER_BEFORE_NEGATIVE_HOOK_NAME,
+        )
+
+        saved_unit_directions["embedding_layer_before_negative"].append(
+            normalize(cache[EMBEDDING_LAYER_BEFORE_NEGATIVE_HOOK_NAME][0, -1]).detach().cpu().clone()
+        )
 
 # %%
 
@@ -434,7 +451,7 @@ TEXTURES = {
 }
 
 strs = list(saved_unit_directions.keys())
-for unit_direction_string in strs[2:4]: # + strs[]:
+for unit_direction_string in strs: # + strs[]:
     for update_token_idx, (update_token, prompt_tokens) in enumerate(
         list(update_tokens.items())
     ):
