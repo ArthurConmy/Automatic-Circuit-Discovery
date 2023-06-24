@@ -56,6 +56,8 @@ def get_effective_embedding(model: HookedTransformer) -> Float[Tensor, "d_vocab 
     W_EE = mlp_out.squeeze()
     W_EE_full = resid_mid.squeeze() + mlp_out.squeeze()
 
+    t.cuda.empty_cache()
+
     return {
         "W_U (or W_E, no MLPs)": W_U.T,
         # "W_E (raw, no MLPs)": W_E,

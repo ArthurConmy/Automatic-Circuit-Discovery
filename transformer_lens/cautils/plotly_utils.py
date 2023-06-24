@@ -41,7 +41,7 @@ def imshow(tensor, renderer=None, **kwargs):
         kwargs_post["modebar_add"] = ['drawline', 'drawopenpath', 'drawclosedpath', 'drawcircle', 'drawrect', 'eraseshape']
     fig = px.imshow(to_numpy(tensor), color_continuous_midpoint=0.0, **kwargs_pre)
     if facet_labels:
-        if "facet_col_wrap" in kwargs_pre:
+        if kwargs_pre.get("facet_col_wrap", None) is not None:
             facet_labels = reorder_list_in_plotly_way(facet_labels, kwargs_pre["facet_col_wrap"])
         for i, label in enumerate(facet_labels):
             fig.layout.annotations[i]['text'] = label

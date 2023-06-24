@@ -815,6 +815,7 @@ def generate_data_and_caches(
         ioi_dataset=ioi_dataset,
     )
 
+    t.cuda.empty_cache()
     return ioi_dataset, abc_dataset, ioi_cache, abc_cache, ioi_metric_noising
 
 
