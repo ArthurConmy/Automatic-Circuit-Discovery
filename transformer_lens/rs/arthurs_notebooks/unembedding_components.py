@@ -45,8 +45,9 @@ update_word_lists = {
     " train": " The train was late. The passengers were annoyed because the train was delayed by an hour",
 }
 
-if USE_NAME_MOVER:
+if USE_NAME_MOVER or True:
     N = 20
+    warnings.warn("Auto IOI")
     ioi_dataset = IOIDataset(
         prompt_type="mixed",
         N=N,
@@ -191,7 +192,7 @@ if MODE == "key":
     #     "blocks.0.hook_mlp_out": [],
     #     "blocks.1.hook_resid_pre": [],
         "unembedding": [],
-    #     "embedding_layer_before_negative": [],
+        "embedding_layer_before_negative": [],
     }
 
     for layer in range(12): # MLP 0 and Attn 0 are somewhat interesting
@@ -444,7 +445,7 @@ for scale_factor in tqdm(SCALE_FACTORS):
 
 # Prepare the figure
 fig = go.Figure()
-show = list(range(2, 6))
+show = list(range(2, 3))
 
 TEXTURES = {
     key: ["dash", "solid", "dot", "dashdot"][idx % 4]
@@ -454,7 +455,7 @@ TEXTURES = {
 strs = list(saved_unit_directions.keys())
 for unit_direction_string in strs: # + strs[]:
     for update_token_idx, (update_token, prompt_tokens) in enumerate(
-        list(update_tokens.items())[:3]
+        list(update_tokens.items())
     ):
         update_word = list(update_word_lists.keys())[update_token_idx]
 
@@ -462,6 +463,7 @@ for unit_direction_string in strs: # + strs[]:
         relevant_scale_factors = (
             []
         )  # maybe big and negative boys ae too big in magnitude
+
         for scale_factor in SCALE_FACTORS:
             if (update_word, unit_direction_string, scale_factor) in attention_scores:
                 y.append(
