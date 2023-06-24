@@ -187,7 +187,7 @@ x_names = {
     "n_edges": "Number of edges",
     "n_nodes": "Number of nodes",
     "test_kl_div": "KL(model, ablated)",
-    "test_loss": "Task-specific test loss",
+    "test_loss": "Task-specific test metric",
 }
 
 def discard_non_pareto_optimal(points, auxiliary, cmp="gt"):
