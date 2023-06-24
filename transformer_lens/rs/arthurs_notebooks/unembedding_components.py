@@ -185,15 +185,16 @@ def component_adjuster(
 EMBEDDING_LAYER_BEFORE_NEGATIVE_HOOK_NAME = f"blocks.{LAYER_IDX}.hook_resid_pre"
 
 if MODE == "key":
+
     saved_unit_directions = {
-        "blocks.0.hook_resid_pre": [],
-        "blocks.0.hook_mlp_out": [],
-        "blocks.1.hook_resid_pre": [],
+    #     "blocks.0.hook_resid_pre": [],
+    #     "blocks.0.hook_mlp_out": [],
+    #     "blocks.1.hook_resid_pre": [],
         "unembedding": [],
-        "embedding_layer_before_negative": [],
+    #     "embedding_layer_before_negative": [],
     }
 
-    for layer in range(1): # MLP 0 and Attn 0 are somewhat interesting
+    for layer in range(12): # MLP 0 and Attn 0 are somewhat interesting
         saved_unit_directions[f"blocks.{layer}.hook_attn_out"] = []
         saved_unit_directions[f"blocks.{layer}.hook_mlp_out"] = []
 
@@ -453,7 +454,7 @@ TEXTURES = {
 strs = list(saved_unit_directions.keys())
 for unit_direction_string in strs: # + strs[]:
     for update_token_idx, (update_token, prompt_tokens) in enumerate(
-        list(update_tokens.items())
+        list(update_tokens.items())[:3]
     ):
         update_word = list(update_word_lists.keys())[update_token_idx]
 
