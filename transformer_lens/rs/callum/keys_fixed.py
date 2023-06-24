@@ -3,7 +3,7 @@ from transformer_lens.rs.callum.generate_bag_of_words_quad_plot import get_effec
 
 
 
-def attn_scores_as_linear_func_of_keys(
+def attn_scores_as_linear_func_of_queries(
     batch_idx: Optional[Union[int, List[int], Int[Tensor, "batch"]]],
     head: Tuple[int, int],
     model: HookedTransformer,
@@ -11,7 +11,7 @@ def attn_scores_as_linear_func_of_keys(
     ioi_dataset: IOIDataset,
 ) -> Float[Tensor, "d_model"]:
     '''
-    If you hold keys fixed, then attention scores are a linear function of the keys.
+    If you hold keys fixed, then attention scores are a linear function of the queries.
 
     I want to fix the keys of head 10.7, and get a linear function mapping queries -> attention scores.
 
@@ -27,13 +27,18 @@ def attn_scores_as_linear_func_of_keys(
     keys_at_IO = keys[batch_idx, ioi_dataset.word_idx["IO"][batch_idx]] # shape (batch, d_head)
     
     W_Q = model.W_Q[layer, head_idx].clone() # shape (d_model, d_head)
+    b_Q = model.b_Q[layer, head_idx].clone() # shape (d_head,)
 
     linear_map = einops.einsum(W_Q, keys_at_IO, "d_model d_head, batch d_head -> batch d_model") / (model.cfg.d_head ** 0.5)
+    bias_term = einops.einsum(b_Q, keys_at_IO, "d_head, batch d_head -> batch") / (model.cfg.d_head ** 0.5)
+
     if isinstance(batch_idx, int):
         linear_map = linear_map[0]
-    return linear_map
+        bias_term = bias_term[0]
 
-def attn_scores_as_linear_func_of_queries(
+    return linear_map, bias_term
+
+def attn_scores_as_linear_func_of_keys(
     batch_idx: Optional[Union[int, List[int], Int[Tensor, "batch"]]],
     head: Tuple[int, int],
     model: HookedTransformer,
@@ -41,7 +46,7 @@ def attn_scores_as_linear_func_of_queries(
     ioi_dataset: IOIDataset,
 ) -> Float[Tensor, "d_model"]:
     '''
-    If you hold queries fixed, then attention scores are a linear function of the queries.
+    If you hold queries fixed, then attention scores are a linear function of the keys.
 
     I want to fix the queries of head 10.7, and get a linear function mapping keys -> attention scores.
 
@@ -57,11 +62,16 @@ def attn_scores_as_linear_func_of_queries(
     queries_at_END = queries[batch_idx, ioi_dataset.word_idx["end"][batch_idx]] # shape (batch, d_head)
     
     W_K = model.W_K[layer, head_idx].clone() # shape (d_model, d_head)
+    b_K = model.b_K[layer, head_idx].clone() # shape (d_head,)
 
     linear_map = einops.einsum(W_K, queries_at_END, "d_model d_head, batch d_head -> batch d_model") / (model.cfg.d_head ** 0.5)
+    bias_term = einops.einsum(b_K, queries_at_END, "d_head, batch d_head -> batch") / (model.cfg.d_head ** 0.5)
+
     if isinstance(batch_idx, int):
         linear_map = linear_map[0]
-    return linear_map
+        bias_term = bias_term[0]
+
+    return linear_map, bias_term
 
 
 
@@ -71,7 +81,7 @@ def attn_scores_as_linear_func_of_queries(
 
 
 
-def get_attn_scores_and_probs_keys_fixed(
+def get_attn_scores_and_probs_as_linear_func_of_queries(
     NNMH: Tuple[int, int],
     num_batches: int,
     batch_size: int,
@@ -92,7 +102,7 @@ def get_attn_scores_and_probs_keys_fixed(
 
         ioi_dataset, abc_dataset, ioi_cache, abc_cache, ioi_metric_noising = generate_data_and_caches(batch_size, model=model, seed=seed)
 
-        linear_map = attn_scores_as_linear_func_of_keys(batch_idx=None, head=NNMH, model=model, ioi_cache=ioi_cache, ioi_dataset=ioi_dataset)
+        linear_map, bias_term = attn_scores_as_linear_func_of_queries(batch_idx=None, head=NNMH, model=model, ioi_cache=ioi_cache, ioi_dataset=ioi_dataset)
         assert linear_map.shape == (batch_size, model.cfg.d_model)
 
         # Has to be manual, because apparently `apply_ln_to_stack` doesn't allow it to be applied at different sequence positions
@@ -107,22 +117,22 @@ def get_attn_scores_and_probs_keys_fixed(
         }
 
         normalized_resid_vectors = {
-            k: v / v.var(dim=-1, keepdim=True).pow(0.5)
-            for k, v in resid_vectors.items()
+            name: q_side_vector / q_side_vector.var(dim=-1, keepdim=True).pow(0.5)
+            for name, q_side_vector in resid_vectors.items()
         }
 
         new_attn_scores = {
-            k: einops.einsum(linear_map, v, "batch d_model, batch d_model -> batch")
-            for k, v in normalized_resid_vectors.items()
+            name: einops.einsum(linear_map, q_side_vector, "batch d_model, batch d_model -> batch") + bias_term
+            for name, q_side_vector in normalized_resid_vectors.items()
         }
 
         attn_scores = {
-            k: t.cat([attn_scores[k], new_attn_scores[k]])
-            for k in attn_scores.keys()
+            name: t.cat([attn_scores[name], new_attn_scores[name]])
+            for name in attn_scores.keys()
         }
     
         # Get the attention scores from END to all other tokens (so I can get new attn probs from patching)
-        other_attn_scores_at_this_posn = ioi_cache["attn_scores", 10][range(batch_size), 7, ioi_dataset.word_idx["end"]]
+        other_attn_scores_at_this_posn = ioi_cache["attn_scores", NNMH[0]][range(batch_size), NNMH[1], ioi_dataset.word_idx["end"]]
 
         t.cuda.empty_cache()
 
@@ -139,7 +149,7 @@ def get_attn_scores_and_probs_keys_fixed(
 
 
 
-def get_attn_scores_and_probs_queries_fixed(
+def get_attn_scores_and_probs_as_linear_func_of_keys(
     NNMH: Tuple[int, int],
     num_batches: int,
     batch_size: int,
@@ -165,7 +175,7 @@ def get_attn_scores_and_probs_queries_fixed(
 
         ioi_dataset, abc_dataset, ioi_cache, abc_cache, ioi_metric_noising = generate_data_and_caches(batch_size, model=model, seed=seed)
 
-        linear_map = attn_scores_as_linear_func_of_queries(batch_idx=None, head=NNMH, model=model, ioi_cache=ioi_cache, ioi_dataset=ioi_dataset)
+        linear_map, bias_term = attn_scores_as_linear_func_of_keys(batch_idx=None, head=NNMH, model=model, ioi_cache=ioi_cache, ioi_dataset=ioi_dataset)
         assert linear_map.shape == (batch_size, model.cfg.d_model)
 
         # Has to be manual, because apparently `apply_ln_to_stack` doesn't allow it to be applied at different sequence positions
@@ -178,22 +188,22 @@ def get_attn_scores_and_probs_queries_fixed(
         }
 
         normalized_resid_vectors = {
-            k: v / v.var(dim=-1, keepdim=True).pow(0.5)
-            for k, v in resid_vectors.items()
+            name: k_side_vector / k_side_vector.var(dim=-1, keepdim=True).pow(0.5)
+            for name, k_side_vector in resid_vectors.items()
         }
 
         new_attn_scores = {
-            k: einops.einsum(linear_map, v, "batch d_model, batch d_model -> batch")
-            for k, v in normalized_resid_vectors.items()
+            name: einops.einsum(linear_map, k_side_vector, "batch d_model, batch d_model -> batch") + bias_term
+            for name, k_side_vector in normalized_resid_vectors.items()
         }
 
         attn_scores = {
-            k: t.cat([attn_scores[k], new_attn_scores[k]])
-            for k in attn_scores.keys()
+            name: t.cat([attn_scores[name], new_attn_scores[name]])
+            for name in attn_scores.keys()
         }
     
         # Get the attention scores from END to all other tokens (so I can get new attn probs from patching)
-        other_attn_scores_at_this_posn = ioi_cache["attn_scores", 10][range(batch_size), 7, ioi_dataset.word_idx["end"]]
+        other_attn_scores_at_this_posn = ioi_cache["attn_scores", NNMH[0]][range(batch_size), NNMH[1], ioi_dataset.word_idx["end"]]
 
         t.cuda.empty_cache()
 
