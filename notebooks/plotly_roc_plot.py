@@ -549,7 +549,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                         showlegend = False,
                         marker=dict(
                             size=[3 if p in pareto_optimal else 7 for p in points],
-                            line=dict(width=0),
+                            line=dict(width=1, color="DarkSlateGrey"),
                             color=color,
                             symbol=weights_type_symbols[weights_type][methodof],
                             colorscale=colorscales[methodof],
