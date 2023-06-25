@@ -32,6 +32,7 @@ def imshow(tensor, renderer=None, **kwargs):
     static = kwargs_pre.pop("static", False)
     return_fig = kwargs_pre.pop("return_fig", False)
     facet_labels = kwargs_pre.pop("facet_labels", None)
+    animation_labels = kwargs_pre.pop("animation_labels", None)
     border = kwargs_pre.pop("border", False)
     if "color_continuous_scale" not in kwargs_pre:
         kwargs_pre["color_continuous_scale"] = "RdBu"
@@ -45,6 +46,10 @@ def imshow(tensor, renderer=None, **kwargs):
             facet_labels = reorder_list_in_plotly_way(facet_labels, kwargs_pre["facet_col_wrap"])
         for i, label in enumerate(facet_labels):
             fig.layout.annotations[i]['text'] = label
+    if animation_labels:
+        fig.layout.sliders[0]["currentvalue"]["prefix"] = ""
+        for i, label in enumerate(animation_labels):
+            fig.layout.sliders[0].steps[i].label = label
     if border:
         fig.update_xaxes(showline=True, linewidth=1, linecolor='black', mirror=True)
         fig.update_yaxes(showline=True, linewidth=1, linecolor='black', mirror=True)

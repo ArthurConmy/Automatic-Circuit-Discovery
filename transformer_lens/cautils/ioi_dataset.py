@@ -782,7 +782,7 @@ def _ioi_metric_noising(
 
 
 def generate_data_and_caches(
-    N: int, model: HookedTransformer, verbose: bool = False, seed: int = 42, prepend_bos: bool = False
+    N: int, model: HookedTransformer, verbose: bool = False, seed: int = 42, prepend_bos: bool = False, only_ioi: bool = False
 ) -> Tuple[IOIDataset, IOIDataset, ActivationCache, ActivationCache, Callable]:
 
     ioi_dataset = IOIDataset(
@@ -799,6 +799,9 @@ def generate_data_and_caches(
     model.reset_hooks(including_permanent=True)
 
     ioi_logits_original, ioi_cache = model.run_with_cache(ioi_dataset.toks)
+
+    if only_ioi: return ioi_dataset, ioi_cache
+    
     abc_logits_original, abc_cache = model.run_with_cache(abc_dataset.toks)
 
     ioi_average_logit_diff = _logits_to_ave_logit_diff(ioi_logits_original, ioi_dataset).item()
