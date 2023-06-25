@@ -158,7 +158,7 @@ def get_attn_scores_and_probs_as_linear_func_of_keys(
     num_batches: int,
     batch_size: int,
     model: HookedTransformer,
-    name_tokens: List[int],
+    subtract_S1_attn_scores: bool = False,
 ):
     effective_embeddings = get_effective_embedding(model) 
 
@@ -190,11 +190,24 @@ def get_attn_scores_and_probs_as_linear_func_of_keys(
             "W_EE_subE[IO]": W_EE_subE[t.tensor(ioi_dataset.io_tokenIDs)],
             "No patching": ioi_cache["resid_pre", NNMH[0]][range(batch_size), ioi_dataset.word_idx["IO"]]
         }
-
         normalized_resid_vectors = {
             name: (k_side_vector - k_side_vector.mean(dim=-1, keepdim=True)) / k_side_vector.var(dim=-1, keepdim=True).pow(0.5)
             for name, k_side_vector in resid_vectors.items()
         }
+        
+        if subtract_S1_attn_scores:
+            resid_vectors_baseline = {
+                "W_E[IO]": W_U[t.tensor(ioi_dataset.s_tokenIDs)],
+                "W_EE[IO]": W_EE[t.tensor(ioi_dataset.s_tokenIDs)],
+                "W_EE_subE[IO]": W_EE_subE[t.tensor(ioi_dataset.s_tokenIDs)],
+                "No patching": ioi_cache["resid_pre", NNMH[0]][range(batch_size), ioi_dataset.word_idx["S1"]]
+            }
+            normalized_resid_vectors_baseline = {
+                name: (k_side_vector - k_side_vector.mean(dim=-1, keepdim=True)) / k_side_vector.var(dim=-1, keepdim=True).pow(0.5)
+                for name, k_side_vector in resid_vectors_baseline.items()
+            }
+            normalized_resid_vectors = {name: normalized_resid_vectors[name] - normalized_resid_vectors_baseline[name] for name in resid_vectors.keys()}
+
 
         new_attn_scores = {
             name: einops.einsum(linear_map, k_side_vector, "batch d_model, batch d_model -> batch") + bias_term
@@ -286,6 +299,20 @@ def decompose_attn_scores(
     ioi_dataset, ioi_cache = generate_data_and_caches(batch_size, model=model, seed=seed, only_ioi=True, prepend_bos=True)
 
     S1_seq_pos_indices = ioi_dataset.word_idx["S1"]
+    IO_seq_pos_indices = ioi_dataset.word_idx["IO"]
+    end_seq_pos_indices = ioi_dataset.word_idx["end"]
+
+    # * Get the MLP0 output (note that we need to be careful here if we're subtracting the S1 baseline, because we actually need the 2 different MLP0s)
+    if use_effective_embedding:
+        effective_embeddings = get_effective_embedding(model) 
+        W_EE_subE = effective_embeddings["W_E (only MLPs)"]
+        MLP0_output = W_EE_subE[ioi_dataset.io_tokenIDs]
+        MLP0_output_S1 = W_EE_subE[ioi_dataset.s_tokenIDs]
+    else:
+        MLP0_output = ioi_cache["mlp_out", 0][range(batch_size), IO_seq_pos_indices]
+        MLP0_output_S1 = ioi_cache["mlp_out", 0][range(batch_size), S1_seq_pos_indices]
+    MLP0_output_scaled = (MLP0_output - MLP0_output.mean(-1, keepdim=True)) / MLP0_output.var(dim=-1, keepdim=True).pow(0.5)
+
 
     if decompose_by == "keys":
 
@@ -346,26 +373,17 @@ def decompose_attn_scores(
 
 
     
-    elif (decompose_by == "queries"):
+    elif decompose_by == "queries":
 
         assert intervene_on_key in [None, "sub_MLP0", "project_to_MLP0"]
 
         decomp_seq_pos_indices = ioi_dataset.word_idx["end"]
         lin_map_seq_pos_indices = ioi_dataset.word_idx["IO"]
 
-        if use_effective_embedding:
-            effective_embeddings = get_effective_embedding(model) 
-            # W_U = effective_embeddings["W_U (or W_E, no MLPs)"]
-            # W_EE = effective_embeddings["W_E (including MLPs)"]
-            W_EE_subE = effective_embeddings["W_E (only MLPs)"]
-            MLP0_output = W_EE_subE[ioi_dataset.io_tokenIDs]
-        else:
-            MLP0_output = ioi_cache["mlp_out", 0][range(batch_size), lin_map_seq_pos_indices]
-        MLP0_output_scaled = (MLP0_output - MLP0_output.mean(-1, keepdim=True)) / MLP0_output.var(dim=-1, keepdim=True).pow(0.5)
-
         resid_pre = ioi_cache["resid_pre", nnmh[0]]
         resid_pre_normalised = (resid_pre - resid_pre.mean(-1, keepdim=True)) / resid_pre.var(dim=-1, keepdim=True).pow(0.5)
-        resid_pre_normalised_slice = resid_pre_normalised[range(batch_size), lin_map_seq_pos_indices]
+        resid_pre_normalised_slice = resid_pre_normalised[range(batch_size), IO_seq_pos_indices]
+        resid_pre_normalised_slice_S1 = resid_pre_normalised[range(batch_size), S1_seq_pos_indices]
 
         W_K = model.W_K[nnmh[0], nnmh[1]]
         b_K = model.b_K[nnmh[0], nnmh[1]]
@@ -376,10 +394,14 @@ def decompose_attn_scores(
         # * Get 2 linear functions from queries -> attn scores, corresponding to the 2 different components of key vectors: (∥ / ⟂) to MLP0_out
         if intervene_on_key == "project_to_MLP0":
             resid_pre_in_mlp0_dir, resid_pre_in_mlp0_perpdir = project(resid_pre_normalised_slice, MLP0_output)
+            resid_pre_in_mlp0_dir_S1, resid_pre_in_mlp0_perpdir_S1 = project(resid_pre_normalised_slice_S1, MLP0_output_S1)
 
             # Overwrite the key-side vector in the cache with the projection in the MLP0_output direction
+            # Do the same with the S1 baseline (note that we might not actually use it, but it's good to have it there)
             k_new = einops.einsum(resid_pre_in_mlp0_dir, W_K, "batch d_model, d_model d_head -> batch d_head")
-            k_raw[range(batch_size), lin_map_seq_pos_indices, nnmh[1]] = k_new
+            k_raw[range(batch_size), IO_seq_pos_indices, nnmh[1]] = k_new
+            k_new_S1 = einops.einsum(resid_pre_in_mlp0_dir_S1, W_K, "batch d_model, d_model d_head -> batch d_head")
+            k_raw[range(batch_size), S1_seq_pos_indices, nnmh[1]] = k_new_S1
             ioi_cache_dict_mlp0_dir = {**ioi_cache.cache_dict, **{k_name: k_raw.clone()}}
             ioi_cache_mlp0_dir = ActivationCache(cache_dict=ioi_cache_dict_mlp0_dir, model=model)
             # ! (3B)
@@ -389,7 +411,9 @@ def decompose_attn_scores(
 
             # Overwrite the key-side vector with the bit that's perpendicular to the MLP0_output (plus the bias term)
             k_new = einops.einsum(resid_pre_in_mlp0_perpdir, W_K, "batch d_model, d_model d_head -> batch d_head") + b_K
-            k_raw[range(batch_size), lin_map_seq_pos_indices, nnmh[1]] = k_new
+            k_raw[range(batch_size), IO_seq_pos_indices, nnmh[1]] = k_new
+            k_new_S1 = einops.einsum(resid_pre_in_mlp0_perpdir_S1, W_K, "batch d_model, d_model d_head -> batch d_head") + b_K
+            k_raw[range(batch_size), S1_seq_pos_indices, nnmh[1]] = k_new_S1
             ioi_cache_dict_mlp0_perpdir = {**ioi_cache.cache_dict, **{k_name: k_raw.clone()}}
             ioi_cache_mlp0_perpdir = ActivationCache(cache_dict=ioi_cache_dict_mlp0_perpdir, model=model)
             linear_map_mlp0_perpdir, bias_term_mlp0_perpdir = attn_scores_as_linear_func_of_queries(batch_idx=None, head=nnmh, model=model, ioi_cache=ioi_cache_mlp0_perpdir, ioi_dataset=ioi_dataset, subtract_S1_attn_scores=subtract_S1_attn_scores)
@@ -400,6 +424,7 @@ def decompose_attn_scores(
         # * Get new linear function from queries -> attn scores, corresponding to subbing in MLP0_output as keyside vector
         elif intervene_on_key == "sub_MLP0":
             # Overwrite the key-side vector by replacing it with the (normalized) MLP0_output
+            assert not(subtract_S1_attn_scores), "This will behave weirdly right now."
             k_new = einops.einsum(MLP0_output_scaled, W_K, "batch d_model, d_model d_head -> batch d_head") + b_K
             k_raw[range(batch_size), lin_map_seq_pos_indices, nnmh[1]] = k_new
             ioi_cache_dict_mlp0_subbed = {**ioi_cache.cache_dict, **{k_name: k_raw.clone()}}
@@ -420,7 +445,7 @@ def decompose_attn_scores(
 
     # * This is where we get the thing we're projecting keys onto if required (i.e. if we're decomposing by keys, and want to split into ||MLP0 and ⟂MLP0)
     if (intervene_on_key is not None) and (decompose_by == "keys"):
-        assert intervene_on_key == "project_to_MLP0", "If you're decomposing by key component, 'sub_MLP0' is invalid. Use 'project_to_MLP0' or None instead."
+        assert intervene_on_key == "project_to_MLP0", "If you're decomposing by key component, then 'intervene_on_key' must be 'project_to_MLP0' or None."
         # MLP0_output = get_effective_embedding(model)["W_E (only MLPs)"]
         # MLP0_output = MLP0_output[ioi_dataset.io_tokenIDs] # shape (batch, d_model)
         if use_effective_embedding:
@@ -433,7 +458,7 @@ def decompose_attn_scores(
 
     # * This is where we get the thing we're projecting queries onto if required (i.e. if we're decomposing by queries, and want to split into ||W_U[IO] and ⟂W_U[IO])
     elif (intervene_on_query is not None) and (decompose_by == "queries"):
-        assert intervene_on_query == "project_to_W_U_IO", "If you're decomposing by key component, 'sub_W_U_IO' is invalid. Use 'project_to_W_U_IO' or None instead."
+        assert intervene_on_query == "project_to_W_U_IO", "If you're decomposing by key component, then 'intervene_on_query' must be 'project_to_W_U_IO' or None."
         unembeddings = model.W_U.T[ioi_dataset.io_tokenIDs]
         contribution_to_attn_scores_shape = (2, 1 + nnmh[0], model.cfg.n_heads + 1)
 
@@ -451,17 +476,9 @@ def decompose_attn_scores(
             > If we need to subtract the mean of S1, do that too.
         '''
         assert component_name in ["result", "mlp_out", "embed", "pos_embed"]
-        assert isinstance(ln_scale, Float[Tensor, "batch 1"])
         
         # Index from ioi cache
         component_output: Float[Tensor, "batch *n_heads d_model"] = ioi_cache[component_name, layer][range(batch_size), decomp_seq_pos_indices]
-
-        # Subtract baseline
-        # ! (3A)
-        # * This is where we subtract the keyside component baseline of S2 (if our decomposition is by-keys)
-        if (decompose_by == "keys") and subtract_S1_attn_scores:
-            component_output_S1: Float[Tensor, "batch *n_heads d_model"] = ioi_cache[component_name, layer][range(batch_size), S1_seq_pos_indices]
-            component_output = component_output - component_output_S1
 
         # Apply scaling
         component_output_scaled = component_output / (ln_scale.unsqueeze(1) if (component_name == "result") else ln_scale)
@@ -478,6 +495,19 @@ def decompose_attn_scores(
             projection_dir = einops.repeat(MLP0_output, "b d_m -> b heads d_m", heads=model.cfg.n_heads) if (component_name == "result") else MLP0_output
             component_output_scaled = t.stack(project(component_output_scaled, projection_dir))
 
+        # ! (3A)
+        # * This is where we subtract the keyside component baseline of S2 (if our decomposition is by-keys)
+        # * This involves going through exactly the same process as above, except with S2 (I'll make the code shorter)
+        if (decompose_by == "keys") and subtract_S1_attn_scores:
+            # Calculate scaled baseline
+            component_output_S1 = ioi_cache[component_name, layer][range(batch_size), S1_seq_pos_indices]
+            component_output_scaled_S1 = component_output_S1 / (ln_scale_S1.unsqueeze(1) if (component_name == "result") else ln_scale_S1)
+            # Apply projections
+            projection_dir_S1 = einops.repeat(MLP0_output_S1, "b d_m -> b heads d_m", heads=model.cfg.n_heads) if (component_name == "result") else MLP0_output_S1
+            component_output_scaled_S1 = t.stack(project(component_output_scaled_S1, projection_dir_S1))
+            # Subtract baseline
+            component_output_scaled = component_output_scaled - component_output_scaled_S1
+
         return component_output_scaled
 
 
@@ -493,7 +523,8 @@ def decompose_attn_scores(
 
         # Get scale factor we'll be dividing all our components by
         ln_scale = ioi_cache["scale", nnmh[0], "ln1"][range(batch_size), decomp_seq_pos_indices, nnmh[1]]
-        assert ln_scale.shape == (batch_size, 1)
+        ln_scale_S1 = ioi_cache["scale", nnmh[0], "ln1"][range(batch_size), S1_seq_pos_indices, nnmh[1]]
+        assert ln_scale.shape == ln_scale_S1.shape == (batch_size, 1)
 
         # We start with all the things before attn heads and MLPs
         embed_scaled = get_decomposed_components("embed")
