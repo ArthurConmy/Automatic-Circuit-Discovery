@@ -1,5 +1,10 @@
 #%% [markdown] [4]:
 
+"""
+Runs an experiment where we see that unembedding for *one* token is a decent percentage of the usage of 
+direct effect of NMS
+"""
+
 from transformer_lens.cautils.notebook import *
 
 model = HookedTransformer.from_pretrained(
@@ -9,8 +14,9 @@ model = HookedTransformer.from_pretrained(
     fold_ln=True,
     refactor_factored_attn_matrices=True,
 )
+model.set_use_attn_result(True)
 LAYER_IDX, HEAD_IDX = NEG_HEADS[model.cfg.model_name]
-
+# ! TODO do the scaling factor as the literal importance of the head, not norm of vector
 
 #%%
 
@@ -108,8 +114,9 @@ assert list(O_BIAS.shape) == [model.cfg.d_model]
 # ! no bias added
 
 scale_factors = [-2.0, -1.0, 0.0, 1.0, 2.0]
+fig = go.Figure()
 
-for suppressed_word, text in list(dataset.items())[-3:]:
+for suppressed_word, text in list(dataset.items()):
     all_results = {}
     for component_to_scale in ["unembedding", "orthogonal", "full"]:
         tokens = model.to_tokens(text).tolist()[0]
@@ -229,6 +236,7 @@ for suppressed_word, text in list(dataset.items())[-3:]:
             new_probs = torch.softmax(new_logits[0, -2], dim=-1)
             assert list(new_probs.shape) == [model.cfg.d_vocab], f"{new_probs.shape} != {[model.cfg.d_vocab]}"
             results.append(-new_probs[tokens[-1]].log().detach().cpu()) # Losses
+        
         all_results[component_to_scale] = deepcopy(results)
 
     import matplotlib.pyplot as plt
@@ -239,9 +247,30 @@ for suppressed_word, text in list(dataset.items())[-3:]:
     ax.plot(scale_factors, all_results["full"], label="full")
     ax.set_xlabel("Scale factor")
     ax.set_ylabel("Loss")
-    ax.set_title(f"{suppressed_word=} {int(unembedding_component.item())=} {int(orthogonal_component.item())=} {EDITING_IN_HOOK=}") #  {model.to_string(suppressed_word)}")
+    # ax.set_title(f"{suppressed_word=} {int(unembedding_component.item())=} {int(orthogonal_component.item())=} {EDITING_IN_HOOK=}") #  {model.to_string(suppressed_word)}")
     ax.legend()
-
     plt.show()
+
+    # for key in ["unembedding", "orthogonal", "full"]:
+    #     fig.add_trace(
+    #         go.Scatter(
+    #             x = scale_factors,
+    #             y = torch.tensor(all_results[key]) - all_results[key][0],
+    #             mode="lines+markers",                
+    #             text=[
+    #                 f"{key=} {scale_factor=:.2f}"
+    #                 for scale_factor in scale_factors
+    #             ],
+    #             # colors = [{"unembedding": "red", ""}[key]] * len(scale_factors),
+    #             # line=dict(
+    #             #     color=COLORS[component_to_scale],
+    #             #     dash=TEXTURES[unit_direction_string],
+    #             # ),
+
+    #             name=f"{key=}",
+    #         )
+    #     )
+
+fig.show()
 
 # %%
