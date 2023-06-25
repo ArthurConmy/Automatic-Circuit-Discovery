@@ -27,9 +27,9 @@ def attn_scores_as_linear_func_of_queries(
 
     keys_all = ioi_cache["k", layer][:, :, head_idx] # shape (all_batch, seq_K, d_head)
     if subtract_S1_attn_scores:
-        keys = keys_all[batch_idx, ioi_dataset.word_idx["IO"][batch_idx]]
-    else:
         keys = keys_all[batch_idx, ioi_dataset.word_idx["IO"][batch_idx]] - keys_all[batch_idx, ioi_dataset.word_idx["S1"][batch_idx]]
+    else:
+        keys = keys_all[batch_idx, ioi_dataset.word_idx["IO"][batch_idx]]
     
     W_Q = model.W_Q[layer, head_idx].clone() # shape (d_model, d_head)
     b_Q = model.b_Q[layer, head_idx].clone() # shape (d_head,)
@@ -541,6 +541,8 @@ def plot_contribution_to_attn_scores(
     contribution_to_attn_scores: Float[Tensor, "... layer component"],
     decompose_by: str,
     facet_labels: Optional[List[str]] = None,
+    animation_labels: Optional[List[str]] = None,
+    facet_col_wrap: Optional[int] = None,
     title: Optional[str] = None,
     static: bool = False,
 ):
@@ -548,20 +550,43 @@ def plot_contribution_to_attn_scores(
     for layer in range(0, 10):
         text.append([f"{layer}.{head}" for head in range(12)] + [f"MLP{layer}"])
 
-    has_3_dims = contribution_to_attn_scores.ndim >= 3
-    has_4_dims = has_3_dims and contribution_to_attn_scores.shape[0] == 4
+    single_plot = contribution_to_attn_scores.ndim == 2
+    facets = contribution_to_attn_scores.ndim == 3
+    animation_and_facets = contribution_to_attn_scores.ndim == 4
+
+    facet_col = None
+    animation_frame = None
+    if facets:
+        facet_col = 0
+    elif animation_and_facets:
+        animation_frame = 0
+        facet_col = 1
+
+    if facet_col is not None:
+        num_facets = contribution_to_attn_scores.shape[facet_col]
+        if facet_col_wrap is None: facet_col_wrap = num_facets
+        num_figs_width = facet_col_wrap
+        num_figs_height = num_facets // facet_col_wrap
+        width=1300 if (num_figs_width > 1) else 900
+        height=(1100 if (num_figs_height > 1) else 600) + (100 if animation_frame is not None else 0)
+    else:
+        width = 900
+        height = 600
+
     fig = imshow(
         contribution_to_attn_scores,
-        facet_col = 0 if has_3_dims else None,
-        facet_labels = facet_labels if has_3_dims else None,
-        facet_col_wrap = 2 if has_4_dims else None,
+        facet_col = facet_col,
+        facet_labels = facet_labels,
+        facet_col_wrap = facet_col_wrap,
+        animation_frame = animation_frame,
+        animation_labels = animation_labels,
         title=f"Contribution to attention scores ({'key' if decompose_by in ['k', 'keys'] else 'query'}-side)" if title is None else title,
         labels={"x": "Component (attn heads & MLP)", "y": "Layer"},
         y=["misc"] + [str(i) for i in range(10)],
         x=[f"H{i}" for i in range(12)] + ["MLP"],
         border=True,
-        width=1300 if has_3_dims else 900,
-        height=1100 if has_4_dims else 600,
+        width=width,
+        height=height,
         return_fig=True,
     )
     for i in range(len(fig.data)):

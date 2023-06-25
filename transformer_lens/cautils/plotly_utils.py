@@ -129,7 +129,6 @@ def hist(tensor, renderer=None, **kwargs):
 
 
 
-
 def line(y: Union[t.Tensor, List[t.Tensor]], renderer=None, **kwargs):
     kwargs_post = {k: v for k, v in kwargs.items() if k in UPDATE_LAYOUT_SET}
     kwargs_pre = {k: v for k, v in kwargs.items() if k not in UPDATE_LAYOUT_SET}
