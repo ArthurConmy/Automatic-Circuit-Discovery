@@ -198,47 +198,54 @@ px.bar(
     title="Proportions of tokens in OWT where mean ablating the direct effect of a head is helpful",
 ).show()
 
-# %%
+#%%
 
-# In the max importance examples, which token does the head have the most effect on?
+for LAYER_IDX, HEAD_IDX in itertools.product(range(model.cfg.n_layers), range(model.cfg.n_heads)):
 
-max_importance_examples = sorted([(batch_idx, seq_idx, results_log[(LAYER_IDX, HEAD_IDX)]["loss_changes"][batch_idx, seq_idx]) for batch_idx, seq_idx in itertools.product(range(BATCH_SIZE), range(max_seq_len))], key=lambda x: x[2].item(), reverse=True)
+    # In the max importance examples, which token does the head have the most effect on?
 
-# %%
+    max_importance_examples = sorted([(batch_idx, seq_idx, results_log[(LAYER_IDX, HEAD_IDX)]["loss_changes"][batch_idx, seq_idx]) for batch_idx, seq_idx in itertools.product(range(BATCH_SIZE), range(max_seq_len))], key=lambda x: x[2].item(), reverse=True)
 
-head_output = cache[HEAD_OUTPUT_HOOK][:, :, HEAD_IDX].cpu() # shape (batch_size, seq_len, hidden_size)
-mean_output = einops.reduce(
-    head_output,
-    "batch seq_len hidden_size -> hidden_size",
-    reduction="mean",
-)
 
-for batch_idx, seq_idx, change_in_loss in max_importance_examples[:30]:
+    head_output = cache[HEAD_OUTPUT_HOOK][:, :, HEAD_IDX].cpu() # shape (batch_size, seq_len, hidden_size)
+    mean_output = einops.reduce(
+        head_output,
+        "batch seq_len hidden_size -> hidden_size",
+        reduction="mean",
+    )
 
-    change_in_state = head_output[batch_idx, seq_idx] - mean_output
+    cnt = 0
 
-    logits = einops.einsum(
-        change_in_state.to(DEVICE), 
-        model.W_U,
-        "d_model, d_model d_vocab -> d_vocab",
-    ).cpu()
+    for batch_idx, seq_idx, change_in_loss in max_importance_examples[:1000]:
+        change_in_state = head_output[batch_idx, seq_idx] - mean_output
+        logits = einops.einsum(
+            change_in_state.to(DEVICE), 
+            model.W_U,
+            "d_model, d_model d_vocab -> d_vocab",
+        ).cpu()
 
-    botk=torch.topk(-logits, 10)
-    # botk seemed way bigger here
+        botk=torch.topk(-logits, 10)
+        # botk seemed way bigger here
 
-    print("-"*50)
-    print(batch_idx, seq_idx)
-    my_str = f"|{'|'.join(model.to_str_tokens(mybatch[batch_idx, max(seq_idx-100, 0):seq_idx+1]))}|"
-    print(my_str)
+        # print("-"*50)
+        # print(batch_idx, seq_idx)
+        # my_str = f"|{'|'.join(model.to_str_tokens(mybatch[batch_idx, max(seq_idx-100, 0):seq_idx+1]))}|"
+        # print(my_str)
 
-    print("True completion:")
-    true_completion = model.to_str_tokens(mybatch[batch_idx, seq_idx+1])[0]
-    print(true_completion)
-    if len(str(true_completion)) == 1:
-        print("len 1")
-        print(mybatch[batch_idx, seq_idx+1], mybatch[batch_idx, seq_idx+1].item() in mybatch[batch_idx,:seq_idx+1].tolist())
-    print("Top decreases:")
-    print(model.to_str_tokens(botk.indices))
-    print(f"{change_in_loss.item()=}")
+        # print("True completion:")
+        # true_completion = model.to_str_tokens(mybatch[batch_idx, seq_idx+1])[0]
+        # print(true_completion)
+        # if len(str(true_completion)) == 1:
+        #     print("len 1")
+        #     print(mybatch[batch_idx, seq_idx+1], mybatch[batch_idx, seq_idx+1].item() in mybatch[batch_idx,:seq_idx+1].tolist())
+        # print("Top decreases:")
+        # print(model.to_str_tokens(botk.indices))
+        # print(f"{change_in_loss.item()=}")
+
+        if len(set(mybatch[batch_idx,:seq_idx+1].tolist()).intersection(set(botk.indices.tolist()))) != 0:
+            # print("no")
+            # print("yes")
+            cnt+=1
+    print(LAYER_IDX, HEAD_IDX, cnt)
 
 # %%
