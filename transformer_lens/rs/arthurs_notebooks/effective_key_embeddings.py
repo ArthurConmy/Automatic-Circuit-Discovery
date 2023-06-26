@@ -19,7 +19,7 @@ model.set_use_split_qkv_input(True)
 model.set_use_split_qkv_normalized_input(True)
 DEVICE = "cuda"
 LAYER_IDX, HEAD_IDX = NEG_HEADS[model.cfg.model_name]
-INCLUDE_ORTHOGONAL = False
+INCLUDE_ORTHOGONAL = True
 
 # %%
 
@@ -144,7 +144,7 @@ assert torch.allclose(results.cpu(), cached_attention_scores.cpu(), atol=1e-2, r
 #%%
 
 the_inputs = model.to_tokens(
-    "The" + sentence.split()[-1] for sentence in ioi_dataset.sentences
+    "The " + sentence.split()[-1] for sentence in ioi_dataset.sentences
 )
 assert list(the_inputs.shape) == [N, 3], the_inputs.shape # "<bos>The IO"
 _, cache = model.run_with_cache(
@@ -158,7 +158,7 @@ _, cache = model.run_with_cache(
     names_filter = lambda name: name.endswith("attn.hook_pattern"),
 ) 
 
-def attn_lock(z, hook, scaled=False):
+def attn_lock(z, hook, ioi_dataset, scaled=False):
     old_z = z.clone()
     z[:] *= 0.0
 
@@ -185,7 +185,7 @@ for scaled in [False, True]:
     for layer in range(LAYER_IDX):
         model.add_hook(
             "blocks.{}.attn.hook_pattern".format(layer),
-            partial(attn_lock, scaled=scaled),
+            partial(attn_lock, scaled=scaled, ioi_dataset=ioi_dataset),
             level=1,
         )
     _, cache = model.run_with_cache(
@@ -219,6 +219,8 @@ baselines = {
 
 # orthogonal components 
 
+OTHER=False
+
 if INCLUDE_ORTHOGONAL:
     old_baseline_keys = list(baselines.keys())
     for baseline_name in old_baseline_keys:
@@ -226,28 +228,49 @@ if INCLUDE_ORTHOGONAL:
             continue
         normalized_baseline = baselines[baseline_name] / baselines[baseline_name].norm(dim=-1, keepdim=True)
         normalized_keys = cached_key_input / cached_key_input.norm(dim=-1, keepdim=True)
-        orthogonal_complement = normalized_keys - einops.einsum(
-            normalized_baseline,
-            normalized_keys,
-            "batch d_model, batch d_model -> batch",
-        ).unsqueeze(-1) * normalized_baseline
 
-        assert einops.einsum(
-            orthogonal_complement,
-            normalized_baseline,
-            "batch d_model, batch d_model -> batch",
-        ).abs().max().item() < 1e-5, "Orthogonal complement is not orthogonal to the baseline"    
+        if OTHER:
+            other_orthogonal_complement = normalized_keys - normalized_baseline
+            baselines["Other complement to " + baseline_name] = other_orthogonal_complement
 
-        baselines["Orthogonal complement of " + baseline_name] = orthogonal_complement
+        else:
+            orthogonal_complement = normalized_keys - einops.einsum(
+                normalized_baseline,
+                normalized_keys,
+                "batch d_model, batch d_model -> batch",
+            ).unsqueeze(-1) * normalized_baseline
+
+            orthogonal_complement = orthogonal_complement / orthogonal_complement.norm(dim=-1, keepdim=True)
+
+            assert einops.einsum(
+                orthogonal_complement,
+                normalized_baseline,
+                "batch d_model, batch d_model -> batch",
+            ).abs().max().item() < 1e-5, "Orthogonal complement is not orthogonal to the baseline"    
+
+            assert torch.allclose(
+                orthogonal_complement.norm(dim=-1),
+                normalized_keys.norm(dim=-1),
+                atol=1e-5,
+                rtol=1e-5,
+            ), "Orthogonal complement is not the same norm as the keys"
+
+            baselines["Orthogonal complement of " + baseline_name] = orthogonal_complement
+
+#%%
+
+histone = {
+    key: einops.einsum(
+        cached_key_input / cached_key_input.norm(dim=-1, keepdim=True),
+        value / value.norm(dim=-1, keepdim=True),
+        "batch d_model, batch d_model -> batch",
+    ) for key, value in baselines.items()
+}
 
 #%%
 
 hist(
-    [einops.einsum(
-        cached_key_input / cached_key_input.norm(dim=-1, keepdim=True),
-        baseline / baseline.norm(dim=-1, keepdim=True),
-        "batch d_model, batch d_model -> batch",
-    ) for baseline in baselines.values()],
+    list(histone.values()),
     title="Cosine sim of baselines with the actual keys",
     names=list(baselines.keys()),
     width=800,
@@ -255,6 +278,7 @@ hist(
     opacity=0.7,
     marginal="box",
     template="simple_white",
+    nbins=50,
     # static=True,
 )
 
