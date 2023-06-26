@@ -3,7 +3,6 @@
 # <p> With large attention range even for small tweaks to stimulus (~10% increases) </p>
 # WARNING not using effective embedding
 # TODO add MLP ONLY baseline
-# TODO do this with attention scores
 
 from transformer_lens.cautils.notebook import *  # use from transformer_lens.cautils.utils import * instead for the same effect without autoreload
 
@@ -20,7 +19,7 @@ USE_NAME_MOVER = False
 MODE = "key"  # TODO implement value
 assert MODE in ["query", "key"]
 SHOW_LOADS = False
-LOCK_QUERY_WU = True
+LOCK_QUERY_WU = False
 # TODO implement runtime checking or whatever
 
 # %%
@@ -46,14 +45,14 @@ update_word_lists = {
 }
 
 if USE_NAME_MOVER or True:
-    N = 20
+    N = 200
     warnings.warn("Auto IOI")
     ioi_dataset = IOIDataset(
         prompt_type="mixed",
         N=N,
         tokenizer=model.tokenizer,
         prepend_bos=True,
-        seed=1,
+        seed=35795,
         device=DEVICE,
     )
     update_word_lists = {" " + sent.split()[-1]: sent for sent in ioi_dataset.sentences}
@@ -193,11 +192,13 @@ if MODE == "key":
     #     "blocks.1.hook_resid_pre": [],
         "unembedding": [],
         "embedding_layer_before_negative": [],
+        "callum_embedding_scale_True": [],
+        "callum_embedding_scale_False": [],
     }
 
-    for layer in range(12): # MLP 0 and Attn 0 are somewhat interesting
-        saved_unit_directions[f"blocks.{layer}.hook_attn_out"] = []
-        saved_unit_directions[f"blocks.{layer}.hook_mlp_out"] = []
+    # for layer in range(12): # MLP 0 and Attn 0 are somewhat interesting
+    #     saved_unit_directions[f"blocks.{layer}.hook_attn_out"] = []
+    #     saved_unit_directions[f"blocks.{layer}.hook_mlp_out"] = []
 
 else:
     saved_unit_directions = {
@@ -223,7 +224,7 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(update_tokens.i
     )
 
     for name in list(saved_unit_directions.keys()):
-        if name in ["unembedding", "embedding_layer_before_negative"]:
+        if name in ["unembedding", "embedding_layer_before_negative"] or name.startswith("callum"):
             continue
 
         position = (
@@ -241,6 +242,9 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(update_tokens.i
         )
 
     if "embedding_layer_before_negative" in saved_unit_directions.keys():
+
+        # The `the` thing
+
         short_prompt_tokens = model.to_tokens("The").tolist()[0] + [update_token]
         assert len(short_prompt_tokens) == 3
         assert all([isinstance(token, int) for token in short_prompt_tokens]), short_prompt_tokens
@@ -254,6 +258,44 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(update_tokens.i
         saved_unit_directions["embedding_layer_before_negative"].append(
             normalize(cache[EMBEDDING_LAYER_BEFORE_NEGATIVE_HOOK_NAME][0, -1]).detach().cpu().clone()
         )
+
+    if "callum_embedding_scale_True" in saved_unit_directions.keys():
+        assert MODE=="key", "Callum's embedding is only defined for key mode"
+
+        def attn_lock(z, hook, update_token_positions, scaled=False):
+            old_z = z.clone()
+            z[:] *= 0.0
+            if scaled:
+                pos0 = z[0, :, update_token_positions[0], 0]
+                pos1 = z[0, :, update_token_positions[0], update_token_positions[0]]
+                total_att = pos0 + pos1 + 1e-5
+                # if abs(total_att.item())>1e-5:
+                z[0, :, update_token_positions[0], 0] = pos0/total_att
+                z[0, :, update_token_positions[0], update_token_positions[0]] = pos1/total_att
+
+            else:
+                z[0, :, update_token_positions[0], update_token_positions[0]] = old_z[0, :, update_token_positions[0], update_token_positions[0]]
+                z[0, :, update_token_positions[0], 0] = old_z[0, :, update_token_positions[0], 0]
+            return z
+
+        for scaled in [False, True]:
+            model.reset_hooks()
+            for layer in range(LAYER_IDX):
+                model.add_hook(
+                    "blocks.{}.attn.hook_pattern".format(layer),
+                    partial(attn_lock, scaled=scaled, update_token_positions=update_token_positions),
+                    level=1,
+                )
+            _, cache = model.run_with_cache(
+                prompt_tokens.to(DEVICE),
+                names_filter = lambda name: name==f"blocks.{LAYER_IDX}.hook_resid_pre",
+            )
+            model.reset_hooks()
+            callums_baseline = cache[f"blocks.{LAYER_IDX}.hook_resid_pre"][0, update_token_positions[0]].detach().cpu().clone()
+            
+            saved_unit_directions[f"callum_embedding_scale_{scaled}"].append(
+                normalize(callums_baseline).detach().cpu().clone()
+            ) 
 
 # %%
 
@@ -299,6 +341,8 @@ for update_token_idx, (update_token, prompt_tokens) in enumerate(update_tokens.i
                 "i, i ->",
             ).item()
         )
+
+        print(normalized_residual_stream[:2], current_unit_direction[:2], prompt_words[:3])
 
 # %%
 

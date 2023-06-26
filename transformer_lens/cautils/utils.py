@@ -33,7 +33,7 @@ from pathlib import Path
 import einops
 from IPython.display import display, clear_output, HTML
 import circuitsvis as cv
-
+import gc
 import transformer_lens
 from transformer_lens import *
 from transformer_lens.utils import *

@@ -20,6 +20,7 @@ clear_output()
 
 from transformer_lens import FactoredMatrix
 
+# TODO legend groups
 
 #%% [markdown] [5]:
 
