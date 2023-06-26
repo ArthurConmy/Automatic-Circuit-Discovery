@@ -15,7 +15,7 @@ import sys
 
 sys.path.append(str(Path(__file__).parent.parent / "code"))
 
-from subnetwork_probing.train import correspondence_from_mask, get_transformer_config
+from subnetwork_probing.train import iterative_correspondence_from_mask, get_transformer_config
 import networkx as nx
 from acdc.TLACDCInterpNode import parse_interpnode
 
@@ -137,5 +137,5 @@ def test_count_nodes():
             g2.remove_edge(n, n)
     assert len(g2.edges) == 41
 
-    corr = correspondence_from_mask(model, nodes_to_mask)
+    corr, _ = iterative_correspondence_from_mask(model, nodes_to_mask)
     assert corr.count_no_edges() == 41

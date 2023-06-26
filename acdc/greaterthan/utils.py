@@ -229,9 +229,9 @@ CIRCUIT = {
 }
 
 def get_greaterthan_true_edges(model):
-    from subnetwork_probing.train import correspondence_from_mask
+    from subnetwork_probing.train import iterative_correspondence_from_mask
 
-    corr = correspondence_from_mask(
+    corr, _ = iterative_correspondence_from_mask(
         model=model,
         nodes_to_mask = [],
     )

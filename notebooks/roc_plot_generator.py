@@ -30,7 +30,7 @@ if IPython.get_ipython() is not None:
     IPython.get_ipython().run_line_magic("autoreload", "2")  # type: ignore
 
 from copy import deepcopy
-from subnetwork_probing.train import correspondence_from_mask
+from subnetwork_probing.train import iterative_correspondence_from_mask
 from acdc.acdc_utils import filter_nodes, get_edge_stats, get_node_stats, get_present_nodes, reset_network
 import pandas as pd
 import gc
@@ -752,21 +752,24 @@ def get_sp_corrs(
         ]
 
     corrs = []
+    corr, head_parents = None, None
     for run in filtered_runs:
         try:
             nodes_to_mask_strings = run.summary["nodes_to_mask"]
         except KeyError:
             continue
         nodes_to_mask = [parse_interpnode(s) for s in nodes_to_mask_strings]
-        corr = correspondence_from_mask(
+        corr, head_parents = iterative_correspondence_from_mask(
             model = model,
             nodes_to_mask=nodes_to_mask,
             use_pos_embed = USE_POS_EMBED,
+            corr=corr,
+            head_parents=head_parents
         )
         score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
         score_d["steps"] = run.summary["_step"]
         score_d["score"] = run.config["lambda_reg"]
-        corrs.append((corr, score_d))
+        corrs.append((deepcopy(corr), score_d))
 
     return corrs
 
@@ -803,7 +806,8 @@ def get_sixteen_heads_corrs(
     score_d_list = list(run.scan_history(keys=test_keys, page_size=100000))
     assert len(score_d_list) == len(nodes_names_indices) + 1
 
-    corrs = [(correspondence_from_mask(model=model, nodes_to_mask=[], use_pos_embed=exp.use_pos_embed), {"score": 0.0, **score_d_list[0]})]
+    corr, head_parents = iterative_correspondence_from_mask(model=model, nodes_to_mask=[], use_pos_embed=exp.use_pos_embed)
+    corrs = [(corr, {"score": 0.0, **score_d_list[0]})]
     for (nodes, hook_name, idx, score), score_d in tqdm(zip(nodes_names_indices, score_d_list[1:])):
         if score == "NaN":
             score = 0.0
@@ -811,10 +815,10 @@ def get_sixteen_heads_corrs(
             corr = None
         else:
             nodes_to_mask += list(map(parse_interpnode, nodes))
-            corr = correspondence_from_mask(model=model, nodes_to_mask=nodes_to_mask, use_pos_embed=exp.use_pos_embed)
+            corr, head_parents = iterative_correspondence_from_mask(model=model, nodes_to_mask=nodes_to_mask, use_pos_embed=exp.use_pos_embed, corr=corr, head_parents=head_parents)
         cum_score += score
         score_d = {"score": cum_score, **score_d}
-        corrs.append((corr, score_d))
+        corrs.append((deepcopy(corr), score_d))
     return corrs
 
 if "sixteen_heads_corrs" not in locals() and not SKIP_SIXTEEN_HEADS: # this is slow, so run once
