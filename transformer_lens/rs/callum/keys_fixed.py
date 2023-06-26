@@ -1,6 +1,40 @@
 from torch import native_dropout
 from transformer_lens.cautils.utils import *
-from transformer_lens.rs.callum.generate_bag_of_words_quad_plot import get_effective_embedding
+# from transformer_lens.rs.callum.generate_bag_of_words_quad_plot import get_effective_embedding
+
+
+def get_effective_embedding_2(model: HookedTransformer) -> Float[Tensor, "d_vocab d_model"]:
+
+    # TODO - make this consistent (i.e. change the func in `generate_bag_of_words_quad_plot` to also return W_U and W_E separately)
+
+    W_E = model.W_E.clone()
+    W_U = model.W_U.clone()
+    # t.testing.assert_close(W_E[:10, :10], W_U[:10, :10].T)  NOT TRUE, because of the center unembed part!
+
+    resid_pre = W_E.unsqueeze(0)
+    pre_attention = model.blocks[0].ln1(resid_pre)
+    attn_out = einops.einsum(
+        pre_attention, 
+        model.W_V[0],
+        model.W_O[0],
+        "b s d_model, num_heads d_model d_head, num_heads d_head d_model_out -> b s d_model_out",
+    )
+    resid_mid = attn_out + resid_pre
+    normalized_resid_mid = model.blocks[0].ln2(resid_mid)
+    mlp_out = model.blocks[0].mlp(normalized_resid_mid)
+    
+    W_EE = mlp_out.squeeze()
+    W_EE_full = resid_mid.squeeze() + mlp_out.squeeze()
+
+    t.cuda.empty_cache()
+
+    return {
+        "W_E (no MLPs)": W_E,
+        "W_U": W_U.T,
+        # "W_E (raw, no MLPs)": W_E,
+        "W_E (including MLPs)": W_EE_full,
+        "W_E (only MLPs)": W_EE
+    }
 
 
 
@@ -14,10 +48,11 @@ def attn_scores_as_linear_func_of_queries(
 ) -> Float[Tensor, "d_model"]:
     '''
     If you hold keys fixed, then attention scores are a linear function of the queries.
-
     I want to fix the keys of head 10.7, and get a linear function mapping queries -> attention scores.
-
     I can then see if (for example) the unembedding vector for the IO token has a really big image in this linear fn.
+
+    Here, if `subtract_S1_attn_scores` is True, this means we should change the linear map, from key_IO_linear_map to
+    (key_IO_linear_map - key_S1_linear_map). Same for the bias term.
     '''
     layer, head_idx = head
     if isinstance(batch_idx, int):
@@ -43,19 +78,22 @@ def attn_scores_as_linear_func_of_queries(
 
     return linear_map, bias_term
 
+
 def attn_scores_as_linear_func_of_keys(
     batch_idx: Optional[Union[int, List[int], Int[Tensor, "batch"]]],
     head: Tuple[int, int],
     model: HookedTransformer,
     ioi_cache: ActivationCache,
     ioi_dataset: IOIDataset,
+    subtract_S1_attn_scores: bool = False
 ) -> Float[Tensor, "d_model"]:
     '''
     If you hold queries fixed, then attention scores are a linear function of the keys.
-
     I want to fix the queries of head 10.7, and get a linear function mapping keys -> attention scores.
-
     I can then see if (for example) the embedding vector for the IO token has a really big image in this linear fn.
+
+    Here, if `subtract_S1_attn_scores` is True, this implies that we'll be passing (key_IO - key_S1) to this linear
+    map. So we want to make the bias zero, but not change the linear map.
     '''
     layer, head_idx = head
     if isinstance(batch_idx, int):
@@ -76,6 +114,11 @@ def attn_scores_as_linear_func_of_keys(
         linear_map = linear_map[0]
         bias_term = bias_term[0]
 
+    if subtract_S1_attn_scores:
+        # In this case, we assume the key-side vector supplied will be the difference between the key vectors for the IO and S1 tokens.
+        # We don't change the linear map, but we do change the bias term (because it'll be added then subtracted, i.e. it should be zero!)
+        bias_term *= 0
+
     return linear_map, bias_term
 
 
@@ -86,7 +129,7 @@ def attn_scores_as_linear_func_of_keys(
 
 
 
-def get_attn_scores_and_probs_as_linear_func_of_queries(
+def get_attn_scores_as_linear_func_of_queries_for_histogram(
     NNMH: Tuple[int, int],
     num_batches: int,
     batch_size: int,
@@ -153,42 +196,38 @@ def get_attn_scores_and_probs_as_linear_func_of_queries(
 
 
 
-def get_attn_scores_and_probs_as_linear_func_of_keys(
+def get_attn_scores_as_linear_func_of_keys_for_histogram(
     NNMH: Tuple[int, int],
     num_batches: int,
     batch_size: int,
     model: HookedTransformer,
     subtract_S1_attn_scores: bool = False,
 ):
-    effective_embeddings = get_effective_embedding(model) 
+    effective_embeddings = get_effective_embedding_2(model) 
 
-    W_U = effective_embeddings["W_U (or W_E, no MLPs)"]
+    W_E = effective_embeddings["W_E (no MLPs)"]
     W_EE = effective_embeddings["W_E (including MLPs)"]
     W_EE_subE = effective_embeddings["W_E (only MLPs)"]
 
-    attn_scores = {
-        k: t.empty((0,)).to(device)
-        for k in ["W_E[IO]", "W_EE[IO]", "W_EE_subE[IO]", "No patching"]
-    }
-    attn_probs = {
-        k: t.empty((0,)).to(device)
-        for k in ["W_E[IO]", "W_EE[IO]", "W_EE_subE[IO]", "No patching"]
-    }
+    keyside_names = ["W_E[IO]", "W_EE[IO]", "W_EE_subE[IO]", "No patching", "MLP0_out"]
+    attn_scores = {k: t.empty((0,)).to(device) for k in keyside_names}
+    attn_probs = {k: t.empty((0,)).to(device) for k in keyside_names}
 
     for seed in tqdm(range(num_batches)):
 
         ioi_dataset, ioi_cache = generate_data_and_caches(batch_size, model=model, seed=seed, only_ioi=True)
 
-        linear_map, bias_term = attn_scores_as_linear_func_of_keys(batch_idx=None, head=NNMH, model=model, ioi_cache=ioi_cache, ioi_dataset=ioi_dataset)
+        linear_map, bias_term = attn_scores_as_linear_func_of_keys(batch_idx=None, head=NNMH, model=model, ioi_cache=ioi_cache, ioi_dataset=ioi_dataset, subtract_S1_attn_scores=subtract_S1_attn_scores)
         assert linear_map.shape == (batch_size, model.cfg.d_model)
 
         # Has to be manual, because apparently `apply_ln_to_stack` doesn't allow it to be applied at different sequence positions
         # ! Note - I don't actually have to do this if I'm computing cosine similarity! Maybe I should be doing this instead?
         resid_vectors = {
-            "W_E[IO]": W_U[t.tensor(ioi_dataset.io_tokenIDs)],
+            "W_E[IO]": W_E[t.tensor(ioi_dataset.io_tokenIDs)],
             "W_EE[IO]": W_EE[t.tensor(ioi_dataset.io_tokenIDs)],
             "W_EE_subE[IO]": W_EE_subE[t.tensor(ioi_dataset.io_tokenIDs)],
-            "No patching": ioi_cache["resid_pre", NNMH[0]][range(batch_size), ioi_dataset.word_idx["IO"]]
+            "No patching": ioi_cache["resid_pre", NNMH[0]][range(batch_size), ioi_dataset.word_idx["IO"]],
+            "MLP0_out": ioi_cache["mlp_out", 0][range(batch_size), ioi_dataset.word_idx["IO"]],
         }
         normalized_resid_vectors = {
             name: (k_side_vector - k_side_vector.mean(dim=-1, keepdim=True)) / k_side_vector.var(dim=-1, keepdim=True).pow(0.5)
@@ -197,10 +236,11 @@ def get_attn_scores_and_probs_as_linear_func_of_keys(
         
         if subtract_S1_attn_scores:
             resid_vectors_baseline = {
-                "W_E[IO]": W_U[t.tensor(ioi_dataset.s_tokenIDs)],
+                "W_E[IO]": W_E[t.tensor(ioi_dataset.s_tokenIDs)],
                 "W_EE[IO]": W_EE[t.tensor(ioi_dataset.s_tokenIDs)],
                 "W_EE_subE[IO]": W_EE_subE[t.tensor(ioi_dataset.s_tokenIDs)],
-                "No patching": ioi_cache["resid_pre", NNMH[0]][range(batch_size), ioi_dataset.word_idx["S1"]]
+                "No patching": ioi_cache["resid_pre", NNMH[0]][range(batch_size), ioi_dataset.word_idx["S1"]],
+                "MLP0_out": ioi_cache["mlp_out", 0][range(batch_size), ioi_dataset.word_idx["S1"]],
             }
             normalized_resid_vectors_baseline = {
                 name: (k_side_vector - k_side_vector.mean(dim=-1, keepdim=True)) / k_side_vector.var(dim=-1, keepdim=True).pow(0.5)
@@ -232,6 +272,16 @@ def get_attn_scores_and_probs_as_linear_func_of_keys(
             all_probs = all_attn_scores.softmax(dim=-1)[range(batch_size), ioi_dataset.word_idx["IO"]]
             attn_probs[k] = t.cat([attn_probs[k], all_probs])
 
+    if subtract_S1_attn_scores:
+        keyside_names = {
+            "W_E[IO]": "W_E[IO] - W_E[S1]", 
+            "W_EE[IO]": "W_EE[IO] - W_EE[S1]", 
+            "W_EE_subE[IO]": "W_EE_subE[IO] - W_EE_subE[S1]", 
+            "No patching": "No patching (IO - S1)",
+            "MLP0_out": "MLP0_out (IO - S1)",
+        }
+        attn_scores = {keyside_names[k]: v for (k, v) in attn_scores.items()}
+
     return attn_scores, attn_probs
 
 
@@ -248,6 +298,7 @@ def decompose_attn_scores(
     intervene_on_query: Literal["sub_W_U_IO", "project_to_W_U_IO", None] = None,
     intervene_on_key: Literal["sub_MLP0", "project_to_MLP0", None] = None,
     use_effective_embedding: bool = False,
+    use_layer0_heads: bool = False,
     subtract_S1_attn_scores: bool = False,
     static: bool = False, # determines if plot is static
 ):
@@ -280,8 +331,11 @@ def decompose_attn_scores(
     Some other important arguments:
 
     use_effective_embedding:
-        If True, we use the effective embedding (only MLP output) rather than the actual output of MLP0. These shouldn't really be that different (if our W_EE is principled),
-        but unfortunately they are.
+        If True, we use the effective embedding (i.e. from fixing self-attn to be 1 in attn layer 0) rather than the actual output of MLP0. These shouldn't really be that 
+        different (if our W_EE is principled), but unfortunately they are.
+
+    use_layer0_heads:
+        If True, then rather than using MLP0 output, we use MLP0 output plus the layer0 attention heads.
 
     subtract_S1_attn_scores:
         If "S1", we subtract the attention score from "END" to "S1"
@@ -304,13 +358,17 @@ def decompose_attn_scores(
 
     # * Get the MLP0 output (note that we need to be careful here if we're subtracting the S1 baseline, because we actually need the 2 different MLP0s)
     if use_effective_embedding:
-        effective_embeddings = get_effective_embedding(model) 
-        W_EE_subE = effective_embeddings["W_E (only MLPs)"]
-        MLP0_output = W_EE_subE[ioi_dataset.io_tokenIDs]
-        MLP0_output_S1 = W_EE_subE[ioi_dataset.s_tokenIDs]
+        W_EE_dict = get_effective_embedding_2(model)
+        W_EE = (W_EE_dict["W_E (including MLPs)"] - W_EE_dict["W_E (no MLPs)"]) if use_layer0_heads else W_EE_dict["W_E (only MLPs)"]
+        MLP0_output = W_EE[ioi_dataset.io_tokenIDs]
+        MLP0_output_S1 = W_EE[ioi_dataset.s_tokenIDs]
     else:
-        MLP0_output = ioi_cache["mlp_out", 0][range(batch_size), IO_seq_pos_indices]
-        MLP0_output_S1 = ioi_cache["mlp_out", 0][range(batch_size), S1_seq_pos_indices]
+        if use_layer0_heads:
+            MLP0_output = ioi_cache["mlp_out", 0][range(batch_size), IO_seq_pos_indices] + ioi_cache["attn_out", 0][range(batch_size), IO_seq_pos_indices]
+            MLP0_output_S1 = ioi_cache["mlp_out", 0][range(batch_size), S1_seq_pos_indices] + ioi_cache["attn_out", 0][range(batch_size), S1_seq_pos_indices]
+        else:
+            MLP0_output = ioi_cache["mlp_out", 0][range(batch_size), IO_seq_pos_indices]
+            MLP0_output_S1 = ioi_cache["mlp_out", 0][range(batch_size), S1_seq_pos_indices]
     MLP0_output_scaled = (MLP0_output - MLP0_output.mean(-1, keepdim=True)) / MLP0_output.var(dim=-1, keepdim=True).pow(0.5)
 
 
@@ -318,8 +376,8 @@ def decompose_attn_scores(
 
         assert intervene_on_query in [None, "sub_W_U_IO", "project_to_W_U_IO"]
 
-        decomp_seq_pos_indices = ioi_dataset.word_idx["IO"]
-        lin_map_seq_pos_indices = ioi_dataset.word_idx["end"]
+        decomp_seq_pos_indices = IO_seq_pos_indices
+        lin_map_seq_pos_indices = end_seq_pos_indices
 
         unembeddings = model.W_U.T[ioi_dataset.io_tokenIDs]
         unembeddings_scaled = (unembeddings - unembeddings.mean(-1, keepdim=True)) / unembeddings.var(dim=-1, keepdim=True).pow(0.5)
@@ -343,32 +401,33 @@ def decompose_attn_scores(
             q_raw[range(batch_size), lin_map_seq_pos_indices, nnmh[1]] = q_new
             ioi_cache_dict_io_dir = {**ioi_cache.cache_dict, **{q_name: q_raw.clone()}}
             ioi_cache_io_dir = ActivationCache(cache_dict=ioi_cache_dict_io_dir, model=model)
-            linear_map_io_dir, bias_term_io_dir = attn_scores_as_linear_func_of_keys(batch_idx=None, head=nnmh, model=model, ioi_cache=ioi_cache_io_dir, ioi_dataset=ioi_dataset)
+            linear_map_io_dir, bias_term_io_dir = attn_scores_as_linear_func_of_keys(batch_idx=None, head=nnmh, model=model, ioi_cache=ioi_cache_io_dir, ioi_dataset=ioi_dataset, subtract_S1_attn_scores=subtract_S1_attn_scores)
 
             # Overwrite the query-side vector with the bit that's perpendicular to the IO unembedding (plus the bias term)
             q_new = einops.einsum(resid_pre_in_io_perpdir, W_Q, "batch d_model, d_model d_head -> batch d_head") + b_Q
             q_raw[range(batch_size), lin_map_seq_pos_indices, nnmh[1]] = q_new
             ioi_cache_dict_io_perpdir = {**ioi_cache.cache_dict, **{q_name: q_raw.clone()}}
             ioi_cache_io_perpdir = ActivationCache(cache_dict=ioi_cache_dict_io_perpdir, model=model)
-            linear_map_io_perpdir, bias_term_io_perpdir = attn_scores_as_linear_func_of_keys(batch_idx=None, head=nnmh, model=model, ioi_cache=ioi_cache_io_perpdir, ioi_dataset=ioi_dataset)
+            linear_map_io_perpdir, bias_term_io_perpdir = attn_scores_as_linear_func_of_keys(batch_idx=None, head=nnmh, model=model, ioi_cache=ioi_cache_io_perpdir, ioi_dataset=ioi_dataset, subtract_S1_attn_scores=subtract_S1_attn_scores)
             
             linear_map_dict = {"IO_dir": (linear_map_io_dir, bias_term_io_dir), "IO_perp": (linear_map_io_perpdir, bias_term_io_perpdir)}
 
         # ! (1A)
         # * Get new linear function from keys -> attn scores, corresponding to subbing in W_U[IO] as queryside vector
+        # * TODO - replace `sub`, because it implies `subtract` rather than `substitute`
         elif intervene_on_query == "sub_W_U_IO":
             # Overwrite the query-side vector by replacing it with the (normalized) W_U[IO] unembeddings
             q_new = einops.einsum(unembeddings_scaled, W_Q, "batch d_model, d_model d_head -> batch d_head") + b_Q
             q_raw[range(batch_size), lin_map_seq_pos_indices, nnmh[1]] = q_new
             ioi_cache_dict_io_subbed = {**ioi_cache.cache_dict, **{q_name: q_raw.clone()}}
             ioi_cache_io_subbed = ActivationCache(cache_dict=ioi_cache_dict_io_subbed, model=model)
-            linear_map_io_subbed, bias_term_io_subbed = attn_scores_as_linear_func_of_keys(batch_idx=None, head=nnmh, model=model, ioi_cache=ioi_cache_io_subbed, ioi_dataset=ioi_dataset)
+            linear_map_io_subbed, bias_term_io_subbed = attn_scores_as_linear_func_of_keys(batch_idx=None, head=nnmh, model=model, ioi_cache=ioi_cache_io_subbed, ioi_dataset=ioi_dataset, subtract_S1_attn_scores=subtract_S1_attn_scores)
             
             linear_map_dict = {"IO_sub": (linear_map_io_subbed, bias_term_io_subbed)}
 
         # * Get linear function from keys -> attn scores (no intervention on query)
         else:
-            linear_map, bias_term = attn_scores_as_linear_func_of_keys(batch_idx=None, head=nnmh, model=model, ioi_cache=ioi_cache, ioi_dataset=ioi_dataset)
+            linear_map, bias_term = attn_scores_as_linear_func_of_keys(batch_idx=None, head=nnmh, model=model, ioi_cache=ioi_cache, ioi_dataset=ioi_dataset, subtract_S1_attn_scores=subtract_S1_attn_scores)
             linear_map_dict = {"unchanged": (linear_map, bias_term)}
 
 
@@ -377,8 +436,8 @@ def decompose_attn_scores(
 
         assert intervene_on_key in [None, "sub_MLP0", "project_to_MLP0"]
 
-        decomp_seq_pos_indices = ioi_dataset.word_idx["end"]
-        lin_map_seq_pos_indices = ioi_dataset.word_idx["IO"]
+        decomp_seq_pos_indices = end_seq_pos_indices
+        lin_map_seq_pos_indices = end_seq_pos_indices
 
         resid_pre = ioi_cache["resid_pre", nnmh[0]]
         resid_pre_normalised = (resid_pre - resid_pre.mean(-1, keepdim=True)) / resid_pre.var(dim=-1, keepdim=True).pow(0.5)
@@ -446,25 +505,20 @@ def decompose_attn_scores(
     # * This is where we get the thing we're projecting keys onto if required (i.e. if we're decomposing by keys, and want to split into ||MLP0 and ⟂MLP0)
     if (intervene_on_key is not None) and (decompose_by == "keys"):
         assert intervene_on_key == "project_to_MLP0", "If you're decomposing by key component, then 'intervene_on_key' must be 'project_to_MLP0' or None."
-        # MLP0_output = get_effective_embedding(model)["W_E (only MLPs)"]
-        # MLP0_output = MLP0_output[ioi_dataset.io_tokenIDs] # shape (batch, d_model)
-        if use_effective_embedding:
-            effective_embeddings = get_effective_embedding(model) 
-            W_EE_subE = effective_embeddings["W_E (only MLPs)"]
-            MLP0_output = W_EE_subE[ioi_dataset.io_tokenIDs]
-        else:
-            MLP0_output = ioi_cache["mlp_out", 0][range(batch_size), decomp_seq_pos_indices]
         contribution_to_attn_scores_shape = (2, 1 + nnmh[0], model.cfg.n_heads + 1)
+        contribution_to_attn_scores_names = ["MLP0_dir", "MLP0_perp"]
 
     # * This is where we get the thing we're projecting queries onto if required (i.e. if we're decomposing by queries, and want to split into ||W_U[IO] and ⟂W_U[IO])
     elif (intervene_on_query is not None) and (decompose_by == "queries"):
         assert intervene_on_query == "project_to_W_U_IO", "If you're decomposing by key component, then 'intervene_on_query' must be 'project_to_W_U_IO' or None."
         unembeddings = model.W_U.T[ioi_dataset.io_tokenIDs]
         contribution_to_attn_scores_shape = (2, 1 + nnmh[0], model.cfg.n_heads + 1)
+        contribution_to_attn_scores_names = ["IO_dir", "IO_perp"]
 
     # * We're not projecting by anything when we get the decomposed bits
     else:
         contribution_to_attn_scores_shape = (1, 1 + nnmh[0], model.cfg.n_heads + 1)
+        contribution_to_attn_scores_names = ["unchanged"]
 
 
 
@@ -502,15 +556,17 @@ def decompose_attn_scores(
             # Calculate scaled baseline
             component_output_S1 = ioi_cache[component_name, layer][range(batch_size), S1_seq_pos_indices]
             component_output_scaled_S1 = component_output_S1 / (ln_scale_S1.unsqueeze(1) if (component_name == "result") else ln_scale_S1)
-            # Apply projections
-            projection_dir_S1 = einops.repeat(MLP0_output_S1, "b d_m -> b heads d_m", heads=model.cfg.n_heads) if (component_name == "result") else MLP0_output_S1
-            component_output_scaled_S1 = t.stack(project(component_output_scaled_S1, projection_dir_S1))
+            # Apply projections, if required
+            if (intervene_on_key == "project_to_MLP0"):
+                projection_dir_S1 = einops.repeat(MLP0_output_S1, "b d_m -> b heads d_m", heads=model.cfg.n_heads) if (component_name == "result") else MLP0_output_S1
+                component_output_scaled_S1 = t.stack(project(component_output_scaled_S1, projection_dir_S1))
             # Subtract baseline
             component_output_scaled = component_output_scaled - component_output_scaled_S1
 
         return component_output_scaled
 
 
+    results_dict = {}
 
     for name, (linear_map, bias_term) in linear_map_dict.items():
         
@@ -532,6 +588,7 @@ def decompose_attn_scores(
         # Add these to the results tensor. Note we use `:` because this covers cases where the first dim is 1 (no projection split) or 2 (projection split)
         contribution_to_attn_scores[:, 0, 0] = einops.einsum(embed_scaled, linear_map, "... batch d_model, batch d_model -> ... batch").mean(-1)
         contribution_to_attn_scores[:, 0, 1] = einops.einsum(pos_embed_scaled, linear_map, "... batch d_model, batch d_model -> ... batch").mean(-1)
+        # Add the bias term (this is only ever added to the last term, because it's the perpendicular one)
         contribution_to_attn_scores[-1, 0, 2] = bias_term.mean()
 
         for layer in range(nnmh[0]):
@@ -554,6 +611,10 @@ def decompose_attn_scores(
         
         contribution_to_attn_scores_list.append(contribution_to_attn_scores.squeeze())
 
+        for name2, contribution_to_attn_scores_slice in zip(contribution_to_attn_scores_names, contribution_to_attn_scores):
+            names = tuple(sorted([name, name2]))
+            results_dict[names] = contribution_to_attn_scores_slice.squeeze()
+
     if len(contribution_to_attn_scores_list) == 1:
         contribution_to_attn_scores = contribution_to_attn_scores_list[0]
     else:
@@ -562,9 +623,13 @@ def decompose_attn_scores(
     if show_plot:
         plot_contribution_to_attn_scores(contribution_to_attn_scores, decompose_by, static=static)
     
-    return contribution_to_attn_scores
+    if len(results_dict) == 1:
+        return results_dict[list(results_dict.keys())[0]]
+    else:
+        return results_dict
 
 
+# TODO - four 100x100 plots which show every combination of (component, component) for each of the four splits
 
 
 
