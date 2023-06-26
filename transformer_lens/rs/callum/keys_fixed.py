@@ -48,10 +48,11 @@ def attn_scores_as_linear_func_of_queries(
 ) -> Float[Tensor, "d_model"]:
     '''
     If you hold keys fixed, then attention scores are a linear function of the queries.
-
     I want to fix the keys of head 10.7, and get a linear function mapping queries -> attention scores.
-
     I can then see if (for example) the unembedding vector for the IO token has a really big image in this linear fn.
+
+    Here, if `subtract_S1_attn_scores` is True, this means we should change the linear map, from key_IO_linear_map to
+    (key_IO_linear_map - key_S1_linear_map). Same for the bias term.
     '''
     layer, head_idx = head
     if isinstance(batch_idx, int):
@@ -88,10 +89,11 @@ def attn_scores_as_linear_func_of_keys(
 ) -> Float[Tensor, "d_model"]:
     '''
     If you hold queries fixed, then attention scores are a linear function of the keys.
-
     I want to fix the queries of head 10.7, and get a linear function mapping keys -> attention scores.
-
     I can then see if (for example) the embedding vector for the IO token has a really big image in this linear fn.
+
+    Here, if `subtract_S1_attn_scores` is True, this implies that we'll be passing (key_IO - key_S1) to this linear
+    map. So we want to make the bias zero, but not change the linear map.
     '''
     layer, head_idx = head
     if isinstance(batch_idx, int):
@@ -207,7 +209,7 @@ def get_attn_scores_as_linear_func_of_keys_for_histogram(
     W_EE = effective_embeddings["W_E (including MLPs)"]
     W_EE_subE = effective_embeddings["W_E (only MLPs)"]
 
-    keyside_names = ["W_E[IO]", "W_EE[IO]", "W_EE_subE[IO]", "No patching"]
+    keyside_names = ["W_E[IO]", "W_EE[IO]", "W_EE_subE[IO]", "No patching", "MLP0_out"]
     attn_scores = {k: t.empty((0,)).to(device) for k in keyside_names}
     attn_probs = {k: t.empty((0,)).to(device) for k in keyside_names}
 
@@ -224,7 +226,8 @@ def get_attn_scores_as_linear_func_of_keys_for_histogram(
             "W_E[IO]": W_E[t.tensor(ioi_dataset.io_tokenIDs)],
             "W_EE[IO]": W_EE[t.tensor(ioi_dataset.io_tokenIDs)],
             "W_EE_subE[IO]": W_EE_subE[t.tensor(ioi_dataset.io_tokenIDs)],
-            "No patching": ioi_cache["resid_pre", NNMH[0]][range(batch_size), ioi_dataset.word_idx["IO"]]
+            "No patching": ioi_cache["resid_pre", NNMH[0]][range(batch_size), ioi_dataset.word_idx["IO"]],
+            "MLP0_out": ioi_cache["mlp_out", 0][range(batch_size), ioi_dataset.word_idx["IO"]],
         }
         normalized_resid_vectors = {
             name: (k_side_vector - k_side_vector.mean(dim=-1, keepdim=True)) / k_side_vector.var(dim=-1, keepdim=True).pow(0.5)
@@ -236,7 +239,8 @@ def get_attn_scores_as_linear_func_of_keys_for_histogram(
                 "W_E[IO]": W_E[t.tensor(ioi_dataset.s_tokenIDs)],
                 "W_EE[IO]": W_EE[t.tensor(ioi_dataset.s_tokenIDs)],
                 "W_EE_subE[IO]": W_EE_subE[t.tensor(ioi_dataset.s_tokenIDs)],
-                "No patching": ioi_cache["resid_pre", NNMH[0]][range(batch_size), ioi_dataset.word_idx["S1"]]
+                "No patching": ioi_cache["resid_pre", NNMH[0]][range(batch_size), ioi_dataset.word_idx["S1"]],
+                "MLP0_out": ioi_cache["mlp_out", 0][range(batch_size), ioi_dataset.word_idx["S1"]],
             }
             normalized_resid_vectors_baseline = {
                 name: (k_side_vector - k_side_vector.mean(dim=-1, keepdim=True)) / k_side_vector.var(dim=-1, keepdim=True).pow(0.5)
@@ -273,7 +277,8 @@ def get_attn_scores_as_linear_func_of_keys_for_histogram(
             "W_E[IO]": "W_E[IO] - W_E[S1]", 
             "W_EE[IO]": "W_EE[IO] - W_EE[S1]", 
             "W_EE_subE[IO]": "W_EE_subE[IO] - W_EE_subE[S1]", 
-            "No patching": "No patching (IO - S1)"
+            "No patching": "No patching (IO - S1)",
+            "MLP0_out": "MLP0_out (IO - S1)",
         }
         attn_scores = {keyside_names[k]: v for (k, v) in attn_scores.items()}
 
