@@ -20,7 +20,7 @@ model.set_use_split_qkv_normalized_input(True)
 DEVICE = "cuda"
 LAYER_IDX, HEAD_IDX = NEG_HEADS[model.cfg.model_name]
 INCLUDE_ORTHOGONAL = True
-ADD_ONE_TO_KEYS = False
+USE_ADD_ONE_TO_KEYS = False
 USE_IOI = False
 
 # %%
@@ -89,7 +89,7 @@ update_token_positions = torch.LongTensor([
 ])
 update_token_positions[:, -1] -= 1
 
-if ADD_ONE_TO_KEYS: # this allows a better baseline comparison...
+if USE_ADD_ONE_TO_KEYS: # this allows a better baseline comparison...
     update_token_positions[:, 0] += 1
 
 assert list(update_token_positions.shape) == [len(update_tokens), 2], update_token_positions.shape
@@ -200,9 +200,9 @@ assert torch.allclose(results.cpu(), cached_attention_scores.cpu(), atol=1e-2, r
 
 the_inputs = model.to_tokens(["The"+key for key in update_word_lists.keys()], prepend_bos=True, move_to_device=False)
 
-assert torch.allclose(the_inputs[:, -1], update_tokens_values[torch.arange(N), update_token_positions[:, 0] - int(ADD_ONE_TO_KEYS)])
+assert torch.allclose(the_inputs[:, -1], update_tokens_values[torch.arange(N), update_token_positions[:, 0] - int(USE_ADD_ONE_TO_KEYS)])
 
-if ADD_ONE_TO_KEYS:
+if USE_ADD_ONE_TO_KEYS:
     the_inputs[:, -1] = update_tokens_values[torch.arange(N), update_token_positions[:, 0]]
 
 assert list(the_inputs.shape) == [N, 3], the_inputs.shape # "<bos>The IO"
@@ -343,6 +343,29 @@ my_saved_tensor = torch.tensor([[-0.7974, -0.5853, -0.9609, -0.6416, -1.2189,  1
           1.3173,  3.2422, -0.4191, -0.1362,  0.4467,  0.4173,  2.0429,  1.2919],
         [ 0.4434,  1.9573,  2.6945,  4.1407,  0.4045,  4.0924,  2.9677,  3.4216,
           1.9097,  5.7129,  1.3067,  3.4670,  3.6914,  0.5945,  4.5255,  3.6550]])
+
+# generated from running with keys plussed by 2...
+my_saved_tensor_two_back = torch.tensor([[ -0.8638,  -2.0370,  -2.6609,  -0.7906,  -1.3508,   0.7168,  -0.8655,
+           0.1669,  -2.8414,  -0.4860,  -2.6967,  -4.6721,  -1.0419,  -0.6098,
+          -1.7511,  -1.7714],
+        [ -7.8829,  -7.6748,  -9.4408,  -7.9672,  -8.7748, -10.6031,  -7.1199,
+          -3.8279,  -9.3967,  -5.0555,  -6.3869,  -9.9933,  -8.7495,  -6.6996,
+          -6.9596,  -8.9850],
+        [ -2.4180,  -3.1992,  -2.6070,  -1.2580,  -1.5044,  -1.2269,  -1.4923,
+           1.2547,  -3.3147,  -0.4951,  -2.3064,  -3.8541,  -0.4694,  -2.0242,
+          -2.6588,  -2.1211],
+        [ -3.2770,  -3.7357,  -5.0653,   1.1981,  -1.9413,  -2.9573,  -3.6215,
+           0.0261,  -4.6934,  -2.5263,  -4.4198,  -6.0736,  -2.7271,  -2.2481,
+          -2.8648,  -4.3975],
+        [  5.5429,   4.1920,   4.3383,   4.6313,   5.3504,   7.9819,   2.4739,
+           3.6277,   3.8808,   3.8833,   1.7513,   3.9411,   6.1183,   5.4265,
+           4.0928,   4.5705],
+        [  1.7131,   0.6672,  -0.9323,   0.2165,  -0.3617,   3.1423,   0.1822,
+          -1.3116,  -0.4674,   0.1345,  -1.4124,  -2.3481,  -0.9432,   1.5404,
+           0.4323,  -0.3238],
+        [  2.3017,   2.1383,   1.8457,  -1.3533,   0.1739,   4.7635,   1.9859,
+           0.3683,   1.4773,   2.7086,   1.1542,   1.6280,   1.7707,   2.2659,
+           1.1855,   2.2598]])
 
 #%%
 
