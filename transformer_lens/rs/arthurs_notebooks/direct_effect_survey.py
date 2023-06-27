@@ -320,8 +320,8 @@ for layer_idx, head_idx in list(itertools.product(
         torch.cuda.empty_cache()
 
         # # comment this out to ensure that this is working (should be same as model's hook_attn_out)
-        # for ovout_idx in range(len(ovout)):
-        #     ovout[ovout_idx] = project(ovout[ovout_idx], model.W_U[:, mybatch[batch_idx, seq_idx]])        
+        for ovout_idx in range(len(ovout)):
+            ovout[ovout_idx] = project(ovout[ovout_idx], model.W_U[:, mybatch[batch_idx, seq_idx]])        
         # ovout += model.b_O[layer_idx]
 
         att_out = einops.einsum(
