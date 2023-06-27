@@ -737,7 +737,7 @@ def path_patch(
 
     # Check other arguments
     assert any([isinstance(new_cache, ActivationCache), new_cache == "zero", new_cache is None]), "Invalid new_cache argument."
-    assert (new_input is not None) or (new_cache == "zero"), "If new_cache is not 'zero' then you must provide new_input."
+    # assert (new_input is not None) or (new_cache == "zero"), "If new_cache is not 'zero' then you must provide new_input."
     if isinstance(patching_metric, str): assert patching_metric in ["loss", "loss_per_token"], "Invalid patching_metric argument."
     assert not(isinstance(patching_metric, str) and apply_metric_to_cache), "Can't apply metric to cache if metric is 'loss' or 'loss_per_token'."
     assert sender_nodes != [], "You must specify sender nodes."
