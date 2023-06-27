@@ -6,6 +6,7 @@ direct effect of NMS
 """
 
 from transformer_lens.cautils.notebook import *
+from transformer_lens.rs.callum.keys_fixed import project
 import argparse
 
 model = HookedTransformer.from_pretrained(
@@ -47,17 +48,20 @@ mytargets = torch.LongTensor(targets[:BATCH_SIZE])
 
 # %%
 
+NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX = NEG_HEADS[model.cfg.model_name]
 END_STATE_HOOK = f"blocks.{model.cfg.n_layers-1}.hook_resid_post"
+names_filter1 = lambda name: name == END_STATE_HOOK or name.endswith("hook_result") or name.endswith(".hook_resid_pre") 
 
-names_filter = lambda name: name == END_STATE_HOOK or name.endswith("hook_result")
-
+model = model.to("cpu")
 logits, cache = model.run_with_cache(
-    mybatch.to(DEVICE),
-    names_filter=names_filter,
+    mybatch.to("cpu"),
+    names_filter=names_filter1,
     device="cpu",
 )
-end_state = cache[END_STATE_HOOK].cpu()  # shape (batch_size, seq_len, hidden_size)
-full_logits = logits.cpu()
+model=model.to("cuda")
+print("Done")
+end_state = cache[END_STATE_HOOK]  # shape (batch_size, seq_len, hidden_size)
+full_logits = logits
 
 del logits
 gc.collect()
@@ -90,7 +94,6 @@ def get_loss_from_end_state(
     if return_logits:
         return loss, logits
     return loss
-
 
 # %%
 
@@ -186,21 +189,84 @@ px.bar(
         (torch.nn.functional.relu(x["loss_changes"]) > 0).double().mean()
         for x in results_log.values()
     ],
-    title="Proportions of tokens in OWT where mean ablating the direct effect of a head is helpful",
+    title="Proportion of token predictions in OWT where mean ablating the direct effect of a head is helpful",
 ).show()
+
+#%%
+
+def simulate_effective_embedding(
+    model: HookedTransformer
+) -> Float[Tensor, "d_vocab d_model"]:
+    """Cribbed from `transformer_lens/rs/callums_notebooks/subtract_embedding.ipynb`"""
+    W_E = model.W_E.clone()
+    W_U = model.W_U.clone()
+    embeds = W_E.unsqueeze(0)
+    pre_attention = model.blocks[0].ln1(embeds)
+    # !!! b_O is not zero. Seems like b_V is, but we'll add it to be safe rather than sorry 
+    assert model.b_V[0].norm().item() < 1e-4
+    assert model.b_O[0].norm().item() > 1e-4
+    vout = einops.einsum( # equivalent to locking attention to 1
+        pre_attention,
+        model.W_V[0],
+        "b s d_model, num_heads d_model d_head -> b s num_heads d_head",
+    ) + model.b_V[0]
+    post_attention = einops.einsum(
+        vout,
+        model.W_O[0],
+        "b s num_heads d_head, num_heads d_head d_model_out -> b s d_model_out",
+    ) + model.b_O[0]
+    resid_mid = post_attention + embeds
+    normalized_resid_mid = model.blocks[0].ln2(resid_mid)
+    mlp_out = model.blocks[0].mlp(normalized_resid_mid)
+    W_EE = mlp_out.squeeze()
+    W_EE_full = resid_mid.squeeze() + mlp_out.squeeze()
+    return {
+        "W_U (or W_E, no MLPs)": W_U.T,
+        "W_E (including MLPs)": W_EE_full,
+        "W_E (only MLPs)": W_EE
+    }
+embeddings_dict = simulate_effective_embedding(model)
+
+#%%
+
+# Test that effective embedding is the same as lock attention and zero pos embed
+
+model.reset_hooks()
+model.add_hook(
+    name="hook_pos_embed",
+    hook=lambda z, hook: z * 0.0,
+)
+model.add_hook(
+    name="blocks.0.attn.hook_pattern",
+    hook=lock_attn,
+)
+mlp_out_hook = "blocks.0.hook_mlp_out"
+hook_resid_pre = "blocks.1.hook_resid_pre"
+_, cache_test = model.run_with_cache(
+    torch.arange(model.tokenizer.model_max_length).unsqueeze(0).to(DEVICE),
+    names_filter=lambda name: name in [mlp_out_hook, hook_resid_pre],
+)
+torch.testing.assert_close(
+    cache_test[mlp_out_hook][0],
+    embeddings_dict["W_E (only MLPs)"][:model.tokenizer.model_max_length],
+    atol=1e-3,
+    rtol=1e-3,
+)
+torch.testing.assert_close(
+    cache_test[hook_resid_pre][0],
+    embeddings_dict["W_E (including MLPs)"][:model.tokenizer.model_max_length],
+    atol=1e-3,
+    rtol=1e-3,
+)
 
 # %%
 
 # In the max importance examples, which token does the head have the most effect on?
-
 datab = {}
-
 model.set_use_split_qkv_input(True)
-
 for layer_idx, head_idx in list(itertools.product(
     range(8, -1, -1), range(model.cfg.n_heads)
 )):
-
 # for layer_idx, head_idx in [(10, 7)]:
     max_importance_examples = sorted(
         [
@@ -234,161 +300,56 @@ for layer_idx, head_idx in list(itertools.product(
     mean_ablation_loss = mean_ablation_loss.to("cpu")
     mean_ablation_logits = mean_ablation_logits.to("cpu")
 
-    cnt = 0
-    copy_suppress_log = []
-    copy_suppress_len = []
-
     for batch_idx, seq_idx, change_in_loss in tqdm(max_importance_examples[:300]):
-        change_in_logits = full_logits[batch_idx, seq_idx] - mean_ablation_logits[batch_idx, seq_idx]
-        prompt_words = list(set(list(mybatch[batch_idx,:seq_idx+1].tolist())))
-        copy_suppress = change_in_logits[prompt_words].min()
-        copy_suppress_log.append(copy_suppress.item())
-        copy_suppress_len.append(seq_idx)
         
-    del mean_ablation_loss
-    del mean_ablation_logits
-    del head_output
-    gc.collect()
-    torch.cuda.empty_cache()
+        names_filter2 = lambda name: name.endswith("hook_v") or name.endswith("hook_pattern")
+        model.reset_hooks()
+        _, cache2 = model.run_with_cache(
+            mybatch[batch_idx:batch_idx+1, :seq_idx+1],
+            names_filter=names_filter2,
+        )
 
-    print(layer_idx, head_idx, np.mean(copy_suppress_log), np.var(copy_suppress_log), np.mean(copy_suppress_len))
+        vout = cache2[f"blocks.{layer_idx}.attn.hook_v"][0, :, head_idx] # (seq_len, d_head)
+        att_pattern = cache2[f"blocks.{layer_idx}.attn.hook_pattern"][0, head_idx, seq_idx] # shape (seq_len)
+        ovout = einops.einsum(
+            vout,
+            model.W_O[layer_idx, head_idx],
+            "s d_head, d_head d_model_out -> s d_model_out",
+        )
+        gc.collect()
+        torch.cuda.empty_cache()
 
-    # print("avg loss", datab[(layer_idx, head_idx)]["avg_loss"])
-    # print("avg loss change", datab[(layer_idx, head_idx)]["avg_loss_change"])
-    # print("avg error", datab[(layer_idx, head_idx)]["avg_error"])
+        # # comment this out to ensure that this is working (should be same as model's hook_attn_out)
+        for ovout_idx in range(len(ovout)):
+            ovout[ovout_idx] = project(ovout[ovout_idx], model.W_U[:, mybatch[batch_idx, seq_idx]])        
+        # ovout += model.b_O[layer_idx]
 
-# %%
+        att_out = einops.einsum(
+            att_pattern,
+            ovout,
+            "s, s d_model_out -> d_model_out",
+        )
 
-def parse_data_to_dict(data):
-    lines = data.split('\n')
-    result_dict = {}
+        unembed = einops.einsum(
+            cache[f"blocks.{layer_idx}.attn.hook_result"][batch_idx, seq_idx, head_idx].to(DEVICE),
+            model.W_U,
+            "d_model_out, d_model_out d_vocab -> d_vocab",
+        )
+        topk = torch.topk(unembed, k=10).indices
+        print([model.to_string([tk]) for tk in topk])
+        print([model.to_string([j]) for j in mybatch[batch_idx, max(0, seq_idx-10):seq_idx+1]])
 
-    for line_idx in range(0, len(lines), 3):
-        layer_idx, head_idx, copy_suppress_mean, copy_suppress_var = lines[line_idx+2].split()
-        layer_idx = int(layer_idx)
-        head_idx = int(head_idx)
-        copy_suppress_mean = float(copy_suppress_mean)
-        copy_suppress_var = float(copy_suppress_var)
+        torch.testing.assert_close(
+            att_out.cpu(),
+            cache[f"blocks.{layer_idx}.attn.hook_result"][batch_idx, seq_idx, head_idx],
+            atol=1e-3,
+            rtol=1e-3,
+        )
 
-        result_dict[(layer_idx, head_idx)] = {
-            "copy_suppress_mean": copy_suppress_mean,
-            "copy_suppress_var": copy_suppress_var,
-        }
-            
-    return result_dict
-
-# generated from the copy suppression script
-data = """100%
-300/300 [00:00<00:00, 3506.77it/s]
-11 0 -0.9016816154122352 0.5201871295325757
-100%
-300/300 [00:00<00:00, 3144.80it/s]
-11 1 -0.4044969256718953 0.031844296624758996
-100%
-300/300 [00:00<00:00, 3172.04it/s]
-11 2 -0.7388574319084485 0.1072463993261014
-100%
-300/300 [00:00<00:00, 3321.18it/s]
-11 3 -0.43112966855367024 0.03152586384032467
-100%
-300/300 [00:00<00:00, 3073.56it/s]
-11 4 -0.47693766315778097 0.07003433177171575
-100%
-300/300 [00:00<00:00, 3185.79it/s]
-11 5 -0.4015259406963984 0.03355677279733544
-100%
-300/300 [00:00<00:00, 3172.29it/s]
-11 6 -0.36947757452726365 0.026246634875785695
-100%
-300/300 [00:00<00:00, 3200.98it/s]
-11 7 -0.33805570036172866 0.017020611048886594
-100%
-300/300 [00:00<00:00, 3365.80it/s]
-11 8 -0.25031042834122974 1.6237580302933803
-100%
-300/300 [00:00<00:00, 2609.99it/s]
-11 9 -0.4280617571870486 0.03441768881449543
-100%
-300/300 [00:00<00:00, 2729.19it/s]
-11 10 -1.1136790512005488 0.29488302626701873
-100%
-300/300 [00:00<00:00, 2657.37it/s]
-11 11 -0.9186084069311619 0.670046600938536
-100%
-300/300 [00:00<00:00, 2758.59it/s]
-10 0 -0.5324919090668361 0.05695003976559484
-100%
-300/300 [00:00<00:00, 2501.65it/s]
-10 1 -0.4772719904780388 0.04517875384375263
-100%
-300/300 [00:00<00:00, 2477.50it/s]
-10 2 -0.511786490380764 0.03389539861635245
-100%
-300/300 [00:00<00:00, 2724.08it/s]
-10 3 -0.38995554715394976 0.04442058760369615
-100%
-300/300 [00:00<00:00, 2653.49it/s]
-10 4 -0.340000065912803 0.019087140112775115
-100%
-300/300 [00:00<00:00, 2712.52it/s]
-10 5 -0.6252672380208969 0.0691287308996828
-100%
-300/300 [00:00<00:00, 2639.37it/s]
-10 6 -0.4483438401420911 0.02757532322252427
-100%
-300/300 [00:00<00:00, 2657.01it/s]
-10 7 -1.7386940280596415 0.29417134614089735
-100%
-300/300 [00:00<00:00, 2450.21it/s]
-10 8 -0.27631867786248526 0.018791682778451068
-100%
-300/300 [00:00<00:00, 2543.87it/s]
-10 9 -0.351839574277401 0.0258264367121916
-100%
-300/300 [00:00<00:00, 2704.63it/s]
-10 10 -0.5870076884826024 0.07468998995874163
-100%
-300/300 [00:00<00:00, 2599.13it/s]
-10 11 -0.4399674787123998 0.0316214673151143
-100%
-300/300 [00:00<00:00, 3375.63it/s]
-9 0 -0.3342344471812248 0.02692906721012261
-100%
-300/300 [00:00<00:00, 2830.80it/s]
-9 1 -0.369691844334205 0.043611652938372956
-100%
-300/300 [00:00<00:00, 3367.39it/s]
-9 2 -0.3142923931777477 0.013720869772415286
-100%
-300/300 [00:00<00:00, 3420.14it/s]
-9 3 -0.38847506006558735 0.02535700541648442
-100%
-300/300 [00:00<00:00, 2632.87it/s]
-9 4 -0.26610014503200846 0.015068695777554977
-100%
-300/300 [00:00<00:00, 3256.16it/s]
-9 5 -0.8419594989220301 0.11326557327638707
-100%
-300/300 [00:00<00:00, 3173.06it/s]
-9 6 -0.5419738794366519 0.05079622240332223
-100%
-300/300 [00:00<00:00, 3149.75it/s]
-9 7 -0.32550418059031166 0.01631604746415235
-100%
-300/300 [00:00<00:00, 3367.45it/s]
-9 8 -0.307948471903801 0.03385204378668494
-100%
-300/300 [00:00<00:00, 2608.21it/s]
-9 9 -0.5532821393013001 0.0500570998217686
-100%
-300/300 [00:00<00:00, 3300.43it/s]
-9 10 -0.41829231098294256 0.020102954189287616
-100%
-300/300 [00:00<00:00, 3079.44it/s]
-9 11 -0.4879091795285543 0.02666743623329828"""
-
-parsed_dict = parse_data_to_dict(data)
-# print(parsed_dict)
+        # new_loss = get_loss_from_end_state(
+        #     end_state=(end_state[batch_idx:batch_idx+1, seq_idx:seq_idx+1] - head_output[batch_idx:batch_idx+1,seq_idx:seq_idx+1, head_idx] + att_out[None, None]).to(DEVICE),
+        #     targets=mytargets[batch_idx:batch_idx+1, seq_idx:seq_idx+1],
+        # ).item()
 
 #%%
 
@@ -412,7 +373,6 @@ fig.add_scatter(
     line=dict(color="black", width=1, dash="dash"),
     name="-1 std",
 )
-
 # add title 
 fig.update_layout(
     title="Copy suppression",
@@ -423,7 +383,6 @@ fig.update_layout(
 #%%
 
 fig = go.Figure()
-
 fig.add_scatter(
     x=[x["avg_loss"] for x in parsed_dict.values()],
     y=[x["avg_error"]+x["avg_loss"] for x in parsed_dict.values()],
@@ -436,7 +395,6 @@ fig.add_scatter(
     text=[str(x) for x in parsed_dict],
     mode="markers",
 )
-
 # add x=y line
 fig.add_scatter(
     x=[0, 10],
@@ -464,3 +422,5 @@ fig.update_layout(
     yaxis_title="New loss",
 )
 # %%
+
+
