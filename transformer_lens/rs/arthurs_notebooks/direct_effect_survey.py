@@ -329,10 +329,24 @@ for layer_idx, head_idx in [(9, 9)] + list(
 
     random_indices = np.random.choice(len(max_importance_examples), 10, replace=False).tolist()
 
+    if layer_idx!=9:
+        assert False
+
     # for random_index in tqdm(random_indices): 
     for batch_idx, seq_idx, change_in_loss in tqdm(max_importance_examples[:10]):
 
         cur_output = (head_output-mean_output)[batch_idx, seq_idx]
+
+        unembed = einops.einsum(
+            cur_output,
+            model.W_U,
+            "d_model_out, d_model_out d_vocab -> d_vocab",
+        )
+        topk = torch.topk(unembed, k=10).indices
+        print([model.to_string([tk]) for tk in topk])
+        print([model.to_string([j]) for j in mybatch[batch_idx, max(0, seq_idx-100):seq_idx+1]])
+        print(model.to_string([mybatch[batch_idx, seq_idx+1]]))
+        continue
 
         batch_idx, seq_idx, change_in_loss = max_importance_examples[random_index]
         names_filter2 = lambda name: name.endswith("hook_v") or name.endswith(
