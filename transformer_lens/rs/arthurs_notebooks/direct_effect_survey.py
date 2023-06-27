@@ -288,7 +288,7 @@ torch.cuda.empty_cache()
 # In the max importance examples, which token does the head have the most effect on?
 datab = {}
 model.set_use_split_qkv_input(True)
-for layer_idx, head_idx in [(10, 7)] + list(
+for layer_idx, head_idx in [(9, 9)] + list(
     itertools.product(range(11, 8, -1), range(model.cfg.n_heads))
 ):
     print("-"*50)
@@ -331,8 +331,10 @@ for layer_idx, head_idx in [(10, 7)] + list(
 
     # for random_index in tqdm(random_indices): 
     for batch_idx, seq_idx, change_in_loss in tqdm(max_importance_examples[:10]):
-        # batch_idx, seq_idx, change_in_loss = max_importance_examples[random_index]
 
+        cur_output = (head_output-mean_output)[batch_idx, seq_idx]
+
+        batch_idx, seq_idx, change_in_loss = max_importance_examples[random_index]
         names_filter2 = lambda name: name.endswith("hook_v") or name.endswith(
             "hook_pattern"
         )
