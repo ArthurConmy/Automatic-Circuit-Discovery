@@ -50,17 +50,21 @@ mytargets = torch.LongTensor(targets[:BATCH_SIZE])
 
 NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX = NEG_HEADS[model.cfg.model_name]
 END_STATE_HOOK = f"blocks.{model.cfg.n_layers-1}.hook_resid_post"
-names_filter1 = lambda name: name == END_STATE_HOOK or name.endswith("hook_result") or name.endswith(".hook_resid_pre") 
+names_filter1 = (
+    lambda name: name == END_STATE_HOOK
+    or name.endswith("hook_result")
+    or name.endswith(".hook_resid_pre")
+)
 
-model = model.to("cpu")
+model = model.to("cuda:1")
 logits, cache = model.run_with_cache(
-    mybatch.to("cpu"),
+    mybatch.to("cuda:1"),
     names_filter=names_filter1,
     device="cpu",
 )
-model=model.to("cuda")
+model = model.to("cuda:0")
 print("Done")
-end_state = cache[END_STATE_HOOK]  # shape (batch_size, seq_len, hidden_size)
+end_state = cache[END_STATE_HOOK].to("cuda")  # shape (batch_size, seq_len, hidden_size)
 full_logits = logits
 
 del logits
@@ -68,6 +72,7 @@ gc.collect()
 torch.cuda.empty_cache()
 
 # %%
+
 
 def get_loss_from_end_state(
     end_state,
@@ -81,7 +86,7 @@ def get_loss_from_end_state(
         model.cfg.d_model
     ], f"end_state.shape: {end_state.shape}, targets.shape: {targets.shape}"
 
-    assert len(end_state.shape)==3, "We stricter now"
+    assert len(end_state.shape) == 3, "We stricter now"
 
     post_layer_norm = model.ln_final(end_state)
     logits = model.unembed(post_layer_norm)
@@ -94,6 +99,7 @@ def get_loss_from_end_state(
     if return_logits:
         return loss, logits
     return loss
+
 
 # %%
 
@@ -127,52 +133,63 @@ results_log = {}
 
 # %%
 
-for layer_idx, head_idx in itertools.product(
-    range(model.cfg.n_layers-1, -1, -1), range(model.cfg.n_heads)
-):
-    head_output_hook = f"blocks.{layer_idx}.attn.hook_result"
-    head_output = cache[head_output_hook][
-        :, :, head_idx
-    ].cpu()  # shape (batch_size, seq_len, hidden_size)
-    mean_output = einops.reduce(
-        head_output,
-        "batch seq_len hidden_size -> hidden_size",
-        reduction="mean",
-    )
-    mean_ablation_loss = get_loss_from_end_state(
-        end_state=(end_state - head_output + mean_output[None, None]).to(DEVICE),
-        targets=mytargets,
-        return_logits=False,
-    ).cpu()
+tl_path = Path(__file__)
+assert "/TransformerLens/" in str(tl_path), "This is a hacky way to get the path"
 
-    loss_changes = (mean_ablation_loss - my_loss).cpu()
-    flattened_loss_changes = einops.rearrange(
-        loss_changes, "batch seq_len -> (batch seq_len)"
-    )
+while tl_path.stem!="TransformerLens" and str(tl_path.parent)!=str(tl_path):
+    tl_path = tl_path.parent
 
-    if SHOW_PLOT:
-        hist(
-            [
-                einops.rearrange(
-                    mean_ablation_loss - my_loss, "batch seq_len -> (batch seq_len)"
-                )
-            ],
-            nbins=500,
-            title=f"Change in loss when mean ablating {layer_idx}.{head_idx}",
+if (tl_path / "results_log.pt").exists():
+    results_log = torch.load(tl_path / "results_log.pt")
+
+else:
+    results_log={}
+    for layer_idx, head_idx in itertools.product(
+        range(model.cfg.n_layers - 1, -1, -1), range(model.cfg.n_heads)
+    ):
+        head_output_hook = f"blocks.{layer_idx}.attn.hook_result"
+        head_output = cache[head_output_hook][
+            :, :, head_idx
+        ].cpu()  # shape (batch_size, seq_len, hidden_size)
+        mean_output = einops.reduce(
+            head_output,
+            "batch seq_len hidden_size -> hidden_size",
+            reduction="mean",
+        )
+        mean_ablation_loss = get_loss_from_end_state(
+            end_state=(end_state - head_output + mean_output[None, None]).to(DEVICE),
+            targets=mytargets,
+            return_logits=False,
+        ).cpu()
+
+        loss_changes = (mean_ablation_loss - my_loss).cpu()
+        flattened_loss_changes = einops.rearrange(
+            loss_changes, "batch seq_len -> (batch seq_len)"
         )
 
-    results_log[(layer_idx, head_idx)] = {
-        "mean_change_in_loss": flattened_loss_changes.mean().item(),
-        "std": flattened_loss_changes.std().item(),
-        "abs_mean": flattened_loss_changes.abs().mean().item(),
-        "loss_changes": loss_changes.cpu(),
-    }
-    print(list(results_log.items())[-1])
+        if SHOW_PLOT:
+            hist(
+                [
+                    einops.rearrange(
+                        mean_ablation_loss - my_loss, "batch seq_len -> (batch seq_len)"
+                    )
+                ],
+                nbins=500,
+                title=f"Change in loss when mean ablating {layer_idx}.{head_idx}",
+            )
+
+        results_log[(layer_idx, head_idx)] = {
+            "mean_change_in_loss": flattened_loss_changes.mean().item(),
+            "std": flattened_loss_changes.std().item(),
+            "abs_mean": flattened_loss_changes.abs().mean().item(),
+            "loss_changes": loss_changes.cpu(),
+            "mean_ablation_loss": mean_ablation_loss.cpu(),
+        }
+        print(list(results_log.items())[-1])
 
 # %%
 
 # The global plot is weird 11.0 with crazy importance, 10.7 variance low ... ?
-
 px.bar(
     x=[str(x) for x in list(results_log.keys())],
     y=[x["mean_change_in_loss"] for x in results_log.values()],
@@ -182,7 +199,6 @@ px.bar(
 # %%
 
 # Even accounting all the cases where heads are actively harmful, it still seems like we don't really get negative heads...
-
 px.bar(
     x=[str(x) for x in list(results_log.keys())],
     y=[
@@ -192,29 +208,35 @@ px.bar(
     title="Proportion of token predictions in OWT where mean ablating the direct effect of a head is helpful",
 ).show()
 
-#%%
+# %%
 
 def simulate_effective_embedding(
-    model: HookedTransformer
+    model: HookedTransformer,
 ) -> Float[Tensor, "d_vocab d_model"]:
     """Cribbed from `transformer_lens/rs/callums_notebooks/subtract_embedding.ipynb`"""
     W_E = model.W_E.clone()
     W_U = model.W_U.clone()
     embeds = W_E.unsqueeze(0)
     pre_attention = model.blocks[0].ln1(embeds)
-    # !!! b_O is not zero. Seems like b_V is, but we'll add it to be safe rather than sorry 
+    # !!! b_O is not zero. Seems like b_V is, but we'll add it to be safe rather than sorry
     assert model.b_V[0].norm().item() < 1e-4
     assert model.b_O[0].norm().item() > 1e-4
-    vout = einops.einsum( # equivalent to locking attention to 1
-        pre_attention,
-        model.W_V[0],
-        "b s d_model, num_heads d_model d_head -> b s num_heads d_head",
-    ) + model.b_V[0]
-    post_attention = einops.einsum(
-        vout,
-        model.W_O[0],
-        "b s num_heads d_head, num_heads d_head d_model_out -> b s d_model_out",
-    ) + model.b_O[0]
+    vout = (
+        einops.einsum(  # equivalent to locking attention to 1
+            pre_attention,
+            model.W_V[0],
+            "b s d_model, num_heads d_model d_head -> b s num_heads d_head",
+        )
+        + model.b_V[0]
+    )
+    post_attention = (
+        einops.einsum(
+            vout,
+            model.W_O[0],
+            "b s num_heads d_head, num_heads d_head d_model_out -> b s d_model_out",
+        )
+        + model.b_O[0]
+    )
     resid_mid = post_attention + embeds
     normalized_resid_mid = model.blocks[0].ln2(resid_mid)
     mlp_out = model.blocks[0].mlp(normalized_resid_mid)
@@ -223,14 +245,13 @@ def simulate_effective_embedding(
     return {
         "W_U (or W_E, no MLPs)": W_U.T,
         "W_E (including MLPs)": W_EE_full,
-        "W_E (only MLPs)": W_EE
+        "W_E (only MLPs)": W_EE,
     }
 embeddings_dict = simulate_effective_embedding(model)
 
-#%%
+# %%
 
 # Test that effective embedding is the same as lock attention and zero pos embed
-
 model.reset_hooks()
 model.add_hook(
     name="hook_pos_embed",
@@ -248,32 +269,40 @@ _, cache_test = model.run_with_cache(
 )
 torch.testing.assert_close(
     cache_test[mlp_out_hook][0],
-    embeddings_dict["W_E (only MLPs)"][:model.tokenizer.model_max_length],
+    embeddings_dict["W_E (only MLPs)"][: model.tokenizer.model_max_length],
     atol=1e-3,
     rtol=1e-3,
 )
 torch.testing.assert_close(
     cache_test[hook_resid_pre][0],
-    embeddings_dict["W_E (including MLPs)"][:model.tokenizer.model_max_length],
+    embeddings_dict["W_E (including MLPs)"][: model.tokenizer.model_max_length],
     atol=1e-3,
     rtol=1e-3,
 )
 
 # %%
 
+gc.collect()
+torch.cuda.empty_cache()
+
 # In the max importance examples, which token does the head have the most effect on?
 datab = {}
 model.set_use_split_qkv_input(True)
-for layer_idx, head_idx in list(itertools.product(
-    range(8, -1, -1), range(model.cfg.n_heads)
-)):
-# for layer_idx, head_idx in [(10, 7)]:
+for layer_idx, head_idx in [(10, 7)] + list(
+    itertools.product(range(11, 8, -1), range(model.cfg.n_heads))
+):
+    print("-"*50)
+    print(layer_idx, head_idx)
+
+    # for layer_idx, head_idx in [(10, 7)]:
     max_importance_examples = sorted(
         [
             (
                 batch_idx,
                 seq_idx,
-                results_log[(layer_idx, head_idx)]["loss_changes"][batch_idx, seq_idx].item(),
+                results_log[(layer_idx, head_idx)]["loss_changes"][
+                    batch_idx, seq_idx
+                ].item(),
             )
             for batch_idx, seq_idx in itertools.product(
                 range(BATCH_SIZE), range(max_seq_len)
@@ -286,31 +315,39 @@ for layer_idx, head_idx in list(itertools.product(
     head_output_hook = f"blocks.{layer_idx}.attn.hook_result"
     head_output = cache[head_output_hook][
         :, :, head_idx
-    ].cpu()  # shape (batch_size, seq_len, hidden_size)
+    ].to("cuda")  # shape (batch_size, seq_len, hidden_size)
     mean_output = einops.reduce(
         head_output,
         "batch seq_len hidden_size -> hidden_size",
         reduction="mean",
     )
-    mean_ablation_loss, mean_ablation_logits = get_loss_from_end_state(
-        end_state=(end_state - head_output + mean_output[None, None]).to(DEVICE),
-        targets=mytargets,
-        return_logits=True,
-    )
-    mean_ablation_loss = mean_ablation_loss.to("cpu")
-    mean_ablation_logits = mean_ablation_logits.to("cpu")
+    mean_ablation_loss = results_log[(layer_idx, head_idx)]["mean_ablation_loss"]
 
-    for batch_idx, seq_idx, change_in_loss in tqdm(max_importance_examples[:300]):
-        
-        names_filter2 = lambda name: name.endswith("hook_v") or name.endswith("hook_pattern")
+    mals = []
+    new_losses = []
+    orig_losses = []
+
+    random_indices = np.random.choice(len(max_importance_examples), 10, replace=False).tolist()
+
+    # for random_index in tqdm(random_indices): 
+    for batch_idx, seq_idx, change_in_loss in tqdm(max_importance_examples[:10]):
+        # batch_idx, seq_idx, change_in_loss = max_importance_examples[random_index]
+
+        names_filter2 = lambda name: name.endswith("hook_v") or name.endswith(
+            "hook_pattern"
+        )
         model.reset_hooks()
         _, cache2 = model.run_with_cache(
-            mybatch[batch_idx:batch_idx+1, :seq_idx+1],
+            mybatch[batch_idx : batch_idx + 1, : seq_idx + 1],
             names_filter=names_filter2,
         )
 
-        vout = cache2[f"blocks.{layer_idx}.attn.hook_v"][0, :, head_idx] # (seq_len, d_head)
-        att_pattern = cache2[f"blocks.{layer_idx}.attn.hook_pattern"][0, head_idx, seq_idx] # shape (seq_len)
+        vout = cache2[f"blocks.{layer_idx}.attn.hook_v"][
+            0, :, head_idx
+        ]  # (seq_len, d_head)
+        att_pattern = cache2[f"blocks.{layer_idx}.attn.hook_pattern"][
+            0, head_idx, seq_idx
+        ]  # shape (seq_len)
         ovout = einops.einsum(
             vout,
             model.W_O[layer_idx, head_idx],
@@ -321,8 +358,8 @@ for layer_idx, head_idx in list(itertools.product(
 
         # # comment this out to ensure that this is working (should be same as model's hook_attn_out)
         for ovout_idx in range(len(ovout)):
-            ovout[ovout_idx] = project(ovout[ovout_idx], model.W_U[:, mybatch[batch_idx, seq_idx]])        
-        # ovout += model.b_O[layer_idx]
+            ovout[ovout_idx], _ = project(ovout[ovout_idx], model.W_U[:, mybatch[batch_idx, seq_idx]])
+        # ovout += model.b_O[layer_idx]  # hook_attn_result ignores the biases
 
         att_out = einops.einsum(
             att_pattern,
@@ -330,67 +367,78 @@ for layer_idx, head_idx in list(itertools.product(
             "s, s d_model_out -> d_model_out",
         )
 
-        unembed = einops.einsum(
-            cache[f"blocks.{layer_idx}.attn.hook_result"][batch_idx, seq_idx, head_idx].to(DEVICE),
-            model.W_U,
-            "d_model_out, d_model_out d_vocab -> d_vocab",
+        # add in orthogonal component
+        parallel_component, orthogonal_component = project(
+            att_out, 
+            mean_output.to(DEVICE),
         )
-        topk = torch.topk(unembed, k=10).indices
-        print([model.to_string([tk]) for tk in topk])
-        print([model.to_string([j]) for j in mybatch[batch_idx, max(0, seq_idx-10):seq_idx+1]])
+        att_out += orthogonal_component
 
-        torch.testing.assert_close(
-            att_out.cpu(),
-            cache[f"blocks.{layer_idx}.attn.hook_result"][batch_idx, seq_idx, head_idx],
-            atol=1e-3,
-            rtol=1e-3,
-        )
+        # print([model.to_string([tk]) for tk in topk])
+        # print(
+        #     [
+        #         model.to_string([j])
+        #         for j in mybatch[batch_idx, max(0, seq_idx - 10) : seq_idx + 1]
+        #     ]
+        # )
+        # torch.testing.assert_close(
+        #     att_out.cpu(),
+        #     cache[f"blocks.{layer_idx}.attn.hook_result"][batch_idx, seq_idx, head_idx],
+        #     atol=1e-3,
+        #     rtol=1e-3,
+        # )
 
-        # new_loss = get_loss_from_end_state(
-        #     end_state=(end_state[batch_idx:batch_idx+1, seq_idx:seq_idx+1] - head_output[batch_idx:batch_idx+1,seq_idx:seq_idx+1, head_idx] + att_out[None, None]).to(DEVICE),
-        #     targets=mytargets[batch_idx:batch_idx+1, seq_idx:seq_idx+1],
-        # ).item()
+        new_loss = get_loss_from_end_state(
+            end_state=(
+                end_state[batch_idx : batch_idx + 1, seq_idx : seq_idx + 1]
+                - head_output[
+                    batch_idx : batch_idx + 1, seq_idx : seq_idx + 1, head_idx
+                ]
+                + att_out[None, None]
+            ),
+            targets=mytargets[batch_idx : batch_idx + 1, seq_idx : seq_idx + 1],
+        ).item()
+        mal = mean_ablation_loss[batch_idx, seq_idx]
+        orig_loss = my_loss[batch_idx, seq_idx]
 
-#%%
+        mals.append(mal.item())
+        new_losses.append(new_loss)
+        orig_losses.append(orig_loss.item())
 
-fig = px.bar(
-    x = [f"{layer_idx}.{head_idx}" for layer_idx, head_idx in itertools.product(range(9, 12), range(12))],
-    y = [parsed_dict[(layer_idx, head_idx)]["copy_suppress_mean"] for layer_idx, head_idx in itertools.product(range(9, 12), range(12))],
-)
+        # print(f"{mal.item():.2f} {orig_loss.item():.2f} {new_loss:.2f}")
 
-# add error bars
-fig.add_scatter(
-    x = [f"{layer_idx}.{head_idx}" for layer_idx, head_idx in itertools.product(range(9, 12), range(12))],
-    y = [parsed_dict[(layer_idx, head_idx)]["copy_suppress_mean"]+np.sqrt(parsed_dict[(layer_idx, head_idx)]["copy_suppress_var"]) for layer_idx, head_idx in itertools.product(range(9, 12), range(12))],
-    mode="lines",
-    line=dict(color="black", width=1, dash="dash"),
-    name="+1 std",
-)
-fig.add_scatter(
-    x = [f"{layer_idx}.{head_idx}" for layer_idx, head_idx in itertools.product(range(9, 12), range(12))],
-    y = [parsed_dict[(layer_idx, head_idx)]["copy_suppress_mean"]-np.sqrt(parsed_dict[(layer_idx, head_idx)]["copy_suppress_var"]) for layer_idx, head_idx in itertools.product(range(9, 12), range(12))],
-    mode="lines",
-    line=dict(color="black", width=1, dash="dash"),
-    name="-1 std",
-)
-# add title 
-fig.update_layout(
-    title="Copy suppression",
-    xaxis_title="Layer.Head",
-    yaxis_title="Copy suppression",
-)
+    datab[(layer_idx, head_idx)] = {
+        "mals_mean": np.mean(mals),
+        "mals_std": np.std(mals),
+        "new_losses_mean": np.mean(new_losses),
+        "new_losses_std": np.std(new_losses),
+        "orig_losses_mean": np.mean(orig_losses),
+        "orig_losses_std": np.std(orig_losses),
+        "mals": mals,
+        "new_losses": new_losses,
+        "orig_losses": orig_losses,
+    }
 
-#%%
+    for k in datab[(layer_idx, head_idx)]:
+        if k.endswith("mean") or k.endswith("std"):
+            print(k, datab[(layer_idx, head_idx)][k], end="/")
+    print()
+
+# %%
 
 fig = go.Figure()
 fig.add_scatter(
     x=[x["avg_loss"] for x in parsed_dict.values()],
-    y=[x["avg_error"]+x["avg_loss"] for x in parsed_dict.values()],
+    y=[x["avg_error"] + x["avg_loss"] for x in parsed_dict.values()],
     error_y=dict(
-        type='data',
+        type="data",
         symmetric=False,
-        array=[max(0, x["avg_loss_change"]-x["avg_error"]) for x in parsed_dict.values()],
-        arrayminus=[max(0, x["avg_error"]-x["avg_loss_change"]) for x in parsed_dict.values()]
+        array=[
+            max(0, x["avg_loss_change"] - x["avg_error"]) for x in parsed_dict.values()
+        ],
+        arrayminus=[
+            max(0, x["avg_error"] - x["avg_loss_change"]) for x in parsed_dict.values()
+        ],
     ),
     text=[str(x) for x in parsed_dict],
     mode="markers",
@@ -406,10 +454,10 @@ fig.add_scatter(
 # add labels
 if False:
     for i, atxt in enumerate(parsed_dict.keys()):
-        txt=str(atxt)
+        txt = str(atxt)
         fig.add_annotation(
             x=parsed_dict[atxt]["avg_loss"],
-            y=parsed_dict[atxt]["avg_error"]+parsed_dict[atxt]["avg_loss"],
+            y=parsed_dict[atxt]["avg_error"] + parsed_dict[atxt]["avg_loss"],
             text=txt + " " + str(parsed_dict[atxt]["avg_loss_change"]),
             showarrow=False,
             yshift=10,
@@ -421,6 +469,10 @@ fig.update_layout(
     xaxis_title="Average model loss for top prompts where this head is useful",
     yaxis_title="New loss",
 )
+
 # %%
 
+# TODO speed this up and do Callum's proposed experiment with one component in unembed direction 
+
+# %%
 
