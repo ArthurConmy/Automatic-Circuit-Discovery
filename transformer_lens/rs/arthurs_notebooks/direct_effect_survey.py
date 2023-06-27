@@ -197,9 +197,9 @@ datab = {}
 
 model.set_use_split_qkv_input(True)
 
-for layer_idx, head_idx in itertools.product(
-    range(11, 8, -1), range(model.cfg.n_heads)
-):
+for layer_idx, head_idx in list(itertools.product(
+    range(8, -1, -1), range(model.cfg.n_heads)
+)):
 
 # for layer_idx, head_idx in [(10, 7)]:
     max_importance_examples = sorted(
@@ -236,12 +236,14 @@ for layer_idx, head_idx in itertools.product(
 
     cnt = 0
     copy_suppress_log = []
+    copy_suppress_len = []
 
     for batch_idx, seq_idx, change_in_loss in tqdm(max_importance_examples[:300]):
         change_in_logits = full_logits[batch_idx, seq_idx] - mean_ablation_logits[batch_idx, seq_idx]
         prompt_words = list(set(list(mybatch[batch_idx,:seq_idx+1].tolist())))
         copy_suppress = change_in_logits[prompt_words].min()
         copy_suppress_log.append(copy_suppress.item())
+        copy_suppress_len.append(seq_idx)
         
     del mean_ablation_loss
     del mean_ablation_logits
@@ -249,7 +251,8 @@ for layer_idx, head_idx in itertools.product(
     gc.collect()
     torch.cuda.empty_cache()
 
-    print(layer_idx, head_idx, np.mean(copy_suppress_log), np.var(copy_suppress_log))
+    print(layer_idx, head_idx, np.mean(copy_suppress_log), np.var(copy_suppress_log), np.mean(copy_suppress_len))
+
     # print("avg loss", datab[(layer_idx, head_idx)]["avg_loss"])
     # print("avg loss change", datab[(layer_idx, head_idx)]["avg_loss_change"])
     # print("avg error", datab[(layer_idx, head_idx)]["avg_error"])
