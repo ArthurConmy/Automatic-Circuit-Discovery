@@ -300,6 +300,7 @@ def decompose_attn_scores(
     use_effective_embedding: bool = False,
     use_layer0_heads: bool = False,
     subtract_S1_attn_scores: bool = False,
+    include_S1_in_unembed_projection: bool = False,
     static: bool = False, # determines if plot is static
 ):
     '''
@@ -371,6 +372,17 @@ def decompose_attn_scores(
             MLP0_output_S1 = ioi_cache["mlp_out", 0][range(batch_size), S1_seq_pos_indices]
     MLP0_output_scaled = (MLP0_output - MLP0_output.mean(-1, keepdim=True)) / MLP0_output.var(dim=-1, keepdim=True).pow(0.5)
 
+    # * Get the unembeddings
+    unembeddings = model.W_U.T[ioi_dataset.io_tokenIDs]
+    unembeddings_S1 = model.W_U.T[ioi_dataset.s_tokenIDs]
+    unembeddings_scaled = (unembeddings - unembeddings.mean(-1, keepdim=True)) / unembeddings.var(dim=-1, keepdim=True).pow(0.5)
+
+    # * Get residual stream pre-heads
+    resid_pre = ioi_cache["resid_pre", nnmh[0]]
+    resid_pre_normalised = (resid_pre - resid_pre.mean(-1, keepdim=True)) / resid_pre.var(dim=-1, keepdim=True).pow(0.5)
+    resid_pre_normalised_slice_IO = resid_pre_normalised[range(batch_size), IO_seq_pos_indices]
+    resid_pre_normalised_slice_S1 = resid_pre_normalised[range(batch_size), S1_seq_pos_indices]
+    resid_pre_normalised_slice_end = resid_pre_normalised[range(batch_size), end_seq_pos_indices]
 
     if decompose_by == "keys":
 
@@ -378,13 +390,6 @@ def decompose_attn_scores(
 
         decomp_seq_pos_indices = IO_seq_pos_indices
         lin_map_seq_pos_indices = end_seq_pos_indices
-
-        unembeddings = model.W_U.T[ioi_dataset.io_tokenIDs]
-        unembeddings_scaled = (unembeddings - unembeddings.mean(-1, keepdim=True)) / unembeddings.var(dim=-1, keepdim=True).pow(0.5)
-
-        resid_pre = ioi_cache["resid_pre", nnmh[0]]
-        resid_pre_normalised = (resid_pre - resid_pre.mean(-1, keepdim=True)) / resid_pre.var(dim=-1, keepdim=True).pow(0.5)
-        resid_pre_normalised_slice = resid_pre_normalised[range(batch_size), lin_map_seq_pos_indices]
 
         W_Q = model.W_Q[nnmh[0], nnmh[1]]
         b_Q = model.b_Q[nnmh[0], nnmh[1]]
@@ -394,17 +399,20 @@ def decompose_attn_scores(
         # ! (1A)
         # * Get 2 linear functions from keys -> attn scores, corresponding to the 2 different components of query vectors: (∥ / ⟂) to W_U[IO]
         if intervene_on_query == "project_to_W_U_IO":
-            resid_pre_in_io_dir, resid_pre_in_io_perpdir = project(resid_pre_normalised_slice, unembeddings)
+            if include_S1_in_unembed_projection:
+                resid_pre_in_unembed_dir, resid_pre_in_unembed_perpdir = project(resid_pre_normalised_slice_end, [unembeddings, unembeddings_S1])
+            else:
+                resid_pre_in_unembed_dir, resid_pre_in_unembed_perpdir = project(resid_pre_normalised_slice_end, unembeddings)
 
             # Overwrite the query-side vector in the cache with the projection in the unembedding direction
-            q_new = einops.einsum(resid_pre_in_io_dir, W_Q, "batch d_model, d_model d_head -> batch d_head")
+            q_new = einops.einsum(resid_pre_in_unembed_dir, W_Q, "batch d_model, d_model d_head -> batch d_head")
             q_raw[range(batch_size), lin_map_seq_pos_indices, nnmh[1]] = q_new
             ioi_cache_dict_io_dir = {**ioi_cache.cache_dict, **{q_name: q_raw.clone()}}
             ioi_cache_io_dir = ActivationCache(cache_dict=ioi_cache_dict_io_dir, model=model)
             linear_map_io_dir, bias_term_io_dir = attn_scores_as_linear_func_of_keys(batch_idx=None, head=nnmh, model=model, ioi_cache=ioi_cache_io_dir, ioi_dataset=ioi_dataset, subtract_S1_attn_scores=subtract_S1_attn_scores)
 
             # Overwrite the query-side vector with the bit that's perpendicular to the IO unembedding (plus the bias term)
-            q_new = einops.einsum(resid_pre_in_io_perpdir, W_Q, "batch d_model, d_model d_head -> batch d_head") + b_Q
+            q_new = einops.einsum(resid_pre_in_unembed_perpdir, W_Q, "batch d_model, d_model d_head -> batch d_head") + b_Q
             q_raw[range(batch_size), lin_map_seq_pos_indices, nnmh[1]] = q_new
             ioi_cache_dict_io_perpdir = {**ioi_cache.cache_dict, **{q_name: q_raw.clone()}}
             ioi_cache_io_perpdir = ActivationCache(cache_dict=ioi_cache_dict_io_perpdir, model=model)
@@ -439,11 +447,6 @@ def decompose_attn_scores(
         decomp_seq_pos_indices = end_seq_pos_indices
         lin_map_seq_pos_indices = end_seq_pos_indices
 
-        resid_pre = ioi_cache["resid_pre", nnmh[0]]
-        resid_pre_normalised = (resid_pre - resid_pre.mean(-1, keepdim=True)) / resid_pre.var(dim=-1, keepdim=True).pow(0.5)
-        resid_pre_normalised_slice = resid_pre_normalised[range(batch_size), IO_seq_pos_indices]
-        resid_pre_normalised_slice_S1 = resid_pre_normalised[range(batch_size), S1_seq_pos_indices]
-
         W_K = model.W_K[nnmh[0], nnmh[1]]
         b_K = model.b_K[nnmh[0], nnmh[1]]
         k_name = utils.get_act_name("k", nnmh[0])
@@ -452,7 +455,7 @@ def decompose_attn_scores(
         # ! (2B)
         # * Get 2 linear functions from queries -> attn scores, corresponding to the 2 different components of key vectors: (∥ / ⟂) to MLP0_out
         if intervene_on_key == "project_to_MLP0":
-            resid_pre_in_mlp0_dir, resid_pre_in_mlp0_perpdir = project(resid_pre_normalised_slice, MLP0_output)
+            resid_pre_in_mlp0_dir, resid_pre_in_mlp0_perpdir = project(resid_pre_normalised_slice_IO, MLP0_output)
             resid_pre_in_mlp0_dir_S1, resid_pre_in_mlp0_perpdir_S1 = project(resid_pre_normalised_slice_S1, MLP0_output_S1)
 
             # Overwrite the key-side vector in the cache with the projection in the MLP0_output direction
@@ -542,6 +545,8 @@ def decompose_attn_scores(
         # * This is where we decompose the query-side output of each component, by possibly projecting it onto the ||W_U[IO] and ⟂W_U[IO] directions
         if (decompose_by == "queries") and (intervene_on_query == "project_to_W_U_IO"):
             projection_dir = einops.repeat(unembeddings, "b d_m -> b heads d_m", heads=model.cfg.n_heads) if (component_name == "result") else unembeddings
+            projection_dir_S1 = einops.repeat(unembeddings_S1, "b d_m -> b heads d_m", heads=model.cfg.n_heads) if (component_name == "result") else unembeddings_S1
+            projection_dir = projection_dir if not(include_S1_in_unembed_projection) else [projection_dir, projection_dir_S1]
             component_output_scaled = t.stack(project(component_output_scaled, projection_dir))
         # ! (1B)
         # * This is where we decompose the key-side output of each component, by possibly projecting it onto the ||MLP0 and ⟂MLP0 directions
@@ -564,6 +569,7 @@ def decompose_attn_scores(
             component_output_scaled = component_output_scaled - component_output_scaled_S1
 
         return component_output_scaled
+
 
 
     results_dict = {}
@@ -699,41 +705,84 @@ def plot_contribution_to_attn_scores(
 
 
 def project(
-    x: Float[Tensor, "... d"],
-    dir: Float[Tensor, "... d"],
+    x: Float[Tensor, "... dim"],
+    dir: Union[List[Float[Tensor, "... dim"]], Float[Tensor, "... dim"]],
+    test: bool = False,
 ):
     '''
     x: 
-        Shape (*batch_dims, d)
+        Shape (*batch_dims, d), or list of such shapes
         Batch of vectors
     
     dir:
         Shape (*batch_dims, d)
         Batch of vectors (which will be normalized)
 
+    test:
+        If true, runs a bunch of sanity-check-style tests, and prints out the output
+
     Returns:
         Two batches of vectors: x_dir and x_perp, such that:
             x_dir + x_perp = x
-            x_dir is the component of x in the direction of dir
+            x_dir is the component of x in the direction dir (or in the subspace
+            spanned by the vectors in dir, if dir is a list).
 
     Notes:
-        Make sure x and dir have the same shape, I don't want to
-        mess up broadcasting by accident! Do einops.repeat on dir
-        if you have to.
+        Make sure x and dir (or each element in dir) have the same shape, I don't want to
+        mess up broadcasting by accident! Do einops.repeat on dir if you have to.
     '''
-    assert dir.shape == x.shape
+    device = x.device
+    if isinstance(dir, Tensor): dir = [dir]
+    assert all([x.shape == dir_.shape for dir_ in dir])
+    dir = t.stack(dir, dim=-1)
 
-    dir_normed = dir / dir.norm(dim=-1, keepdim=True)
+    # Get the SVD of the stack of matrices we're projecting in the direction of
+    # So U tells us directions, and V tells us linear combinations (which we don't need)
+    svd = t.svd(dir)
+    if test:
+        t.testing.assert_close(svd.U @ t.diag_embed(svd.S) @ svd.V.mH, dir)
+        U_norms = svd.U.norm(dim=-2) # norm of columns
+        t.testing.assert_close(U_norms, t.ones_like(U_norms))
+        print("Running tests for projection function:")
+        print("\tSVD tests passed")
 
+    # Calculate the component of x along the different directions of svd.U
     x_component = einops.einsum(
-        x, dir_normed,
-        "... d, ... d -> ..."
+        x, svd.U,
+        "... dim, ... dim directions -> ... directions"
     )
 
+    # Project x onto these directions (summing over each of the directional projections)
     x_dir = einops.einsum(
-        x_component, dir_normed,
-        "..., ... d -> ... d"
+        x_component, svd.U,
+        "... directions, ... dim directions -> ... dim"
     )
+
+    if test:
+        # First, test all the projections are orthogonal to each other
+        x_dir_projections = einops.einsum(
+            x_component, svd.U,
+            "... directions, ... dim directions -> ... dim directions"
+        )
+        x_dir_projections_normed = x_dir_projections / x_dir_projections.norm(dim=-2, keepdim=True)
+        x_dir_cos_sims = einops.einsum(
+            x_dir_projections_normed, x_dir_projections_normed,
+            "... dim directions_left, ... dim directions_right -> ... directions_left directions_right"
+        )
+        
+        x_dir_cos_sims_expected = t.eye(x_dir_cos_sims.shape[-1]).to(device)
+        diff = t.where(x_dir_cos_sims_expected.bool(), t.tensor(0.0).to(device), x_dir_cos_sims - x_dir_cos_sims_expected).abs().max().item()
+        assert diff < 1e-5
+        print(f"\tCos sim test passed: max cos sim diff = {diff:.4e}")
+
+        # Second, test that the sum of norms equals the original norm
+        x_dir_norms = x_dir.norm(dim=-1).pow(2)
+        x_dir_perp_norms = (x - x_dir).norm(dim=-1).pow(2)
+        x_norms = x.norm(dim=-1).pow(2)
+        diff = (x_dir_norms + x_dir_perp_norms - x_norms).abs().max().item()
+        assert diff < 1e-5
+        print(f"\tNorms test passed: max norm diff = {diff:.4e}")
+
 
     return x_dir, x - x_dir
 
@@ -784,6 +833,7 @@ def decompose_attn_scores_full(
     use_effective_embedding: bool = False,
     use_layer0_heads: bool = False,
     subtract_S1_attn_scores: bool = False,
+    include_S1_in_unembed_projection: bool = False,
 ):
     '''
     Creates heatmaps of attention score decompositions.
@@ -859,6 +909,7 @@ def decompose_attn_scores_full(
 
     # * Get the unembeddings
     unembeddings = model.W_U.T[ioi_dataset.io_tokenIDs]
+    unembeddings_S1 = model.W_U.T[ioi_dataset.s_tokenIDs]
 
     t.cuda.empty_cache()
 
@@ -937,7 +988,7 @@ def decompose_attn_scores_full(
     # ... and for queries ...
     queries_decomposed[1, 0] = queryside_components[0]
     for i, queryside_component in enumerate(queryside_components[1:], 1):
-        projections = t.stack(project(queryside_component, unembeddings))
+        projections = t.stack(project(queryside_component, unembeddings if not(include_S1_in_unembed_projection) else [unembeddings, unembeddings_S1]))
         queries_decomposed[:, i] = einops.einsum(projections.cpu(), model.W_Q[nnmh[0], nnmh[1]].cpu(), "projection batch d_model, d_model d_head -> projection batch d_head")
     
 
