@@ -31,7 +31,7 @@ max_seq_len = model.tokenizer.model_max_length
 filtered_tokens = []
 targets = []  # targets for prediction
 
-print("Not rapid, but not THAT slow : ) ")
+print("Not rapid, but not THAT slow :-) ")
 _idx = -1
 while len(filtered_tokens) < DATASET_SIZE:
     _idx += 1
@@ -57,6 +57,7 @@ logits, cache = model.run_with_cache(
     device="cpu",
 )
 end_state = cache[END_STATE_HOOK].cpu()  # shape (batch_size, seq_len, hidden_size)
+full_logits = logits.cpu()
 
 del logits
 gc.collect()
@@ -64,10 +65,10 @@ torch.cuda.empty_cache()
 
 # %%
 
-
 def get_loss_from_end_state(
     end_state,
     targets,
+    return_logits=False,
 ):
     # end state has shape batch, seq_len, hidden_size
     # targets has shape batch, seq_len
@@ -86,6 +87,8 @@ def get_loss_from_end_state(
         torch.arange(targets.shape[1]).unsqueeze(0),
         targets,
     ]
+    if return_logits:
+        return loss, logits
     return loss
 
 
@@ -115,7 +118,6 @@ torch.testing.assert_close(
     rtol=1e-2,
 )  # yey
 
-
 # %%
 
 results_log = {}
@@ -137,6 +139,7 @@ for layer_idx, head_idx in itertools.product(
     mean_ablation_loss = get_loss_from_end_state(
         end_state=(end_state - head_output + mean_output[None, None]).to(DEVICE),
         targets=mytargets,
+        return_logits=False,
     ).cpu()
 
     loss_changes = (mean_ablation_loss - my_loss).cpu()
@@ -193,10 +196,11 @@ px.bar(
 datab = {}
 
 model.set_use_split_qkv_input(True)
-for layer_idx, head_idx in itertools.product(
-    range(11, 8, -1), range(model.cfg.n_heads)
-):
-# for layer_idx, HEAD_IDX in [(10, 7)]:
+# if False:
+# for layer_idx, head_idx in itertools.product(
+#     range(11, 8, -1), range(model.cfg.n_heads)
+# ):
+for layer_idx, head_idx in [(10, 7)]:
     max_importance_examples = sorted(
         [
             (
@@ -226,7 +230,9 @@ for layer_idx, head_idx in itertools.product(
     mean_ablation_loss = get_loss_from_end_state(
         end_state=(end_state - head_output + mean_output[None, None]).to(DEVICE),
         targets=mytargets,
-    ).cpu()
+        return_logits=False,
+    )
+    # mean_ablation_loss.to("cpu")
 
     cnt = 0
     avg_loss = []
@@ -271,9 +277,7 @@ for layer_idx, head_idx in itertools.product(
                 ),
             ],
         )
-        # probs = torch.nn.functional.softmax(logits, dim=-1)
-        # loss = -torch.log(probs[0, -1, mytargets[batch_idx, seq_idx].item()]).item()
-
+        
         end_result = endcache[0][0, seq_idx, head_idx]
         assert list(end_result.shape) == [model.cfg.d_model], endcache[0][0, seq_idx, head_idx].shape
 
@@ -286,7 +290,6 @@ for layer_idx, head_idx in itertools.product(
 
         assert abs(avg_loss_change[-1]-change_in_loss)<1e-5, (avg_loss_change[-1], change_in_loss)
         # TODO fix, consistently failing assertion???
-
 
         avg_error.append(loss.item()-my_loss[batch_idx, seq_idx].item())
 
@@ -551,6 +554,12 @@ fig = go.Figure()
 fig.add_scatter(
     x=[x["avg_loss"] for x in parsed_dict.values()],
     y=[x["avg_error"]+x["avg_loss"] for x in parsed_dict.values()],
+    error_y=dict(
+        type='data',
+        symmetric=False,
+        array=[max(0, x["avg_loss_change"]-x["avg_error"]) for x in parsed_dict.values()],
+        arrayminus=[max(0, x["avg_error"]-x["avg_loss_change"]) for x in parsed_dict.values()]
+    ),
     text=[str(x) for x in parsed_dict],
     mode="markers",
 )
@@ -564,21 +573,21 @@ fig.add_scatter(
 )
 
 # add labels
-for i, atxt in enumerate(parsed_dict.keys()):
-    txt=str(atxt)
-    fig.add_annotation(
-        x=parsed_dict[atxt]["avg_loss"],
-        y=parsed_dict[atxt]["avg_error"]+parsed_dict[atxt]["avg_loss"],
-        text=txt,
-        showarrow=False,
-        yshift=10,
-    )
+if False:
+    for i, atxt in enumerate(parsed_dict.keys()):
+        txt=str(atxt)
+        fig.add_annotation(
+            x=parsed_dict[atxt]["avg_loss"],
+            y=parsed_dict[atxt]["avg_error"]+parsed_dict[atxt]["avg_loss"],
+            text=txt + " " + str(parsed_dict[atxt]["avg_loss_change"]),
+            showarrow=False,
+            yshift=10,
+        )
 
 
 fig.update_layout(
-    title="Loss vs Error",
+    title="Dot is average loss w/ the approximation. Line is mean ablating head",
     xaxis_title="Average model loss for top prompts where this head is useful",
-    yaxis_title="Average model loss applying key 'the' approximation for this head",
+    yaxis_title="New loss",
 )
-
 # %%
