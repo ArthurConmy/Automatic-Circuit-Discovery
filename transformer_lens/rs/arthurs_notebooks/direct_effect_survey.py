@@ -196,11 +196,12 @@ px.bar(
 datab = {}
 
 model.set_use_split_qkv_input(True)
-# if False:
-# for layer_idx, head_idx in itertools.product(
-#     range(11, 8, -1), range(model.cfg.n_heads)
-# ):
-for layer_idx, head_idx in [(10, 7)]:
+
+for layer_idx, head_idx in itertools.product(
+    range(11, 8, -1), range(model.cfg.n_heads)
+):
+
+# for layer_idx, head_idx in [(10, 7)]:
     max_importance_examples = sorted(
         [
             (
@@ -216,8 +217,6 @@ for layer_idx, head_idx in [(10, 7)]:
         reverse=True,
     )
 
-    # Do "the" baseline???
-
     head_output_hook = f"blocks.{layer_idx}.attn.hook_result"
     head_output = cache[head_output_hook][
         :, :, head_idx
@@ -227,85 +226,33 @@ for layer_idx, head_idx in [(10, 7)]:
         "batch seq_len hidden_size -> hidden_size",
         reduction="mean",
     )
-    mean_ablation_loss = get_loss_from_end_state(
+    mean_ablation_loss, mean_ablation_logits = get_loss_from_end_state(
         end_state=(end_state - head_output + mean_output[None, None]).to(DEVICE),
         targets=mytargets,
-        return_logits=False,
+        return_logits=True,
     )
-    # mean_ablation_loss.to("cpu")
+    mean_ablation_loss = mean_ablation_loss.to("cpu")
+    mean_ablation_logits = mean_ablation_logits.to("cpu")
 
     cnt = 0
-    avg_loss = []
-    avg_loss_change = []
-    avg_error = []
+    copy_suppress_log = []
 
     for batch_idx, seq_idx, change_in_loss in tqdm(max_importance_examples[:300]):
-        change_in_state = head_output[batch_idx, seq_idx] - mean_output
-        the_tokens = torch.zeros((seq_idx+1, 3)).long()
-        the_tokens[:, -1] = mybatch[batch_idx, : seq_idx + 1]
-        the_tokens[:, 1] = model.to_tokens("The", prepend_bos=False).item()
-        the_tokens[:, 0] = model.tokenizer.bos_token_id
-        _, another_cache = model.run_with_cache(
-            the_tokens,
-            names_filter=lambda name: name==f"blocks.{layer_idx}.hook_resid_pre",
-        )
-        key_inputs = another_cache[f"blocks.{layer_idx}.hook_resid_pre"][:, -1]
-        def set_to_value(z, hook, value, head_idx):
-            assert z.shape[2]==model.cfg.n_heads, z.shape
-            assert z[0, :, head_idx].shape==value.shape, (z[:, :, head_idx].shape, value.shape)
-            z[0, :, head_idx] = value
-        endcache={}
-        def cacher(z, hook, endcache):
-            endcache[0] = z.cpu()
-            return z
-
-        model.reset_hooks()
-        logits = model.run_with_hooks(
-            mybatch[batch_idx : batch_idx + 1, : seq_idx + 1],
-            fwd_hooks=[
-                (
-                    f"blocks.{layer_idx}.hook_k_input",
-                    partial(
-                        set_to_value,
-                        value=key_inputs,
-                        head_idx=head_idx,
-                    ),
-                ),
-                (
-                    f"blocks.{layer_idx}.attn.hook_result",
-                    partial(cacher, endcache=endcache),
-                ),
-            ],
-        )
+        change_in_logits = full_logits[batch_idx, seq_idx] - mean_ablation_logits[batch_idx, seq_idx]
+        prompt_words = list(set(list(mybatch[batch_idx,:seq_idx+1].tolist())))
+        copy_suppress = change_in_logits[prompt_words].min()
+        copy_suppress_log.append(copy_suppress.item())
         
-        end_result = endcache[0][0, seq_idx, head_idx]
-        assert list(end_result.shape) == [model.cfg.d_model], endcache[0][0, seq_idx, head_idx].shape
+    del mean_ablation_loss
+    del mean_ablation_logits
+    del head_output
+    gc.collect()
+    torch.cuda.empty_cache()
 
-        loss=get_loss_from_end_state(
-            (end_state[batch_idx, seq_idx] - head_output[batch_idx, seq_idx] + end_result)[None, None].to(DEVICE),
-            mytargets[batch_idx:batch_idx+1, seq_idx:seq_idx+1].to(DEVICE),
-        )
-        avg_loss.append(my_loss[batch_idx, seq_idx].item())
-        avg_loss_change.append((mean_ablation_loss[batch_idx, seq_idx]-my_loss[batch_idx, seq_idx]).item())
-
-        assert abs(avg_loss_change[-1]-change_in_loss)<1e-5, (avg_loss_change[-1], change_in_loss)
-        # TODO fix, consistently failing assertion???
-
-        avg_error.append(loss.item()-my_loss[batch_idx, seq_idx].item())
-
-        if my_loss[batch_idx, seq_idx].item()>loss.item():
-            cnt+=1
-
-    datab[(layer_idx, head_idx)] = {
-        "avg_loss": np.mean(avg_loss),
-        "avg_loss_change": np.mean(avg_loss_change),
-        "avg_error": np.mean(avg_error),
-    }
-
-    print(layer_idx, head_idx, cnt/300)
-    print("avg loss", datab[(layer_idx, head_idx)]["avg_loss"])
-    print("avg loss change", datab[(layer_idx, head_idx)]["avg_loss_change"])
-    print("avg error", datab[(layer_idx, head_idx)]["avg_error"])
+    print(layer_idx, head_idx, np.mean(copy_suppress_log), np.var(copy_suppress_log))
+    # print("avg loss", datab[(layer_idx, head_idx)]["avg_loss"])
+    # print("avg loss change", datab[(layer_idx, head_idx)]["avg_loss_change"])
+    # print("avg error", datab[(layer_idx, head_idx)]["avg_error"])
 
 # %%
 
@@ -313,241 +260,164 @@ def parse_data_to_dict(data):
     lines = data.split('\n')
     result_dict = {}
 
-    for line_idx in range(0, len(lines), 6):
-        layer_idx, head_idx, _ = lines[line_idx].split()
-
-        # Check if line contains key-value pair
-        assert lines[line_idx + 1].startswith("avg loss")
-        assert lines[line_idx + 2].startswith("avg loss change")
-        assert lines[line_idx + 3].startswith("avg error")
+    for line_idx in range(0, len(lines), 3):
+        layer_idx, head_idx, copy_suppress_mean, copy_suppress_var = lines[line_idx+2].split()
+        layer_idx = int(layer_idx)
+        head_idx = int(head_idx)
+        copy_suppress_mean = float(copy_suppress_mean)
+        copy_suppress_var = float(copy_suppress_var)
 
         result_dict[(layer_idx, head_idx)] = {
-            "avg_loss": float(lines[line_idx + 1].split()[-1]),
-            "avg_loss_change": float(lines[line_idx + 2].split()[-1]),
-            "avg_error": float(lines[line_idx + 3].split()[-1]),
+            "copy_suppress_mean": copy_suppress_mean,
+            "copy_suppress_var": copy_suppress_var,
         }
             
     return result_dict
 
-data = """11 0 0.013333333333333334
-avg loss 2.3835536268632858
-avg loss change 0.7386037816603979
-avg error 0.6539135828831544
+# generated from the copy suppression script
+data = """100%
+300/300 [00:00<00:00, 3506.77it/s]
+11 0 -0.9016816154122352 0.5201871295325757
 100%
-300/300 [00:34<00:00, 8.89it/s]
-11 1 0.13
-avg loss 3.864693093250195
-avg loss change 0.7659014473358791
-avg error 0.3382451789081097
+300/300 [00:00<00:00, 3144.80it/s]
+11 1 -0.4044969256718953 0.031844296624758996
 100%
-300/300 [00:34<00:00, 8.54it/s]
-11 2 0.24333333333333335
-avg loss 3.4978087133169176
-avg loss change 2.652760692834854
-avg error 0.5238392366965612
+300/300 [00:00<00:00, 3172.04it/s]
+11 2 -0.7388574319084485 0.1072463993261014
 100%
-300/300 [00:32<00:00, 10.32it/s]
-11 3 0.49666666666666665
-avg loss 4.21456408187747
-avg loss change 1.3247506026426952
-avg error 0.03020534579952558
+300/300 [00:00<00:00, 3321.18it/s]
+11 3 -0.43112966855367024 0.03152586384032467
 100%
-300/300 [00:35<00:00, 9.41it/s]
-11 4 0.06333333333333334
-avg loss 4.63112070629994
-avg loss change 0.5176826830705007
-avg error 0.39782712231079737
+300/300 [00:00<00:00, 3073.56it/s]
+11 4 -0.47693766315778097 0.07003433177171575
 100%
-300/300 [00:34<00:00, 8.34it/s]
-11 5 0.03
-avg loss 3.3653839365641276
-avg loss change 0.5493491295973459
-avg error 0.42650381724039715
+300/300 [00:00<00:00, 3185.79it/s]
+11 5 -0.4015259406963984 0.03355677279733544
 100%
-300/300 [00:34<00:00, 9.08it/s]
-11 6 0.04666666666666667
-avg loss 4.21505222722888
-avg loss change 0.6185185609261195
-avg error 0.5150644576052824
+300/300 [00:00<00:00, 3172.29it/s]
+11 6 -0.36947757452726365 0.026246634875785695
 100%
-300/300 [00:34<00:00, 8.23it/s]
-11 7 0.07666666666666666
-avg loss 2.794633297820886
-avg loss change 0.6033858813842138
-avg error 0.3840236317118009
+300/300 [00:00<00:00, 3200.98it/s]
+11 7 -0.33805570036172866 0.017020611048886594
 100%
-300/300 [00:34<00:00, 9.04it/s]
-11 8 0.07666666666666666
-avg loss 3.741642370223999
-avg loss change 0.88694431245327
-avg error 0.458658616344134
+300/300 [00:00<00:00, 3365.80it/s]
+11 8 -0.25031042834122974 1.6237580302933803
 100%
-300/300 [00:34<00:00, 9.44it/s]
-11 9 0.09666666666666666
-avg loss 3.741892358313004
-avg loss change 0.6671927403410276
-avg error 0.382763326416413
+300/300 [00:00<00:00, 2609.99it/s]
+11 9 -0.4280617571870486 0.03441768881449543
 100%
-300/300 [00:33<00:00, 8.20it/s]
-11 10 0.29333333333333333
-avg loss 4.992569005936384
-avg loss change 0.5695823103189468
-avg error 0.12431741530696551
+300/300 [00:00<00:00, 2729.19it/s]
+11 10 -1.1136790512005488 0.29488302626701873
 100%
-300/300 [00:33<00:00, 7.81it/s]
-11 11 0.14333333333333334
-avg loss 6.023248256916801
-avg loss change 0.5564728027582169
-avg error 0.33571807148555916
+300/300 [00:00<00:00, 2657.37it/s]
+11 11 -0.9186084069311619 0.670046600938536
 100%
-300/300 [00:32<00:00, 9.51it/s]
-10 0 0.37333333333333335
-avg loss 2.534186307216684
-avg loss change 1.9031446488698323
-avg error 0.3274131795515617
+300/300 [00:00<00:00, 2758.59it/s]
+10 0 -0.5324919090668361 0.05695003976559484
 100%
-300/300 [00:35<00:00, 9.70it/s]
-10 1 0.016666666666666666
-avg loss 3.0247301920006673
-avg loss change 0.8361247881253561
-avg error 0.6841816642135382
+300/300 [00:00<00:00, 2501.65it/s]
+10 1 -0.4772719904780388 0.04517875384375263
 100%
-300/300 [00:35<00:00, 8.10it/s]
-10 2 0.05333333333333334
-avg loss 2.9887292234102887
-avg loss change 1.7848887467384338
-avg error 0.9455112421512604
+300/300 [00:00<00:00, 2477.50it/s]
+10 2 -0.511786490380764 0.03389539861635245
 100%
-300/300 [00:33<00:00, 7.94it/s]
-10 3 0.07666666666666666
-avg loss 3.07864759683609
-avg loss change 1.0100470993916193
-avg error 0.5578694013754527
+300/300 [00:00<00:00, 2724.08it/s]
+10 3 -0.38995554715394976 0.04442058760369615
 100%
-300/300 [00:33<00:00, 7.39it/s]
-10 4 0.056666666666666664
-avg loss 2.873488065674901
-avg loss change 0.6942227291067441
-avg error 0.49977676404019195
+300/300 [00:00<00:00, 2653.49it/s]
+10 4 -0.340000065912803 0.019087140112775115
 100%
-300/300 [00:33<00:00, 9.51it/s]
-10 5 0.0033333333333333335
-avg loss 2.6171088931709527
-avg loss change 1.0065552939971287
-avg error 0.9571821940193573
+300/300 [00:00<00:00, 2712.52it/s]
+10 5 -0.6252672380208969 0.0691287308996828
 100%
-300/300 [00:34<00:00, 7.35it/s]
-10 6 0.09666666666666666
-avg loss 3.3077179816613596
-avg loss change 1.1842566108703614
-avg error 0.4771018896748622
+300/300 [00:00<00:00, 2639.37it/s]
+10 6 -0.4483438401420911 0.02757532322252427
 100%
-300/300 [00:33<00:00, 10.40it/s]
-10 7 0.21
-avg loss 5.080783624947071
-avg loss change 1.0295758157968522
-avg error 0.2629986247420311
+300/300 [00:00<00:00, 2657.01it/s]
+10 7 -1.7386940280596415 0.29417134614089735
 100%
-300/300 [00:36<00:00, 9.57it/s]
-10 8 0.0033333333333333335
-avg loss 2.12368817307055
-avg loss change 0.5812099544207255
-avg error 0.5338043490300576
+300/300 [00:00<00:00, 2450.21it/s]
+10 8 -0.27631867786248526 0.018791682778451068
 100%
-300/300 [00:35<00:00, 7.95it/s]
-10 9 0.023333333333333334
-avg loss 1.9291445140664776
-avg loss change 0.9361788300673167
-avg error 0.7159277528896928
+300/300 [00:00<00:00, 2543.87it/s]
+10 9 -0.351839574277401 0.0258264367121916
 100%
-300/300 [00:35<00:00, 7.86it/s]
-10 10 0.04666666666666667
-avg loss 2.7494985501157743
-avg loss change 1.4382764037450155
-avg error 1.0388174733333289
+300/300 [00:00<00:00, 2704.63it/s]
+10 10 -0.5870076884826024 0.07468998995874163
 100%
-300/300 [00:33<00:00, 7.48it/s]
-10 11 0.04
-avg loss 3.2883034194012484
-avg loss change 0.7354107892513275
-avg error 0.4603416486084461
+300/300 [00:00<00:00, 2599.13it/s]
+10 11 -0.4399674787123998 0.0316214673151143
 100%
-300/300 [00:32<00:00, 8.26it/s]
-9 0 0.17333333333333334
-avg loss 3.4325320261220136
-avg loss change 0.5358555382490158
-avg error 0.1949662038187186
+300/300 [00:00<00:00, 3375.63it/s]
+9 0 -0.3342344471812248 0.02692906721012261
 100%
-300/300 [00:34<00:00, 7.41it/s]
-9 1 0.02
-avg loss 2.4590366874386866
-avg loss change 0.433472909728686
-avg error 0.35887142397463323
+300/300 [00:00<00:00, 2830.80it/s]
+9 1 -0.369691844334205 0.043611652938372956
 100%
-300/300 [00:32<00:00, 10.53it/s]
-9 2 0.3233333333333333
-avg loss 3.657995838522911
-avg loss change 0.7993131331602732
-avg error 0.1421295601129532
+300/300 [00:00<00:00, 3367.39it/s]
+9 2 -0.3142923931777477 0.013720869772415286
 100%
-300/300 [00:32<00:00, 9.74it/s]
-9 3 0.0033333333333333335
-avg loss 3.8196983632445334
-avg loss change 0.5313643322388331
-avg error 0.4152933729688327
+300/300 [00:00<00:00, 3420.14it/s]
+9 3 -0.38847506006558735 0.02535700541648442
 100%
-300/300 [00:35<00:00, 7.76it/s]
-9 4 0.17
-avg loss 2.6795193911592166
-avg loss change 0.39626698623100914
-avg error 0.1695009661714236
+300/300 [00:00<00:00, 2632.87it/s]
+9 4 -0.26610014503200846 0.015068695777554977
 100%
-300/300 [00:33<00:00, 9.49it/s]
-9 5 0.44
-avg loss 5.235816111962
-avg loss change 0.371458647052447
-avg error 0.03031807541847229
+300/300 [00:00<00:00, 3256.16it/s]
+9 5 -0.8419594989220301 0.11326557327638707
 100%
-300/300 [00:33<00:00, 8.99it/s]
-9 6 0.07
-avg loss 2.069377131834626
-avg loss change 1.1677824054161707
-avg error 0.68795611264805
+300/300 [00:00<00:00, 3173.06it/s]
+9 6 -0.5419738794366519 0.05079622240332223
 100%
-300/300 [00:34<00:00, 9.22it/s]
-9 7 0.023333333333333334
-avg loss 1.9160348110894363
-avg loss change 0.841538261671861
-avg error 0.6344573659201463
+300/300 [00:00<00:00, 3149.75it/s]
+9 7 -0.32550418059031166 0.01631604746415235
 100%
-300/300 [00:31<00:00, 9.19it/s]
-9 8 0.46
-avg loss 3.7813717314600943
-avg loss change 0.8586706201235453
-avg error 0.06401054916282495
+300/300 [00:00<00:00, 3367.45it/s]
+9 8 -0.307948471903801 0.03385204378668494
 100%
-300/300 [00:35<00:00, 8.35it/s]
-9 9 0.023333333333333334
-avg loss 2.153989301795761
-avg loss change 0.984823618332545
-avg error 0.7984988825768232
+300/300 [00:00<00:00, 2608.21it/s]
+9 9 -0.5532821393013001 0.0500570998217686
 100%
-300/300 [00:32<00:00, 10.62it/s]
-9 10 0.0033333333333333335
-avg loss 2.7616556242605053
-avg loss change 0.44298332224289577
-avg error 0.40676913832624756
+300/300 [00:00<00:00, 3300.43it/s]
+9 10 -0.41829231098294256 0.020102954189287616
 100%
-300/300 [00:35<00:00, 7.96it/s]
-9 11 0.01
-avg loss 2.5527770445744196
-avg loss change 2.0903026541074117
-avg error 1.6865818623701732"""
+300/300 [00:00<00:00, 3079.44it/s]
+9 11 -0.4879091795285543 0.02666743623329828"""
 
 parsed_dict = parse_data_to_dict(data)
-print(parsed_dict)
+# print(parsed_dict)
 
-# %%
+#%%
+
+fig = px.bar(
+    x = [f"{layer_idx}.{head_idx}" for layer_idx, head_idx in itertools.product(range(9, 12), range(12))],
+    y = [parsed_dict[(layer_idx, head_idx)]["copy_suppress_mean"] for layer_idx, head_idx in itertools.product(range(9, 12), range(12))],
+)
+
+# add error bars
+fig.add_scatter(
+    x = [f"{layer_idx}.{head_idx}" for layer_idx, head_idx in itertools.product(range(9, 12), range(12))],
+    y = [parsed_dict[(layer_idx, head_idx)]["copy_suppress_mean"]+np.sqrt(parsed_dict[(layer_idx, head_idx)]["copy_suppress_var"]) for layer_idx, head_idx in itertools.product(range(9, 12), range(12))],
+    mode="lines",
+    line=dict(color="black", width=1, dash="dash"),
+    name="+1 std",
+)
+fig.add_scatter(
+    x = [f"{layer_idx}.{head_idx}" for layer_idx, head_idx in itertools.product(range(9, 12), range(12))],
+    y = [parsed_dict[(layer_idx, head_idx)]["copy_suppress_mean"]-np.sqrt(parsed_dict[(layer_idx, head_idx)]["copy_suppress_var"]) for layer_idx, head_idx in itertools.product(range(9, 12), range(12))],
+    mode="lines",
+    line=dict(color="black", width=1, dash="dash"),
+    name="-1 std",
+)
+
+# add title 
+fig.update_layout(
+    title="Copy suppression",
+    xaxis_title="Layer.Head",
+    yaxis_title="Copy suppression",
+)
+
+#%%
 
 fig = go.Figure()
 
