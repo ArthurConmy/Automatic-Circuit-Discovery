@@ -26,6 +26,8 @@ MODEBAR_ADD = ['drawline', 'drawopenpath', 'drawclosedpath', 'drawcircle', 'draw
 
 
 def imshow(tensor, renderer=None, **kwargs):
+    if "x" in kwargs: assert len(kwargs["x"]) == len(set(kwargs["x"]))
+    if "y" in kwargs: assert len(kwargs["y"]) == len(set(kwargs["y"]))
     kwargs_post = {k: v for k, v in kwargs.items() if k in UPDATE_LAYOUT_SET}
     kwargs_pre = {k: v for k, v in kwargs.items() if k not in UPDATE_LAYOUT_SET}
     draw = kwargs_pre.pop("draw", True)
