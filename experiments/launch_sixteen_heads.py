@@ -47,7 +47,7 @@ from acdc.ioi.utils import get_all_ioi_things
 from acdc.TLACDCExperiment import TLACDCExperiment
 from acdc.TLACDCInterpNode import TLACDCInterpNode, heads_to_nodes_to_mask
 from acdc.tracr_task.utils import get_all_tracr_things
-from subnetwork_probing.train import correspondence_from_mask
+from subnetwork_probing.train import iterative_correspondence_from_mask
 from notebooks.emacs_plotly_render import set_plotly_renderer
 
 from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformer import HookedTransformer as SPHookedTransformer
@@ -286,9 +286,10 @@ if args.zero_ablation:
     do_zero_caching(model)
 
 nodes_to_mask = []
+corr, head_parents = None, None
 for nodes, hook_name, idx in tqdm.tqdm(nodes_names_indices):
     nodes_to_mask += nodes
-    corr = correspondence_from_mask(model, nodes_to_mask, use_pos_embed=False, newv=False)
+    corr, head_parents = iterative_correspondence_from_mask(model, nodes_to_mask, use_pos_embed=False, newv=False, corr=corr, head_parents=head_parents)
     for e in corr.all_edges().values():
         e.effect_size = 1.0
 

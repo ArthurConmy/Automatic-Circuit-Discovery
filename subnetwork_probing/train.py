@@ -39,14 +39,16 @@ from subnetwork_probing.transformer_lens.transformer_lens.ioi_dataset import IOI
 import wandb
 
 
-def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACDCInterpNode], use_pos_embed: bool = False, newv = False) -> TLACDCCorrespondence:
-    corr = TLACDCCorrespondence.setup_from_model(model, use_pos_embed=use_pos_embed)
+def iterative_correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACDCInterpNode],
+                                       use_pos_embed: bool = False,newv = False, corr: TLACDCCorrespondence = None,
+                                       head_parents = None) -> TLACDCCorrespondence:
+    if corr is None:
+        corr = TLACDCCorrespondence.setup_from_model(model, use_pos_embed=use_pos_embed)
+    if head_parents is None:
+        head_parents = collections.defaultdict(lambda: 0)
 
     additional_nodes_to_mask = []
 
-    # If all of {qkv} is masked, also add its head child
-    # to the list of nodes to mask
-    head_parents = collections.defaultdict(lambda: 0)
     for node in nodes_to_mask:
         additional_nodes_to_mask.append(TLACDCInterpNode(node.name.replace(".attn.", ".") + "_input", node.index, EdgeType.ADDITION))
 
@@ -57,11 +59,8 @@ def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACD
             # Forgot to add these in earlier versions of Subnetwork Probing, and so the edge counts were inflated
             additional_nodes_to_mask.append(TLACDCInterpNode(child_name + "_input", node.index, EdgeType.ADDITION))
 
-    # assert all([v <= 3 for v in head_parents.values()])
-
-    for (child_name, child_index), count in head_parents.items():
-        if count == 3:
-            nodes_to_mask.append(TLACDCInterpNode(child_name, child_index, EdgeType.ADDITION))
+            if head_parents[child_name, node.index] == 3:
+                additional_nodes_to_mask.append(TLACDCInterpNode(child_name, node.index, EdgeType.ADDITION))
 
     for node in nodes_to_mask + additional_nodes_to_mask:
         # Mark edges where this is child as not present
@@ -77,8 +76,7 @@ def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACD
                     rest2[node.name][node.index].present = False
                 except KeyError:
                     pass
-    return corr
-
+    return corr, head_parents
 
 
 def log_plotly_bar_chart(x: List[str], y: List[float]) -> None:
@@ -526,7 +524,7 @@ if __name__ == "__main__":
         all_task_things=all_task_things,
     )
 
-    corr = correspondence_from_mask(model, to_log_dict["nodes_to_mask"])
+    corr, _ = iterative_correspondence_from_mask(model, to_log_dict["nodes_to_mask"])
     mask_val_dict = get_nodes_mask_dict(model)
     percentage_binary = log_percentage_binary(mask_val_dict)
 
