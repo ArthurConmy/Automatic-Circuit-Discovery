@@ -68,10 +68,10 @@ But, like other opposition sympathisers interviewed,""",
 }
 
 if USE_IOI:
-    N = 200
+    N = 60
     warnings.warn("Auto IOI")
     ioi_dataset = IOIDataset(
-        prompt_type="ABBA",
+        prompt_type="mixed",
         N=N,
         tokenizer=model.tokenizer,
         prepend_bos=True,
@@ -94,7 +94,7 @@ key_positions = []
 query_positions = []
 for i in range(len(tokens)):
     if tokens[i, -1].item()!=model.tokenizer.pad_token_id:
-        query_positions.append(tokens.shape[-1]-1)
+        query_positions.append(tokens[i].shape[-1]-1)
     else:
         for j in range(len(tokens[i])-1, -1, -1):
             if tokens[i, j].item()!=model.tokenizer.pad_token_id:
@@ -116,184 +116,100 @@ W_E = model.W_E
 # Define an easier-to-use dict!
 effective_embeddings = {"W_EE": W_EE, "W_EE0": W_EE0, "W_E": W_E}
 
-#%% [markdown] [4]:
-
-def owt_decompose_attn_scores_full(
-    tokens: Int[torch.Tensor, "batch_size seq_len"],
-    key_positions: List[int],
-    query_positions: List[int],
-    key_tokens,
-    nnmh: Tuple[int, int],
-    model: HookedTransformer,
-    cache: Optional[ActivationCache] = None,
-    use_effective_embedding: bool = False,
-    use_layer0_heads: bool = False,
-    project_onto_comms_space: Optional[Literal["W_EE", "W_EE0", "W_E", "W_EE0A"]] = None,
-):
-    """
-    Built from `transformer_lens/rs/callum/orthogonal_query_investigation.py`
-    
-    and made to be for general prompts
-    """
-
-    t.cuda.empty_cache()
-
-    if cache is None:
-        _, cache = model.run_with_cache(
-            tokens,
-        )
-    batch_size = len(tokens)
-    assert len(tokens)==len(query_positions)==len(key_positions)==len(key_tokens), (len(tokens), len(query_positions), len(key_positions))
-
-    if project_onto_comms_space is not None: 
-        assert project_onto_comms_space in ["W_EE", "W_EE0", "W_E", "W_EE0A"]
-        W_EE_dict = get_effective_embedding_2(model)
-        W_EE = W_EE_dict['W_E (including MLPs)']
-        W_EE0 = W_EE_dict['W_E (only MLPs)']
-        W_E = model.W_E
-        W_EE_dict = {"W_EE": W_EE, "W_EE0": W_EE0, "W_EE0A": W_EE - W_E, "W_E": W_E}
-        effective_embeddings_matrix = W_EE_dict[project_onto_comms_space]
-        comms_space_projections = {
-            f"{layer}.{head}" : token_to_qperp_projection(
-                key_tokens,
-                model = model,
-                effective_embedding = effective_embeddings_matrix,
-                name_mover = (layer, head)
-            )
-            for layer in range(nnmh[0]) for head in range(model.cfg.n_heads)
-        }
-
-    # TODO decide if we can/should include this...
-    # IO_seq_pos_indices = ioi_dataset.word_idx["IO"]
-    # end_seq_pos_indices = ioi_dataset.word_idx["end"]
-    ln_scale_key = cache["scale", nnmh[0], "ln1"][range(batch_size), key_positions, nnmh[1]] # TODO shape???
-    ln_scale_query = cache["scale", nnmh[0], "ln1"][range(batch_size), query_positions, nnmh[1]]
-
-    # * Get the MLP0 output (note that we need to be careful here if we're subtracting the S1 baseline, because we actually need the 2 different MLP0s)
-    if use_effective_embedding:
-        W_EE_dict = get_effective_embedding_2(model)
-        W_EE = (W_EE_dict["W_E (including MLPs)"] - W_EE_dict["W_E (no MLPs)"]) if use_layer0_heads else W_EE_dict["W_E (only MLPs)"]
-        MLP0_output = W_EE[key_tokens]
-    else:
-        if use_layer0_heads:
-            MLP0_output = cache["mlp_out", 0][range(batch_size), key_positions] + cache["attn_out", 0][range(batch_size), key_positions]
-        else:
-            MLP0_output = cache["mlp_out", 0][range(batch_size), key_positions]
-
-    # * Get the unembeddings
-    unembeddings = model.W_U.T[key_tokens]
-
-    t.cuda.empty_cache()
-
-    num_key_decomps = 2
-    num_query_decomps = 3 if project_onto_comms_space else 2
-    contribution_to_attn_scores = t.zeros(
-        num_key_decomps * num_query_decomps, # this is for the key & query options: (∥ / ⟂) MLP0 on key side, same for unembed on IO side plus the comms space
-        3 + (nnmh[0] * (1 + model.cfg.n_heads)), # this is for the query-side
-        3 + (nnmh[0] * (1 + model.cfg.n_heads)), # this is for the key-side
-    )
-
-    keyside_components = []
-    queryside_components = []
-
-    # TODO - calculate product directly after filling these in, in case it's too large? Or maybe it's fine cause they are on CPU.
-    keys_decomposed = t.zeros(num_key_decomps, 3 + (nnmh[0] * (1 + model.cfg.n_heads)), batch_size, model.cfg.d_head)
-    queries_decomposed = t.zeros(num_query_decomps, 3 + (nnmh[0] * (1 + model.cfg.n_heads)), batch_size, model.cfg.d_head)
-
-    def get_component(component_name, layer=None, keyside=False):
-        '''
-        Gets component (key or query side).
-
-        If we need to subtract the baseline, it returns both the component for IO and the component for S1 (so we can project then subtract scores from each other).
-        '''
-        full_component = cache[component_name, layer]
-        if keyside:
-            component_IO = full_component[range(batch_size), key_positions] / (ln_scale_key.unsqueeze(1) if (component_name == "result") else ln_scale_key)
-            return component_IO
-        else:
-            component_END = full_component[range(batch_size), query_positions] / (ln_scale_query.unsqueeze(1) if (component_name == "result") else ln_scale_query)
-            return component_END
-
-    b_K = model.b_K[nnmh[0], nnmh[1]]
-    b_K = einops.repeat(b_K, "d_head -> batch d_head", batch=batch_size)
-    b_Q = einops.repeat(model.b_Q[nnmh[0], nnmh[1]], "d_head -> batch d_head", batch=batch_size)
-
-    # First, get the biases and direct terms
-    keyside_components.extend([
-        ("b_K", b_K),
-        ("embed", get_component("embed", keyside=True)),
-        ("pos_embed", get_component("pos_embed", keyside=True)),
-    ])
-    queryside_components.extend([
-        ("b_Q", b_Q),
-        ("embed", get_component("embed", keyside=False)),
-        ("pos_embed", get_component("pos_embed", keyside=False)),
-    ])
-
-    # Next, get all the MLP terms
-    for layer in range(nnmh[0]):
-        keyside_components.append((f"mlp_out_{layer}", get_component("mlp_out", layer=layer, keyside=True)))
-        queryside_components.append((f"mlp_out_{layer}", get_component("mlp_out", layer=layer, keyside=False)))
-
-    # Lastly, all the heads
-    for layer in range(nnmh[0]):
-        keyside_heads = get_component("result", layer=layer, keyside=True)
-        queryside_heads = get_component("result", layer=layer, keyside=False)
-        for head in range(model.cfg.n_heads):
-            keyside_components.append((f"{layer}.{head}", keyside_heads[:, head, :]))
-            queryside_components.append((f"{layer}.{head}", queryside_heads[:, head, :]))
-
-    # Now, we do the projection thing...
-    # ... for keys ....
-    keys_decomposed[1, 0] = keyside_components[0][1]
-    for i, (keyside_name, keyside_component) in enumerate(keyside_components[1:], 1):
-        projections = torch.stack(project(keyside_component, MLP0_output))
-
-        keys_decomposed[:, i] = einops.einsum(projections.cpu(), model.W_K[nnmh[0], nnmh[1]].cpu(), "projection batch d_model, d_model d_head -> projection batch d_head")
-
-    # ... and for queries ...
-    queries_decomposed[1, 0] = queryside_components[0][1]
-    for i, (queryside_name, queryside_component) in enumerate(queryside_components[1:], 1):
-        queryside_par, queryside_perp = project(queryside_component, unembeddings)
-        queries_decomposed[0, i] = einops.einsum(queryside_par.cpu(), model.W_Q[nnmh[0], nnmh[1]].cpu(), "batch d_model, d_model d_head -> batch d_head")
-        if project_onto_comms_space and ("." in queryside_name):
-            # * Project the perpendicular part of the component into the direction of the communication channel
-            queryside_comms, queryside_comms_perp = project(queryside_perp, comms_space_projections[queryside_name])
-            queries_decomposed[1, i] = einops.einsum(queryside_comms.cpu(), model.W_Q[nnmh[0], nnmh[1]].cpu(), "batch d_model, d_model d_head -> batch d_head")
-            queries_decomposed[2, i] = einops.einsum(queryside_comms_perp.cpu(), model.W_Q[nnmh[0], nnmh[1]].cpu(), "batch d_model, d_model d_head -> batch d_head")
-        else:
-            queries_decomposed[-1, i] = einops.einsum(queryside_perp.cpu(), model.W_Q[nnmh[0], nnmh[1]].cpu(), "batch d_model, d_model d_head -> batch d_head")
-    
-
-    # Finally, we do the outer product thing
-    for (key_idx, keyside_component) in enumerate(keys_decomposed.unbind(dim=1)):
-        for (query_idx, queryside_component) in enumerate(queries_decomposed.unbind(dim=1)):
-            contribution_to_attn_scores[:, query_idx, key_idx] = einops.einsum(
-                queryside_component,
-                keyside_component,
-                "q_projection batch d_head, k_projection batch d_head -> q_projection k_projection batch"
-            ).mean(-1).flatten() / (model.cfg.d_head ** 0.5)
-
-
-    return contribution_to_attn_scores
-
 #%%
 
 res = []
-for key_bump in [2, 0]:
-    new_key_positions = torch.LongTensor(key_positions) + key_bump
-    res.append(owt_decompose_attn_scores_full(
-        tokens=tokens,
-        key_positions=new_key_positions.tolist(),
-        key_tokens = tokens[torch.arange(len(tokens)), key_positions],
-        query_positions=query_positions,
-        nnmh=(10, 7),
-        model=model,
-        cache=None, # TODO make fast
-        use_effective_embedding=False,
-        use_layer0_heads = True,
-        project_onto_comms_space="W_EE0A",
-    ))
-create_fucking_massive_plot_1(res[1]-(sum(res)-res[1])/(len(res)-1))
 
+class FakeIOIDataset:
+    """Used for normal webtext things where we imitate the IOI dataset methods"""
+
+    def __init__(
+        self,
+        sentences,
+        io_tokens,
+        key_increment,
+    ):
+        self.N=len(sentences)
+        sentences_trimmed = []
+        update_word_lists = {} # different format used in the past        
+        for k, v in list(zip(io_tokens, sentences, strict=True)):
+            assert v.endswith(k), (k, v)
+            sentences_trimmed.append(v[:-len(k)])
+            assert sentences_trimmed[-1].count(k)==1
+
+        self.toks = model.to_tokens(sentences_trimmed)
+        self.word_idx={}
+        self.word_idx["IO"] = []
+        self.word_idx["end"] = []
+        self.word_idx["S1"] = []
+
+        for i in range(len(self.toks)):
+            if self.toks[i, -1].item()!=model.tokenizer.pad_token_id:
+                self.word_idx["end"].append(self.toks.shape[-1]-1)
+            else:
+                for j in range(len(self.toks[i])-1, -1, -1):
+                    if self.toks[i, j].item()!=model.tokenizer.pad_token_id:
+                        self.word_idx["end"].append(j)
+                        break
+
+            key_token = model.to_tokens([io_tokens[i]], prepend_bos=False).item()
+            assert self.toks[i].tolist().count(key_token)==1
+            self.word_idx["IO"].append(self.toks[i].tolist().index(key_token))
+
+        self.io_tokenIDs = self.toks[torch.arange(self.N), self.word_idx["IO"]]
+
+        self.word_idx["S1"] = (torch.LongTensor(self.word_idx["IO"]) + key_increment) + key_increment
+        assert N==len(self.word_idx["IO"])==len(self.word_idx["S1"]), ("Missing things probably", len(self.word_idx["IO"]), len(self.word_idx["S1"]))
+
+        assert 0 <= self.word_idx["S1"].min().item()
+        assert self.toks.shape[1] > self.word_idx["S1"].max().item()
+        self.word_idx["S1"] = self.word_idx["S1"].tolist()
+        self.s_tokenIDs = self.toks[torch.arange(self.N), self.word_idx["S1"]]
+
+#%%
+
+res.append(decompose_attn_scores_full(
+    ioi_dataset=ioi_dataset,
+    batch_size = N,
+    seed = 0,
+    nnmh = (10, 7),
+    model = model,
+    use_effective_embedding = False,
+    use_layer0_heads = False,
+    subtract_S1_attn_scores = True,
+    include_S1_in_unembed_projection = False,
+    project_onto_comms_space = "W_EE0A",
+))
+
+create_fucking_massive_plot_1(res[0])
+
+# %%
+
+create_fucking_massive_plot_2(res[0])
+
+# %%
+
+ioi_fake = FakeIOIDataset(
+    sentences = ioi_dataset.sentences,
+    io_tokens = [" " + sent.split(" ")[-1] for sent in ioi_dataset.sentences],
+    key_increment=0
+)
+
+ioi_fake.s_tokenIDs = ioi_dataset.s_tokenIDs
+ioi_fake.word_idx["S1"] = ioi_dataset.word_idx["S1"]
+
+# %%
+
+res2 = decompose_attn_scores_full(
+    ioi_dataset=ioi_fake,
+    batch_size = N,
+    seed = 0,
+    nnmh = (10, 7),
+    model = model,
+    use_effective_embedding = False,
+    use_layer0_heads = False,
+    subtract_S1_attn_scores = True,
+    include_S1_in_unembed_projection = False,
+    project_onto_comms_space = "W_EE0A",
+)
 # %%

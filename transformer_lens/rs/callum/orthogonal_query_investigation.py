@@ -57,14 +57,19 @@ def decompose_attn_scores_full(
     subtract_S1_attn_scores: bool = False,
     include_S1_in_unembed_projection: bool = False,
     project_onto_comms_space: Optional[Literal["W_EE", "W_EE0", "W_E", "W_EE0A"]] = None,
+    ioi_dataset = None, # pass this if you want to use a custom FakeIOIDataset
 ):
     t.cuda.empty_cache()
     # if (ioi_dataset is None) or (ioi_cache is None):
     #     ioi_dataset, ioi_cache = generate_data_and_caches(batch_size, model=model, seed=seed, only_ioi=True, prepend_bos=True)
     # else:
-    #     assert isinstance(ioi_dataset, IOIDataset) and isinstance(ioi_cache, ActivationCache)
+    #    c assert isinstance(ioi_dataset, IOIDataset) and isinstance(ioi_cache, ActivationCache)
     
-    ioi_dataset, ioi_cache = generate_data_and_caches(batch_size, model=model, seed=seed, only_ioi=True, prepend_bos=True)
+    if ioi_dataset is None:
+        ioi_dataset, ioi_cache = generate_data_and_caches(batch_size, model=model, seed=seed, only_ioi=True, prepend_bos=True)
+    else:
+        _, ioi_cache = model.run_with_cache(ioi_dataset.toks)
+
     seq_len = ioi_dataset.toks.shape[1]
 
     if project_onto_comms_space is not None: 
@@ -252,6 +257,9 @@ def create_fucking_massive_plot_1(contribution_to_attn_scores):
 
     zmax = contribution_to_attn_scores.abs().max().item()
 
+    print(len(full_labels))
+    print(contribution_to_attn_scores.shape)
+
     imshow(
         contribution_to_attn_scores,
         animation_frame = 0,
@@ -310,6 +318,7 @@ def create_fucking_massive_plot_2(contribution_to_attn_scores):
         for L in [0] # range(10)
     ]
     color_indices = [int(l in comms_channel) * 2 + int(l in unembedding_channel) for l in top_labels[::-1]]
+
 
     fig = px.bar(
         y = top_labels[::-1],
