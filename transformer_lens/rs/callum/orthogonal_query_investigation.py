@@ -61,14 +61,19 @@ def decompose_attn_scores_full(
     subtract_S1_attn_scores: bool = False,
     include_S1_in_unembed_projection: bool = False,
     project_onto_comms_space: Optional[Literal["W_EE", "W_EE0", "W_E", "W_EE0A"]] = None,
+    ioi_dataset = None, # pass this if you want to use a custom FakeIOIDataset
 ):
     t.cuda.empty_cache()
     # if (ioi_dataset is None) or (ioi_cache is None):
     #     ioi_dataset, ioi_cache = generate_data_and_caches(batch_size, model=model, seed=seed, only_ioi=True, prepend_bos=True)
     # else:
-    #     assert isinstance(ioi_dataset, IOIDataset) and isinstance(ioi_cache, ActivationCache)
+    #    c assert isinstance(ioi_dataset, IOIDataset) and isinstance(ioi_cache, ActivationCache)
     
-    ioi_dataset, ioi_cache = generate_data_and_caches(batch_size, model=model, seed=seed, only_ioi=True, prepend_bos=True)
+    if ioi_dataset is None:
+        ioi_dataset, ioi_cache = generate_data_and_caches(batch_size, model=model, seed=seed, only_ioi=True, prepend_bos=True)
+    else:
+        _, ioi_cache = model.run_with_cache(ioi_dataset.toks)
+
     seq_len = ioi_dataset.toks.shape[1]
 
     if project_onto_comms_space is not None: 
@@ -315,6 +320,7 @@ def create_fucking_massive_plot_2(contribution_to_attn_scores):
     ]
     color_indices = [int(l in comms_channel) * 2 + int(l in unembedding_channel) for l in top_labels[::-1]]
 
+
     fig = px.bar(
         y = top_labels[::-1],
         x = top_values[::-1],
@@ -336,3 +342,54 @@ def create_fucking_massive_plot_2(contribution_to_attn_scores):
     fig.for_each_trace(lambda t: t.update(name = newnames.pop(0)))
 
     fig.show()
+
+class FakeIOIDataset:
+    """Used for normal webtext things where we imitate the IOI dataset methods
+    
+    so that we can use the great above `decompose_full_attn_scores` function"""
+
+    def __init__(
+        self,
+        sentences,
+        io_tokens,
+        key_increment,
+        model,
+    ):
+        self.N=len(sentences)
+        sentences_trimmed = []
+        for k, v in list(zip(io_tokens, sentences, strict=True)):
+            assert v.endswith(k), (k, v)
+            sentences_trimmed.append(v[:-len(k)])
+
+        self.toks = model.to_tokens(sentences_trimmed)
+        self.word_idx={}
+        self.word_idx["IO"] = []
+        self.word_idx["end"] = []
+        self.word_idx["S1"] = []
+
+        for i in range(len(self.toks)):
+            if self.toks[i, -1].item()!=model.tokenizer.pad_token_id:
+                self.word_idx["end"].append(self.toks.shape[-1]-1)
+            else:
+                for j in range(len(self.toks[i])-1, -1, -1):
+                    if self.toks[i, j].item()!=model.tokenizer.pad_token_id:
+                        self.word_idx["end"].append(j)
+                        token_counter=self.toks[i].tolist().count(self.toks[i, j].item())
+                        break
+
+            key_token = model.to_tokens([io_tokens[i]], prepend_bos=False).item()
+            assert self.toks[i].tolist().count(key_token)==1, (io_tokens[i], sentences_trimmed[i])
+            self.word_idx["IO"].append(self.toks[i].tolist().index(key_token))
+
+        self.io_tokenIDs = self.toks[torch.arange(self.N), self.word_idx["IO"]]
+
+        self.word_idx["S1"] = (torch.LongTensor(self.word_idx["IO"]) + key_increment)
+        assert self.N==len(self.word_idx["IO"])==len(self.word_idx["S1"]), ("Missing things probably", len(self.word_idx["IO"]), len(self.word_idx["S1"]), self.N)
+
+        assert 0 <= self.word_idx["S1"].min().item()
+        assert self.toks.shape[1] > self.word_idx["S1"].max().item()
+        self.word_idx["S1"] = self.word_idx["S1"].tolist()
+        self.s_tokenIDs = self.toks[torch.arange(self.N), self.word_idx["S1"]]
+
+    def __len__(self):
+        return self.N

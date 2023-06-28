@@ -21,6 +21,8 @@ DEVICE = "cuda"
 SHOW_PLOT = False
 DATASET_SIZE = 500
 BATCH_SIZE = 30  # seems to be about the limit of what this box can handle
+NUM_THINGS = 300
+USE_RANDOM_SAMPLE=True
 
 # %%
 
@@ -288,7 +290,7 @@ torch.cuda.empty_cache()
 # In the max importance examples, which token does the head have the most effect on?
 datab = {}
 model.set_use_split_qkv_input(True)
-for layer_idx, head_idx in [(9, 9)] + list(
+for layer_idx, head_idx in [(10, 7)] + list(
     itertools.product(range(11, 8, -1), range(model.cfg.n_heads))
 ):
     print("-"*50)
@@ -327,28 +329,27 @@ for layer_idx, head_idx in [(9, 9)] + list(
     new_losses = []
     orig_losses = []
 
-    random_indices = np.random.choice(len(max_importance_examples), 10, replace=False).tolist()
+    random_indices = np.random.choice(len(max_importance_examples), NUM_THINGS, replace=False).tolist()
+    progress_bar = tqdm(random_indices) if USE_RANDOM_SAMPLE else tqdm(max_importance_examples[:NUM_THINGS])
 
-    if layer_idx!=9:
-        assert False
-
-    # for random_index in tqdm(random_indices): 
-    for batch_idx, seq_idx, change_in_loss in tqdm(max_importance_examples[:10]):
+    for current_iter_element in progress_bar:
+        if USE_RANDOM_SAMPLE:
+            batch_idx, seq_idx, change_in_loss = max_importance_examples[current_iter_element]
+        else:
+            batch_idx, seq_idx, change_in_loss = current_iter_element
 
         cur_output = (head_output-mean_output)[batch_idx, seq_idx]
 
-        unembed = einops.einsum(
-            cur_output,
-            model.W_U,
-            "d_model_out, d_model_out d_vocab -> d_vocab",
-        )
-        topk = torch.topk(unembed, k=10).indices
-        print([model.to_string([tk]) for tk in topk])
-        print([model.to_string([j]) for j in mybatch[batch_idx, max(0, seq_idx-100):seq_idx+1]])
-        print(model.to_string([mybatch[batch_idx, seq_idx+1]]))
-        continue
+        # unembed = einops.einsum(
+        #     cur_output,
+        #     model.W_U,
+        #     "d_model_out, d_model_out d_vocab -> d_vocab",
+        # )
+        # topk = torch.topk(unembed, k=10).indices
+        # print([model.to_string([tk]) for tk in topk])
+        # print([model.to_string([j]) for j in mybatch[batch_idx, max(0, seq_idx-100):seq_idx+1]])
+        # print(model.to_string([mybatch[batch_idx, seq_idx+1]]))
 
-        batch_idx, seq_idx, change_in_loss = max_importance_examples[random_index]
         names_filter2 = lambda name: name.endswith("hook_v") or name.endswith(
             "hook_pattern"
         )
@@ -372,10 +373,14 @@ for layer_idx, head_idx in [(9, 9)] + list(
         gc.collect()
         torch.cuda.empty_cache()
 
-        # # comment this out to ensure that this is working (should be same as model's hook_attn_out)
         for ovout_idx in range(len(ovout)):
-            ovout[ovout_idx], _ = project(ovout[ovout_idx], model.W_U[:, mybatch[batch_idx, seq_idx]])
-        # ovout += model.b_O[layer_idx]  # hook_attn_result ignores the biases
+            projected, _ = project(ovout[ovout_idx], model.W_U[:, mybatch[batch_idx, seq_idx]])
+            if einops.einsum(
+                ovout[ovout_idx],
+                projected,
+                "d_model_out, d_model_out -> ",
+            ).item()>0: # only include negative components
+                ovout[ovout_idx] = projected
 
         att_out = einops.einsum(
             att_pattern,
@@ -439,52 +444,6 @@ for layer_idx, head_idx in [(9, 9)] + list(
         if k.endswith("mean") or k.endswith("std"):
             print(k, datab[(layer_idx, head_idx)][k], end="/")
     print()
-
-# %%
-
-fig = go.Figure()
-fig.add_scatter(
-    x=[x["avg_loss"] for x in parsed_dict.values()],
-    y=[x["avg_error"] + x["avg_loss"] for x in parsed_dict.values()],
-    error_y=dict(
-        type="data",
-        symmetric=False,
-        array=[
-            max(0, x["avg_loss_change"] - x["avg_error"]) for x in parsed_dict.values()
-        ],
-        arrayminus=[
-            max(0, x["avg_error"] - x["avg_loss_change"]) for x in parsed_dict.values()
-        ],
-    ),
-    text=[str(x) for x in parsed_dict],
-    mode="markers",
-)
-# add x=y line
-fig.add_scatter(
-    x=[0, 10],
-    y=[0, 10],
-    mode="lines",
-    line=dict(color="black", width=1, dash="dash"),
-)
-
-# add labels
-if False:
-    for i, atxt in enumerate(parsed_dict.keys()):
-        txt = str(atxt)
-        fig.add_annotation(
-            x=parsed_dict[atxt]["avg_loss"],
-            y=parsed_dict[atxt]["avg_error"] + parsed_dict[atxt]["avg_loss"],
-            text=txt + " " + str(parsed_dict[atxt]["avg_loss_change"]),
-            showarrow=False,
-            yshift=10,
-        )
-
-
-fig.update_layout(
-    title="Dot is average loss w/ the approximation. Line is mean ablating head",
-    xaxis_title="Average model loss for top prompts where this head is useful",
-    yaxis_title="New loss",
-)
 
 # %%
 
