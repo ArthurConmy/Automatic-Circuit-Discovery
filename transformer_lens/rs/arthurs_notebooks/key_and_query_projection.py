@@ -30,8 +30,9 @@ batched_tokens, targets = get_filtered_webtext(model, batch_size=BATCH_SIZE, see
 # Do this crap
 # See change in loss
 
+# NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX = NEG_HEADS[model.cfg.model_name]
+
 for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in itertools.product(range(11, -1, -1), range(12)):
-    NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX = NEG_HEADS[model.cfg.model_name]
     END_STATE_HOOK = f"blocks.{model.cfg.n_layers-1}.hook_resid_post"
     names_filter1 = (
         lambda name: name == END_STATE_HOOK
@@ -56,9 +57,9 @@ for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in itertools.product(range(11, -1, -1)
     # %%
 
     batched_tokens_loss = get_loss_from_end_state(
-        model=model.cpu(),
-        end_state=cache[get_act_name("resid_post", model.cfg.n_layers-1)].cpu(),
-        targets=targets.cpu(),
+        model=model,
+        end_state=cache[get_act_name("resid_post", model.cfg.n_layers-1)],
+        targets=targets,
     )
 
     #%%
@@ -173,7 +174,7 @@ for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in itertools.product(range(11, -1, -1)
             "x": "Original Loss",
             "y": "New Loss",
         },
-        title="Losses for sample of Top 5% Direct Effect positions w/ key projection",
+        title=f"{LAYER_IDX}.{HEAD_IDX} Losses for sample of Top 5% Direct Effect positions w/ key projection",
         # text = [f"Batch {batch_idx}, Seq {seq_idx}" for batch_idx, seq_idx in zip(top5p_batch_indices, top5p_seq_indices)],
     ).show()
 
@@ -183,19 +184,21 @@ for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in itertools.product(range(11, -1, -1)
     top5pdata = top5p_losses.cpu().tolist()
     lossdata = loss.cpu().tolist()
 
-    # write this into the dict in the JSON file
-    with open("../arthur/json_data/approximations_with_key_projection.jsonl", "a") as f:
-        f.write(
-            json.dumps(
-                {
-                    "layer_idx": NEGATIVE_LAYER_IDX,
-                    "head_idx": NEGATIVE_HEAD_IDX,
-                    "top5p_losses": top5pdata,
-                    "losses": lossdata,
-                    "error": error.cpu().tolist(),
-                }
-            )
-        )
-        f.write("\n")
+    # read the existing data
+    with open("../arthur/json_data/approximations_with_key_projection.json", "r") as f:
+        cur_json = json.load(f)
 
-        
+    # update the data
+    cur_json[str((NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX))] = {
+        "layer_idx": NEGATIVE_LAYER_IDX,
+        "head_idx": NEGATIVE_HEAD_IDX,
+        "top5p_losses": top5pdata,
+        "losses": lossdata,
+        "error": error,
+    }
+
+    # write the updated data
+    with open("../arthur/json_data/approximations_with_key_projection.json", "w") as f:
+        f.write(json.dumps(cur_json, indent=4))            
+
+# %%
