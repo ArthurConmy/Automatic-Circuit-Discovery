@@ -196,6 +196,7 @@ class Node:
         assert self.activation_name in model.hook_dict.keys(), f"Error: node '{self.activation_name}' is not in the hook dictionary."
 
         # Do main validity check
+        # TODO - allow "result", since there are use cases (e.g. if you're editing the new_cache directly)
         valid_sender_nodes = ["z", "attn_out", "post", "mlp_out", "resid_pre", "resid_post", "resid_mid"]
         assert self.component_name in valid_sender_nodes, f"Error: node '{self.component_name}' is not a valid sender node. Valid sender nodes are: {valid_sender_nodes}"
 
@@ -477,6 +478,7 @@ def _path_patch_single(
     new_cache: ActivationCache,
     seq_pos: _SeqPos = None,
     apply_metric_to_cache: bool = False,
+    names_filter_for_cache_metric: Optional[Callable] = None,
     direct_includes_mlps: bool = True,
 ) -> Float[Tensor, ""]:
     '''
@@ -592,7 +594,7 @@ def _path_patch_single(
                     diff[..., head_slice, :], model.W_O[sender_node.layer, head_slice],
                     "batch pos n_heads d_head, n_heads d_head d_model -> batch pos d_model"
                 )
-            # If not in these two cases, it's one of resid_pre/mid/post, and so should already be something with shape (batch, subseq_len, d_model)
+            # If not in these two cases, it's one of resid_pre/mid/post, or attn_out/mlp_out/result, and so should already be something with shape (batch, subseq_len, d_model)
             sender_diffs[sender_node] = diff
 
 
@@ -627,7 +629,10 @@ def _path_patch_single(
                         )
 
                     head_slice = slice(None) if (receiver_node.head is None) else [receiver_node.head]
-                    model.hook_dict[receiver_node.activation_name].ctx["receiver_activations"][batch_indices, seq_pos_indices, head_slice] += diff.unsqueeze(-2)
+                    # * TODO - why is this needed?
+                    if diff.shape != model.hook_dict[receiver_node.activation_name].ctx["receiver_activations"][batch_indices, seq_pos_indices, head_slice].shape:
+                        diff = diff.unsqueeze(-2)
+                    model.hook_dict[receiver_node.activation_name].ctx["receiver_activations"][batch_indices, seq_pos_indices, head_slice] += diff
                 
                 # The remaining case (given that we aren't handling "pre" here) is when receiver is resid_pre/mid/post
                 else:
@@ -641,7 +646,7 @@ def _path_patch_single(
 
     # Run model on orig with receiver nodes patched from previously cached values.
     if apply_metric_to_cache:
-        _, cache = model.run_with_cache(orig_input, return_type=None)
+        _, cache = model.run_with_cache(orig_input, return_type=None, names_filter=names_filter_for_cache_metric)
         model.reset_hooks()
         return patching_metric(cache)
     else:
@@ -670,6 +675,7 @@ def path_patch(
     new_cache: Optional[Union[ActivationCache, Literal["zero"]]] = None,
     seq_pos: SeqPos = None,
     apply_metric_to_cache: bool = False,
+    names_filter_for_cache_metric: Optional[Callable] = None,
     direct_includes_mlps: bool = True,
     verbose: bool = False,
 ) -> Float[Tensor, "..."]:
@@ -766,6 +772,7 @@ def path_patch(
         new_cache=new_cache,
         # seq_pos=seq_pos,
         apply_metric_to_cache=apply_metric_to_cache,
+        names_filter_for_cache_metric=names_filter_for_cache_metric,
         direct_includes_mlps=direct_includes_mlps,
     )
 
