@@ -358,7 +358,6 @@ class FakeIOIDataset:
         for k, v in list(zip(io_tokens, sentences, strict=True)):
             assert v.endswith(k), (k, v)
             sentences_trimmed.append(v[:-len(k)])
-            assert sentences_trimmed[-1].count(k)==1
 
         self.toks = model.to_tokens(sentences_trimmed)
         self.word_idx={}
@@ -369,14 +368,16 @@ class FakeIOIDataset:
         for i in range(len(self.toks)):
             if self.toks[i, -1].item()!=model.tokenizer.pad_token_id:
                 self.word_idx["end"].append(self.toks.shape[-1]-1)
+                assert self.toks[i].tolist().count(self.toks[i, -1].item())==1, sentences_trimmed[i]
             else:
                 for j in range(len(self.toks[i])-1, -1, -1):
                     if self.toks[i, j].item()!=model.tokenizer.pad_token_id:
                         self.word_idx["end"].append(j)
+                        assert self.toks[i].tolist().count(self.toks[i, j].item())==1, sentences_trimmed[i]
                         break
 
             key_token = model.to_tokens([io_tokens[i]], prepend_bos=False).item()
-            assert self.toks[i].tolist().count(key_token)==1
+            assert self.toks[i].tolist().count(key_token)==1, (io_tokens[i], sentences_trimmed[i])
             self.word_idx["IO"].append(self.toks[i].tolist().index(key_token))
 
         self.io_tokenIDs = self.toks[torch.arange(self.N), self.word_idx["IO"]]
