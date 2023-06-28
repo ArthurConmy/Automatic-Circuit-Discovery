@@ -62,12 +62,21 @@ def get_filtered_webtext(model, batch_size=30, seed: int = 1729, device="cuda", 
     mytargets = torch.LongTensor(targets).to(device)
     return mybatch, mytargets
 
-def set_to_unembedding(
+def set_to_value(
     z, 
     hook,
     head_idx,
     new_value,
+    seq_indices=None,
 ):
-    assert z[:, :, head_idx].shape == new_value.shape
-    z[:, :, head_idx] = new_value
+    if seq_indices is None:
+        assert z[:, :, head_idx].shape == new_value.shape
+        z[:, :, head_idx] = new_value
+    else:
+        assert len(seq_indices)==len(z)
+        z[torch.arange(len(z)), seq_indices, head_idx] = new_value
+
     return z
+
+    #                 1.5583579540252686,
+# for 11 3

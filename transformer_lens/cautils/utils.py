@@ -24,6 +24,7 @@ from rich import print as rprint
 from rich.table import Table, Column
 from collections import defaultdict
 from transformer_lens import utils, HookedTransformer, ActivationCache, FactoredMatrix
+from time import ctime
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
