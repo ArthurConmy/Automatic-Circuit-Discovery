@@ -3,11 +3,11 @@ from transformer_lens.rs.callum.keys_fixed import project, get_effective_embeddi
 
 
 def token_to_qperp_projection(
-    token_ids: Int[Tensor, "..."],
+    token_ids: Int[Tensor, "batch"],
     model: HookedTransformer,
     effective_embedding: Union[Float[Tensor, "d_vocab d_model"], Literal["W_EE", "W_EE0", "W_E", "W_EE0A"]],
     name_mover: Tuple[int, int] = (9, 9),
-) -> Float[Tensor, "... d_model"]:
+):
     '''
     Given token_ids, performs the following map:
 
@@ -35,7 +35,7 @@ def token_to_qperp_projection(
     W_O = model.W_O[layer, head]
     name_mover_output = einops.einsum(
         embeddings, W_V, W_O,
-        "... d_model_in, d_model_in d_head, d_head d_model_out -> ... d_model_out",
+        "batch d_model_in, d_model_in d_head, d_head d_model_out -> batch d_model_out",
     )
 
     # * (3) 
@@ -65,6 +65,7 @@ def decompose_attn_scores_full(
     #     assert isinstance(ioi_dataset, IOIDataset) and isinstance(ioi_cache, ActivationCache)
     
     ioi_dataset, ioi_cache = generate_data_and_caches(batch_size, model=model, seed=seed, only_ioi=True, prepend_bos=True)
+    seq_len = ioi_dataset.toks.shape[1]
 
     if project_onto_comms_space is not None: 
         assert project_onto_comms_space in ["W_EE", "W_EE0", "W_E", "W_EE0A"]
@@ -116,45 +117,49 @@ def decompose_attn_scores_full(
     num_query_decomps = 3 if project_onto_comms_space else 2
     contribution_to_attn_scores = t.zeros(
         num_key_decomps * num_query_decomps, # this is for the key & query options: (∥ / ⟂) MLP0 on key side, same for unembed on IO side plus the comms space
-        3 + (nnmh[0] * (1 + model.cfg.n_heads)), # this is for the query-side
-        3 + (nnmh[0] * (1 + model.cfg.n_heads)), # this is for the key-side
+        4 + (nnmh[0] * (1 + model.cfg.n_heads)), # this is for the query-side
+        4 + (nnmh[0] * (1 + model.cfg.n_heads)), # this is for the key-side
     )
 
     keyside_components = []
     queryside_components = []
 
-    # TODO - calculate product directly after filling these in, in case it's too large? Or maybe it's fine cause they are on CPU.
-    keys_decomposed = t.zeros(num_key_decomps, 3 + (nnmh[0] * (1 + model.cfg.n_heads)), batch_size, model.cfg.d_head)
-    queries_decomposed = t.zeros(num_query_decomps, 3 + (nnmh[0] * (1 + model.cfg.n_heads)), batch_size, model.cfg.d_head)
+    # Number of components = 4 (embed, pos_embed, b_Q or b_K, other accumulated biases) plus one for every head & MLP in each layer
+    keys_decomposed = t.zeros(num_key_decomps, 4 + (nnmh[0] * (1 + model.cfg.n_heads)), batch_size, model.cfg.d_head)
+    queries_decomposed = t.zeros(num_query_decomps, 4 + (nnmh[0] * (1 + model.cfg.n_heads)), batch_size, model.cfg.d_head)
 
-    def get_component(component_name, layer=None, keyside=False):
+    def get_component(component, layer=None, keyside=False):
         '''
         Gets component (key or query side).
 
         If we need to subtract the baseline, it returns both the component for IO and the component for S1 (so we can project then subtract scores from each other).
         '''
-        full_component = ioi_cache[component_name, layer]
+        full_component = ioi_cache[component, layer] if isinstance(component, str) else component
+        has_head_dim = (full_component.ndim == 4)
         if keyside:
-            component_IO = full_component[range(batch_size), IO_seq_pos_indices] / (ln_scale_IO.unsqueeze(1) if (component_name == "result") else ln_scale_IO)
-            component_S1 = full_component[range(batch_size), S1_seq_pos_indices] / (ln_scale_S1.unsqueeze(1) if (component_name == "result") else ln_scale_S1)
+            component_IO = full_component[range(batch_size), IO_seq_pos_indices] / (ln_scale_IO.unsqueeze(1) if has_head_dim else ln_scale_IO)
+            component_S1 = full_component[range(batch_size), S1_seq_pos_indices] / (ln_scale_S1.unsqueeze(1) if has_head_dim else ln_scale_S1)
             return (component_IO, component_S1) if subtract_S1_attn_scores else component_IO
         else:
-            component_END = full_component[range(batch_size), end_seq_pos_indices] / (ln_scale_end.unsqueeze(1) if (component_name == "result") else ln_scale_end)
+            component_END = full_component[range(batch_size), end_seq_pos_indices] / (ln_scale_end.unsqueeze(1) if has_head_dim else ln_scale_end)
             return component_END
 
-    b_K = model.b_K[nnmh[0], nnmh[1]]
-    if subtract_S1_attn_scores: b_K *= 0
-    b_K = einops.repeat(b_K, "d_head -> batch d_head", batch=batch_size)
+    # Get biases: keyside, queryside, and also the biases from attention layers and MLP layers
+    # Note that b_K and b_Q are already d_head (they go into the perpendicular buckets), but b_O is in the residual stream (so it does get decomposed)
+    b_K = einops.repeat(model.b_K[nnmh[0], nnmh[1]] * (0.0 if subtract_S1_attn_scores else 1.0), "d_head -> batch d_head", batch=batch_size)
     b_Q = einops.repeat(model.b_Q[nnmh[0], nnmh[1]], "d_head -> batch d_head", batch=batch_size)
+    b_O = einops.repeat(model.b_O[:nnmh[0]].sum(0) + model.b_out[:nnmh[0]].sum(0), "d_model -> batch seq_len d_model", batch=batch_size, seq_len=seq_len)
 
     # First, get the biases and direct terms
     keyside_components.extend([
         ("b_K", b_K),
+        ("b_O", get_component(b_O, keyside=True)),
         ("embed", get_component("embed", keyside=True)),
         ("pos_embed", get_component("pos_embed", keyside=True)),
     ])
     queryside_components.extend([
         ("b_Q", b_Q),
+        ("b_O", get_component(b_O, keyside=False)),
         ("embed", get_component("embed", keyside=False)),
         ("pos_embed", get_component("pos_embed", keyside=False)),
     ])
@@ -176,19 +181,24 @@ def decompose_attn_scores_full(
             queryside_components.append((f"{layer}.{head}", queryside_heads[:, head, :]))
 
     # Now, we do the projection thing...
-    # ... for keys ....
-    keys_decomposed[1, 0] = keyside_components[0][1]
+    
+    # * ... for keys ....
+    # adding attention head bias & all residual stream biases
+    keys_decomposed[-1, 0] = keyside_components[0][1]
+    # then iterating through all the others and adding them too (possibly splitting them into projections)
     for i, (keyside_name, keyside_component) in enumerate(keyside_components[1:], 1):
         if subtract_S1_attn_scores:
             keyside_component_IO, keyside_component_S1 = keyside_component
             projections = project(keyside_component_IO, MLP0_output), project(keyside_component_S1, MLP0_output_S1)
             projections = t.stack([projections[0][0] - projections[1][0], projections[0][1] - projections[1][1]])
         else:
-            projections = torch.stack(project(keyside_component, MLP0_output))
-
+            projections = project(keyside_component, MLP0_output)
         keys_decomposed[:, i] = einops.einsum(projections.cpu(), model.W_K[nnmh[0], nnmh[1]].cpu(), "projection batch d_model, d_model d_head -> projection batch d_head")
-    # ... and for queries ...
-    queries_decomposed[1, 0] = queryside_components[0][1]
+    
+    # * ... and for queries ...
+    # adding attention head bias & all residual stream biases
+    queries_decomposed[-1, 0] = queryside_components[0][1]
+    # then iterating through all the others and adding them too (possibly splitting them into projections)
     for i, (queryside_name, queryside_component) in enumerate(queryside_components[1:], 1):
         queryside_par, queryside_perp = project(queryside_component, unembeddings if not(include_S1_in_unembed_projection) else [unembeddings, unembeddings_S1])
         queries_decomposed[0, i] = einops.einsum(queryside_par.cpu(), model.W_Q[nnmh[0], nnmh[1]].cpu(), "batch d_model, d_model d_head -> batch d_head")
@@ -219,7 +229,7 @@ def decompose_attn_scores_full(
 
 def create_fucking_massive_plot_1(contribution_to_attn_scores):
 
-    full_labels = ["bias", "W<sub>E</sub>", "W<sub>pos</sub>"]
+    full_labels = ["attn_bias", "other_biases", "W<sub>E</sub>", "W<sub>pos</sub>"]
     full_labels += [f"MLP<sub>{L}</sub>" for L in range(10)]
     full_labels += [f"{L}.{H}" for L in range(10) for H in range(12)]
 
@@ -257,7 +267,7 @@ def create_fucking_massive_plot_1(contribution_to_attn_scores):
 
 def create_fucking_massive_plot_2(contribution_to_attn_scores):
 
-    full_labels = ["bias", "W<sub>E</sub>", "W<sub>pos</sub>"]
+    full_labels = ["attn_bias", "other_biases", "W<sub>E</sub>", "W<sub>pos</sub>"]
     full_labels += [f"MLP<sub>{L}</sub>" for L in range(10)]
     full_labels += [f"{L}.{H}" for L in range(10) for H in range(12)]
 
