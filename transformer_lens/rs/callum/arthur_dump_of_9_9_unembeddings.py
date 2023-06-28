@@ -192,7 +192,6 @@ new_losses = []
 orig_losses = []
 
 for batch_idx, seq_idx, change_in_loss in tqdm(max_importance_examples[:10]):
-
     cur_output = (head_output-mean_output)[batch_idx, seq_idx]
 
     unembed = einops.einsum(
@@ -201,86 +200,11 @@ for batch_idx, seq_idx, change_in_loss in tqdm(max_importance_examples[:10]):
         "d_model_out, d_model_out d_vocab -> d_vocab",
     )
     topk = torch.topk(unembed, k=10).indices
-    print([model.to_string([tk]) for tk in topk])
-    print([model.to_string([j]) for j in batch_of_prompts[batch_idx, max(0, seq_idx-100):seq_idx+1]])
-    print(model.to_string([batch_of_prompts[batch_idx, seq_idx+1]]))
+    print("-"*50)
+    print(batch_idx, seq_idx)
+    print("Top completions:", [model.to_string([tk]) for tk in topk])
+    print("Context:", [model.to_string([j]) for j in batch_of_prompts[batch_idx, max(0, seq_idx-100):seq_idx+1]])
+    print("Correct token:", (model.to_string([batch_of_prompts[batch_idx, seq_idx+1]])))
     continue
-
-    batch_idx, seq_idx, change_in_loss = max_importance_examples[random_index]
-    names_filter2 = lambda name: name.endswith("hook_v") or name.endswith(
-        "hook_pattern"
-    )
-    model.reset_hooks()
-    _, cache2 = model.run_with_cache(
-        batch_of_prompts[batch_idx : batch_idx + 1, : seq_idx + 1],
-        names_filter=names_filter2,
-    )
-
-    vout = cache2[f"blocks.{layer_idx}.attn.hook_v"][
-        0, :, head_idx
-    ]  # (seq_len, d_head)
-    att_pattern = cache2[f"blocks.{layer_idx}.attn.hook_pattern"][
-        0, head_idx, seq_idx
-    ]  # shape (seq_len)
-    ovout = einops.einsum(
-        vout,
-        model.W_O[layer_idx, head_idx],
-        "s d_head, d_head d_model_out -> s d_model_out",
-    )
-    gc.collect()
-    torch.cuda.empty_cache()
-
-    # # comment this out to ensure that this is working (should be same as model's hook_attn_out)
-    for ovout_idx in range(len(ovout)):
-        ovout[ovout_idx], _ = project(ovout[ovout_idx], model.W_U[:, batch_of_prompts[batch_idx, seq_idx]])
-
-    att_out = einops.einsum(
-        att_pattern,
-        ovout,
-        "s, s d_model_out -> d_model_out",
-    )
-
-    # add in orthogonal component
-    parallel_component, orthogonal_component = project(
-        att_out, 
-        mean_output.to(DEVICE),
-    )
-    att_out += orthogonal_component
-
-    new_loss = get_loss_from_end_state(
-        end_state=(
-            end_state[batch_idx : batch_idx + 1, seq_idx : seq_idx + 1]
-            - head_output[
-                batch_idx : batch_idx + 1, seq_idx : seq_idx + 1, head_idx
-            ]
-            + att_out[None, None]
-        ),
-        targets=batch_of_targets[batch_idx : batch_idx + 1, seq_idx : seq_idx + 1],
-    ).item()
-    mal = mean_ablation_loss[batch_idx, seq_idx]
-    orig_loss = my_loss[batch_idx, seq_idx]
-
-    mals.append(mal.item())
-    new_losses.append(new_loss)
-    orig_losses.append(orig_loss.item())
-
-    # print(f"{mal.item():.2f} {orig_loss.item():.2f} {new_loss:.2f}")
-
-results = {
-    "mals_mean": np.mean(mals),
-    "mals_std": np.std(mals),
-    "new_losses_mean": np.mean(new_losses),
-    "new_losses_std": np.std(new_losses),
-    "orig_losses_mean": np.mean(orig_losses),
-    "orig_losses_std": np.std(orig_losses),
-    "mals": mals,
-    "new_losses": new_losses,
-    "orig_losses": orig_losses,
-}
-
-for k in results:
-    if k.endswith("mean") or k.endswith("std"):
-        print(k, results[k])
-print()
 
 # %%
