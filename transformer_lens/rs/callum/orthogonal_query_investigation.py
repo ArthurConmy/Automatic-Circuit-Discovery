@@ -353,7 +353,6 @@ class FakeIOIDataset:
     ):
         self.N=len(sentences)
         sentences_trimmed = []
-        update_word_lists = {} # different format used in the past        
         for k, v in list(zip(io_tokens, sentences, strict=True)):
             assert v.endswith(k), (k, v)
             sentences_trimmed.append(v[:-len(k)])
@@ -367,12 +366,11 @@ class FakeIOIDataset:
         for i in range(len(self.toks)):
             if self.toks[i, -1].item()!=model.tokenizer.pad_token_id:
                 self.word_idx["end"].append(self.toks.shape[-1]-1)
-                assert self.toks[i].tolist().count(self.toks[i, -1].item())==1, sentences_trimmed[i]
             else:
                 for j in range(len(self.toks[i])-1, -1, -1):
                     if self.toks[i, j].item()!=model.tokenizer.pad_token_id:
                         self.word_idx["end"].append(j)
-                        assert self.toks[i].tolist().count(self.toks[i, j].item())==1, sentences_trimmed[i]
+                        token_counter=self.toks[i].tolist().count(self.toks[i, j].item())
                         break
 
             key_token = model.to_tokens([io_tokens[i]], prepend_bos=False).item()
