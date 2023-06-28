@@ -257,9 +257,6 @@ def create_fucking_massive_plot_1(contribution_to_attn_scores):
 
     zmax = contribution_to_attn_scores.abs().max().item()
 
-    print(len(full_labels))
-    print(contribution_to_attn_scores.shape)
-
     imshow(
         contribution_to_attn_scores,
         animation_frame = 0,
@@ -343,7 +340,9 @@ def create_fucking_massive_plot_2(contribution_to_attn_scores):
     fig.show()
 
 class FakeIOIDataset:
-    """Used for normal webtext things where we imitate the IOI dataset methods"""
+    """Used for normal webtext things where we imitate the IOI dataset methods
+    
+    so that we can use the great above `decompose_full_attn_scores` function"""
 
     def __init__(
         self,
