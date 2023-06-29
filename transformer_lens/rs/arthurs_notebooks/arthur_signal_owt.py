@@ -48,6 +48,9 @@ with open(gpt_4_fname, "r") as f:
 totally_random_fname = Path("../arthur/json_data/totally_random_sentences_with_random_in_context_word_at_end.json")
 with open(totally_random_fname, "r") as f:
     totally_random = json.load(f)
+top5p_examples_fname = Path("../arthur/json_data/top5p_examples.json")
+with open(top5p_examples_fname, "r") as f:
+    top5p_examples = json.load(f)
 
 N = 60
 ioi_dataset = IOIDataset(
@@ -69,6 +72,7 @@ for dataset_name, raw_dataset in [
     ("ioi_dataset", ioi_dataset),
     ("gpt_4_update_words", gpt_4_update_words),
     ("totally_random_sentences_with_random_in_context_word_at_end", totally_random),
+    ("top5p_examples", top5p_examples),
 ]:
     print("Processing dataset: ", dataset_name, "...")
 

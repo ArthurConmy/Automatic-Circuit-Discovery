@@ -78,6 +78,7 @@ def get_EE_QK_circuit(
     W_E_query_side: Optional[t.Tensor] = None,
     W_E_key_side: Optional[t.Tensor] = None,
     apply_softmax: bool = True,
+    apply_log_softmax: bool = False,
 ):
     assert (random_seeds is None and num_samples is None) != (bags_of_words is None), (random_seeds is None, num_samples is None, bags_of_words is None, "Must specify either random_seeds and num_samples or bag_of_words_version")
 
@@ -108,7 +109,7 @@ def get_EE_QK_circuit(
             EE_QK_circuit.A[indices, :],
             EE_QK_circuit.B[:, indices],
             "num_query_samples d_head, d_head num_key_samples -> num_query_samples num_key_samples"
-        )
+        ) / model.cfg.d_head ** 0.5
 
         if mean_version:
             # we're going to take a softmax so the constant factor is arbitrary 
@@ -118,8 +119,10 @@ def get_EE_QK_circuit(
             EE_QK_circuit_result += EE_QK_circuit_sample_centered.cpu()
 
         else:
-            if apply_softmax:
+            if apply_softmax or apply_log_softmax:
                 EE_QK_softmax = t.nn.functional.softmax(EE_QK_circuit_sample, dim=-1)
+                if apply_log_softmax:
+                    EE_QK_softmax = t.log(EE_QK_softmax)
                 EE_QK_circuit_result += EE_QK_softmax.cpu()
             else:
                 EE_QK_circuit_result += EE_QK_circuit_sample.cpu()

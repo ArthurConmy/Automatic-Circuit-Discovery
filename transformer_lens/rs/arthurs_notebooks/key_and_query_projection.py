@@ -146,12 +146,29 @@ if ipython is not None:
 my_dict = {}
 
 if ipython is not None:
-    for idx in range(8):
+    for idx in range(30):
+        # print("-"*50)
+        # print(f"Batch {top5p_batch_indices[idx]}, Seq {top5p_seq_indices[idx]}")
+
+        current_tokens = batched_tokens[top5p_batch_indices[idx], :top5p_seq_indices[idx]+1].tolist()
+        # print("PROMPT:", model.to_string(batched_tokens[top5p_batch_indices[idx], :top5p_seq_indices[idx]+2]))
+
+        top_negs = top5p_topks[idx].tolist()
+
+        is_in_top_negs = {
+            i: int(top_negs[i] in current_tokens) for i in range(3)
+        }
+        if sum(list(is_in_top_negs.values()))==1:
+            the_tokens = current_tokens + [top_negs[i] for i in range(3) if is_in_top_negs[i]]
+            assert len(the_tokens) == len(current_tokens) + 1
+            print(model.to_string(the_tokens))
+            my_dict[model.to_string(the_tokens[-1:])] = model.to_string(the_tokens[1:])
+        else:
+            print("FAIL")
         print("-"*50)
-        print(f"Batch {top5p_batch_indices[idx]}, Seq {top5p_seq_indices[idx]}")
-        print("PROMPT:", model.to_string(batched_tokens[top5p_batch_indices[idx], :top5p_seq_indices[idx]+2]))
-        print("Top negs", model.to_string(top5p_topks[idx].tolist()))
-        print("More", print("PROMPT:", model.to_string(batched_tokens[top5p_batch_indices[idx], top5p_seq_indices[idx]:top5p_seq_indices[idx]+7])))
+        # top_negs = top_negs[1:]
+        # print("Top negs", model.to_string(top5p_topks[idx].tolist()))
+        # print("More", print("PROMPT:", model.to_string(batched_tokens[top5p_batch_indices[idx], top5p_seq_indices[idx]:top5p_seq_indices[idx]+7])))
 
 #%%
 
