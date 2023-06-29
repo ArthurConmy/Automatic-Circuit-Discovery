@@ -10,7 +10,6 @@ from transformer_lens.rs.callum.keys_fixed import project, get_effective_embeddi
 from transformer_lens.rs.arthurs_notebooks.arthur_utils import *
 import argparse
 
-
 #%%
 
 model = HookedTransformer.from_pretrained(
@@ -316,4 +315,37 @@ for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in [(10, 7), (9,9)] + list(itertools.p
     # %%
 
     # now also try the q projection
-    # %%
+# %%
+
+# also import cautils
+import json 
+with open ("../arthur/json_data/approximations_with_key_lock_only.json", "r") as f:
+    cur_json = json.load(f)
+
+# %%
+
+text = [f"Layer {x['layer_idx']}, Head {x['head_idx']}" for x in cur_json.values()][:20]
+
+fig = px.scatter(
+    x=[x["change_in_loss_mean"] for x in cur_json.values()][:20],
+    y=[x["how_bad_is_mean_ablation_mean"] for x in cur_json.values()][:20],
+    labels={
+        "x": "How much loss does the key lock get?",
+        "y": "How bad is mean ablation?",
+    },
+    title="Change in Loss vs. How bad is mean ablation?",
+    # hover
+    # text=text,
+)            
+
+fig.add_shape(
+    type="line",
+    x0=-0.1,
+    y0=-0.1,
+    x1=5.1,
+    y1=5.1,
+)
+
+fig.show()
+
+# %%
