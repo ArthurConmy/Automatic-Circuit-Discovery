@@ -10,6 +10,7 @@ warnings.warn("Setting grad enabled false...")
 t.set_grad_enabled(False)
 
 import numpy as np
+import time
 from datasets import load_dataset
 from copy import deepcopy
 from jaxtyping import Float, Int, Bool, jaxtyped

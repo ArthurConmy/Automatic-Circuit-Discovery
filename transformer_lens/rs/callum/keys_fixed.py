@@ -708,6 +708,7 @@ def project(
     x: Float[Tensor, "... dim"],
     dir: Union[List[Float[Tensor, "... dim"]], Float[Tensor, "... dim"]],
     test: bool = False,
+    return_type: Literal["projections", "coeffs", "both"] = "projections",
 ):
     '''
     x: 
@@ -731,6 +732,7 @@ def project(
         Make sure x and dir (or each element in dir) have the same shape, I don't want to
         mess up broadcasting by accident! Do einops.repeat on dir if you have to.
     '''
+    assert return_type in ["projections", "coeffs", "both"]
     device = x.device
     if isinstance(dir, Tensor): dir = [dir]
     assert all([x.shape == dir_.shape for dir_ in dir])
@@ -747,21 +749,23 @@ def project(
         print("\tSVD tests passed")
 
     # Calculate the component of x along the different directions of svd.U
-    x_component = einops.einsum(
+    x_coeffs = einops.einsum(
         x, svd.U,
         "... dim, ... dim directions -> ... directions"
     )
+    if return_type == "coeffs":
+        return x_coeffs
 
     # Project x onto these directions (summing over each of the directional projections)
     x_dir = einops.einsum(
-        x_component, svd.U,
+        x_coeffs, svd.U,
         "... directions, ... dim directions -> ... dim"
     )
 
     if test:
         # First, test all the projections are orthogonal to each other
         x_dir_projections = einops.einsum(
-            x_component, svd.U,
+            x_coeffs, svd.U,
             "... directions, ... dim directions -> ... dim directions"
         )
         x_dir_projections_normed = x_dir_projections / x_dir_projections.norm(dim=-2, keepdim=True)
@@ -783,8 +787,10 @@ def project(
         assert diff < 1e-5
         print(f"\tNorms test passed: max norm diff = {diff:.4e}")
 
-
-    return x_dir, x - x_dir
+    if return_type == "both":
+        return x_dir, x - x_dir, x_coeffs
+    elif return_type == "projections":
+        return x_dir, x - x_dir
 
 # def test_project(project: Callable):
 
