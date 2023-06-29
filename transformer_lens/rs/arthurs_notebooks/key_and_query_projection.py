@@ -33,11 +33,11 @@ effective_embeddings = get_effective_embedding_2(model)
 # Do this crap
 # See change in loss
 
-# NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX = NEG_HEADS[model.cfg.model_name]
+NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX = NEG_HEADS[model.cfg.model_name]
 # NEGATIVE_HEAD_IDX, NEGATIVE_LAYER_IDX = 9, 9
 
-for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in [(10, 7), (9,9)] + list(itertools.product(range(11, -1, -1), range(12))):
-    # NEG_HEADS[model.cfg.model_name]:
+for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in [(11, 8), (10, 7), (9, 9)] + list(itertools.product(range(11, -1, -1), range(12))):
+# NEG_HEADS[model.cfg.model_name]:
 
     END_STATE_HOOK = f"blocks.{model.cfg.n_layers-1}.hook_resid_post"
     names_filter1 = (
@@ -126,11 +126,10 @@ for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in [(10, 7), (9,9)] + list(itertools.p
     # %%
 
     # Get the top 5% of things by importance
-    all_top_5_percent = max_importance_examples[: BATCH_SIZE]
+    all_top_5_percent = max_importance_examples[: len(max_importance_examples)//20]
 
-    warnings.warn("No shuffling atm")
-    # DONT shuffle them
-    # np.random.seed(799)
+    np.random.seed(799)
+    warnings.warn("No shuffle!!!")
     # np.random.shuffle(all_top_5_percent)
     top_5_percent = all_top_5_percent[: BATCH_SIZE]
 
@@ -173,17 +172,17 @@ for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in [(10, 7), (9,9)] + list(itertools.p
             dir=[model.W_U.T[top5p_tokens[batch_idx, earlier_seq_idx]] for earlier_seq_idx in range(seq_idx+1)],
         )
         queryside_vectors[batch_batch_idx] = queryside_vector
-        warnings.warn("ANtoerh")
-        queryside_vectors[batch_batch_idx] = model.W_U.T[top5p_tokens[batch_idx, seq_idx]]
+        # warnings.warn("Another lock on")
+        # queryside_vectors[batch_batch_idx] = model.W_U.T[top5p_tokens[batch_idx, seq_idx]]
 
     #%%
 
     new_k_input = t.zeros((BATCH_SIZE, model.cfg.n_ctx, model.cfg.d_model))
 
     for batch_batch_idx, batch_idx in enumerate(top5p_batch_indices):
-    
+
         warnings.warn("Writing as literally the unembed...")
-    
+
         new_k_input[batch_batch_idx] = torch.stack([
             effective_embeddings["W_E (including MLPs)"][batched_tokens[batch_idx, seq_idx]] for seq_idx in range(model.cfg.n_ctx)
         ])
@@ -202,11 +201,11 @@ for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in [(10, 7), (9,9)] + list(itertools.p
         partial(set_to_value, head_idx=NEGATIVE_HEAD_IDX, new_value=new_k_input.to("cuda:1")),
         level=1,
     )
-    # model.add_hook(
-    #     get_act_name("q_input", NEGATIVE_LAYER_IDX),
-    #     partial(set_to_value, head_idx=NEGATIVE_HEAD_IDX, seq_indices = top5p_seq_indices, new_value=queryside_vectors.to("cuda:1")),
-    #     level=1,
-    # )
+    model.add_hook(
+        get_act_name("q_input", NEGATIVE_LAYER_IDX),
+        partial(set_to_value, head_idx=NEGATIVE_HEAD_IDX, seq_indices = top5p_seq_indices, new_value=queryside_vectors.to("cuda:1")),
+        level=1,
+    )
     model.to("cuda:1")
     logits, top_5p_cache = model.run_with_cache(
         top5p_tokens.to("cuda:1"),
@@ -287,7 +286,7 @@ for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in [(10, 7), (9,9)] + list(itertools.p
     lossdata = loss.cpu().tolist()
 
     # # read the existing data
-    my_fname = "../arthur/json_data/approximations_with_key_lock_only.json"
+    my_fname = "../arthur/json_data/approximations_with_key_lock_only_random_five_percent_qk.json"
     with open(my_fname, "r") as f:
         cur_json = json.load(f)
 
@@ -312,39 +311,38 @@ for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in [(10, 7), (9,9)] + list(itertools.p
     with open(my_fname, "w") as f:
         f.write(json.dumps(cur_json, indent=4))
 
-    # %%
+# %%
 
-    # now also try the q projection
+# now also try the q projection
 # %%
 
 # also import cautils
 import json 
-with open ("../arthur/json_data/approximations_with_key_lock_only.json", "r") as f:
+with open ("/root/TransformerLens/transformer_lens/rs/arthur/json_data/approximations_with_key_lock_only_random_five_percent_qk.json", "r") as f:
     cur_json = json.load(f)
 
 # %%
 
-text = [f"Layer {x['layer_idx']}, Head {x['head_idx']}" for x in cur_json.values()][:20]
+text = [f"Layer {x['layer_idx']}, Head {x['head_idx']}" for x in cur_json.values()]
 
-fig = px.scatter(
-    x=[x["change_in_loss_mean"] for x in cur_json.values()][:20],
-    y=[x["how_bad_is_mean_ablation_mean"] for x in cur_json.values()][:20],
-    labels={
-        "x": "How much loss does the key lock get?",
-        "y": "How bad is mean ablation?",
-    },
-    title="Change in Loss vs. How bad is mean ablation?",
-    # hover
-    # text=text,
+fig = px.bar(
+    x = text,
+    # x=[x["change_in_loss_mean"] for x in cur_json.values()],
+    y=[x["how_bad_is_mean_ablation_mean"]/x["change_in_loss_mean"] for x in cur_json.values()],
+    # labels={
+    #     "x": "How much loss does the key lock get?",
+    #     "y": "How bad is mean ablation?",
+    # },
+    title="Ratio of mean increase in loss by mean ablating to mean increase in loss by locking keys to W_E (including MLPs) and projecting the query onto the unembedding directions for all tokens in context. Datapoints sampled from top 5% of direct effect datapoints per head",
 )            
 
-fig.add_shape(
-    type="line",
-    x0=-0.1,
-    y0=-0.1,
-    x1=5.1,
-    y1=5.1,
-)
+# fig.add_shape(
+#     type="line",
+#     x0=-0.1,
+#     y0=-0.1,
+#     x1=5.1,
+#     y1=5.1,
+# )
 
 fig.show()
 
