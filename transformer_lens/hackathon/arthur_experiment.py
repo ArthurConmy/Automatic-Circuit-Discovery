@@ -15,6 +15,7 @@ from IPython import get_ipython
 ipython = get_ipython()
 ipython.run_line_magic("load_ext", "autoreload")
 ipython.run_line_magic("autoreload", "2")
+from transformer_lens.cautils.notebook import *
 
 import torch as t
 import torch
@@ -62,13 +63,17 @@ def imshow(
     )
     fig.show()
 
+dataset = get_webtext(dataset="NeelNanda/c4-code-20k")
+
 # %%
 
-MODEL_NAME = "gpt2-small"
+MODEL_NAME = "solu-10l"
 # MODEL_NAME = "solu-10l"
 model = transformer_lens.HookedTransformer.from_pretrained(MODEL_NAME)
 from transformer_lens.hackathon.ioi_dataset import IOIDataset, NAMES
 
+LAYER_IDX, HEAD_IDX = 3, 0
+# for LAYER_IDX, HEAD_IDX in itertools.product(range(model.cfg.n_layers-1, -1, -1), model.cfg.n_heads):
 # %%
 
 N = 100
@@ -127,11 +132,10 @@ imshow(
 
 # %%
 
-LAYER_IDX, HEAD_IDX = {
-    "SoLU_10L1280W_C4_Code": (9, 18), # (9, 18) is somewhat cheaty
-    "gpt2": (10, 7),
-}[model.cfg.model_name]
-
+# LAYER_IDX, HEAD_IDX = {
+#     "SoLU_10L1280W_C4_Code": (9, 18), # (9, 18) is somewhat cheaty
+#     "gpt2": (10, 7),
+# }[model.cfg.model_name]
 
 W_U = model.W_U
 W_Q_negative = model.W_Q[LAYER_IDX, HEAD_IDX]
@@ -212,13 +216,18 @@ def lock_attn(
     attn_patterns: Float[t.Tensor, "batch head_idx dest_pos src_pos"],
     hook: HookPoint,
     ablate: bool = False,
+    bos: bool=False,
 ) -> Float[t.Tensor, "batch head_idx dest_pos src_pos"]:
     
     assert isinstance(attn_patterns, Float[t.Tensor, "batch head_idx dest_pos src_pos"])
     assert hook.layer() == 0
 
     batch, n_heads, seq_len = attn_patterns.shape[:3]
-    attn_new = einops.repeat(t.eye(seq_len), "dest src -> batch head_idx dest src", batch=batch, head_idx=n_heads).clone().to(attn_patterns.device)
+    if bos:
+        attn_new = torch.zeros_like(attn_patterns)
+        attn_new[:, :, :, 0] = 1.0
+    else:
+        attn_new = einops.repeat(t.eye(seq_len), "dest src -> batch head_idx dest src", batch=batch, head_idx=n_heads).clone().to(attn_patterns.device)
     if ablate:
         attn_new = attn_new * 0
     return attn_new
@@ -227,6 +236,7 @@ def fwd_pass_lock_attn0_to_self(
     model: HookedTransformer,
     input: Union[List[str], Int[t.Tensor, "batch seq_pos"]],
     ablate: bool = False,
+    bos: bool = False,
 ) -> Float[t.Tensor, "batch seq_pos d_vocab"]:
 
     model.reset_hooks()
@@ -234,16 +244,10 @@ def fwd_pass_lock_attn0_to_self(
     loss = model.run_with_hooks(
         input,
         return_type="loss",
-        fwd_hooks=[(utils.get_act_name("pattern", 0), partial(lock_attn, ablate=ablate))],
+        fwd_hooks=[(utils.get_act_name("pattern", 0), partial(lock_attn, ablate=ablate, bos=bos))],
     )
 
     return loss
-
-# %%
-
-raw_dataset = load_dataset("stas/openwebtext-10k")
-train_dataset = raw_dataset["train"]
-dataset = [train_dataset[i]["text"] for i in range(len(train_dataset))]
 
 # %%
 
@@ -254,6 +258,8 @@ for i, s in enumerate(dataset):
     print(f"Loss with attn locked to zero: {loss_hooked_0:.2f}")
     loss_orig = model(s, return_type="loss")
     print(f"Loss with attn free: {loss_orig:.2f}\n")
+    loss_bos = fwd_pass_lock_attn0_to_self(model, s, bos=True)
+    print(f"Loss with attn locked to bos: {loss_bos:.2f}\n")
 
     # gc.collect()
 
@@ -409,19 +415,6 @@ def get_single_example_plot(
         labels = {"y": "Query (W_U)", "x": "Key (W_EE)"},
     )
 
-NAME_MOVERS = {
-    "gpt2": [(9, 9), (10, 0), (9, 6)],
-    "SoLU_10L1280W_C4_Code": [(7, 12), (5, 4), (8, 3)],
-}[model.cfg.model_name]
-
-NEGATIVE_NAME_MOVERS = {
-    "gpt2": [(LAYER_IDX, HEAD_IDX), (11, 10)],
-    "SoLU_10L1280W_C4_Code": [(LAYER_IDX, HEAD_IDX), (9, 15)], # second one on this one IOI prompt only...
-}[model.cfg.model_name]
-
-for layer, head in NAME_MOVERS + NEGATIVE_NAME_MOVERS:
-    get_single_example_plot(layer, head)
-
 # %%
         
 # Prep some bags of words...
@@ -449,17 +442,18 @@ while len(bags_of_words) < OUTER_LEN:
 
 #%%
 
-for idx in range(OUTER_LEN):
-    print(model.tokenizer.decode(bags_of_words[idx]), "ye")
-    softmaxed_attn = get_EE_QK_circuit(
-        LAYER_IDX,
-        HEAD_IDX,
-        show_plot=True,
-        num_samples=None,
-        random_seeds=None,
-        bags_of_words=bags_of_words[idx:idx+1],
-        mean_version=False,
-    )
+if False:
+    for idx in range(OUTER_LEN):
+        print(model.tokenizer.decode(bags_of_words[idx]), "ye")
+        softmaxed_attn = get_EE_QK_circuit(
+            LAYER_IDX,
+            HEAD_IDX,
+            show_plot=True,
+            num_samples=None,
+            random_seeds=None,
+            bags_of_words=bags_of_words[idx:idx+1],
+            mean_version=False,
+        )
 
 #%% [markdown]
 # <p> Observe that a large value of num_samples gives better results </p>
@@ -498,8 +492,8 @@ for num_samples, random_seeds in [
 # <p> Most of the experiments from here are Arthur's early experiments on 11.10 on the full distribution </p>
 
 logits, cache = model.run_with_cache(
-    ioi_dataset.toks,
-    names_filter = lambda name: name.endswith("hook_result"),
+ioi_dataset.toks,
+names_filter = lambda name: name.endswith("hook_result"),
 )
 
 # %%
@@ -519,23 +513,23 @@ HOOK_NAME = f"blocks.{LAYER_IDX}.attn.hook_result"
 head_output = cache["result", LAYER_IDX][t.arange(N), ioi_dataset.word_idx["end"], HEAD_IDX, :]
 
 head_logits = einops.einsum(
-    head_output,
-    unembedding,
-    "b d, d V -> b V",
+head_output,
+unembedding,
+"b d, d V -> b V",
 )
 
 for b in range(10, 12):
-    print("PROMPT:")
-    print(ioi_dataset.tokenized_prompts[b])
+print("PROMPT:")
+print(ioi_dataset.tokenized_prompts[b])
 
-    for outps_type, outps in [
-        ("TOP TOKENS", t.topk(head_logits[b], 10).indices),
-        ("BOTTOM_TOKENS", t.topk(-head_logits[b], 10).indices),
-    ]:
-        print(outps_type)
-        for i in outps:
-            print(ioi_dataset.tokenizer.decode(i))
-    print()
+for outps_type, outps in [
+    ("TOP TOKENS", t.topk(head_logits[b], 10).indices),
+    ("BOTTOM_TOKENS", t.topk(-head_logits[b], 10).indices),
+]:
+    print(outps_type)
+    for i in outps:
+        print(ioi_dataset.tokenizer.decode(i))
+print()
 
 print("So it seems like the bottom tokens (checked on more prompts, seems legit) are JUST the correct answer, and the top tokens are not interpretable")
 
@@ -564,49 +558,49 @@ dataset = [train_dataset[i]["text"] for i in range(len(train_dataset))]
 contributions = []
 
 for i in tqdm(list(range(2)) + [5]):
-    tokens = model.tokenizer(
-        dataset[i], 
-        return_tensors="pt", 
-        truncation=True, 
-        padding=True
-    )["input_ids"].to(DEVICE)
-    
-    if tokens.shape[1] < 256: # lotsa short docs here
-        print("SKIPPING short document", tokens.shape)
-        continue
+tokens = model.tokenizer(
+    dataset[i], 
+    return_tensors="pt", 
+    truncation=True, 
+    padding=True
+)["input_ids"].to(DEVICE)
 
-    tokens = tokens[0:1, :256]
+if tokens.shape[1] < 256: # lotsa short docs here
+    print("SKIPPING short document", tokens.shape)
+    continue
 
-    model.reset_hooks()
-    logits, cache = model.run_with_cache(
-        tokens,
-        names_filter = lambda name: name in [HOOK_NAME, "ln_final.hook_scale"],
-    )
-    output = cache[HOOK_NAME][0, :, HEAD_IDX] / cache["ln_final.hook_scale"][0, :, 0].unsqueeze(dim=-1) # account for layer norm scaling
-    
-    contribution = einops.einsum(
-        output,
-        unembedding,
-        "s d, d V -> s V",
-    )
-    contributions.append(contribution.clone())
+tokens = tokens[0:1, :256]
 
-    for j in range(256):
-        if contribution[j].norm().item() > 80:
-            print(model.to_str_tokens(tokens[0, j-30: j+1]))
-            print(model.tokenizer.decode(tokens[0, j+1]))
-            print()
+model.reset_hooks()
+logits, cache = model.run_with_cache(
+    tokens,
+    names_filter = lambda name: name in [HOOK_NAME, "ln_final.hook_scale"],
+)
+output = cache[HOOK_NAME][0, :, HEAD_IDX] / cache["ln_final.hook_scale"][0, :, 0].unsqueeze(dim=-1) # account for layer norm scaling
 
-            top_tokens = t.topk(contribution[j], 10).indices
-            bottom_tokens = t.topk(-contribution[j], 10).indices
+contribution = einops.einsum(
+    output,
+    unembedding,
+    "s d, d V -> s V",
+)
+contributions.append(contribution.clone())
 
-            print("TOP TOKENS")
-            for i in top_tokens:
-                print(model.tokenizer.decode(i))
-            print()
-            print("BOTTOM TOKENS")
-            for i in bottom_tokens:
-                print(model.tokenizer.decode(i))
+for j in range(256):
+    if contribution[j].norm().item() > 80:
+        print(model.to_str_tokens(tokens[0, j-30: j+1]))
+        print(model.tokenizer.decode(tokens[0, j+1]))
+        print()
+
+        top_tokens = t.topk(contribution[j], 10).indices
+        bottom_tokens = t.topk(-contribution[j], 10).indices
+
+        print("TOP TOKENS")
+        for i in top_tokens:
+            print(model.tokenizer.decode(i))
+        print()
+        print("BOTTOM TOKENS")
+        for i in bottom_tokens:
+            print(model.tokenizer.decode(i))
 
 full_contributions = t.cat(contributions, dim=0)
 
