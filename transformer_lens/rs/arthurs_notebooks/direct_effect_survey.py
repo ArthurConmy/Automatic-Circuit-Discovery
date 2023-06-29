@@ -7,6 +7,7 @@ direct effect of NMS
 
 from transformer_lens.cautils.notebook import *
 from transformer_lens.rs.callum.keys_fixed import project
+from transformer_lens.rs.arthurs_notebooks.arthur_utils import get_loss_from_end_state
 import argparse
 
 model = HookedTransformer.from_pretrained(
@@ -75,37 +76,7 @@ torch.cuda.empty_cache()
 
 # %%
 
-
-def get_loss_from_end_state(
-    end_state,
-    targets,
-    return_logits=False,
-):
-    # end state has shape batch, seq_len, hidden_size
-    # targets has shape batch, seq_len
-
-    assert list(end_state.shape) == list(targets.shape) + [
-        model.cfg.d_model
-    ], f"end_state.shape: {end_state.shape}, targets.shape: {targets.shape}"
-
-    assert len(end_state.shape) == 3, "We stricter now"
-
-    post_layer_norm = model.ln_final(end_state)
-    logits = model.unembed(post_layer_norm)
-    log_probs = torch.nn.functional.log_softmax(logits, dim=-1)
-    loss = -log_probs[
-        torch.arange(targets.shape[0]).unsqueeze(1),
-        torch.arange(targets.shape[1]).unsqueeze(0),
-        targets,
-    ]
-    if return_logits:
-        return loss, logits
-    return loss
-
-
-# %%
-
-my_loss = get_loss_from_end_state(end_state.to(DEVICE), mytargets).cpu()
+my_loss = get_loss_from_end_state(model, end_state.to(DEVICE), mytargets).cpu()
 
 # %%
 
@@ -141,25 +112,26 @@ assert "/TransformerLens/" in str(tl_path), "This is a hacky way to get the path
 while tl_path.stem!="TransformerLens" and str(tl_path.parent)!=str(tl_path):
     tl_path = tl_path.parent
 
-if (tl_path / "results_log.pt").exists():
+if (tl_path / "results_log_NO_MANUAL.pt").exists():
     results_log = torch.load(tl_path / "results_log.pt")
 
 else:
     results_log={}
-    for layer_idx, head_idx in itertools.product(
-        range(model.cfg.n_layers - 1, -1, -1), range(model.cfg.n_heads)
+    for layer_idx, head_idx in [(10, 7)] + list(itertools.product(
+        range(model.cfg.n_layers - 1, -1, -1), range(model.cfg.n_heads))
     ):
         head_output_hook = f"blocks.{layer_idx}.attn.hook_result"
         head_output = cache[head_output_hook][
             :, :, head_idx
-        ].cpu()  # shape (batch_size, seq_len, hidden_size)
+        ]# shape (batch_size, seq_len, hidden_size)
         mean_output = einops.reduce(
             head_output,
             "batch seq_len hidden_size -> hidden_size",
             reduction="mean",
         )
         mean_ablation_loss = get_loss_from_end_state(
-            end_state=(end_state - head_output + mean_output[None, None]).to(DEVICE),
+            model=model,
+            end_state=(end_state.cpu() - head_output + mean_output[None, None]).to(DEVICE),
             targets=mytargets,
             return_logits=False,
         ).cpu()
@@ -188,6 +160,7 @@ else:
             "mean_ablation_loss": mean_ablation_loss.cpu(),
         }
         print(list(results_log.items())[-1])
+        break
 
 # %%
 
@@ -410,6 +383,7 @@ for layer_idx, head_idx in [(10, 7)] + list(
         # )
 
         new_loss = get_loss_from_end_state(
+            model,
             end_state=(
                 end_state[batch_idx : batch_idx + 1, seq_idx : seq_idx + 1]
                 - head_output[
