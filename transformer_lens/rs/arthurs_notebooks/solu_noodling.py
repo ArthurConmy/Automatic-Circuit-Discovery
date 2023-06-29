@@ -80,10 +80,10 @@ for ckpt, ans in ans.items():
 
 #%%
 
+INC = 0 # incrementation; set to 1 for control
 bars = {
-    j: {i: None for i in range(20)} for j in [7, 10, 14] 
+    j: {i: None for i in range(20)} for j in (torch.tensor([7, 10, 14])-int(INC)).tolist()
 }
-
 fully_trained_model.set_use_attn_result(True)
 for head_idx in [18, 19] + list(range(17, -1, -1)):
     print(head_idx)
@@ -98,23 +98,28 @@ for head_idx in [18, 19] + list(range(17, -1, -1)):
     logits = fully_trained_model(toks.unsqueeze(0))
     probs = torch.softmax(logits, dim=-1)
 
-    for i in range(len(words)):
-        if words[i] == "import":
+    for i in range(len(words)-int(INC)):
+        if words[i+int(INC)] == "import":
             print(i)
             # print(words[:i+2], "<- including correct token")
             top_logits = logits[0, i, :].topk(10)
             # print(probs[0, i, :].topk(10).values)
             # print(model.to_str_tokens(top_logits.indices))
-            probs_on_incorrect = probs[0, i, list(set(toks[:i+1]))].sum()
+            probs_on_incorrect = probs[0, i, list(set(toks[:i+1].tolist()))].sum()
             print(probs_on_incorrect)
             # ans[ckpt][i] = probs_on_incorrect.item()
             bars[i][head_idx]=probs_on_incorrect.item()
 
 # %%
 
-fig = go.Figure()
+if not INC:
+    fig = go.Figure()
 
 for idx in bars:
+
+    if INC:
+        fig = go.Figure()
+
     fig.add_trace(
         go.Scatter(
             x=list(range(20)),
@@ -124,8 +129,22 @@ for idx in bars:
             name="Prompt "+str(idx),
         )
     )
+    fig.update_layout(
+        xaxis_title="Layer 9 Head Index",
+        yaxis_title="Probability on all current tokens in context",
+    )
+    if INC:
+        fig.update_layout(
+            title="Comparison to baseline"
+        )
 
-fig.show()
+        fig.show()
+
+if not INC: 
+    fig.update_layout(
+        title="Effect of zero ablating a Layer 9 Head"
+    )
+    fig.show()
 
 # %%
 
