@@ -160,7 +160,6 @@ else:
             "mean_ablation_loss": mean_ablation_loss.cpu(),
         }
         print(list(results_log.items())[-1])
-        break
 
 # %%
 

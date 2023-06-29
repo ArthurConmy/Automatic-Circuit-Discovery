@@ -23,7 +23,7 @@ model.set_use_attn_result(True)
 
 # %%
 
-BATCH_SIZE=30
+BATCH_SIZE = 30
 batched_tokens, targets = get_filtered_webtext(model, batch_size=BATCH_SIZE, seed=1729, device="cuda", max_seq_len=1024)
 effective_embeddings = get_effective_embedding_2(model)
 
@@ -36,7 +36,7 @@ effective_embeddings = get_effective_embedding_2(model)
 NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX = NEG_HEADS[model.cfg.model_name]
 # NEGATIVE_HEAD_IDX, NEGATIVE_LAYER_IDX = 9, 9
 
-for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in [(11, 8), (10, 7), (9, 9)] + list(itertools.product(range(11, -1, -1), range(12))):
+for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in [(10, 0), (10, 7), (9, 9), (11, 10)] + list(itertools.product(range(11, -1, -1), range(12))):
 # NEG_HEADS[model.cfg.model_name]:
 
     END_STATE_HOOK = f"blocks.{model.cfg.n_layers-1}.hook_resid_post"
@@ -129,8 +129,8 @@ for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in [(11, 8), (10, 7), (9, 9)] + list(i
     all_top_5_percent = max_importance_examples[: len(max_importance_examples)//20]
 
     np.random.seed(799)
-    warnings.warn("No shuffle!!!")
-    # np.random.shuffle(all_top_5_percent)
+    # warnings.warn("No shuffle!!!")
+    np.random.shuffle(all_top_5_percent)
     top_5_percent = all_top_5_percent[: BATCH_SIZE]
 
     top5p_batch_indices = [x[0] for x in top_5_percent]
@@ -172,6 +172,7 @@ for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in [(11, 8), (10, 7), (9, 9)] + list(i
             dir=[model.W_U.T[top5p_tokens[batch_idx, earlier_seq_idx]] for earlier_seq_idx in range(seq_idx+1)],
         )
         queryside_vectors[batch_batch_idx] = queryside_vector
+
         # warnings.warn("Another lock on")
         # queryside_vectors[batch_batch_idx] = model.W_U.T[top5p_tokens[batch_idx, seq_idx]]
 
@@ -179,17 +180,21 @@ for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in [(11, 8), (10, 7), (9, 9)] + list(i
 
     new_k_input = t.zeros((BATCH_SIZE, model.cfg.n_ctx, model.cfg.d_model))
 
+    np.random.seed(433)
     for batch_batch_idx, batch_idx in enumerate(top5p_batch_indices):
 
-        warnings.warn("Writing as literally the unembed...")
-
-        new_k_input[batch_batch_idx] = torch.stack([
-            effective_embeddings["W_E (including MLPs)"][batched_tokens[batch_idx, seq_idx]] for seq_idx in range(model.cfg.n_ctx)
-        ])
+        # warnings.warn("Writing as literally the unembed...")
 
         # new_k_input[batch_batch_idx] = torch.stack([
-        #     keyside_projections[batch_idx, seq_idx] for seq_idx in range(model.cfg.n_ctx)
+        #     effective_embeddings["W_E (including MLPs)"][batched_tokens[batch_idx, seq_idx]] for seq_idx in range(model.cfg.n_ctx)
         # ])
+
+        rand_batch_indices = [np.random.randint(0, BATCH_SIZE) for _ in range(model.cfg.n_ctx)]
+        rand_seq_indices = [np.random.randint(0, model.cfg.n_ctx) for _ in range(model.cfg.n_ctx)]
+
+        new_k_input[batch_batch_idx] = torch.stack([
+            keyside_projections[batch_idx, seq_idx] + keyside_orthogonals[rand_batch_idx][rand_seq_idx] for seq_idx, rand_batch_idx, rand_seq_idx in zip(range(model.cfg.n_ctx), rand_batch_indices, rand_seq_indices, strict=True)
+        ])
 
     #%%
 
@@ -201,11 +206,11 @@ for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in [(11, 8), (10, 7), (9, 9)] + list(i
         partial(set_to_value, head_idx=NEGATIVE_HEAD_IDX, new_value=new_k_input.to("cuda:1")),
         level=1,
     )
-    model.add_hook(
-        get_act_name("q_input", NEGATIVE_LAYER_IDX),
-        partial(set_to_value, head_idx=NEGATIVE_HEAD_IDX, seq_indices = top5p_seq_indices, new_value=queryside_vectors.to("cuda:1")),
-        level=1,
-    )
+    # model.add_hook(
+    #     get_act_name("q_input", NEGATIVE_LAYER_IDX),
+    #     partial(set_to_value, head_idx=NEGATIVE_HEAD_IDX, seq_indices = top5p_seq_indices, new_value=queryside_vectors.to("cuda:1")),
+    #     level=1,
+    # )
     model.to("cuda:1")
     logits, top_5p_cache = model.run_with_cache(
         top5p_tokens.to("cuda:1"),
@@ -286,7 +291,7 @@ for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in [(11, 8), (10, 7), (9, 9)] + list(i
     lossdata = loss.cpu().tolist()
 
     # # read the existing data
-    my_fname = "../arthur/json_data/approximations_with_key_lock_only_random_five_percent_qk.json"
+    my_fname = "../arthur/json_data/approx_random_kdir.json"
     with open(my_fname, "r") as f:
         cur_json = json.load(f)
 
@@ -318,7 +323,7 @@ for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in [(11, 8), (10, 7), (9, 9)] + list(i
 
 # also import cautils
 import json 
-with open ("/root/TransformerLens/transformer_lens/rs/arthur/json_data/approximations_with_key_lock_only_random_five_percent_qk.json", "r") as f:
+with open ("/root/TransformerLens/transformer_lens/rs/arthur/json_data/approx_random_kdir.json", "r") as f:
     cur_json = json.load(f)
 
 # %%
@@ -333,7 +338,7 @@ fig = px.bar(
     #     "x": "How much loss does the key lock get?",
     #     "y": "How bad is mean ablation?",
     # },
-    title="Ratio of mean increase in loss by mean ablating to mean increase in loss by locking keys to W_E (including MLPs) and projecting the query onto the unembedding directions for all tokens in context. Datapoints sampled from top 5% of direct effect datapoints per head",
+    title="Ratio of mean increase in loss by mean ablating to mean increase in loss by projecting keys to W_E (including MLPs) and projecting the query onto the unembedding directions for all tokens in context. Datapoints sampled from top 5% of direct effect datapoints per head",
 )            
 
 # fig.add_shape(
