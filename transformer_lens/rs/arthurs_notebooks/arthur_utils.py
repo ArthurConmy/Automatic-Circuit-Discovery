@@ -31,8 +31,9 @@ def get_loss_from_end_state(
             targets,
         ]
     elif len(targets.shape) == 1:
+        assert loss.shape[0]==1, loss.shape
         loss = -log_probs[
-            torch.arange(targets.shape[0]), targets
+            :, torch.arange(targets.shape[0]), targets
         ]
 
     if return_logits:
