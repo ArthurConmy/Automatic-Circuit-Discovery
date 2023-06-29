@@ -7,6 +7,7 @@ def token_to_qperp_projection(
     model: HookedTransformer,
     effective_embedding: Union[Float[Tensor, "d_vocab d_model"], Literal["W_EE", "W_EE0", "W_E", "W_EE0A"]],
     name_mover: Tuple[int, int] = (9, 9),
+    return_both: bool = False,
 ):
     '''
     Given token_ids, performs the following map:
@@ -42,7 +43,10 @@ def token_to_qperp_projection(
     unembeddings = model.W_U.T[token_ids]
     output_par, output_perp = project(name_mover_output, unembeddings)
 
-    return output_perp
+    if return_both:
+        return output_par, output_perp
+    else:
+        return output_perp
 
 
 
