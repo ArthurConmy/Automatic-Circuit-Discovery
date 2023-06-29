@@ -77,6 +77,7 @@ def get_EE_QK_circuit(
     show_plot: bool = False,
     W_E_query_side: Optional[t.Tensor] = None,
     W_E_key_side: Optional[t.Tensor] = None,
+    apply_softmax: bool = True,
 ):
     assert (random_seeds is None and num_samples is None) != (bags_of_words is None), (random_seeds is None, num_samples is None, bags_of_words is None, "Must specify either random_seeds and num_samples or bag_of_words_version")
 
@@ -93,7 +94,7 @@ def get_EE_QK_circuit(
     W_E_Q_normed = W_E_query_side / W_E_query_side.var(dim=-1, keepdim=True).pow(0.5)
     W_E_K_normed = W_E_key_side / W_E_key_side.var(dim=-1, keepdim=True).pow(0.5)
 
-    EE_QK_circuit = FactoredMatrix(W_E_Q_normed @ W_Q_head, W_K_head.T @ W_E_K_normed.T)
+    EE_QK_circuit = FactoredMatrix.FactoredMatrix(W_E_Q_normed @ W_Q_head, W_K_head.T @ W_E_K_normed.T)
     EE_QK_circuit_result = t.zeros((num_samples, num_samples))
 
     for random_seed in range(random_seeds):
@@ -117,8 +118,11 @@ def get_EE_QK_circuit(
             EE_QK_circuit_result += EE_QK_circuit_sample_centered.cpu()
 
         else:
-            EE_QK_softmax = t.nn.functional.softmax(EE_QK_circuit_sample, dim=-1)
-            EE_QK_circuit_result += EE_QK_softmax.cpu()
+            if apply_softmax:
+                EE_QK_softmax = t.nn.functional.softmax(EE_QK_circuit_sample, dim=-1)
+                EE_QK_circuit_result += EE_QK_softmax.cpu()
+            else:
+                EE_QK_circuit_result += EE_QK_circuit_sample.cpu()
 
     EE_QK_circuit_result /= random_seeds
 
