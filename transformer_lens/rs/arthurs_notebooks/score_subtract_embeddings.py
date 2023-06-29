@@ -90,7 +90,7 @@ dataset = list({
     " dog": " The dog wagged its tail happily. Seeing the dog so excited, the children started laughing",
     " cake": " The cake looked delicious. Everyone at the party was eager to taste the cake today",
     " book": " The book was so captivating, I couldn't put the book down",
-    " house": " The house was quiet. Suddenly, a noise from the upstairs of the house startled everyone",
+    " house": " The house was quiet. Suddenly, a noise from the upstair s of the house startled everyone",
     " car": " The car pulled into the driveway. Everyone rushed out to see the new car today",
     " computer": " The computer screen flickered. She rebooted the computer hoping to resolve the issue",
     " key": " She lost the key to her apartment. She panicked when she realized she had misplaced the key today",
