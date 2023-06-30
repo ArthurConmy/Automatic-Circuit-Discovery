@@ -4,6 +4,7 @@
 Cribbed from key_and_query_projection.py
 """
 
+import ast
 from transformer_lens.cautils.notebook import *
 from transformer_lens.rs.callum.keys_fixed import project, get_effective_embedding_2
 from transformer_lens.rs.arthurs_notebooks.arthur_utils import *
@@ -24,7 +25,7 @@ model.set_use_attn_result(True)
 
 MAX_SEQ_LEN = 512 # half of 1024 as
 BATCH_SIZE = 30
-batched_tokens, targets = get_filtered_webtext(model, batch_size=BATCH_SIZE, seed=1729, device="cuda", max_seq_len=MAX_SEQ_LEN)
+batched_tokens, targets = get_filtered_webtext(model, batch_size=BATCH_SIZE, seed=1727, device="cuda", max_seq_len=MAX_SEQ_LEN)
 effective_embeddings = get_effective_embedding_2(model)
 
 # %%
@@ -129,7 +130,7 @@ for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in [(10, 0), (11, 10)] + list(itertool
     TOP5P_BATCH_SIZE = len(max_importance_examples) // 20
     all_top_5_percent = max_importance_examples[:TOP5P_BATCH_SIZE]
 
-    np.random.seed(1727)
+    np.random.seed(1827)
     np.random.shuffle(all_top_5_percent)
 
     top5p_batch_indices = [x[0] for x in all_top_5_percent]
@@ -243,7 +244,7 @@ for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in [(10, 0), (11, 10)] + list(itertool
             )
 
     # # read the existing data
-    MY_FNAME = "../arthur/json_data/my_corr.json"
+    MY_FNAME = "../arthur/json_data/more_corr.json"
     with open(MY_FNAME, "r") as f:
         cur_json = json.load(f)
 
@@ -268,7 +269,7 @@ for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in [(10, 0), (11, 10)] + list(itertool
 # %%
 
 # # read the existing data
-MY_FNAME = "../arthur/json_data/my_corr.json"
+MY_FNAME = "../arthur/json_data/more_corr.json"
 with open(MY_FNAME, "r") as f:
     cur_json = json.load(f)
 
@@ -293,7 +294,7 @@ data = sorted(data, key=lambda x: x[1], reverse=True)
 px.bar(
     x=[f"{layer_idx}, {head_idx}" for (layer_idx, head_idx), _ in data],
     y=[cnt for _, cnt in data],
-    title="Percentage of the time the top unembedding is in Top 5 Attended to tokens",
+    title="Percentage of the important prompts where the top in-context unembedding is one of the top 5 attention scores",
     text=[f"{cnt*100:.2f}%" for _, cnt in data],
     color = ["red" if i<2 else "blue" for i, cnt in enumerate(data)],
     labels={
@@ -301,7 +302,7 @@ px.bar(
         "y": "Percentage",
     },
     height=500,
-    width=1000,
+    # width=1000,
 ).update_layout(
     # font=dict(
     #     size=20,
