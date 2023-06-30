@@ -194,7 +194,10 @@ for batch_batch_idx, (top5p_batch_idx, top5p_seq_idx) in tqdm(list(enumerate(lis
 all_queryside_norms = []
 for batch_batch_idx, (top5p_batch_idx, top5p_seq_idx) in tqdm(list(enumerate(list(zip(top5p_batch_indices, top5p_seq_indices))))):
     queryside_norms = [model.W_U.T[batched_tokens[top5p_batch_idx, earlier_seq_idx]].norm(dim=0).item() for earlier_seq_idx in range(top5p_seq_idx+1)]
-    queryside_components[batch_batch_idx] = torch.tensor(queryside_components[batch_batch_idx]) * torch.tensor(queryside_norms)
+    queryside_components[batch_batch_idx] = torch.tensor(queryside_components[batch_batch_idx]) 
+    if NORMY:
+        queryside_components[batch_batch_idx] /= torch.tensor(queryside_norms)
+
     # queryside_norms = torch.tensor(queryside_norms)
     # assert queryside_component.shape == queryside_norms.shape
     # queryside_components.append(queryside_component * queryside_norms.cuda())
