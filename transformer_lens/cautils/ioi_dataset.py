@@ -782,7 +782,7 @@ def _ioi_metric_noising(
 
 
 def generate_data_and_caches(
-    N: int, model: HookedTransformer, verbose: bool = False, seed: int = 42, prepend_bos: bool = False, only_ioi: bool = False, symmetric: bool = False,
+    N: int, model: HookedTransformer, verbose: bool = False, seed: int = 42, prepend_bos: bool = False, only_ioi: bool = False, symmetric: bool = False, return_cache: bool = True,
 ) -> Tuple[IOIDataset, IOIDataset, ActivationCache, ActivationCache, Callable]:
 
     ioi_dataset = IOIDataset(
@@ -795,13 +795,17 @@ def generate_data_and_caches(
         symmetric=symmetric,
     )
 
+    if only_ioi and not(return_cache):
+        return ioi_dataset
+
     abc_dataset = ioi_dataset.gen_flipped_prompts("ABB->XYZ, BAB->XYZ")
 
     model.reset_hooks(including_permanent=True)
 
     ioi_logits_original, ioi_cache = model.run_with_cache(ioi_dataset.toks)
 
-    if only_ioi: return ioi_dataset, ioi_cache
+    if only_ioi:
+        return ioi_dataset, ioi_cache
     
     abc_logits_original, abc_cache = model.run_with_cache(abc_dataset.toks)
 
