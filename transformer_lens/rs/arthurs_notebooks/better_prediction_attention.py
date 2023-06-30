@@ -164,12 +164,9 @@ for batch_batch_idx, (top5p_batch_idx, top5p_seq_idx) in tqdm(list(enumerate(lis
     t.cuda.empty_cache()
 
     my_direction_indices = list(set([batched_tokens[top5p_batch_idx, earlier_seq_idx].item() for earlier_seq_idx in range(top5p_seq_idx+1)]))
-    my_directions_lookup = {}
-    for idx in range(top5p_seq_idx+1):
-        for dir_idx, tok in enumerate(my_direction_indices):
-            if batched_tokens[top5p_batch_idx, idx].item() == tok:
-                assert idx not in my_directions_lookup
-                my_directions_lookup[idx] = dir_idx
+    tok_to_dir_index = {tok: dir_idx for dir_idx, tok in enumerate(my_direction_indices)}
+    my_directions_lookup = {idx: tok_to_dir_index[batched_tokens[top5p_batch_idx, idx].item()] for idx in range(top5p_seq_idx+1)}
+
     assert len(my_directions_lookup) == top5p_seq_idx+1
     my_directions = [model.W_U.T[my_direction_idx] for my_direction_idx in my_direction_indices]
 
