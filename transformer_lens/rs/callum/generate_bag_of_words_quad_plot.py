@@ -102,7 +102,7 @@ def get_EE_QK_circuit(
         if norm: 
             W_E_Q_normed /= W_E_query_side.var(dim=-1, keepdim=True).pow(0.5)
         if norm:
-            W_E_K_normed /= W_E_key_side / W_E_key_side.var(dim=-1, keepdim=True).pow(0.5)
+            W_E_K_normed /=  W_E_key_side.var(dim=-1, keepdim=True).pow(0.5)
 
     if ten_x:
         W_E_Q_normed *= 10
@@ -118,8 +118,8 @@ def get_EE_QK_circuit(
 
         # assert False, "TODO: add Q and K and V biases???"
         EE_QK_circuit_sample = einops.einsum(
-            EE_QK_circuit.A[indices, :] + (0.0 if query_side_bias else model.b_Q[layer_idx, head_idx]),
-            EE_QK_circuit.B[:, indices] + (0.0 if key_side_bias else model.b_K[layer_idx, head_idx]),
+            EE_QK_circuit.A[indices, :] + (0.0 if not query_side_bias else model.b_Q[layer_idx, head_idx].unsqueeze(0)),
+            EE_QK_circuit.B[:, indices] + (0.0 if not key_side_bias else model.b_K[layer_idx, head_idx].unsqueeze(-1)),
             "num_query_samples d_head, d_head num_key_samples -> num_query_samples num_key_samples"
         ) / model.cfg.d_head ** 0.5
 
