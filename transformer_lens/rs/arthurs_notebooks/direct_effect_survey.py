@@ -117,7 +117,7 @@ if (tl_path / "results_log_NO_MANUAL.pt").exists():
 
 else:
     results_log={}
-    for layer_idx, head_idx in [(10, 7)] + list(itertools.product(
+    for layer_idx, head_idx in list(itertools.product(
         range(model.cfg.n_layers - 1, -1, -1), range(model.cfg.n_heads))
     ):
         head_output_hook = f"blocks.{layer_idx}.attn.hook_result"
@@ -156,19 +156,24 @@ else:
             "mean_change_in_loss": flattened_loss_changes.mean().item(),
             "std": flattened_loss_changes.std().item(),
             "abs_mean": flattened_loss_changes.abs().mean().item(),
+            "flattened_loss_changes": flattened_loss_changes.cpu(),
             "loss_changes": loss_changes.cpu(),
             "mean_ablation_loss": mean_ablation_loss.cpu(),
         }
         print(list(results_log.items())[-1])
-        break
 
 # %%
 
 # The global plot is weird 11.0 with crazy importance, 10.7 variance low ... ?
+
+CAP = 10000
+
 px.bar(
-    x=[str(x) for x in list(results_log.keys())],
-    y=[x["mean_change_in_loss"] for x in results_log.values()],
-    error_y=[x["std"] for x in results_log.values()],
+    x=[str(x) for x in list(results_log.keys())][:CAP],
+    y=[x["mean_change_in_loss"] for x in results_log.values()][:CAP],
+    error_y=[x["std"]/np.sqrt(len(results_log)) for x in results_log.values()][:CAP],
+    title="Mean change in loss when mean ablating the direct effect of a head",
+    labels = {"x": "Head", "y": "Mean change in loss"},
 ).show()
 
 # %%
@@ -177,13 +182,38 @@ px.bar(
 px.bar(
     x=[str(x) for x in list(results_log.keys())],
     y=[
-        (torch.nn.functional.relu(x["loss_changes"]) > 0).double().mean()
+        (x["loss_changes"] < 0).double().mean()
         for x in results_log.values()
     ],
     title="Proportion of token predictions in OWT where mean ablating the direct effect of a head is helpful",
 ).show()
 
-# %%
+#%%
+
+props={}
+
+for layer_idx, head_idx in tqdm(list(itertools.product(range(model.cfg.n_layers), range(model.cfg.n_heads)))):
+    all_results = list(enumerate(results_log[(layer_idx, head_idx)]["flattened_loss_changes"]))
+    sorted_results = sorted(
+        all_results,
+        key=lambda x: x[1].abs().item(),
+        reverse=True,
+    )
+    cnt=0
+    for _, loss_change in sorted_results[:len(sorted_results)//20]: # top 5 percent
+        if loss_change<0: # good to mean ablate
+            cnt+=1
+    props[(layer_idx, head_idx)] = cnt/(len(sorted_results)//20)
+
+#%%
+
+px.bar(
+    x=[str(x) for x in list(props.keys())],
+    y=list(props.values()),
+    title="Proportion of Top 5% absolute direct effect tokens where mean ablating the direct effect of a head is helpful",
+).show()
+
+#%%
 
 def simulate_effective_embedding(
     model: HookedTransformer,

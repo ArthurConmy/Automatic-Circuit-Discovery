@@ -788,7 +788,7 @@ def get_pretrained_model_config(
         elif checkpoint_value is not None:
             assert (
                 checkpoint_value in checkpoint_labels
-            ), f"Checkpoint value {checkpoint_value} is not in list of available checkpoints"
+            ), f"Checkpoint value {checkpoint_value} is not in list of available checkpoints {checkpoint_labels}"
             cfg_dict["checkpoint_value"] = checkpoint_value
             cfg_dict["checkpoint_index"] = checkpoint_labels.index(checkpoint_value)
     else:

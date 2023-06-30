@@ -75,9 +75,7 @@ def set_to_value(
         z[:, :, head_idx] = new_value
     else:
         assert len(seq_indices)==len(z)
+        assert new_value.shape == (len(z), z.shape[-1])
         z[torch.arange(len(z)), seq_indices, head_idx] = new_value
 
     return z
-
-    #                 1.5583579540252686,
-# for 11 3

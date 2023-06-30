@@ -76,7 +76,13 @@ def get_EE_QK_circuit(
     mean_version: bool = True,
     show_plot: bool = False,
     W_E_query_side: Optional[t.Tensor] = None,
+    query_side_bias: bool = False,
     W_E_key_side: Optional[t.Tensor] = None,
+    key_side_bias: bool = False,
+    apply_softmax: bool = True,
+    apply_log_softmax: bool = False,
+    norm = False,
+    ten_x = False,
 ):
     assert (random_seeds is None and num_samples is None) != (bags_of_words is None), (random_seeds is None, num_samples is None, bags_of_words is None, "Must specify either random_seeds and num_samples or bag_of_words_version")
 
@@ -90,10 +96,18 @@ def get_EE_QK_circuit(
 
     assert W_E_query_side is not None
     assert W_E_key_side is not None
-    W_E_Q_normed = W_E_query_side / W_E_query_side.var(dim=-1, keepdim=True).pow(0.5)
-    W_E_K_normed = W_E_key_side / W_E_key_side.var(dim=-1, keepdim=True).pow(0.5)
+    W_E_Q_normed = W_E_query_side 
+    W_E_K_normed = W_E_key_side
+    if norm:
+        if norm: 
+            W_E_Q_normed /= W_E_query_side.var(dim=-1, keepdim=True).pow(0.5)
+        if norm:
+            W_E_K_normed /=  W_E_key_side.var(dim=-1, keepdim=True).pow(0.5)
 
-    EE_QK_circuit = FactoredMatrix(W_E_Q_normed @ W_Q_head, W_K_head.T @ W_E_K_normed.T)
+    if ten_x:
+        W_E_Q_normed *= 10
+
+    EE_QK_circuit = FactoredMatrix.FactoredMatrix(W_E_Q_normed @ W_Q_head, W_K_head.T @ W_E_K_normed.T)
     EE_QK_circuit_result = t.zeros((num_samples, num_samples))
 
     for random_seed in range(random_seeds):
@@ -104,10 +118,10 @@ def get_EE_QK_circuit(
 
         # assert False, "TODO: add Q and K and V biases???"
         EE_QK_circuit_sample = einops.einsum(
-            EE_QK_circuit.A[indices, :],
-            EE_QK_circuit.B[:, indices],
+            EE_QK_circuit.A[indices, :] + (0.0 if not query_side_bias else model.b_Q[layer_idx, head_idx].unsqueeze(0)),
+            EE_QK_circuit.B[:, indices] + (0.0 if not key_side_bias else model.b_K[layer_idx, head_idx].unsqueeze(-1)),
             "num_query_samples d_head, d_head num_key_samples -> num_query_samples num_key_samples"
-        )
+        ) / model.cfg.d_head ** 0.5
 
         if mean_version:
             # we're going to take a softmax so the constant factor is arbitrary 
@@ -117,8 +131,13 @@ def get_EE_QK_circuit(
             EE_QK_circuit_result += EE_QK_circuit_sample_centered.cpu()
 
         else:
-            EE_QK_softmax = t.nn.functional.softmax(EE_QK_circuit_sample, dim=-1)
-            EE_QK_circuit_result += EE_QK_softmax.cpu()
+            if apply_softmax or apply_log_softmax:
+                EE_QK_softmax = t.nn.functional.softmax(EE_QK_circuit_sample, dim=-1)
+                if apply_log_softmax:
+                    EE_QK_softmax = t.log(EE_QK_softmax)
+                EE_QK_circuit_result += EE_QK_softmax.cpu()
+            else:
+                EE_QK_circuit_result += EE_QK_circuit_sample.cpu()
 
     EE_QK_circuit_result /= random_seeds
 
