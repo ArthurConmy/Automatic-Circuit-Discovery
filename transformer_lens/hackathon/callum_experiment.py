@@ -207,18 +207,29 @@ def lock_attn(
         attn_new = attn_new * 0
     return attn_new
 
+W_pos = model.W_pos
+assert model.W_pos.shape == (model.cfg.n_ctx, model.cfg.d_model)
+
+def add_back_pos_embed(z, hook):
+    sliced_embed = W_pos[:z.shape[1], :]
+    reshaped_embed = sliced_embed.unsqueeze(0)
+    assert z.shape[1:] == reshaped_embed.shape[1:], f"{z.shape[1:]} != {reshaped_embed.shape[1:]}"
+    return z + reshaped_embed
+
 def fwd_pass_lock_attn0_to_self(
     model: HookedTransformer,
     input: Union[List[str], Int[t.Tensor, "batch seq_pos"]],
     ablate: bool = False,
 ) -> Float[t.Tensor, "batch seq_pos d_vocab"]:
-
     model.reset_hooks()
-    
     loss = model.run_with_hooks(
         input,
         return_type="loss",
-        fwd_hooks=[(utils.get_act_name("pattern", 0), partial(lock_attn, ablate=ablate))],
+        fwd_hooks=[
+            (utils.get_act_name("pattern", 0), partial(lock_attn, ablate=ablate)),
+            ("hook_pos_embed", lambda z, hook: z*0.0),
+            ("blocks.1.hook_resid_pre", add_back_pos_embed),
+        ],
     )
 
     return loss
@@ -231,12 +242,15 @@ dataset = [train_dataset[i]["text"] for i in range(len(train_dataset))]
 
 # %%
 
+print("NOTE: now this also zeros positional embeddings...")
+
 for i, s in enumerate(dataset):
-    loss_hooked = fwd_pass_lock_attn0_to_self(model, s)
+    toks = model.to_tokens(s)
+    loss_hooked = fwd_pass_lock_attn0_to_self(model, toks)
     print(f"Loss with attn locked to self: {loss_hooked:.2f}")
-    loss_hooked_0 = fwd_pass_lock_attn0_to_self(model, s, ablate=True)
+    loss_hooked_0 = fwd_pass_lock_attn0_to_self(model, toks, ablate=True)
     print(f"Loss with attn locked to zero: {loss_hooked_0:.2f}")
-    loss_orig = model(s, return_type="loss")
+    loss_orig = model(toks, return_type="loss")
     print(f"Loss with attn free: {loss_orig:.2f}\n")
 
     # gc.collect()
