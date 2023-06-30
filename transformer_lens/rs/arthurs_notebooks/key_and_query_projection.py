@@ -9,7 +9,7 @@ from transformer_lens.cautils.notebook import *
 from transformer_lens.rs.callum.keys_fixed import project, get_effective_embedding_2
 from transformer_lens.rs.arthurs_notebooks.arthur_utils import *
 import argparse
-MY_FNAME = "../arthur/json_data/approx_random_qdir_kdir.json"
+MY_FNAME = "../arthur/json_data/approx_random_qdir.json"
 
 #%%
 
@@ -383,4 +383,19 @@ fig = px.bar(
 
 fig.show()
 
+# %%
+
+fig = go.Figure()
+
+for layer, head in [(10, 7), (11, 10), (9, 9), (11, 6), (11, 3)]:
+    fig.add_trace(
+        go.Scatter(
+            x = cur_json[str((layer, head))]["top5p_losses"],
+            y = cur_json[str((layer, head))]["change_in_loss"],
+            mode = "markers",
+            name = f"{layer}.{head}",
+        )
+    )
+
+fig.show()
 # %%

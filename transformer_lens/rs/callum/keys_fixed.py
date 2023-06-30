@@ -708,6 +708,7 @@ def project(
     x: Float[Tensor, "... dim"],
     dir: Union[List[Float[Tensor, "... dim"]], Float[Tensor, "... dim"]],
     test: bool = False,
+    return_component: bool = False, # this follows all the rest of the things returned
 ):
     '''
     x: 
@@ -783,8 +784,11 @@ def project(
         assert diff < 1e-5
         print(f"\tNorms test passed: max norm diff = {diff:.4e}")
 
+    if return_component:
+        return x_dir, x - x_dir, x_component
 
-    return x_dir, x - x_dir
+    else:
+        return x_dir, x - x_dir
 
 # def test_project(project: Callable):
 
