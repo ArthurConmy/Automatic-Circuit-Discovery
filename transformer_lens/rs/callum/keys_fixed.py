@@ -135,6 +135,7 @@ def get_attn_scores_as_linear_func_of_queries_for_histogram(
     batch_size: int,
     model: HookedTransformer,
     name_tokens: List[int],
+    subtract_S1_attn_scores: bool = False,
 ):
 
     attn_scores = {
@@ -150,7 +151,7 @@ def get_attn_scores_as_linear_func_of_queries_for_histogram(
 
         ioi_dataset, ioi_cache = generate_data_and_caches(batch_size, model=model, seed=seed, only_ioi=True)
 
-        linear_map, bias_term = attn_scores_as_linear_func_of_queries(batch_idx=None, head=NNMH, model=model, ioi_cache=ioi_cache, ioi_dataset=ioi_dataset)
+        linear_map, bias_term = attn_scores_as_linear_func_of_queries(batch_idx=None, head=NNMH, model=model, ioi_cache=ioi_cache, ioi_dataset=ioi_dataset, subtract_S1_attn_scores=subtract_S1_attn_scores)
         assert linear_map.shape == (batch_size, model.cfg.d_model)
 
         # Has to be manual, because apparently `apply_ln_to_stack` doesn't allow it to be applied at different sequence positions
