@@ -179,6 +179,8 @@ for batch_batch_idx, (top5p_batch_idx, top5p_seq_idx) in tqdm(list(enumerate(lis
         return_component=True,
     )
     queryside_vectors[batch_batch_idx] = queryside_vector
+    assert len(queryside_component) == len(my_direction_indices) # number of distinct tokens
+
     if NORMY:
         queryside_norms = [model.W_U.T[batched_tokens[top5p_batch_idx, earlier_seq_idx]].norm(dim=0).item() for earlier_seq_idx in range(top5p_seq_idx+1)]
         queryside_norms = torch.tensor(queryside_norms)
@@ -192,15 +194,25 @@ for batch_batch_idx, (top5p_batch_idx, top5p_seq_idx) in tqdm(list(enumerate(lis
 
 #%%
 
+all_queryside_norms = []
+for batch_batch_idx, (top5p_batch_idx, top5p_seq_idx) in tqdm(list(enumerate(list(zip(top5p_batch_indices, top5p_seq_indices))))):
+    queryside_norms = [model.W_U.T[batched_tokens[top5p_batch_idx, earlier_seq_idx]].norm(dim=0).item() for earlier_seq_idx in range(top5p_seq_idx+1)]
+    queryside_components[batch_batch_idx] = torch.tensor(queryside_components[batch_batch_idx]) * torch.tensor(queryside_norms)
+    # queryside_norms = torch.tensor(queryside_norms)
+    # assert queryside_component.shape == queryside_norms.shape
+    # queryside_components.append(queryside_component * queryside_norms.cuda())
+
+#%%
+
 fig = go.Figure()
 colors = px.colors.qualitative.Plotly 
 colors = colors * 10
 
-for i in range(2):
+for i in range(10):
     fig.add_trace(
         go.Scatter(
             x = (cache[get_act_name("attn_scores", NEGATIVE_LAYER_IDX)][top5p_batch_indices[i], NEGATIVE_HEAD_IDX, top5p_seq_indices[i], :top5p_seq_indices[i]+1]).cpu(),
-            y = queryside_components[i].cpu(),
+            y = torch.tensor(queryside_components[i]).cpu(),
             mode="markers",
             text=[(j, model.to_str_tokens(batched_tokens[top5p_batch_indices[i], max(0,j-1):j+2])) for j in range(top5p_seq_indices[i]+1)],
             marker=dict(
