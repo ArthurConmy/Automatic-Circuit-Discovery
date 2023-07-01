@@ -137,15 +137,10 @@ def get_attn_scores_as_linear_func_of_queries_for_histogram(
     name_tokens: List[int],
     subtract_S1_attn_scores: bool = False,
 ):
+    names = ["W_U[IO]", "NMH 9.9 output", "NMH 9.9, ⟂ W_U[IO]", "W_U[S]", "W_U[random name]", "W_U[random]", "No patching"]
 
-    attn_scores = {
-        k: t.empty((0,)).to(device)
-        for k in ["W_U[IO]", "NMH 9.9 output", "W_U[S]", "W_U[random name]", "W_U[random]", "No patching"]
-    }
-    attn_probs = {
-        k: t.empty((0,)).to(device)
-        for k in ["W_U[IO]", "NMH 9.9 output", "W_U[S]", "W_U[random name]", "W_U[random]", "No patching"]
-    }
+    attn_scores = {k: t.empty((0,)).to(device) for k in names}
+    attn_probs = {k: t.empty((0,)).to(device) for k in names}
 
     for seed in tqdm(range(num_batches)):
 
@@ -155,12 +150,16 @@ def get_attn_scores_as_linear_func_of_queries_for_histogram(
         assert linear_map.shape == (batch_size, model.cfg.d_model)
 
         # Has to be manual, because apparently `apply_ln_to_stack` doesn't allow it to be applied at different sequence positions
+        nmh_99_output = einops.einsum(ioi_cache["z", 9][range(batch_size), ioi_dataset.word_idx["end"], 9], model.W_O[9, 9], "batch d_head, d_head d_model -> batch d_model")
+        W_U_IO = model.W_U.T[t.tensor(ioi_dataset.io_tokenIDs)]
+        nmh_99_par, nmh_99_perp = project(nmh_99_output, W_U_IO, return_type="projections")
         resid_vectors = {
-            "W_U[IO]": model.W_U.T[t.tensor(ioi_dataset.io_tokenIDs)],
+            "W_U[IO]": W_U_IO,
             "W_U[S]": model.W_U.T[t.tensor(ioi_dataset.s_tokenIDs)],
             "W_U[random]": model.W_U.T[t.randint(size=(batch_size,), low=0, high=model.cfg.d_vocab)],
             "W_U[random name]": model.W_U.T[np.random.choice(name_tokens, size=(batch_size,))],
-            "NMH 9.9 output": einops.einsum(ioi_cache["z", 9][range(batch_size), ioi_dataset.word_idx["end"], 9], model.W_O[9, 9], "batch d_head, d_head d_model -> batch d_model"),
+            "NMH 9.9 output": nmh_99_output,
+            "NMH 9.9, ⟂ W_U[IO]": nmh_99_perp,
             "No patching": ioi_cache["resid_pre", NNMH[0]][range(batch_size), ioi_dataset.word_idx["end"]]
         }
 
