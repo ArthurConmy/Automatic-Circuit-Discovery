@@ -34,7 +34,10 @@ import re
 from pathlib import Path
 import einops
 from IPython.display import display, clear_output, HTML
-import circuitsvis as cv
+try:
+    import circuitsvis as cv
+except ModuleNotFoundError:
+    warnings.warn("No circuitsvis found")
 import gc
 import transformer_lens
 from transformer_lens import *
