@@ -102,6 +102,8 @@ def show(
     """
     Colorscheme: a color for each node name, or a string corresponding to a cmapy color scheme
     """
+    return
+
     g = pgv.AGraph(directed=True, bgcolor="transparent")
 
     if isinstance(colorscheme, str):

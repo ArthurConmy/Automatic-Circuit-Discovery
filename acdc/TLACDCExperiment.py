@@ -637,17 +637,18 @@ class TLACDCExperiment:
                 print("Removing redundant node", self.current_node)
             self.remove_redundant_node(self.current_node)
 
-        if is_this_node_used and self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value:
-            fname = f"ims/img_new_{self.step_idx}.png"
-            show(
-                self.corr,
-                fname=fname,
-                show_full_index=self.show_full_index,
-            )
-            if self.using_wandb:
-                wandb.log(
-                    {"acdc_graph": wandb.Image(fname),}
-                )
+        # TODO add back in
+        # if is_this_node_used and self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value:
+        #     fname = f"ims/img_new_{self.step_idx}.png"
+        #     show(
+        #         self.corr,
+        #         fname=fname,
+        #         show_full_index=self.show_full_index,
+        #     )
+        #     if self.using_wandb:
+        #         wandb.log(
+        #             {"acdc_graph": wandb.Image(fname),}
+        #         )
 
         # increment the current node
         self.increment_current_node()

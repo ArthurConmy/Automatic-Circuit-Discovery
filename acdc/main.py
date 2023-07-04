@@ -139,6 +139,7 @@ torch.autograd.set_grad_enabled(False)
 # We'll reproduce </p>
 
 #%%
+
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
 
 task_choices = ['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan']
@@ -164,14 +165,15 @@ parser.add_argument('--seed', type=int, default=1234)
 parser.add_argument("--max-num-epochs",type=int, default=100_000)
 parser.add_argument('--single-step', action='store_true', help='Use single step, mostly for testing')
 
-if ipython is not None:
+if ipython is not None or True: # TODO delete
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
         [line.strip() for line in r"""--task=induction\
---zero-ablation\
---threshold=0.71\
+--threshold=0.078\
 --indices-mode=reverse\
+--metric=kl_div\
+--using-wandb\
 --first-cache-cpu=False\
 --second-cache-cpu=False\
 --max-num-epochs=100000""".split("\\\n")]
@@ -351,9 +353,10 @@ for i in range(args.max_num_epochs):
         show_full_index=use_pos_embed,
     )
 
-    if IN_COLAB or ipython is not None:
+    # TODO add back
+    # if IN_COLAB or ipython is not None:
         # so long as we're not running this as a script, show the image!
-        display(Image(f"ims/img_new_{i+1}.png"))
+        # display(Image(f"ims/img_new_{i+1}.png"))
 
     print(i, "-" * 50)
     print(exp.count_no_edges())
@@ -385,3 +388,5 @@ if USING_WANDB:
 exp.save_subgraph(
     return_it=True,
 ) 
+
+# %%
