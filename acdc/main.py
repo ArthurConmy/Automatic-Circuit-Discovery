@@ -9,6 +9,7 @@
 # <p>Janky code to do different setup when run in a Colab notebook vs VSCode (adapted from e.g <a href="https://github.com/neelnanda-io/TransformerLens/blob/5c89b7583e73ce96db5e46ef86a14b15f303dde6/demos/Activation_Patching_in_TL_Demo.ipynb">this notebook</a>)</p>
 
 #%%
+
 try:
     import google.colab
 
@@ -58,6 +59,7 @@ except Exception as e:
 # <h2>Imports etc</h2>
 
 #%%
+
 import wandb
 import IPython
 from IPython.display import Image, display

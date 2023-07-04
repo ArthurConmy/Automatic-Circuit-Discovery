@@ -82,6 +82,7 @@ class TLACDCExperiment:
         names_mode: Literal["normal", "reverse", "shuffle"] = "normal",
         wandb_config: Optional[Namespace] = None,
         early_exit: bool = False,
+        edge_sp: bool = False, # new functionality for doing EdgeSP
     ):
         """Initialize the ACDC experiment"""
 
@@ -95,6 +96,7 @@ class TLACDCExperiment:
         self.names_mode = names_mode
         self.use_pos_embed = use_pos_embed
         self.show_full_index = show_full_index
+        self.edge_sp = edge_sp
 
         self.model = model
         self.verify_model_setup()
@@ -320,7 +322,7 @@ class TLACDCExperiment:
 
                     edge = self.corr.edges[hook.name][receiver_node_index][sender_node_name][sender_node_index] # TODO maybe less crazy nested indexes ... just make local variables each time?
 
-                    if not edge.present:
+                    if not edge.present and not self.edge_sp:
                         continue # don't do patching stuff, if it wastes time
 
                     if verbose:
@@ -335,14 +337,25 @@ class TLACDCExperiment:
                             )
                     
                     if edge.edge_type == EdgeType.ADDITION:
-                        # Add the effect of the new head (from the current forward pass)
-                        hook_point_input[receiver_node_index.as_index] += self.global_cache.online_cache[
-                            sender_node_name
-                        ][sender_node_index.as_index].to(hook_point_input.device)
                         # Remove the effect of this head (from the corrupted data)
                         hook_point_input[receiver_node_index.as_index] -= self.global_cache.corrupted_cache[
                             sender_node_name
                         ][sender_node_index.as_index].to(hook_point_input.device)
+
+                        if not self.edge_sp:
+                            # Add the effect of the new head (from the current forward pass)
+                            hook_point_input[receiver_node_index.as_index] += self.global_cache.online_cache[
+                                sender_node_name
+                            ][sender_node_index.as_index].to(hook_point_input.device)
+
+                        else:
+                            if not edge.sampled:
+                                edge.sample_mask()
+
+                            # Add some effect of the new head (from the current forward pass) mediated by the mask
+                            hook_point_input[receiver_node_index.as_index] += edge.mask_score * self.global_cache.online_cache[
+                                sender_node_name
+                            ][sender_node_index.as_index].to(hook_point_input.device)
 
                     else: 
                         raise ValueError(f"Unknown edge type {edge.edge_type} ... {edge}")
@@ -637,7 +650,7 @@ class TLACDCExperiment:
                 print("Removing redundant node", self.current_node)
             self.remove_redundant_node(self.current_node)
 
-        # TODO add back in
+        # TODO add back
         # if is_this_node_used and self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value:
         #     fname = f"ims/img_new_{self.step_idx}.png"
         #     show(
