@@ -82,6 +82,7 @@ class TLACDCExperiment:
         names_mode: Literal["normal", "reverse", "shuffle"] = "normal",
         wandb_config: Optional[Namespace] = None,
         early_exit: bool = False,
+        use_split_qkv: bool = True,
     ):
         """Initialize the ACDC experiment"""
 
@@ -90,6 +91,7 @@ class TLACDCExperiment:
 
         model.reset_hooks()
 
+        self.use_split_qkv = use_split_qkv
         self.remove_redundant = remove_redundant
         self.indices_mode = indices_mode
         self.names_mode = names_mode
@@ -182,7 +184,16 @@ class TLACDCExperiment:
 
     def verify_model_setup(self):
         assert self.model.cfg.use_attn_result, "Need to be able to see split by head outputs"
-        assert self.model.cfg.use_split_qkv_input, "Need to be able to see split by head QKV inputs"
+        
+        if self.use_split_qkv:
+            assert self.model.cfg.use_split_qkv_input, "Need to be able to see split by head QKV inputs"
+        else:
+            try:
+                assert self.model.cfg.use_attn_in
+            except AttributeError:
+                raise Exception("You need to be using the attention in version of the TransformerLens library, available here: https://github.com/ArthurConmy/TransformerLens/tree/arthur-add-attn-in . Alternatively, hopefully this is merged into Neel's main branch by the time you read this!")
+            except Exception as e:
+                raise e
 
     def update_cur_metric(self, recalc_metric=True, recalc_edges=True, initial=False):
         if recalc_metric:

@@ -163,18 +163,20 @@ parser.add_argument('--torch-num-threads', type=int, default=0, help="How many t
 parser.add_argument('--seed', type=int, default=1234)
 parser.add_argument("--max-num-epochs",type=int, default=100_000)
 parser.add_argument('--single-step', action='store_true', help='Use single step, mostly for testing')
+parser.add_argument("--dont-split-qkv", action="store_true", help="Dont splits qkv")
 
 if ipython is not None:
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
-        [line.strip() for line in r"""--task=induction\
+        [line.strip() for line in r"""--task=ioi\
 --zero-ablation\
 --threshold=0.71\
 --indices-mode=reverse\
 --first-cache-cpu=False\
 --second-cache-cpu=False\
---max-num-epochs=100000""".split("\\\n")]
+--max-num-epochs=100000\
+--dont-split-qkv""".split("\\\n")]
     )
 else:
     # read from command line
@@ -215,6 +217,7 @@ NAMES_MODE = args.names_mode
 DEVICE = args.device
 RESET_NETWORK = args.reset_network
 SINGLE_STEP = True if args.single_step else False
+SPLIT_QKV = False if args.dont_split_qkv else True
 
 #%% [markdown] 
 # <h2>Setup Task</h2>
@@ -226,7 +229,7 @@ use_pos_embed = TASK.startswith("tracr")
 if TASK == "ioi":
     num_examples = 100
     things = get_all_ioi_things(
-        num_examples=num_examples, device=DEVICE, metric_name=args.metric
+        num_examples=num_examples, device=DEVICE, metric_name=args.metric, split_qkv=SPLIT_QKV,
     )
 elif TASK == "tracr-reverse":
     num_examples = 6
