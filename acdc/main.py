@@ -176,6 +176,7 @@ if ipython is not None:
 --first-cache-cpu=False\
 --second-cache-cpu=False\
 --max-num-epochs=100000\
+--using-wandb\
 --dont-split-qkv""".split("\\\n")]
     )
 else:
@@ -338,6 +339,7 @@ exp = TLACDCExperiment(
     add_receiver_hooks=False,
     remove_redundant=False,
     show_full_index=use_pos_embed,
+    use_split_qkv=SPLIT_QKV,
 )
 
 # %% [markdown]
@@ -388,3 +390,5 @@ if USING_WANDB:
 exp.save_subgraph(
     return_it=True,
 ) 
+
+#%%
