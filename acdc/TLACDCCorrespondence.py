@@ -98,7 +98,7 @@ class TLACDCCorrespondence:
         child.parents.remove(parent)        
 
     @classmethod
-    def setup_from_model(cls, model, use_pos_embed=False, use_split_qkv=False):
+    def setup_from_model(cls, model, use_pos_embed=False, use_split_qkv=True):
         correspondence = cls()
 
         downstream_residual_nodes: List[TLACDCInterpNode] = []

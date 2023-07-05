@@ -9,6 +9,7 @@
 # <p>Janky code to do different setup when run in a Colab notebook vs VSCode (adapted from e.g <a href="https://github.com/neelnanda-io/TransformerLens/blob/5c89b7583e73ce96db5e46ef86a14b15f303dde6/demos/Activation_Patching_in_TL_Demo.ipynb">this notebook</a>)</p>
 
 #%%
+
 try:
     import google.colab
 
@@ -163,21 +164,23 @@ parser.add_argument('--torch-num-threads', type=int, default=0, help="How many t
 parser.add_argument('--seed', type=int, default=1234)
 parser.add_argument("--max-num-epochs",type=int, default=100_000)
 parser.add_argument('--single-step', action='store_true', help='Use single step, mostly for testing')
-parser.add_argument("--dont-split-qkv", action="store_true", help="Dont splits qkv")
+parser.add_argument("
+                    -split-qkv", action="store_true", help="Dont splits qkv")
 
-if ipython is not None:
+if ipython is not None or True:
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
         [line.strip() for line in r"""--task=ioi\
 --threshold=0.0575\
+--metric=kl_div\
 --indices-mode=reverse\
 --first-cache-cpu=False\
 --second-cache-cpu=False\
 --max-num-epochs=100000\
---using-wandb\
---dont-split-qkv""".split("\\\n")]
-    )
+--using-wandb""".split("\\\n")]
+    ) # also 0.39811 # also on the main machine you just added two lines here.
+
 else:
     # read from command line
     args = parser.parse_args()
@@ -346,18 +349,36 @@ exp = TLACDCExperiment(
 # <p>WARNING! This will take a few minutes to run, but there should be rolling nice pictures too : )</p>
 
 #%%
+
+import pickle
+with open("../another_final_edges.pkl", "rb") as f:
+    edges = pickle.load(f)
+subgraph = {
+    (e[0][0], e[0][1].hashable_tuple, e[0][2], e[0][3].hashable_tuple): True for e in edges
+}
+
+#%%
+
+exp.load_subgraph(subgraph)
+
+#%%
+
+show(exp.corr, "my_img.png", remove_self_loops=False, show_full_index=False, show_effect_size_none=True)
+
+#%%
+
 for i in range(args.max_num_epochs):
     exp.step(testing=False)
 
-    show(
-        exp.corr,
-        f"ims/img_new_{i+1}.png",
-        show_full_index=use_pos_embed,
-    )
-
-    if IN_COLAB or ipython is not None:
-        # so long as we're not running this as a script, show the image!
-        display(Image(f"ims/img_new_{i+1}.png"))
+    # TODO add back
+    # show(
+    #     exp.corr,
+    #     f"ims/img_new_{i+1}.png",
+    #     show_full_index=use_pos_embed,
+    # )
+    # if IN_COLAB or ipython is not None:
+    #     # so long as we're not running this as a script, show the image!
+    #     display(Image(f"ims/img_new_{i+1}.png"))
 
     print(i, "-" * 50)
     print(exp.count_no_edges())

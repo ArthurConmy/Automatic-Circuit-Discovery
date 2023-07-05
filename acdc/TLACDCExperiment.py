@@ -110,7 +110,7 @@ class TLACDCExperiment:
             warnings.warn("Never skipping edges, for now")
             skip_edges = "no"
 
-        self.corr = TLACDCCorrespondence.setup_from_model(self.model, use_pos_embed=use_pos_embed)
+        self.corr = TLACDCCorrespondence.setup_from_model(self.model, use_pos_embed=use_pos_embed, use_split_qkv=self.use_split_qkv)
 
         if early_exit: 
             return
@@ -609,7 +609,7 @@ class TLACDCExperiment:
                 if self.verbose:
                     print("Result is", result, end="")
 
-                if result < self.threshold:
+                if abs(result) < self.threshold:
                     if self.verbose:
                         print("...so removing connection")
                     self.corr.remove_edge(
@@ -648,17 +648,18 @@ class TLACDCExperiment:
                 print("Removing redundant node", self.current_node)
             self.remove_redundant_node(self.current_node)
 
-        if is_this_node_used and self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value:
-            fname = f"ims/img_new_{self.step_idx}.png"
-            show(
-                self.corr,
-                fname=fname,
-                show_full_index=self.show_full_index,
-            )
-            if self.using_wandb:
-                wandb.log(
-                    {"acdc_graph": wandb.Image(fname),}
-                )
+        # TODO add back
+        # if is_this_node_used and self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value:
+        #     fname = f"ims/img_new_{self.step_idx}.png"
+        #     show(
+        #         self.corr,
+        #         fname=fname,
+        #         show_full_index=self.show_full_index,
+        #     )
+        #     if self.using_wandb:
+        #         wandb.log(
+        #             {"acdc_graph": wandb.Image(fname),}
+        #         )
 
         # increment the current node
         self.increment_current_node()
@@ -780,10 +781,6 @@ class TLACDCExperiment:
             print("No edge", cnt)
         return cnt
 
-    def reload_hooks(self):
-        old_corr = self.corr
-        self.corr = TLACDCCorrespondence.setup_from_model(self.model)
-
     def save_subgraph(self, fpath: Optional[str]=None, return_it=False) -> None:
         """Saves the subgraph as a Dictionary of all the edges, so it can be reloaded (or return that)"""
 
@@ -810,7 +807,11 @@ class TLACDCExperiment:
             receiver_name, receiver_torch_index, sender_name, sender_torch_index = tupl
             receiver_index, sender_index = receiver_torch_index.hashable_tuple, sender_torch_index.hashable_tuple
             set_of_edges.add((receiver_name, receiver_index, sender_name, sender_index))
-        assert set(subgraph.keys()) == set_of_edges, f"Ensure that the dictionary includes exactly the correct keys... e.g missing {list( set(set_of_edges) - set(subgraph.keys()) )[:1]} and has excess stuff { list(set(subgraph.keys()) - set_of_edges)[:1] }"
+
+        assert len(set(subgraph.keys()) - set_of_edges) == 0 or set(subgraph.keys()) == set_of_edges, f"Ensure that the dictionary includes exactly the correct keys... e.g missing {list( set(set_of_edges) - set(subgraph.keys()) )[:1]} and has excess stuff { list(set(subgraph.keys()) - set_of_edges)[:1] }"
+        if set(subgraph.keys()) != set_of_edges:
+            for edge in set_of_edges - set(subgraph.keys()):
+                subgraph[edge] = False
 
         print("Editing all edges...")
         for (receiver_name, receiver_index, sender_name, sender_index), is_present in subgraph.items():

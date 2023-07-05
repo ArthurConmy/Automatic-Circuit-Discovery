@@ -165,9 +165,7 @@ parser.add_argument("--only-save-canonical", action="store_true", help="Only sav
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task=tracr-reverse --metric=l2 --alg=acdc".split())
-    if "arthur" not in __file__:
-        __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
+    args = parser.parse_args("--task ioi --mode edges --alg acdc".split())
 else:
     args = parser.parse_args()
 
@@ -208,7 +206,7 @@ if args.alg != "none":
     OUT_FILE = OUT_DIR / f"{args.alg}-{args.task}-{args.metric}-{args.zero_ablation}-{args.reset_network}.json"
 
     if OUT_FILE.exists():
-        print("File already exists, skipping")
+        print(f"File {str(OUT_FILE)} already exists, skipping")
         sys.exit(0)
 else:
     OUT_FILE = None
@@ -316,11 +314,12 @@ elif TASK == "ioi":
         except KeyError:
             pass
         ACDC_PRE_RUN_FILTER = {
-            "$or": [
-                {"group": "reset-networks-neurips", **ACDC_PRE_RUN_FILTER},
-                {"group": "acdc-gt-ioi-redo", **ACDC_PRE_RUN_FILTER},
-                {"group": "acdc-spreadsheet2", **ACDC_PRE_RUN_FILTER},
-            ]
+            "id": "0wfrojop",
+            # "$or": [
+            #     {"group": "reset-networks-neurips", **ACDC_PRE_RUN_FILTER},
+            #     {"group": "acdc-gt-ioi-redo", **ACDC_PRE_RUN_FILTER},
+            #     {"group": "acdc-spreadsheet2", **ACDC_PRE_RUN_FILTER},
+            # ]
         }
 
     get_true_edges = partial(get_ioi_true_edges, model=things.tl_model)
