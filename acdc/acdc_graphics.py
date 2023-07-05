@@ -75,8 +75,9 @@ def get_node_name(node: TLACDCInterpNode, show_full_index=True):
     elif "resid_post" in node.name:
         name += "resid_post"
 
-    else:
-        raise ValueError(f"Unrecognized node name {node.name}")
+    # TODO can we just comment this out..?
+    # else:
+    #     raise ValueError(f"Unrecognized node name {node.name}")
 
     if show_full_index:
         name += f"_{str(node.index.graphviz_index())}"
