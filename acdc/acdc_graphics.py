@@ -61,8 +61,8 @@ def get_node_name(node: TLACDCInterpNode, show_full_index=True):
                 relevant_letter = letter
         name += "a" + node.name.split(".")[1] + "." + str(node.index.hashable_tuple[2]) + "_" + relevant_letter
 
-    # Handle attention hook_result
-    elif "hook_result" in node.name or any([qkv_substring in node.name for qkv_substring in qkv_substrings]):
+    # Handle attention hook_result or attn_in thing
+    elif "hook_result" in node.name or any([qkv_substring in node.name for qkv_substring in qkv_substrings]) or node.name.endswith("attn_in"):
         name = "a" + node.name.split(".")[1] + "." + str(node.index.hashable_tuple[2])
 
     # Handle MLPs
@@ -75,9 +75,9 @@ def get_node_name(node: TLACDCInterpNode, show_full_index=True):
     elif "resid_post" in node.name:
         name += "resid_post"
 
-    # TODO can we just comment this out..?
-    # else:
-    #     raise ValueError(f"Unrecognized node name {node.name}")
+    else:
+        # TODO add a warning here? Names may be cursed
+        name = node.name
 
     if show_full_index:
         name += f"_{str(node.index.graphviz_index())}"
