@@ -169,8 +169,8 @@ if ipython is not None:
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
-        [line.strip() for line in r"""--task=induction\
---threshold=0.05623\
+        [line.strip() for line in r"""--task=ioi\
+--threshold=0.0575\
 --indices-mode=reverse\
 --first-cache-cpu=False\
 --second-cache-cpu=False\
@@ -390,4 +390,4 @@ exp.save_subgraph(
     return_it=True,
 ) 
 
-#%%
+#%% HELLO
