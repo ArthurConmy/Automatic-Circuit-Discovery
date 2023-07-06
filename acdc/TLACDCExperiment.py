@@ -609,7 +609,7 @@ class TLACDCExperiment:
                 if self.verbose:
                     print("Result is", result, end="")
 
-                if abs(result) < self.threshold:
+                if result < self.threshold:
                     if self.verbose:
                         print("...so removing connection")
                     self.corr.remove_edge(

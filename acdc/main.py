@@ -164,10 +164,9 @@ parser.add_argument('--torch-num-threads', type=int, default=0, help="How many t
 parser.add_argument('--seed', type=int, default=1234)
 parser.add_argument("--max-num-epochs",type=int, default=100_000)
 parser.add_argument('--single-step', action='store_true', help='Use single step, mostly for testing')
-parser.add_argument("
-                    -split-qkv", action="store_true", help="Dont splits qkv")
+parser.add_argument("--dont-split-qkv", action="store_true", help="Dont splits qkv")
 
-if ipython is not None or True:
+if ipython is not None:
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
@@ -178,12 +177,15 @@ if ipython is not None or True:
 --first-cache-cpu=False\
 --second-cache-cpu=False\
 --max-num-epochs=100000\
+--dont-split-qkv\
 --using-wandb""".split("\\\n")]
     ) # also 0.39811 # also on the main machine you just added two lines here.
 
 else:
     # read from command line
     args = parser.parse_args()
+
+print(args)
 
 # process args
 

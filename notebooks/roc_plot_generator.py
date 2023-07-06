@@ -165,7 +165,7 @@ parser.add_argument("--only-save-canonical", action="store_true", help="Only sav
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task ioi --mode edges --alg acdc".split())
+    args = parser.parse_args("--task ioi --mode edges --metric logit_diff --alg acdc".split())
 else:
     args = parser.parse_args()
 
