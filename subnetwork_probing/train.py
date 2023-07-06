@@ -15,6 +15,7 @@ else:
 import argparse
 import random
 from copy import deepcopy
+import warnings
 from functools import partial
 import sys
 from pathlib import Path
@@ -41,6 +42,7 @@ from acdc.TLACDCEdge import (
 )
 from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from acdc.TLACDCInterpNode import TLACDCInterpNode
+from acdc.TLACDCExperiment import TLACDCExperiment
 from acdc.induction.utils import get_all_induction_things, get_mask_repeat_candidates
 from tqdm import tqdm
 from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformer import HookedTransformer as SPHookedTransformer
@@ -48,9 +50,8 @@ from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformerConfi
 from transformer_lens.HookedTransformer import HookedTransformer
 from transformer_lens.HookedTransformerConfig import HookedTransformerConfig
 from subnetwork_probing.transformer_lens.transformer_lens.ioi_dataset import IOIDataset
-
 import wandb
-
+torch.set_grad_enabled(True)
 
 def iterative_correspondence_from_mask(model: Union[HookedTransformer, SPHookedTransformer], nodes_to_mask: list[TLACDCInterpNode],
                                        use_pos_embed: bool = False,newv = False, corr: TLACDCCorrespondence = None,
@@ -174,6 +175,20 @@ def regularizer(
     ]
     return torch.mean(torch.stack(mask_scores))
 
+
+def experiment_regularizer( # this is used for edge sp 
+    exp: TLACDCExperiment,
+    gamma: float = -0.1,
+    zeta: float = 1.1,
+    beta: float = 2 / 3,
+) -> torch.Tensor:
+    # TODO: ideally repeat less code from above...
+
+    def regularization_term(mask: torch.nn.Parameter) -> torch.Tensor:
+        return torch.sigmoid(mask - beta * np.log(-gamma / zeta)).mean()
+
+    mask_scores = exp.get_mask_parameters()
+    return torch.mean(torch.stack(mask_scores))
 
 def do_random_resample_caching(
     model: SPHookedTransformer, train_data: torch.Tensor
@@ -484,6 +499,10 @@ if __name__ == "__main__":
     else:
         raise ValueError(f"Unknown task {args.task}")
 
+#%%
+
+if __name__ == "__main__" and not args.edge_sp:
+
     kwargs = dict(**all_task_things.tl_model.cfg.__dict__)
     for kwarg_string in [
         "use_split_qkv_input",
@@ -514,9 +533,6 @@ if __name__ == "__main__":
     model.freeze_weights()
     print("Finding subnetwork...")
 
-#%%
-
-if __name__ == "__main__" and not args.edge_sp:
     model, to_log_dict = train_induction(
         args=args,
         induction_model=model,
@@ -540,7 +556,7 @@ if __name__ == "__main__" and not args.edge_sp:
 # %%
 
 if __name__ != "__main__":
-    raise Exception("Arthur was using this notebook for play, please delete lines of the trian.py below here to use the functions!")
+    raise Exception("Arthur was using this notebook for play, please delete lines of the train.py below here to use the functions!")
 
 # %%
 
@@ -560,37 +576,44 @@ wandb.init(
 )
 test_metric_fns = all_task_things.test_metrics
 
-# one parameter per thing that is masked
-mask_params = list(set([
-    p
-    for n, p in model.named_parameters()
-    if "mask_scores" in n and p.requires_grad
-]))
-# parameters for the probe (we don't use a probe)
-model_params = [
-    p
-    for n, p in model.named_parameters()
-    if "mask_scores" not in n and p.requires_grad
-]
-assert len(model_params) == 0, ("MODEL should be empty", model_params)
-trainer = torch.optim.Adam(mask_params, lr=args.lr)
+#%%
 
-if args.zero_ablation:
-    do_zero_caching(induction_model)
+tl_model = all_task_things.tl_model
+
+experiment = TLACDCExperiment(
+    model=tl_model,
+    threshold=100_000.0,
+    ds=all_task_things.validation_data,
+    ref_ds=all_task_things.validation_patch_data,
+    metric=all_task_things.validation_metric,
+    zero_ablation=bool(args.zero_ablation),
+    hook_verbose=False,
+    edge_sp=True,
+)
+
+#%%
+
+# one parameter per thing that is masked
+mask_params = experiment.get_mask_parameters()
+trainer = torch.optim.Adam(mask_params, lr=args.lr)
+if args.zero_ablation: 
+    warnings.warn("Untested")
+    do_zero_caching(experiment.model)
+
+#%%
+
 for epoch in tqdm(range(epochs)):
     if not args.zero_ablation:
-        do_random_resample_caching(induction_model, all_task_things.validation_patch_data)
-    induction_model.train()
+        do_random_resample_caching(experiment.model, all_task_things.validation_patch_data)
+    tl_model.train()
     trainer.zero_grad()
-
-    specific_metric_term = all_task_things.validation_metric(induction_model(all_task_things.validation_data))
-    regularizer_term = regularizer(induction_model)
+    specific_metric_term = all_task_things.validation_metric(experiment.model(all_task_things.validation_data))
+    regularizer_term = experiment_regularizer(experiment)
     loss = specific_metric_term + regularizer_term * lambda_reg
     loss.backward()
-
     trainer.step()
 
-number_of_nodes, nodes_to_mask = visualize_mask(induction_model)
+number_of_nodes, nodes_to_mask = visualize_mask(experiment.model)
 wandb.log(
     {
         "regularisation_loss": regularizer_term.item(),
@@ -598,3 +621,5 @@ wandb.log(
         "total_loss": loss.item(),
     }
 )
+
+# %%

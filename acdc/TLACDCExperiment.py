@@ -186,8 +186,16 @@ class TLACDCExperiment:
             self.metrics_to_plot["times"] = []
             self.metrics_to_plot["times_diff"] = []
 
+    def get_mask_parameters(self) -> List[torch.nn.Parameter]:
+        assert self.edge_sp, "Doesn't make sense if we're not doing Edge SP"
+        mask_params = list(set([
+            edge.mask_score for _, edge in self.corr.all_edges().items()
+        ]))
+        return mask_params
+
+
     def verify_model_setup(self):
-        if "use_hook_mlp_in" in self.model.to_dict():
+        if "use_hook_mlp_in" in self.model.cfg.to_dict():
             assert self.model.cfg.use_hook_mlp_in, "Need to be able to see hook MLP inputs"
         assert self.model.cfg.use_attn_result, "Need to be able to see split by head outputs"
         
