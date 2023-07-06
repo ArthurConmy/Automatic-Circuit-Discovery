@@ -163,6 +163,7 @@ parser.add_argument('--torch-num-threads', type=int, default=0, help="How many t
 parser.add_argument('--seed', type=int, default=1234)
 parser.add_argument("--max-num-epochs",type=int, default=100_000)
 parser.add_argument('--single-step', action='store_true', help='Use single step, mostly for testing')
+parser.add_argument("--abs-value-threshold", action='store_true', help='Use the absolute value of the result to check threshold')
 
 if ipython is not None:
     # we are in a notebook
@@ -320,6 +321,7 @@ exp = TLACDCExperiment(
     wandb_mode=args.wandb_mode,
     wandb_config=args,
     zero_ablation=ZERO_ABLATION,
+    abs_value_threshold=args.abs_value_threshold,
     ds=toks_int_values,
     ref_ds=toks_int_values_other,
     metric=validation_metric,

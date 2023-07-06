@@ -64,7 +64,8 @@ class TLACDCExperiment:
         ] = "minimize",  # if this is set to "maximize" or "minimize", then the metric will be maximized or minimized, respectively instead of us trying to keep the metric roughly the same. We do KL divergence by default
         online_cache_cpu: bool = True,
         corrupted_cache_cpu: bool = True,
-        zero_ablation: bool = False, # use zero rather than 
+        zero_ablation: bool = False, # use zero rather than
+        abs_value_threshold: bool = False,
         show_full_index = False,
         using_wandb: bool = False,
         wandb_entity_name: str = "",
@@ -99,6 +100,7 @@ class TLACDCExperiment:
         self.model = model
         self.verify_model_setup()
         self.zero_ablation = zero_ablation
+        self.abs_value_threshold = abs_value_threshold
         self.verbose = verbose
         self.step_idx = 0
         self.hook_verbose = hook_verbose
@@ -597,6 +599,9 @@ class TLACDCExperiment:
 
                 if self.verbose:
                     print("Result is", result, end="")
+
+                if self.abs_value_threshold:
+                    result = abs(result)
 
                 if result < self.threshold:
                     if self.verbose:
