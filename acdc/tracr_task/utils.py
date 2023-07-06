@@ -94,6 +94,9 @@ def get_tracr_model_input_and_tl_model(task: Literal["reverse", "proportion"], d
         device=device,
     )
     tl_model = HookedTransformer(cfg)
+    if "use_hook_mlp_in" in tl_model.cfg.to_dict():
+        tl_model.set_use_hook_mlp_in(True)
+
     # Extract the state dict, and do some reshaping so that everything has a n_heads dimension
     sd = {}
     sd["pos_embed.W_pos"] = model.params["pos_embed"]['embeddings']
