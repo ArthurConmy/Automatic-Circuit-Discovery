@@ -98,7 +98,7 @@ class TLACDCCorrespondence:
         child.parents.remove(parent)        
 
     @classmethod
-    def setup_from_model(cls, model, use_pos_embed=False):
+    def setup_from_model(cls, model, use_pos_embed=False, use_split_qkv=True):
         correspondence = cls()
 
         downstream_residual_nodes: List[TLACDCInterpNode] = []
@@ -167,34 +167,51 @@ class TLACDCCorrespondence:
                         safe=False,
                     )
 
-                for letter in "qkv":
-                    hook_letter_name = f"blocks.{layer_idx}.attn.hook_{letter}"
-                    hook_letter_slice = TorchIndex([None, None, head_idx])
-                    hook_letter_node = TLACDCInterpNode(name=hook_letter_name, index=hook_letter_slice, incoming_edge_type=EdgeType.DIRECT_COMPUTATION)
-                    correspondence.add_node(hook_letter_node)
+                if use_split_qkv:
+                    for letter in "qkv":
+                        hook_letter_name = f"blocks.{layer_idx}.attn.hook_{letter}"
+                        hook_letter_slice = TorchIndex([None, None, head_idx])
+                        hook_letter_node = TLACDCInterpNode(name=hook_letter_name, index=hook_letter_slice, incoming_edge_type=EdgeType.DIRECT_COMPUTATION)
+                        correspondence.add_node(hook_letter_node)
 
-                    hook_letter_input_name = f"blocks.{layer_idx}.hook_{letter}_input"
-                    hook_letter_input_slice = TorchIndex([None, None, head_idx])
-                    hook_letter_input_node = TLACDCInterpNode(
-                        name=hook_letter_input_name, index=hook_letter_input_slice, incoming_edge_type=EdgeType.ADDITION
-                    )
-                    correspondence.add_node(hook_letter_input_node)
+                        hook_letter_input_name = f"blocks.{layer_idx}.hook_{letter}_input"
+                        hook_letter_input_slice = TorchIndex([None, None, head_idx])
+                        hook_letter_input_node = TLACDCInterpNode(
+                            name=hook_letter_input_name, index=hook_letter_input_slice, incoming_edge_type=EdgeType.ADDITION
+                        )
+                        correspondence.add_node(hook_letter_input_node)
+
+                        correspondence.add_edge(
+                            parent_node = hook_letter_node,
+                            child_node = cur_head,
+                            edge = Edge(edge_type=EdgeType.PLACEHOLDER),
+                            safe = False,
+                        )
+
+                        correspondence.add_edge(
+                            parent_node=hook_letter_input_node,
+                            child_node=hook_letter_node,
+                            edge=Edge(edge_type=EdgeType.DIRECT_COMPUTATION),
+                            safe=False,
+                        )
+
+                        new_downstream_residual_nodes.append(hook_letter_input_node)
+
+                else:
+                    hook_head_name = f"blocks.{layer_idx}.hook_attn_in"
+                    hook_letter_slice = TorchIndex([None, None, head_idx])
+                    hook_head_node = TLACDCInterpNode(name=hook_head_name, index=hook_letter_slice, incoming_edge_type=EdgeType.ADDITION)
+                    correspondence.add_node(hook_head_node)
 
                     correspondence.add_edge(
-                        parent_node = hook_letter_node,
+                        parent_node = hook_head_node,
                         child_node = cur_head,
                         edge = Edge(edge_type=EdgeType.PLACEHOLDER),
                         safe = False,
                     )
 
-                    correspondence.add_edge(
-                        parent_node=hook_letter_input_node,
-                        child_node=hook_letter_node,
-                        edge=Edge(edge_type=EdgeType.DIRECT_COMPUTATION),
-                        safe=False,
-                    )
+                    new_downstream_residual_nodes.append(hook_head_node)
 
-                    new_downstream_residual_nodes.append(hook_letter_input_node)
             downstream_residual_nodes.extend(new_downstream_residual_nodes)
 
         if use_pos_embed:

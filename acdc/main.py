@@ -166,23 +166,31 @@ parser.add_argument('--torch-num-threads', type=int, default=0, help="How many t
 parser.add_argument('--seed', type=int, default=1234)
 parser.add_argument("--max-num-epochs",type=int, default=100_000)
 parser.add_argument('--single-step', action='store_true', help='Use single step, mostly for testing')
+parser.add_argument("--dont-split-qkv", action="store_true", help="Dont splits qkv")
+parser.add_argument("--abs-value-threshold", action='store_true', help='Use the absolute value of the result to check threshold')
 
 if ipython is not None or True: # TODO delete
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
-        [line.strip() for line in r"""--task=induction\
---threshold=0.078\
+        [line.strip() for line in r"""--task=ioi\
+--threshold=0.0575\
+--metric=kl_div\
 --indices-mode=reverse\
 --metric=kl_div\
 --using-wandb\
 --first-cache-cpu=False\
 --second-cache-cpu=False\
---max-num-epochs=100000""".split("\\\n")]
-    )
+--max-num-epochs=100000\
+--dont-split-qkv\
+--using-wandb""".split("\\\n")]
+    ) # also 0.39811 # also on the main machine you just added two lines here.
+
 else:
     # read from command line
     args = parser.parse_args()
+
+print(args)
 
 # process args
 
@@ -219,6 +227,7 @@ NAMES_MODE = args.names_mode
 DEVICE = args.device
 RESET_NETWORK = args.reset_network
 SINGLE_STEP = True if args.single_step else False
+SPLIT_QKV = False if args.dont_split_qkv else True
 
 #%% [markdown] 
 # <h2>Setup Task</h2>
@@ -230,7 +239,7 @@ use_pos_embed = TASK.startswith("tracr")
 if TASK == "ioi":
     num_examples = 100
     things = get_all_ioi_things(
-        num_examples=num_examples, device=DEVICE, metric_name=args.metric
+        num_examples=num_examples, device=DEVICE, metric_name=args.metric, split_qkv=SPLIT_QKV,
     )
 elif TASK == "tracr-reverse":
     num_examples = 6
@@ -324,6 +333,7 @@ exp = TLACDCExperiment(
     wandb_mode=args.wandb_mode,
     wandb_config=args,
     zero_ablation=ZERO_ABLATION,
+    abs_value_threshold=args.abs_value_threshold,
     ds=toks_int_values,
     ref_ds=toks_int_values_other,
     metric=validation_metric,
@@ -339,26 +349,26 @@ exp = TLACDCExperiment(
     add_receiver_hooks=False,
     remove_redundant=False,
     show_full_index=use_pos_embed,
+    use_split_qkv=SPLIT_QKV,
 )
 
 # %% [markdown]
 # <h2>Run steps of ACDC: iterate over a NODE in the model's computational graph</h2>
 # <p>WARNING! This will take a few minutes to run, but there should be rolling nice pictures too : )</p>
-
 #%%
+
 for i in range(args.max_num_epochs):
     exp.step(testing=False)
 
+    # TODO add back
     show(
         exp.corr,
         f"ims/img_new_{i+1}.png",
         show_full_index=use_pos_embed,
     )
-
-    # TODO add back
-    # if IN_COLAB or ipython is not None:
+    if IN_COLAB or ipython is not None:
         # so long as we're not running this as a script, show the image!
-        # display(Image(f"ims/img_new_{i+1}.png"))
+        display(Image(f"ims/img_new_{i+1}.png"))
 
     print(i, "-" * 50)
     print(exp.count_no_edges())
@@ -391,4 +401,4 @@ exp.save_subgraph(
     return_it=True,
 ) 
 
-# %%
+#%% HELLO

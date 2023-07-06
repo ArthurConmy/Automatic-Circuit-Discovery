@@ -12,7 +12,7 @@ python = "^3.8"
 einops = "^0.6.0"
 numpy = [{ version = "^1.21", python = "<3.10" },
          { version = "^1.23", python = ">=3.10" }]
-torch = ">=1.10, <2.1"
+torch = ">=1.10, <2.0"
 datasets = "^2.7.1"
 transformers = "^4.25.1"
 tqdm = "^4.64.1"
@@ -23,7 +23,6 @@ huggingface-hub = "^0.15.1"
 cmapy = "^0.6.6"
 networkx = "^3.1"
 plotly = "^5.12.0"
-transformer-lens = {git = "https://github.com/neelnanda-io/TransformerLens.git", rev = "6983358"}
 kaleido = "0.2.1"
 pygraphviz = "^1.11"
 tracr = {git = "https://github.com/deepmind/tracr.git", rev = "e75ecda"}

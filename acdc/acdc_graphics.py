@@ -6,7 +6,7 @@ import torch
 import numpy as np
 import huggingface_hub
 import datetime
-from typing import Dict
+from typing import Dict, Union
 import wandb
 import plotly.graph_objects as go
 import torch
@@ -61,8 +61,8 @@ def get_node_name(node: TLACDCInterpNode, show_full_index=True):
                 relevant_letter = letter
         name += "a" + node.name.split(".")[1] + "." + str(node.index.hashable_tuple[2]) + "_" + relevant_letter
 
-    # Handle attention hook_result
-    elif "hook_result" in node.name or any([qkv_substring in node.name for qkv_substring in qkv_substrings]):
+    # Handle attention hook_result or attn_in thing
+    elif "hook_result" in node.name or any([qkv_substring in node.name for qkv_substring in qkv_substrings]) or node.name.endswith("attn_in"):
         name = "a" + node.name.split(".")[1] + "." + str(node.index.hashable_tuple[2])
 
     # Handle MLPs
@@ -76,7 +76,8 @@ def get_node_name(node: TLACDCInterpNode, show_full_index=True):
         name += "resid_post"
 
     else:
-        raise ValueError(f"Unrecognized node name {node.name}")
+        # TODO add a warning here? Names may be cursed
+        name = node.name
 
     if show_full_index:
         name += f"_{str(node.index.graphviz_index())}"
@@ -93,11 +94,12 @@ def build_colorscheme(correspondence, colorscheme: str = "Pastel2", show_full_in
 def show(
     correspondence: TLACDCCorrespondence,
     fname=None,
-    colorscheme: dict | str = "Pastel2",
+    colorscheme: Union[dict, str] = "Pastel2",
     minimum_penwidth: float = 0.3,
     show_full_index: bool = True,
     remove_self_loops: bool = True,
     remove_qkv: bool = False,
+    show_effect_size_none: bool = False,
 ) -> pgv.AGraph:
     """
     Colorscheme: a color for each node name, or a string corresponding to a cmapy color scheme
@@ -132,7 +134,7 @@ def show(
                         # Important this go after the qkv removal
                         continue
 
-                    if edge.present and edge.effect_size is not None and edge.edge_type != EdgeType.PLACEHOLDER:
+                    if edge.present and (show_effect_size_none or edge.effect_size is not None) and edge.edge_type != EdgeType.PLACEHOLDER:
                         for node_name in [parent_name, child_name]:
                             g.add_node(
                                 node_name,
@@ -142,10 +144,11 @@ def show(
                                 fontname="Helvetica"
                             )
                         
+                        cur_effect_size = edge.effect_size if edge.effect_size is not None else 0
                         g.add_edge(
                             parent_name,
                             child_name,
-                            penwidth=str(max(minimum_penwidth, edge.effect_size)),
+                            penwidth=str(max(minimum_penwidth, cur_effect_size)),
                             color=colors[parent_name],
                         )
 
