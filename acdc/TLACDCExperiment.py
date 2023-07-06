@@ -183,7 +183,7 @@ class TLACDCExperiment:
             self.metrics_to_plot["times_diff"] = []
 
     def verify_model_setup(self):
-        if "use_hook_mlp_in" in self.model.cfg.to_dict():
+        if not self.model.cfg.attn_only and "use_hook_mlp_in" in self.model.cfg.to_dict():
             assert self.model.cfg.use_hook_mlp_in, "Need to be able to see hook MLP inputs"
         assert self.model.cfg.use_attn_result, "Need to be able to see split by head outputs"
         assert self.model.cfg.use_split_qkv_input, "Need to be able to see split by head QKV inputs"
