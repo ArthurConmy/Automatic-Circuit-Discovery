@@ -351,38 +351,20 @@ exp = TLACDCExperiment(
 # %% [markdown]
 # <h2>Run steps of ACDC: iterate over a NODE in the model's computational graph</h2>
 # <p>WARNING! This will take a few minutes to run, but there should be rolling nice pictures too : )</p>
-
-#%%
-
-import pickle
-with open("../another_final_edges.pkl", "rb") as f:
-    edges = pickle.load(f)
-subgraph = {
-    (e[0][0], e[0][1].hashable_tuple, e[0][2], e[0][3].hashable_tuple): True for e in edges
-}
-
-#%%
-
-exp.load_subgraph(subgraph)
-
-#%%
-
-show(exp.corr, "my_img.png", remove_self_loops=False, show_full_index=False, show_effect_size_none=True)
-
 #%%
 
 for i in range(args.max_num_epochs):
     exp.step(testing=False)
 
     # TODO add back
-    # show(
-    #     exp.corr,
-    #     f"ims/img_new_{i+1}.png",
-    #     show_full_index=use_pos_embed,
-    # )
-    # if IN_COLAB or ipython is not None:
-    #     # so long as we're not running this as a script, show the image!
-    #     display(Image(f"ims/img_new_{i+1}.png"))
+    show(
+        exp.corr,
+        f"ims/img_new_{i+1}.png",
+        show_full_index=use_pos_embed,
+    )
+    if IN_COLAB or ipython is not None:
+        # so long as we're not running this as a script, show the image!
+        display(Image(f"ims/img_new_{i+1}.png"))
 
     print(i, "-" * 50)
     print(exp.count_no_edges())
