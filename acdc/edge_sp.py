@@ -126,3 +126,29 @@ experiment = TLACDCExperiment(
 
 #%%
 
+experiment.model.reset_hooks()
+experiment.setup_model_hooks(
+    add_sender_hooks=True,
+    add_receiver_hooks=True,
+    doing_acdc_runs=False,
+)
+
+# %%
+
+def regularizer(
+    exp: TLACDCExperiment,
+    gamma: float = -0.1,
+    zeta: float = 1.1,
+    beta: float = 2 / 3,
+):
+    def regularization_term(mask: torch.nn.Parameter) -> torch.Tensor:
+        return torch.sigmoid(mask - beta * np.log(-gamma / zeta)).mean()
+
+    relevant_masks = list(set(
+        [e.mask] for _, e in exp.all_edges()
+    ))
+
+    return torch.mean(torch.stack(relevant_masks))
+
+#%%
+

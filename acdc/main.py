@@ -146,7 +146,7 @@ parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only tas
 
 task_choices = ['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan']
 parser.add_argument('--task', type=str, required=True, choices=task_choices, help=f'Choose a task from the available options: {task_choices}')
-parser.add_argument('--threshold', type=float, required=True, help='Value for THRESHOLD')
+parser.add_argument('--threshold', type=float, required=True, help='Value for THRESHOLD') # also use this for the regularization parameter in SP???
 parser.add_argument('--first-cache-cpu', type=str, required=False, default="True", help='Value for FIRST_CACHE_CPU (the old name for the `online_cache`)')
 parser.add_argument('--second-cache-cpu', type=str, required=False, default="True", help='Value for SECOND_CACHE_CPU (the old name for the `corrupted_cache`)')
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
@@ -169,12 +169,12 @@ parser.add_argument('--single-step', action='store_true', help='Use single step,
 parser.add_argument("--dont-split-qkv", action="store_true", help="Dont splits qkv")
 parser.add_argument("--abs-value-threshold", action='store_true', help='Use the absolute value of the result to check threshold')
 
-if ipython is not None or True: # TODO delete
+if ipython is not None:
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
-        [line.strip() for line in r"""--task=ioi\
---threshold=0.0575\
+        [line.strip() for line in r"""--task=induction\
+--threshold=1.0\
 --metric=kl_div\
 --indices-mode=reverse\
 --metric=kl_div\
@@ -182,15 +182,12 @@ if ipython is not None or True: # TODO delete
 --first-cache-cpu=False\
 --second-cache-cpu=False\
 --max-num-epochs=100000\
---dont-split-qkv\
 --using-wandb""".split("\\\n")]
     ) # also 0.39811 # also on the main machine you just added two lines here.
 
 else:
     # read from command line
     args = parser.parse_args()
-
-print(args)
 
 # process args
 

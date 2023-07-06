@@ -1,13 +1,24 @@
-# import os
+#%%
 
-# os.chdir("/home/ubuntu/mlab2_https/mlab2/")
+from IPython import get_ipython
+
+ipython = get_ipython()
+if ipython is not None:
+    print("Running as a notebook")
+    ipython.run_line_magic("load_ext", "autoreload")  # type: ignore
+    ipython.run_line_magic("autoreload", "2")  # type: ignore
+else:
+    print("Running as a script")
+
+#%%
 
 import argparse
 import random
 from copy import deepcopy
 from functools import partial
+import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Union, Dict, List, Tuple
 import collections
 from acdc.greaterthan.utils import get_all_greaterthan_things
 from acdc.ioi.utils import get_all_ioi_things
@@ -32,14 +43,16 @@ from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from acdc.TLACDCInterpNode import TLACDCInterpNode
 from acdc.induction.utils import get_all_induction_things, get_mask_repeat_candidates
 from tqdm import tqdm
-from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformer import HookedTransformer
-from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformerConfig import HookedTransformerConfig
+from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformer import HookedTransformer as SPHookedTransformer
+from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformerConfig import HookedTransformerConfig as SPHookedTransformerConfig
+from transformer_lens.HookedTransformer import HookedTransformer
+from transformer_lens.HookedTransformerConfig import HookedTransformerConfig
 from subnetwork_probing.transformer_lens.transformer_lens.ioi_dataset import IOIDataset
 
 import wandb
 
 
-def iterative_correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACDCInterpNode],
+def iterative_correspondence_from_mask(model: Union[HookedTransformer, SPHookedTransformer], nodes_to_mask: list[TLACDCInterpNode],
                                        use_pos_embed: bool = False,newv = False, corr: TLACDCCorrespondence = None,
                                        head_parents = None) -> TLACDCCorrespondence:
     if corr is None:
@@ -143,7 +156,7 @@ def visualize_mask(model: HookedTransformer) -> tuple[int, list[TLACDCInterpNode
 
 
 def regularizer(
-    model: HookedTransformer,
+    model: SPHookedTransformer,
     gamma: float = -0.1,
     zeta: float = 1.1,
     beta: float = 2 / 3,
@@ -163,7 +176,7 @@ def regularizer(
 
 
 def do_random_resample_caching(
-    model: HookedTransformer, train_data: torch.Tensor
+    model: SPHookedTransformer, train_data: torch.Tensor
 ) -> torch.Tensor:
     for layer in model.blocks:
         layer.attn.hook_q.is_caching = True
@@ -182,7 +195,7 @@ def do_random_resample_caching(
 
     return outs
 
-def do_zero_caching(model: HookedTransformer) -> None:
+def do_zero_caching(model: SPHookedTransformer) -> None:
     for layer in model.blocks:
         layer.attn.hook_q.cache = None
         layer.attn.hook_k.cache = None
@@ -191,7 +204,7 @@ def do_zero_caching(model: HookedTransformer) -> None:
 
 
 def train_induction(
-    args, induction_model: HookedTransformer, all_task_things: AllDataThings,
+    args, induction_model: SPHookedTransformer, all_task_things: AllDataThings,
 ):
     epochs = args.epochs
     lambda_reg = args.lambda_reg
@@ -238,7 +251,7 @@ def train_induction(
 
     if args.zero_ablation:
         do_zero_caching(induction_model)
-    for epoch in tqdm(range(epochs)):  # tqdm.notebook.tqdm(range(epochs)):
+    for epoch in tqdm(range(epochs)):
         if not args.zero_ablation:
             do_random_resample_caching(induction_model, all_task_things.validation_patch_data)
         induction_model.train()
@@ -307,7 +320,7 @@ def train_induction(
 def sanity_check_with_transformer_lens(mask_dict):
     ioi_dataset = IOIDataset(prompt_type="ABBA", N=N, nb_templates=1)
     train_data = ioi_dataset.toks.long()
-    model = HookedTransformer.from_pretrained(is_masked=False, model_name="model")
+    model = SPHookedTransformer.from_pretrained(is_masked=False, model_name="model")
     model.freeze_weights()
     logits = model(train_data)
     logit_diff = logit_diff_from_ioi_dataset(logits, train_data, mean=True)
@@ -358,7 +371,7 @@ def log_percentage_binary(mask_val_dict: Dict) -> float:
     return binary_count / total_count
 
 
-def get_nodes_mask_dict(model: HookedTransformer):
+def get_nodes_mask_dict(model: SPHookedTransformer):
     number_of_heads = model.cfg.n_heads
     number_of_layers = model.cfg.n_layers
     mask_value_dict = {}
@@ -381,6 +394,7 @@ def get_nodes_mask_dict(model: HookedTransformer):
                 mask_value_dict[f"{layer_index}.{head_index}.{q_k_v}"] = mask_value
     return mask_value_dict
 
+#%%
 
 parser = argparse.ArgumentParser("train_induction")
 parser.add_argument("--wandb-name", type=str, required=True)
@@ -398,56 +412,35 @@ parser.add_argument("--lambda-reg", type=float, default=100)
 parser.add_argument("--zero-ablation", type=int, required=True)
 parser.add_argument("--reset-subject", type=int, default=0)
 parser.add_argument("--seed", type=int, default=random.randint(0, 2 ** 31 - 1), help="Random seed (default: random)")
-parser.add_argument("--num-examples", type=int, default=50)
+parser.add_argument("--num-examples", type=int, default=10)
 parser.add_argument("--seq-len", type=int, default=300)
 parser.add_argument("--n-loss-average-runs", type=int, default=20)
 parser.add_argument("--task", type=str, required=True)
 parser.add_argument('--torch-num-threads', type=int, default=0, help="How many threads to use for torch (0=all)")
+parser.add_argument('--edge-sp', type=int, default=0)
 
-def get_transformer_config():
-    cfg = HookedTransformerConfig(
-        n_layers=2,
-        d_model=256,
-        n_ctx=2048,  # chekc pos embed size
-        n_heads=8,
-        d_head=32,
-        # model_name : str = "custom"
-        # d_mlp: Optional[int] = None
-        # act_fn: Optional[str] = None
-        d_vocab=50259,
-        # eps: float = 1e-5
-        use_attn_result=True,
-        use_attn_scale=True,  # divide by sqrt(d_head)
-        # use_local_attn: bool = False
-        # original_architecture: Optional[str] = None
-        # from_checkpoint: bool = False
-        # checkpoint_index: Optional[int] = None
-        # checkpoint_label_type: Optional[str] = None
-        # checkpoint_value: Optional[int] = None
-        # tokenizer_name: Optional[str] = None
-        # window_size: Optional[int] = None
-        # attn_types: Optional[List] = None
-        # init_mode: str = "gpt2"
-        # normalization_type: Optional[str] = "LN"
-        # device: Optional[str] = None
-        # attention_dir: str = "causal"
-        attn_only=True,
-        # seed: Optional[int] = None
-        # initializer_range: float = -1.0
-        # init_weights: bool = True
-        # scale_attn_by_inverse_layer_idx: bool = False
-        positional_embedding_type="shortformer",
-        # final_rms: bool = False
-        # d_vocab_out: int = -1
-        # parallel_attn_mlp: bool = False
-        # rotary_dim: Optional[int] = None
-        # n_params: Optional[int] = None
-        # use_hook_tokens: bool = False
-    )
-    return cfg
+#%%
 
 if __name__ == "__main__":
-    args = parser.parse_args()
+    if ipython is not None:
+        # we are in a notebook
+        # you can put the command you would like to run as the ... in r"""..."""
+        args = parser.parse_args(
+            [line.strip() for line in r"""--task=induction\
+    --lambda-reg=100.0\
+    --zero-ablation=0\
+    --wandb-name=my_edge_runs\
+    --wandb-project=edgesp\
+    --wandb-group=edgespgroupone\
+    --wandb-entity=remix_school-of-rock\
+    --wandb-mode=offline\
+    --loss-type=kl_div\
+    --edge-sp=1""".split("\\\n")]
+        ) # also 0.39811 # also on the main machine you just added two lines here.
+
+    else:
+        # read from command line
+        args = parser.parse_args()
 
     if args.torch_num_threads > 0:
         torch.set_num_threads(args.torch_num_threads)
@@ -500,8 +493,8 @@ if __name__ == "__main__":
         if kwarg_string in kwargs:
             del kwargs[kwarg_string]
 
-    cfg = HookedTransformerConfig(**kwargs)
-    model = HookedTransformer(cfg, is_masked=True)
+    cfg = SPHookedTransformerConfig(**kwargs)
+    model = SPHookedTransformer(cfg, is_masked=True)
 
     _acdc_model = all_task_things.tl_model
     model.load_state_dict(_acdc_model.state_dict(), strict=False)
@@ -518,6 +511,10 @@ if __name__ == "__main__":
 
     model.freeze_weights()
     print("Finding subnetwork...")
+
+#%%
+
+if __name__ == "__main__" and not args.edge_sp:
     model, to_log_dict = train_induction(
         args=args,
         induction_model=model,
@@ -536,3 +533,66 @@ if __name__ == "__main__":
     wandb.log(to_log_dict)
     # sanity_check_with_transformer_lens(mask_val_dict)
     wandb.finish()
+    sys.exit(0)
+
+# %%
+
+if __name__ != "__main__":
+    raise Exception("Arthur was using this notebook for play, please delete lines of the trian.py below here to use the functions!")
+
+# %%
+
+epochs = args.epochs
+lambda_reg = args.lambda_reg
+
+torch.manual_seed(args.seed)
+
+wandb.init(
+    name=args.wandb_name,
+    project=args.wandb_project,
+    entity=args.wandb_entity,
+    group=args.wandb_group,
+    config=args,
+    dir=args.wandb_dir,
+    mode=args.wandb_mode,
+)
+test_metric_fns = all_task_things.test_metrics
+
+# one parameter per thing that is masked
+mask_params = list(set([
+    p
+    for n, p in model.named_parameters()
+    if "mask_scores" in n and p.requires_grad
+]))
+# parameters for the probe (we don't use a probe)
+model_params = [
+    p
+    for n, p in model.named_parameters()
+    if "mask_scores" not in n and p.requires_grad
+]
+assert len(model_params) == 0, ("MODEL should be empty", model_params)
+trainer = torch.optim.Adam(mask_params, lr=args.lr)
+
+if args.zero_ablation:
+    do_zero_caching(induction_model)
+for epoch in tqdm(range(epochs)):
+    if not args.zero_ablation:
+        do_random_resample_caching(induction_model, all_task_things.validation_patch_data)
+    induction_model.train()
+    trainer.zero_grad()
+
+    specific_metric_term = all_task_things.validation_metric(induction_model(all_task_things.validation_data))
+    regularizer_term = regularizer(induction_model)
+    loss = specific_metric_term + regularizer_term * lambda_reg
+    loss.backward()
+
+    trainer.step()
+
+number_of_nodes, nodes_to_mask = visualize_mask(induction_model)
+wandb.log(
+    {
+        "regularisation_loss": regularizer_term.item(),
+        "specific_metric_loss": specific_metric_term.item(),
+        "total_loss": loss.item(),
+    }
+)

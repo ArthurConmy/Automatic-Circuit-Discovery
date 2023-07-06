@@ -364,6 +364,10 @@ class TLACDCExperiment:
                         else:
                             if not edge.sampled:
                                 edge.sample_mask()
+                                for (child_name, child_index, parent_name, parent_index), other_edge in self.corr.all_edges():
+                                    if parent_name == sender_node_name and parent_index == sender_node_index: # initially as a test we are going to reproduce the normal SP (node SP) results
+                                        other_edge.sampled = True
+                                        other_edge.mask = edge.mask
 
                             # Add some effect of the new head (from the current forward pass) mediated by the mask
                             hook_point_input[receiver_node_index.as_index] += edge.mask_score * self.global_cache.online_cache[
