@@ -173,11 +173,10 @@ if ipython is not None:
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
-        [line.strip() for line in r"""--task=induction\
+        [line.strip() for line in r"""--task=tracr-reverse\
 --threshold=1.0\
---metric=kl_div\
+--metric=l2\
 --indices-mode=reverse\
---metric=kl_div\
 --using-wandb\
 --first-cache-cpu=False\
 --second-cache-cpu=False\
@@ -230,6 +229,7 @@ SPLIT_QKV = False if args.dont_split_qkv else True
 # <h2>Setup Task</h2>
 
 #%%
+
 second_metric = None  # some tasks only have one metric
 use_pos_embed = TASK.startswith("tracr")
 
