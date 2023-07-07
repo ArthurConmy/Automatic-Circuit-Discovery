@@ -94,7 +94,7 @@ def build_colorscheme(correspondence, colorscheme: str = "Pastel2", show_full_in
 def show(
     correspondence: TLACDCCorrespondence,
     fname=None,
-    colorscheme: Union[dict, str] = "Pastel2",
+    colorscheme: Union[Dict, str] = "Pastel2",
     minimum_penwidth: float = 0.3,
     show_full_index: bool = True,
     remove_self_loops: bool = True,

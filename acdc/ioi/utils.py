@@ -33,6 +33,8 @@ def get_gpt2_small(device="cuda", split_qkv: bool = True) -> HookedTransformer:
             tl_model.set_use_attn_in(True) # TODO add this to all get_all_things
         except AttributeError as e:
             raise Exception("You need to be using the `use_attn_in` version of the TransformerLens library, available here: https://github.com/ArthurConmy/TransformerLens/tree/arthur-add-attn-in . Alternatively, hopefully this is merged into Neel's main branch by the time you read this!")
+    if "use_hook_mlp_in" in tl_model.cfg.to_dict():
+        tl_model.set_use_hook_mlp_in(True)
     return tl_model
 
 def get_ioi_gpt2_small(device="cuda", split_qkv: bool = True):
