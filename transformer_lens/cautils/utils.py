@@ -113,3 +113,7 @@ NEG_HEADS = { # intended usage: `layer_idx, head_idx = NEG_HEADS[model.cfg.model
     "SoLU_10L1280W_C4_Code": (9, 18),
     "gpt2": (10, 7),
 }
+
+def normalize(tens):
+    assert len(list(tens.shape)) == 1
+    return tens / tens.norm()

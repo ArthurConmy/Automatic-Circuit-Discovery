@@ -39,8 +39,9 @@ NEGATIVE_HEAD_IDX, NEGATIVE_LAYER_IDX = 10, 7
 # for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in [(10, 0), (10, 7), (9, 9), (11, 10)] + list(itertools.product(range(11, -1, -1), range(12))):
 
 END_STATE_HOOK = f"blocks.{model.cfg.n_layers-1}.hook_resid_post"
-warnings.warn("Changed to scores for a diff comparison")
-attention_pattern_hook_name = get_act_name("attn_scores", NEGATIVE_LAYER_IDX)
+# warnings.warn("Changed to scores for a diff comparison")
+# attention_pattern_hook_name = get_act_name("attn_scores", NEGATIVE_LAYER_IDX)
+attention_pattern_hook_name = get_act_name("pattern", NEGATIVE_LAYER_IDX)
 names_filter1 = (
     lambda name: name == END_STATE_HOOK
     or name==get_act_name("resid_pre", 1)
@@ -125,8 +126,8 @@ max_importance_examples = sorted(
 all_top_5_percent = max_importance_examples[: len(max_importance_examples)//20]
 
 np.random.seed(799)
-# warnings.warn("No shuffle!!!")
-np.random.shuffle(all_top_5_percent)
+warnings.warn("No shuffle!!!")
+# np.random.shuffle(all_top_5_percent)
 top_5_percent = all_top_5_percent[: BATCH_SIZE]
 
 top5p_batch_indices = [x[0] for x in top_5_percent]
@@ -185,7 +186,7 @@ keyside_orthogonals = t.zeros((BATCH_SIZE, model.cfg.n_ctx, model.cfg.d_model))
 
 for batch_idx, seq_idx in tqdm(list(itertools.product(range(BATCH_SIZE), range(model.cfg.n_ctx)))):
     keyside_vector, keyside_orthogonal = project(
-        cache[get_act_name("resid_pre", NEGATIVE_LAYER_IDX)][batch_idx, seq_idx],
+        normalize(cache[get_act_name("resid_pre", NEGATIVE_LAYER_IDX)][batch_idx, seq_idx]) * np.sqrt(model.cfg.d_model), # simulate LN
         cache[get_act_name("resid_pre", 1)][batch_idx, seq_idx],
     )
     keyside_projections[batch_idx, seq_idx] = keyside_vector
@@ -217,9 +218,10 @@ for batch_batch_idx, batch_idx in enumerate(top5p_batch_indices):
 #%%
 
 model.set_use_split_qkv_input(True)
+model.set_use_split_qkv_normalized_input(True)
 model.reset_hooks()
 model.add_hook(
-    get_act_name("k_input", NEGATIVE_LAYER_IDX),
+    get_act_name("k_normalized_input", NEGATIVE_LAYER_IDX),
     partial(set_to_value, head_idx=NEGATIVE_HEAD_IDX, new_value=new_k_input.to("cuda")),
     level=1,
 )
