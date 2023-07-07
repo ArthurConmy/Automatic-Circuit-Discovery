@@ -20,7 +20,10 @@ import itertools
 from torch.utils.data import Dataset, DataLoader
 from torch.distributions.categorical import Categorical
 import torch.nn.functional as F
-from tqdm.auto import tqdm
+if str(__file__).startswith("/code"): # Hofvarpnir seems annoying...
+    from tqdm import tqdm
+else:
+    from tqdm.auto import tqdm
 from rich import print as rprint
 from rich.table import Table, Column
 from collections import defaultdict

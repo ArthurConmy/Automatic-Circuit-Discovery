@@ -1,3 +1,4 @@
+import warnings
 import os
 import torch as t
 from typing import List, Optional, Callable, Tuple, Dict, Literal, Set, Union
@@ -26,8 +27,10 @@ MODEBAR_ADD = ['drawline', 'drawopenpath', 'drawclosedpath', 'drawcircle', 'draw
 
 
 def imshow(tensor, renderer=None, **kwargs):
-    if "x" in kwargs: assert len(kwargs["x"]) == len(set(kwargs["x"]))
-    if "y" in kwargs: assert len(kwargs["y"]) == len(set(kwargs["y"]))
+    for label_letter in ["x", "y"]:
+        if "x" in kwargs and len(kwargs[label_letter]) != len(set(kwargs[label_letter])):
+            warnings.warn(f"Overriding {label_letter} labels to be unique, in form 0_<original_label>, 1_<original_label>, etc.")
+            kwargs[label_letter] = [f"{i}_{elem}" for i, elem in enumerate(kwargs[label_letter])]
     kwargs_post = {k: v for k, v in kwargs.items() if k in UPDATE_LAYOUT_SET}
     kwargs_pre = {k: v for k, v in kwargs.items() if k not in UPDATE_LAYOUT_SET}
     draw = kwargs_pre.pop("draw", True)
