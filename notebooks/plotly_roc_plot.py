@@ -8,7 +8,7 @@ from IPython import get_ipython
 from pathlib import Path
 from notebooks.emacs_plotly_render import set_plotly_renderer
 
-IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root") and not "aconmy" in __file__
+IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root") and not "aconmy" in __file__ and not ("HOSTNAME" in os.environ and "aconmy" in str(os.environ["HOSTNAME"]))
 
 ipython = get_ipython()
 if ipython is not None:
@@ -49,7 +49,7 @@ parser.add_argument("--percentage-annotation", action="store_true", help="Show p
 parser.add_argument("--min-score", type=float, default=1e-6, help="minimum score cutoff for ACDC runs")
 
 if get_ipython() is not None:
-    args = parser.parse_args([])
+    args = parser.parse_args(["--hisp-yellow", "--percentage-annotation", "--arrows"])
 else:
     args = parser.parse_args()
 
