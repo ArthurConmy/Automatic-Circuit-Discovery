@@ -60,6 +60,10 @@ def get_docstring_model(device="cuda"):
     )
     tl_model.set_use_attn_result(True)
     tl_model.set_use_split_qkv_input(True)
+    try:
+        tl_model.set_use_attn_in(True)
+    except AttributeError as e:
+        raise Exception("You need to be using the `use_attn_in` version of the TransformerLens library, available here: https://github.com/ArthurConmy/TransformerLens/tree/arthur-add-attn-in . Alternatively, hopefully this is merged into Neel's main branch by the time you read this!")
     if "use_hook_mlp_in" in tl_model.cfg.to_dict(): # not strictly necessary, but good practice to keep compatibility with new *optional* transformerlens feature
         tl_model.set_use_hook_mlp_in(True)
     tl_model.to(device)

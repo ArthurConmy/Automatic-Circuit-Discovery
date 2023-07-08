@@ -171,8 +171,8 @@ if ipython is not None:
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
-        [line.strip() for line in r"""--task=ioi\
---threshold=0.0575\
+        [line.strip() for line in r"""--task=induction\
+--threshold=0.0175\
 --metric=kl_div\
 --indices-mode=reverse\
 --first-cache-cpu=False\
