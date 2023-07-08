@@ -122,7 +122,10 @@ def visualize_mask(model: HookedTransformer) -> tuple[int, list[TLACDCInterpNode
                 if mask_sample < 0.5:
                     nodes_to_mask.append(node)
 
-        # MLP
+        # MLPs
+        # This is actually fairly wrong for getting the exact nodes and edges we keep in the circuit but in the `filter_nodes` function 
+        # used in post-processing (in roc_plot_generator.py we process hook_resid_mid/mlp_in and mlp_out hooks together properly) we iron
+        # these errors so that plots are correct
         for node_name, edge_type in [
             (f"blocks.{layer_index}.hook_mlp_out", EdgeType.PLACEHOLDER),
             (f"blocks.{layer_index}.hook_resid_mid", EdgeType.ADDITION),
