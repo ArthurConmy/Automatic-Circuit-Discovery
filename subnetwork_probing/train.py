@@ -156,6 +156,14 @@ def visualize_mask(model: HookedTransformer) -> tuple[int, list[TLACDCInterpNode
     return node_count, nodes_to_mask
 
 
+def experiment_visualize_mask(
+    exp: TLACDCExperiment,
+) -> Tuple[int, list[TLACDCInterpNode]]:
+    """The same as visualize_mask, but for experiments (used for EdgeSP).
+    WARNING: we visualize scores since that seems more principled..."""
+
+    raise NotImplementedError("TODO: implement this for EdgeSP")
+
 def regularizer(
     model: SPHookedTransformer,
     gamma: float = -0.1,
@@ -442,13 +450,13 @@ if __name__ == "__main__":
         # you can put the command you would like to run as the ... in r"""..."""
         args = parser.parse_args(
             [line.strip() for line in r"""--task=induction\
-    --lambda-reg=100.0\
+    --lambda-reg=5.0\
     --zero-ablation=0\
     --wandb-name=my_edge_runs\
     --wandb-project=edgesp\
     --wandb-group=edgespgroupone\
     --wandb-entity=remix_school-of-rock\
-    --wandb-mode=offline\
+    --wandb-mode=online\
     --loss-type=kl_div\
     --edge-sp=1""".split("\\\n")]
         ) # also 0.39811 # also on the main machine you just added two lines here.
@@ -602,24 +610,29 @@ if args.zero_ablation:
 
 #%%
 
-for epoch in tqdm(range(epochs)):
+epoch_range = list(range(epochs))
+
+for epoch in tqdm(epoch_range):
     if not args.zero_ablation:
         do_random_resample_caching(experiment.model, all_task_things.validation_patch_data)
     tl_model.train()
     trainer.zero_grad()
+    for edge in experiment.corr.all_edges().values():
+        edge.sampled = False # so we resample : )
     specific_metric_term = all_task_things.validation_metric(experiment.model(all_task_things.validation_data))
     regularizer_term = experiment_regularizer(experiment)
     loss = specific_metric_term + regularizer_term * lambda_reg
     loss.backward()
     trainer.step()
 
-number_of_nodes, nodes_to_mask = visualize_mask(experiment.model)
-wandb.log(
-    {
-        "regularisation_loss": regularizer_term.item(),
-        "specific_metric_loss": specific_metric_term.item(),
-        "total_loss": loss.item(),
-    }
-)
+    if args.edge_sp or epoch == epoch_range[-1]: # for some reason our code 
+        number_of_nodes, nodes_to_mask = visualize_mask(experiment.model) if not edge.sp else visualize_mask_experiment(experiment)
+        wandb.log(
+            {
+                "regularisation_loss": regularizer_term.item(),
+                "specific_metric_loss": specific_metric_term.item(),
+                "total_loss": loss.item(),
+            }
+        )
 
 # %%
