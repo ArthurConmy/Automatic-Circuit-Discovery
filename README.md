@@ -1,5 +1,3 @@
-:warning: This codebase is still under construction :warning:
-
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue)]() [![Open Pull Requests](https://img.shields.io/github/issues-pr/ArthurConmy/Automatic-Circuit-Discovery.svg)](https://github.com/ArthurConmy/Automatic-Circuit-Discovery/pulls)
 
 # Automated Circuit DisCovery 
@@ -106,9 +104,9 @@ If you use ACDC, please reach out! You can reference the work as follows:
 
 [ ] Make notebook on abstractions
 
-[ ] Fix huge edge sizes in Induction Main example and change that occurred
+[ ? ] Fix huge edge sizes in Induction Main example and change that occurred
 
-[ ] Find a better way to deal with the versioning on the Colabs installs...
+[ x ] Find a better way to deal with the versioning on the Colabs installs...
 
 [ ] Neuron-level experiments
 
@@ -116,8 +114,8 @@ If you use ACDC, please reach out! You can reference the work as follows:
 
 [ x ] `tracr` and other dependencies better managed
 
-[ ] Make SP tests work (lots outdated so skipped) - and check SubnetworkProbing installs properly (no __init__.pys !!!)
+[ ? ] Make SP tests work (lots outdated so skipped) - and check SubnetworkProbing installs properly (no __init__.pys !!!)
 
-[ ] Make the 9 tests also failing on TransformerLens-main pass
+[ ? ] Make the 9 tests also failing on TransformerLens-main pass
 
-[ ] Remove Codebase under construction
+[ x ] Remove Codebase under construction
