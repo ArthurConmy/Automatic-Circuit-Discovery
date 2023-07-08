@@ -14,6 +14,7 @@ else:
 
 import argparse
 import random
+from collections import defaultdict
 from copy import deepcopy
 import warnings
 from functools import partial
@@ -51,6 +52,12 @@ from transformer_lens.HookedTransformer import HookedTransformer
 from transformer_lens.HookedTransformerConfig import HookedTransformerConfig
 from subnetwork_probing.transformer_lens.transformer_lens.ioi_dataset import IOIDataset
 import wandb
+from subnetwork_probing.utils_train import (
+    experiment_visualize_mask,
+    visualize_mask,
+    get_nodes_mask_dict,
+    log_plotly_bar_chart,
+)
 torch.set_grad_enabled(True)
 
 def iterative_correspondence_from_mask(model: Union[HookedTransformer, SPHookedTransformer], nodes_to_mask: list[TLACDCInterpNode],
@@ -96,78 +103,6 @@ def iterative_correspondence_from_mask(model: Union[HookedTransformer, SPHookedT
                 except KeyError:
                     pass
     return corr, head_parents
-
-
-def log_plotly_bar_chart(x: List[str], y: List[float]) -> None:
-    import plotly.graph_objects as go
-
-    fig = go.Figure(data=[go.Bar(x=x, y=y)])
-    wandb.log({"mask_scores": fig})
-
-
-def visualize_mask(model: HookedTransformer) -> tuple[int, list[TLACDCInterpNode]]:
-    number_of_heads = model.cfg.n_heads
-    number_of_layers = model.cfg.n_layers
-    node_name_list = []
-    mask_scores_for_names = []
-    total_nodes = 0
-    nodes_to_mask: list[TLACDCInterpNode] = []
-    for layer_index, layer in enumerate(model.blocks):
-        for head_index in range(number_of_heads):
-            for q_k_v in ["q", "k", "v"]:
-                total_nodes += 1
-                if q_k_v == "q":
-                    mask_sample = (
-                        layer.attn.hook_q.sample_mask()[head_index].cpu().item()
-                    )
-                elif q_k_v == "k":
-                    mask_sample = (
-                        layer.attn.hook_k.sample_mask()[head_index].cpu().item()
-                    )
-                elif q_k_v == "v":
-                    mask_sample = (
-                        layer.attn.hook_v.sample_mask()[head_index].cpu().item()
-                    )
-                else:
-                    raise ValueError(f"{q_k_v=} must be q, k, or v")
-
-                node_name = f"blocks.{layer_index}.attn.hook_{q_k_v}"
-                node_name_with_index = f"{node_name}[{head_index}]"
-                node_name_list.append(node_name_with_index)
-                node = TLACDCInterpNode(node_name, TorchIndex((None, None, head_index)),
-                                        incoming_edge_type=EdgeType.ADDITION)
-
-                mask_scores_for_names.append(mask_sample)
-                if mask_sample < 0.5:
-                    nodes_to_mask.append(node)
-
-        # MLP
-        for node_name, edge_type in [
-            (f"blocks.{layer_index}.hook_mlp_out", EdgeType.PLACEHOLDER),
-            (f"blocks.{layer_index}.hook_resid_mid", EdgeType.ADDITION),
-        ]:
-            node_name_list.append(node_name)
-            node = TLACDCInterpNode(node_name, TorchIndex([None]), incoming_edge_type=edge_type)
-            total_nodes += 1
-
-        mask_sample = layer.hook_mlp_out.sample_mask().cpu().item()
-        mask_scores_for_names.append(mask_sample)
-        if mask_sample < 0.5:
-            nodes_to_mask.append(node)
-
-    # assert len(mask_scores_for_names) == 3 * number_of_heads * number_of_layers
-    log_plotly_bar_chart(x=node_name_list, y=mask_scores_for_names)
-    node_count = total_nodes - len(nodes_to_mask)
-    return node_count, nodes_to_mask
-
-
-def experiment_visualize_mask(
-    exp: TLACDCExperiment,
-) -> Tuple[int, list[TLACDCInterpNode]]:
-    """The same as visualize_mask, but for experiments (used for EdgeSP).
-    WARNING: we visualize scores since that seems more principled..."""
-
-    raise NotImplementedError("TODO: implement this for EdgeSP")
 
 def regularizer(
     model: SPHookedTransformer,
@@ -398,30 +333,6 @@ def log_percentage_binary(mask_val_dict: Dict) -> float:
             binary_count += 1
     return binary_count / total_count
 
-
-def get_nodes_mask_dict(model: SPHookedTransformer):
-    number_of_heads = model.cfg.n_heads
-    number_of_layers = model.cfg.n_layers
-    mask_value_dict = {}
-    for layer_index, layer in enumerate(model.blocks):
-        for head_index in range(number_of_heads):
-            for q_k_v in ["q", "k", "v"]:
-                # total_nodes += 1
-                if q_k_v == "q":
-                    mask_value = (
-                        layer.attn.hook_q.sample_mask()[head_index].cpu().item()
-                    )
-                if q_k_v == "k":
-                    mask_value = (
-                        layer.attn.hook_k.sample_mask()[head_index].cpu().item()
-                    )
-                if q_k_v == "v":
-                    mask_value = (
-                        layer.attn.hook_v.sample_mask()[head_index].cpu().item()
-                    )
-                mask_value_dict[f"{layer_index}.{head_index}.{q_k_v}"] = mask_value
-    return mask_value_dict
-
 #%%
 
 parser = argparse.ArgumentParser("train_induction")
@@ -515,7 +426,6 @@ if __name__ == "__main__":
 #%%
 
 if __name__ == "__main__" and not args.edge_sp:
-
     kwargs = dict(**all_task_things.tl_model.cfg.__dict__)
     for kwarg_string in [
         "use_split_qkv_input",
@@ -618,30 +528,29 @@ if __name__ == "__main__":
 
 #%%
 
-if __name__ == "__main__":
-    epoch_range = list(range(epochs))
+epoch_range = list(range(epochs))
 
-    for epoch in tqdm(epoch_range):
-        if not args.zero_ablation:
-            do_random_resample_caching(experiment.model, all_task_things.validation_patch_data)
-        tl_model.train()
-        trainer.zero_grad()
-        for edge in experiment.corr.all_edges().values():
-            edge.sampled = False # so we resample : )
-        specific_metric_term = all_task_things.validation_metric(experiment.model(all_task_things.validation_data))
-        regularizer_term = experiment_regularizer(experiment)
-        loss = specific_metric_term + regularizer_term * lambda_reg
-        loss.backward()
-        trainer.step()
+for epoch in tqdm(epoch_range):
+    if not args.zero_ablation:
+        do_random_resample_caching(experiment.model, all_task_things.validation_patch_data)
+    tl_model.train()
+    trainer.zero_grad()
+    for edge in experiment.corr.all_edges().values():
+        edge.sampled = False # so we resample : )
+    specific_metric_term = all_task_things.validation_metric(experiment.model(all_task_things.validation_data))
+    regularizer_term = experiment_regularizer(experiment)
+    loss = specific_metric_term + regularizer_term * lambda_reg
+    loss.backward()
+    trainer.step()
 
-        if args.edge_sp or epoch == epoch_range[-1]: # for some reason our code 
-            number_of_nodes, nodes_to_mask = visualize_mask(experiment.model) if not edge.sp else visualize_mask_experiment(experiment)
-            wandb.log(
-                {
-                    "regularisation_loss": regularizer_term.item(),
-                    "specific_metric_loss": specific_metric_term.item(),
-                    "total_loss": loss.item(),
-                }
-            )
+    if args.edge_sp or epoch == epoch_range[-1]: # for some reason our code 
+        number_of_nodes, nodes_to_mask = visualize_mask(experiment.model) if not args.edge_sp else experiment_visualize_mask(experiment)
+        wandb.log(
+            {
+                "regularisation_loss": regularizer_term.item(),
+                "specific_metric_loss": specific_metric_term.item(),
+                "total_loss": loss.item(),
+            }
+        )
 
 # %%

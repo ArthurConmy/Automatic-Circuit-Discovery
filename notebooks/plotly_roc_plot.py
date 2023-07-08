@@ -788,8 +788,8 @@ first = True
 all_dfs = []
 for metric_idx in [0, 1]:
     for ablation_type in ["random_ablation", "zero_ablation"]:
-        for weights_type in ["reset", "trained"]:  # Didn't scramble the weights enough it seems
-            for plot_type in ["metric_edges_induction", "kl_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "roc_edges", "metric_edges"]:
+        for weights_type in ["trained", "reset"]:  # Didn't scramble the weights enough it seems
+            for plot_type in ["metric_edges_induction", "kl_edges_induction", "roc_edges", "kl_edges", "precision_recall", "roc_nodes", "roc_edges", "metric_edges"]: # metric_edges_4, kl_edges_4
                 x_key, y_key = plot_type_keys[plot_type]
                 fig, df = make_fig(metric_idx=metric_idx, weights_types=["trained"] if weights_type == "trained" else ["trained", weights_type], ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type)
                 if len(df):
@@ -816,3 +816,5 @@ pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
 # x_key, y_key = plot_type_keys["kl_edges"]
 # fig, _ = make_fig(metric_idx=0, weights_type="reset", ablation_type="zero_ablation", plot_type="kl_edges")
 # fig.show()
+
+# %%
