@@ -76,6 +76,11 @@ def iterative_correspondence_from_mask(model: Union[HookedTransformer, SPHookedT
             if head_parents[child_name, node.index] == 3:
                 additional_nodes_to_mask.append(TLACDCInterpNode(child_name, node.index, EdgeType.ADDITION))
 
+        if node.name.endswith(("resid_mid", "mlp_in")):
+            child_name = node.name.replace("resid_mid", "mlp_out").replace("mlp_in", "mlp_out")
+            head_parents[(child_name, node.index)] += 1
+            additional_nodes_to_mask.append(TLACDCInterpNode(child_name, node.index, EdgeType.ADDITION))
+
     for node in nodes_to_mask + additional_nodes_to_mask:
         # Mark edges where this is child as not present
         rest2 = corr.edges[node.name][node.index]
@@ -564,75 +569,79 @@ if __name__ == "__main__" and not args.edge_sp:
 # %%
 
 if __name__ != "__main__":
-    raise Exception("Arthur was using this notebook for play, please delete lines of the train.py below here to use the functions!")
+    warnings.warn("Arthur was using this notebook for play, please delete lines of the train.py below here to use the functions!")
 
 # %%
 
-epochs = args.epochs
-lambda_reg = args.lambda_reg
+if __name__ ==  "__main__":
+    epochs = args.epochs
+    lambda_reg = args.lambda_reg
 
-torch.manual_seed(args.seed)
+    torch.manual_seed(args.seed)
 
-wandb.init(
-    name=args.wandb_name,
-    project=args.wandb_project,
-    entity=args.wandb_entity,
-    group=args.wandb_group,
-    config=args,
-    dir=args.wandb_dir,
-    mode=args.wandb_mode,
-)
-test_metric_fns = all_task_things.test_metrics
-
-#%%
-
-tl_model = all_task_things.tl_model
-
-experiment = TLACDCExperiment(
-    model=tl_model,
-    threshold=100_000.0,
-    ds=all_task_things.validation_data,
-    ref_ds=all_task_things.validation_patch_data,
-    metric=all_task_things.validation_metric,
-    zero_ablation=bool(args.zero_ablation),
-    hook_verbose=False,
-    edge_sp=True,
-)
+    wandb.init(
+        name=args.wandb_name,
+        project=args.wandb_project,
+        entity=args.wandb_entity,
+        group=args.wandb_group,
+        config=args,
+        dir=args.wandb_dir,
+        mode=args.wandb_mode,
+    )
+    test_metric_fns = all_task_things.test_metrics
 
 #%%
 
-# one parameter per thing that is masked
-mask_params = experiment.get_mask_parameters()
-trainer = torch.optim.Adam(mask_params, lr=args.lr)
-if args.zero_ablation: 
-    warnings.warn("Untested")
-    do_zero_caching(experiment.model)
+if __name__ == "__main__":
+    tl_model = all_task_things.tl_model
+
+    experiment = TLACDCExperiment(
+        model=tl_model,
+        threshold=100_000.0,
+        ds=all_task_things.validation_data,
+        ref_ds=all_task_things.validation_patch_data,
+        metric=all_task_things.validation_metric,
+        zero_ablation=bool(args.zero_ablation),
+        hook_verbose=False,
+        edge_sp=True,
+    )
 
 #%%
 
-epoch_range = list(range(epochs))
+if __name__ == "__main__":
+    # one parameter per thing that is masked
+    mask_params = experiment.get_mask_parameters()
+    trainer = torch.optim.Adam(mask_params, lr=args.lr)
+    if args.zero_ablation: 
+        warnings.warn("Untested")
+        do_zero_caching(experiment.model)
 
-for epoch in tqdm(epoch_range):
-    if not args.zero_ablation:
-        do_random_resample_caching(experiment.model, all_task_things.validation_patch_data)
-    tl_model.train()
-    trainer.zero_grad()
-    for edge in experiment.corr.all_edges().values():
-        edge.sampled = False # so we resample : )
-    specific_metric_term = all_task_things.validation_metric(experiment.model(all_task_things.validation_data))
-    regularizer_term = experiment_regularizer(experiment)
-    loss = specific_metric_term + regularizer_term * lambda_reg
-    loss.backward()
-    trainer.step()
+#%%
 
-    if args.edge_sp or epoch == epoch_range[-1]: # for some reason our code 
-        number_of_nodes, nodes_to_mask = visualize_mask(experiment.model) if not edge.sp else visualize_mask_experiment(experiment)
-        wandb.log(
-            {
-                "regularisation_loss": regularizer_term.item(),
-                "specific_metric_loss": specific_metric_term.item(),
-                "total_loss": loss.item(),
-            }
-        )
+if __name__ == "__main__":
+    epoch_range = list(range(epochs))
+
+    for epoch in tqdm(epoch_range):
+        if not args.zero_ablation:
+            do_random_resample_caching(experiment.model, all_task_things.validation_patch_data)
+        tl_model.train()
+        trainer.zero_grad()
+        for edge in experiment.corr.all_edges().values():
+            edge.sampled = False # so we resample : )
+        specific_metric_term = all_task_things.validation_metric(experiment.model(all_task_things.validation_data))
+        regularizer_term = experiment_regularizer(experiment)
+        loss = specific_metric_term + regularizer_term * lambda_reg
+        loss.backward()
+        trainer.step()
+
+        if args.edge_sp or epoch == epoch_range[-1]: # for some reason our code 
+            number_of_nodes, nodes_to_mask = visualize_mask(experiment.model) if not edge.sp else visualize_mask_experiment(experiment)
+            wandb.log(
+                {
+                    "regularisation_loss": regularizer_term.item(),
+                    "specific_metric_loss": specific_metric_term.item(),
+                    "total_loss": loss.item(),
+                }
+            )
 
 # %%

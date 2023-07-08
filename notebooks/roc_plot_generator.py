@@ -165,18 +165,16 @@ parser.add_argument("--only-save-canonical", action="store_true", help="Only sav
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task ioi --mode edges --metric logit_diff --alg acdc".split())
+    args = parser.parse_args("--task ioi --mode edges --metric kl_div --alg sp --device cuda".split())
 else:
     args = parser.parse_args()
 
 if not args.mode == "edges":
     raise NotImplementedError("Only edges mode is implemented for now")
 
-
 if args.torch_num_threads > 0:
     torch.set_num_threads(args.torch_num_threads)
 torch.manual_seed(args.seed)
-
 
 TASK = args.task
 METRIC = args.metric
@@ -207,9 +205,12 @@ if args.alg != "none":
 
     if OUT_FILE.exists():
         print(f"File {str(OUT_FILE)} already exists, skipping")
-        sys.exit(0)
+        # sys.exit(0)
+        assert False
 else:
     OUT_FILE = None
+
+#%%
 
 # defaults
 ACDC_PROJECT_NAME = "remix_school-of-rock/acdc"
