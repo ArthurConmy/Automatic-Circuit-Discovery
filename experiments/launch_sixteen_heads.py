@@ -143,6 +143,8 @@ for extra_arg in [
     "use_split_qkv_input",
     "n_devices", # extra from new merge
     "gated_mlp",
+    "use_attn_in",
+    "use_hook_mlp_in",
 ]:
     if extra_arg in kwargs:
         del kwargs[extra_arg]

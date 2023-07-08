@@ -499,6 +499,8 @@ if __name__ == "__main__":
         "use_split_qkv_input",
         "n_devices",
         "gated_mlp",
+        "use_attn_in",
+        "use_hook_mlp_in",
     ]:
         if kwarg_string in kwargs:
             del kwargs[kwarg_string]
