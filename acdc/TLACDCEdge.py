@@ -39,13 +39,15 @@ class Edge:
         edge_type: EdgeType,
         present: bool = True,
         effect_size: Optional[float] = None,
+        device: Optional[str] = None,
     ):
         self.edge_type = edge_type
         self.present = present
         self.effect_size = effect_size
 
         """Ripped from subnetwork_probing/transformer_lens/transformer_lens/hook_points.py"""
-        self.mask_score = torch.nn.Parameter(torch.tensor(1.0))
+        # With edit as no requires_grad set...?
+        self.mask_score = torch.nn.Parameter(torch.tensor([1.0], requires_grad=True, device=device).clone())
         self.beta = (
             2 / 3
         )  # TODO: make this hyperaparams globally set and synced somehow

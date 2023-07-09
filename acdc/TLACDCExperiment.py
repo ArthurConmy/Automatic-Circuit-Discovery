@@ -88,6 +88,10 @@ class TLACDCExperiment:
     ):
         """Initialize the ACDC experiment"""
 
+        if edge_sp:
+            assert not corrupted_cache_cpu
+            assert not online_cache_cpu
+
         if zero_ablation and remove_redundant:
             raise ValueError("It's not possible to do zero ablation with remove redundant, talk to Arthur about this bizarre special case if curious!")
 
@@ -114,7 +118,7 @@ class TLACDCExperiment:
             warnings.warn("Never skipping edges, for now")
             skip_edges = "no"
 
-        self.corr = TLACDCCorrespondence.setup_from_model(self.model, use_pos_embed=use_pos_embed, use_split_qkv=self.use_split_qkv)
+        self.corr = TLACDCCorrespondence.setup_from_model(self.model, use_pos_embed=use_pos_embed, use_split_qkv=self.use_split_qkv, device=None if not self.edge_sp else self.model.cfg.device)
 
         if early_exit: 
             return
@@ -275,7 +279,7 @@ class TLACDCExperiment:
         else:
             raise ValueError(f"Unknown cache type {cache}")
 
-        if verbose:
+        if self.verbose and verbose:
             print(f"Saved {hook.name} with norm {z.norm().item()}")
 
         return z
@@ -289,7 +293,7 @@ class TLACDCExperiment:
         
         incoming_edge_types = [self.corr.graph[hook.name][receiver_index].incoming_edge_type for receiver_index in list(self.corr.edges[hook.name].keys())]
 
-        if verbose:
+        if verbose and self.verbose:
             print("In receiver hook", hook.name)
 
         if EdgeType.DIRECT_COMPUTATION in incoming_edge_types:
@@ -297,7 +301,7 @@ class TLACDCExperiment:
             old_z = hook_point_input.clone()
             hook_point_input[:] = self.global_cache.corrupted_cache[hook.name].to(hook_point_input.device)
 
-            if verbose:
+            if verbose and self.verbose:
                 print("Overwrote to sec cache")
 
             assert incoming_edge_types == [EdgeType.DIRECT_COMPUTATION for _ in incoming_edge_types], f"All incoming edges should be the same type not {incoming_edge_types}"
@@ -317,11 +321,31 @@ class TLACDCExperiment:
 
                 edge = self.corr.edges[hook.name][receiver_index][sender_node][sender_index]
 
-                if edge.present:
-                    if verbose:
+                if not edge.present and not self.edge_sp:
+                    continue
+                
+                if not self.edge_sp:
+                    if verbose and self.verbose:
                         print(f"Overwrote {receiver_index} with norm {old_z[receiver_index.as_index].norm().item()}")
 
                     hook_point_input[receiver_index.as_index] = old_z[receiver_index.as_index].to(hook_point_input.device)
+
+                else:
+                    if not edge.sampled: # TODO remove lots of copy and pasting here
+                        edge.sample_mask()
+                        if verbose:
+                            print(f"Sampling {sender_node=} {sender_index=} {edge.mask_score=} {edge.mask=}")
+                        for edge_tuple, other_edge in self.corr.all_edges().items():
+                            child_name, child_index, parent_name, parent_index = edge_tuple
+                            if parent_name == sender_node and parent_index == sender_index: # initially as a test we are going to reproduce the normal SP (node SP) results
+                                if verbose:
+                                    print("Also masked", edge_tuple)
+                                other_edge.sampled = True
+                                other_edge.mask = edge.mask
+
+                    hook_point_input[receiver_index.as_index] += edge.mask * (
+                        old_z[receiver_index.as_index] - self.global_cache.corrupted_cache[hook.name][receiver_index.as_index]
+                    )
     
             return hook_point_input
 
@@ -329,7 +353,7 @@ class TLACDCExperiment:
 
         # corrupted_cache (and thus z) contains the residual stream for the corrupted data
         # That is, the sum of all heads and MLPs and biases from previous layers
-        hook_point_input[:] = self.global_cache.corrupted_cache[hook.name].to(hook_point_input.device)
+        hook_point_input[:] = self.global_cache.corrupted_cache[hook.name].to(hook_point_input.device if not self.edge_sp else None)
 
         # We will now edit the input activations to this component 
         # This is one of the key reasons ACDC is slow, so the implementation is for performance
@@ -348,7 +372,7 @@ class TLACDCExperiment:
                     if not edge.present and not self.edge_sp:
                         continue # don't do patching stuff, if it wastes time
 
-                    if verbose:
+                    if verbose and self.verbose:
                         print(
                             hook.name, receiver_node_index, sender_node_name, sender_node_index,
                         )
@@ -363,19 +387,24 @@ class TLACDCExperiment:
                         # Remove the effect of this head (from the corrupted data)
                         hook_point_input[receiver_node_index.as_index] -= self.global_cache.corrupted_cache[
                             sender_node_name
-                        ][sender_node_index.as_index].to(hook_point_input.device)
+                        ][sender_node_index.as_index].to(hook_point_input.device if not self.edge_sp else None)
 
                         if not self.edge_sp:
                             # Add the effect of the new head (from the current forward pass)
                             hook_point_input[receiver_node_index.as_index] += self.global_cache.online_cache[
                                 sender_node_name
-                            ][sender_node_index.as_index].to(hook_point_input.device)
+                            ][sender_node_index.as_index].to(hook_point_input.device if not self.edge_sp else None)
 
                         else:
                             if not edge.sampled:
                                 edge.sample_mask()
-                                for (child_name, child_index, parent_name, parent_index), other_edge in self.corr.all_edges():
+                                if verbose:
+                                    print(f"Sampling {sender_node_name=} {sender_node_index=} {edge.mask_score=} {edge.mask=}")
+                                for edge_tuple, other_edge in self.corr.all_edges().items():
+                                    child_name, child_index, parent_name, parent_index = edge_tuple
                                     if parent_name == sender_node_name and parent_index == sender_node_index: # initially as a test we are going to reproduce the normal SP (node SP) results
+                                        if verbose:
+                                            print("Also masked", edge_tuple)
                                         other_edge.sampled = True
                                         other_edge.mask = edge.mask
 

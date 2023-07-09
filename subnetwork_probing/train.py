@@ -488,15 +488,17 @@ if __name__ ==  "__main__":
 
     torch.manual_seed(args.seed)
 
-    wandb.init(
-        name=args.wandb_name,
-        project=args.wandb_project,
-        entity=args.wandb_entity,
-        group=args.wandb_group,
-        config=args,
-        dir=args.wandb_dir,
-        mode=args.wandb_mode,
-    )
+    if not args.edge_sp:
+        wandb.init(
+            name=args.wandb_name,
+            project=args.wandb_project,
+            entity=args.wandb_entity,
+            group=args.wandb_group,
+            config=args,
+            dir=args.wandb_dir,
+            mode=args.wandb_mode,
+        )
+
     test_metric_fns = all_task_things.test_metrics
 
 #%%
@@ -511,8 +513,17 @@ if __name__ == "__main__":
         ref_ds=all_task_things.validation_patch_data,
         metric=all_task_things.validation_metric,
         zero_ablation=bool(args.zero_ablation),
-        hook_verbose=False,
+        hook_verbose=True,
         edge_sp=True,
+        using_wandb=True,
+        wandb_entity_name = args.wandb_entity,
+        wandb_project_name = args.wandb_project,
+        wandb_run_name = args.wandb_name,
+        wandb_group_name = args.wandb_group,
+        wandb_dir=args.wandb_dir,
+        wandb_mode=args.wandb_mode,
+        corrupted_cache_cpu=False,
+        online_cache_cpu=False,
     )
 
 #%%
@@ -524,6 +535,14 @@ if __name__ == "__main__":
     if args.zero_ablation: 
         warnings.warn("Untested")
         do_zero_caching(experiment.model)
+
+    experiment.model.reset_hooks()
+    experiment.setup_model_hooks(
+        add_sender_hooks=True,
+        add_receiver_hooks=True,
+        doing_acdc_runs=False,
+    )
+
 
 #%%
 
@@ -542,7 +561,7 @@ for epoch in tqdm(epoch_range):
     loss.backward()
     trainer.step()
 
-    if args.edge_sp or epoch == epoch_range[-1]: # for some reason our code 
+    if args.edge_sp or epoch == epoch_range[-1]:
         number_of_nodes, nodes_to_mask = visualize_mask(experiment.model) if not args.edge_sp else experiment_visualize_mask(experiment)
         wandb.log(
             {

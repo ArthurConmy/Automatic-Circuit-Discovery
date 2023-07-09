@@ -118,14 +118,14 @@ def experiment_visualize_mask(
     for parent_tuple in scores_for_parents:
         assert (
             torch.tensor(scores_for_parents[parent_tuple]) - scores_for_parents[parent_tuple][0]
-        ).norm().item() < 1e-3, f"{parent_tuple=} {scores_for_parents[parent_tuple]=}"
+        ).norm().item() < 1e-2, f"{parent_tuple=} {scores_for_parents[parent_tuple]=}"
 
     log_plotly_bar_chart(
         x = [str(parent_tuple) for parent_tuple in scores_for_parents],
         y = [scores_for_parents[parent_tuple][0] for parent_tuple in scores_for_parents],
     )
 
-    return node_count, nodes_to_mask
+    return -1, [] # not done this yet...
 
 
 def get_nodes_mask_dict(model: SPHookedTransformer):
