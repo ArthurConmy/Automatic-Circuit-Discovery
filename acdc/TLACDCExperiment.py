@@ -392,7 +392,7 @@ class TLACDCExperiment:
                             sender_node_name
                         ][sender_node_index.as_index].to(hook_point_input.device if self.sp is None else None)
 
-                        if self.sp is not None:
+                        if self.sp is None:
                             # Add the effect of the new head (from the current forward pass)
                             hook_point_input[receiver_node_index.as_index] += self.global_cache.online_cache[
                                 sender_node_name
@@ -403,13 +403,15 @@ class TLACDCExperiment:
                                 edge.sample_mask()
                                 if verbose:
                                     print(f"Sampling {sender_node_name=} {sender_node_index=} {edge.mask_score=} {edge.mask=}")
-                                for edge_tuple, other_edge in self.corr.all_edges().items():
-                                    child_name, child_index, parent_name, parent_index = edge_tuple
-                                    if parent_name == sender_node_name and parent_index == sender_node_index: # initially as a test we are going to reproduce the normal SP (node SP) results
-                                        if verbose:
-                                            print("Also masked", edge_tuple)
-                                        other_edge.sampled = True
-                                        other_edge.mask = edge.mask
+
+                                if self.sp == "node": # also rewrite all other edges that have this sender node as a parent to have the same mask!
+                                    for edge_tuple, other_edge in self.corr.all_edges().items():
+                                        child_name, child_index, parent_name, parent_index = edge_tuple
+                                        if parent_name == sender_node_name and parent_index == sender_node_index: # initially as a test we are going to reproduce the normal SP (node SP) results
+                                            if verbose:
+                                                print("Also masked", edge_tuple)
+                                            other_edge.sampled = True
+                                            other_edge.mask = edge.mask
 
                             # Add some effect of the new head (from the current forward pass) mediated by the mask
                             hook_point_input[receiver_node_index.as_index] += edge.mask_score * self.global_cache.online_cache[
