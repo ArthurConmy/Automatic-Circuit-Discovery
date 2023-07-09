@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from collections import defaultdict
 from enum import Enum
-from typing import Optional
+from typing import Optional, Literal
 
 
 class EdgeType(Enum):
@@ -40,13 +40,14 @@ class Edge:
         present: bool = True,
         effect_size: Optional[float] = None,
         device: Optional[str] = None,
-        sp: Optional[Literal["edge", "node"]] = False,
+        sp: Optional[Literal["edge", "node"]] = None,
     ):
         self.edge_type = edge_type
         self.present = present
         self.effect_size = effect_size
 
         self.sp = sp
+
         if self.sp is not None:
             """Ripped from subnetwork_probing/transformer_lens/transformer_lens/hook_points.py"""
             # With edit as no requires_grad set...?

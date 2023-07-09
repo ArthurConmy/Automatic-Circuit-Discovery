@@ -357,7 +357,7 @@ parser.add_argument("--seq-len", type=int, default=300)
 parser.add_argument("--n-loss-average-runs", type=int, default=20)
 parser.add_argument("--task", type=str, required=True)
 parser.add_argument('--torch-num-threads', type=int, default=0, help="How many threads to use for torch (0=all)")
-parser.add_argument('--edge-sp', type=int, default=0)
+parser.add_argument('--sp', type=str)
 
 #%%
 
@@ -375,7 +375,7 @@ if __name__ == "__main__":
     --wandb-entity=remix_school-of-rock\
     --wandb-mode=online\
     --loss-type=kl_div\
-    --edge-sp=1""".split("\\\n")]
+    --sp=node""".split("\\\n")]
         ) # also 0.39811 # also on the main machine you just added two lines here.
 
     else:
@@ -426,7 +426,7 @@ if __name__ == "__main__":
 
 #%%
 
-if __name__ == "__main__" and not args.edge_sp:
+if __name__ == "__main__" and args.sp is None:
     kwargs = dict(**all_task_things.tl_model.cfg.__dict__)
     for kwarg_string in [
         "use_split_qkv_input",
@@ -490,7 +490,7 @@ if __name__ ==  "__main__":
 
     torch.manual_seed(args.seed)
 
-    if not args.edge_sp:
+    if args.sp is None:
         wandb.init(
             name=args.wandb_name,
             project=args.wandb_project,
@@ -516,7 +516,7 @@ if __name__ == "__main__":
         metric=all_task_things.validation_metric,
         zero_ablation=bool(args.zero_ablation),
         hook_verbose=False,
-        edge_sp=True,
+        sp=args.sp,
         using_wandb=True,
         wandb_entity_name = args.wandb_entity,
         wandb_project_name = args.wandb_project,
@@ -563,8 +563,8 @@ for epoch in tqdm(epoch_range):
     loss.backward()
     trainer.step()
 
-    if args.edge_sp or epoch == epoch_range[-1]:
-        number_of_nodes, nodes_to_mask = visualize_mask(experiment.model) if not args.edge_sp else experiment_visualize_mask(experiment)
+    if args.sp is not None or epoch == epoch_range[-1]:
+        number_of_nodes, nodes_to_mask = visualize_mask(experiment.model) if args.sp is None else experiment_visualize_mask(experiment)
         wandb.log(
             {
                 "regularisation_loss": regularizer_term.item(),
