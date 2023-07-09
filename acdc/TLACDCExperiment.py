@@ -84,7 +84,6 @@ class TLACDCExperiment:
         wandb_config: Optional[Namespace] = None,
         early_exit: bool = False,
         sp: Optional[Literal["edge", "node"]] = None, # new functionality for doing SP. At node level and edge level
-        node_sp: bool = False,
         use_split_qkv: bool = True,
     ):
         """Initialize the ACDC experiment"""
@@ -357,7 +356,7 @@ class TLACDCExperiment:
 
         # corrupted_cache (and thus z) contains the residual stream for the corrupted data
         # That is, the sum of all heads and MLPs and biases from previous layers
-        hook_point_input[:] = self.global_cache.corrupted_cache[hook.name].to(hook_point_input.device if self.sp is not None else None)
+        hook_point_input[:] = self.global_cache.corrupted_cache[hook.name].to(hook_point_input.device if self.sp is None else None)
 
         # We will now edit the input activations to this component 
         # This is one of the key reasons ACDC is slow, so the implementation is for performance
@@ -373,7 +372,7 @@ class TLACDCExperiment:
 
                     edge = self.corr.edges[hook.name][receiver_node_index][sender_node_name][sender_node_index] # TODO maybe less crazy nested indexes ... just make local variables each time?
 
-                    if not edge.present and self.sp is not None:
+                    if not edge.present and self.sp is None:
                         continue # don't do patching stuff, if it wastes time
 
                     if verbose and self.verbose:
@@ -391,7 +390,7 @@ class TLACDCExperiment:
                         # Remove the effect of this head (from the corrupted data)
                         hook_point_input[receiver_node_index.as_index] -= self.global_cache.corrupted_cache[
                             sender_node_name
-                        ][sender_node_index.as_index].to(hook_point_input.device if self.sp is not None else None)
+                        ][sender_node_index.as_index].to(hook_point_input.device if self.sp is None else None)
 
                         if self.sp is not None:
                             # Add the effect of the new head (from the current forward pass)
