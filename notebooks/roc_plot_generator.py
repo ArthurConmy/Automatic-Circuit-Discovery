@@ -1,5 +1,6 @@
 # %% [markdown]
 # Script of ROC Plots!!!
+# This scrapes things from wandb...
 
 # You need to define
 

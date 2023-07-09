@@ -16,6 +16,7 @@ import argparse
 import random
 from collections import defaultdict
 from copy import deepcopy
+import os
 import warnings
 from functools import partial
 import sys
@@ -362,12 +363,13 @@ parser.add_argument('--sp', type=str)
 #%%
 
 if __name__ == "__main__":
-    if ipython is not None or True: # TODO delete
+    if ipython is not None:
         # we are in a notebook
         # you can put the command you would like to run as the ... in r"""..."""
         args = parser.parse_args(
-            [line.strip() for line in r"""--task=induction\
+            [line.strip() for line in r"""--task=docstring\
     --lambda-reg=250.0\
+    --epochs=2\
     --zero-ablation=0\
     --wandb-name=my_edge_runs\
     --wandb-project=edgesp\
@@ -573,4 +575,17 @@ for epoch in tqdm(epoch_range):
             }
         )
 
+#%%
+
+all_edges = experiment.corr.all_edges()
+for _, edge in all_edges.items():
+    edge.present = (edge.mask_score.item() > 0.0)
+
+edges_fname = f"edges.pth"
+experiment.save_edges(edges_fname)
+artifact = wandb.Artifact(edges_fname, type="dataset")
+artifact.add_file(edges_fname)
+wandb.log_artifact(artifact)
+os.remove(edges_fname)
+wandb.finish()
 # %%
