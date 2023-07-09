@@ -375,7 +375,7 @@ if __name__ == "__main__":
     --wandb-entity=remix_school-of-rock\
     --wandb-mode=online\
     --loss-type=kl_div\
-    --sp=node""".split("\\\n")]
+    --sp=edge""".split("\\\n")]
         ) # also 0.39811 # also on the main machine you just added two lines here.
 
     else:

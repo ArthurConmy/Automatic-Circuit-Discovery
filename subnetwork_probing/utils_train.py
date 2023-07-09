@@ -128,24 +128,40 @@ def experiment_visualize_mask(
         
         mask_scores_for_parents[(parent_name, parent_index)] = edge.mask_score.item()
 
-    for parent_tuple in masks_for_parents:
-        assert (
-            torch.tensor(list(masks_for_parents[parent_tuple].values())) - list(masks_for_parents[parent_tuple].values())[0]
-        ).norm().item() < 1e-2, f"{parent_tuple=} {masks_for_parents[parent_tuple]=}"
+    if exp.sp == "node":
+        for parent_tuple in masks_for_parents:
+            assert (
+                torch.tensor(list(masks_for_parents[parent_tuple].values())) - list(masks_for_parents[parent_tuple].values())[0]
+            ).norm().item() < 1e-2, f"{parent_tuple=} {masks_for_parents[parent_tuple]=}"
 
-    log_plotly_bar_chart(
-        x = [str(parent_tuple) for parent_tuple in masks_for_parents],
-        y = [list(masks_for_parents[parent_tuple].values())[0] for parent_tuple in masks_for_parents],
-        title="Mask values for parents",
-        log_title="Mask values for parents",
-    )
+        log_plotly_bar_chart(
+            x = [str(parent_tuple) for parent_tuple in masks_for_parents],
+            y = [list(masks_for_parents[parent_tuple].values())[0] for parent_tuple in masks_for_parents],
+            title="Mask values for parents",
+            log_title="Mask values for parents",
+        )
 
-    log_plotly_bar_chart(
-        x = [str(parent_tuple) for parent_tuple in masks_for_parents],
-        y = [mask_scores_for_parents[parent_tuple] for parent_tuple in masks_for_parents],
-        title="Mask scores for parents",
-        log_title="Mask scores for parents",
-    )
+        log_plotly_bar_chart(
+            x = [str(parent_tuple) for parent_tuple in masks_for_parents],
+            y = [mask_scores_for_parents[parent_tuple] for parent_tuple in masks_for_parents],
+            title="Mask scores for parents",
+            log_title="Mask scores for parents",
+        )
+
+    elif exp.sp == "edge":
+        log_plotly_bar_chart(
+            x = [str(edge_tuple) for edge_tuple in all_edges],
+            y = [e.mask.item() for _, e in all_edges.items()],
+            title="Mask values for parents",
+            log_title="Mask values for parents",
+        )
+
+        log_plotly_bar_chart(
+            x = [str(edge_tuple) for edge_tuple in all_edges],
+            y = [e.mask_score.item() for _, e in all_edges.items()],
+            title="Mask scores for parents",
+            log_title="Mask scores for parents",
+        )
 
     return -1, [] # not done this yet...
 
