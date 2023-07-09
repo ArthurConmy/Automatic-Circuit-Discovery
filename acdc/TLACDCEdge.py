@@ -40,14 +40,14 @@ class Edge:
         present: bool = True,
         effect_size: Optional[float] = None,
         device: Optional[str] = None,
-        edge_sp: bool = False,
+        sp: Optional[Literal["edge", "node"]] = False,
     ):
         self.edge_type = edge_type
         self.present = present
         self.effect_size = effect_size
 
-        self.edge_sp = edge_sp
-        if self.edge_sp:
+        self.sp = sp
+        if self.sp is not None:
             """Ripped from subnetwork_probing/transformer_lens/transformer_lens/hook_points.py"""
             # With edit as no requires_grad set...?
             self.mask_score = torch.nn.Parameter(torch.tensor([1.0], requires_grad=True, device=device).clone())
@@ -63,14 +63,14 @@ class Edge:
     def init_weights(self):
         """Ripped from subnetwork_probing/transformer_lens/transformer_lens/hook_points.py"""
 
-        assert self.edge_sp
+        assert self.sp is not None
         p = (self.mask_p - self.gamma) / (self.zeta - self.gamma)
         torch.nn.init.constant_(self.mask_score, val=np.log(p / (1 - p)))
 
     def sample_mask(self) -> None:
         """Ripped from subnetwork_probing/transformer_lens/transformer_lens/hook_points.py"""
 
-        assert self.edge_sp
+        assert self.sp is not None
         assert not self.sampled
         uniform_sample = (
             torch.zeros_like(self.mask_score).uniform_().clamp(0.0001, 0.9999)
