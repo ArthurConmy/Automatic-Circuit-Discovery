@@ -110,19 +110,26 @@ def experiment_visualize_mask(
 
     # Do a check for now that all the scores for same parents
     
-    scores_for_parents = defaultdict(list)
+    scores_for_parents = defaultdict(dict)
 
     for (child_name, child_index, parent_name, parent_index), edge in exp.corr.all_edges().items():
-        scores_for_parents[(parent_name, parent_index)].append(edge.mask_score.item())
+        if edge.edge_type == EdgeType.PLACEHOLDER:
+            continue
+
+        try:
+            scores_for_parents[(parent_name, parent_index)][(child_name, child_index)] = edge.mask.item()
+        except AttributeError as e:
+            print(child_name, child_index, parent_name, parent_index)
+            raise e
 
     for parent_tuple in scores_for_parents:
         assert (
-            torch.tensor(scores_for_parents[parent_tuple]) - scores_for_parents[parent_tuple][0]
+            torch.tensor(list(scores_for_parents[parent_tuple].values())) - list(scores_for_parents[parent_tuple].values())[0]
         ).norm().item() < 1e-2, f"{parent_tuple=} {scores_for_parents[parent_tuple]=}"
 
     log_plotly_bar_chart(
         x = [str(parent_tuple) for parent_tuple in scores_for_parents],
-        y = [scores_for_parents[parent_tuple][0] for parent_tuple in scores_for_parents],
+        y = [list(scores_for_parents[parent_tuple].values())[0] for parent_tuple in scores_for_parents],
     )
 
     return -1, [] # not done this yet...
