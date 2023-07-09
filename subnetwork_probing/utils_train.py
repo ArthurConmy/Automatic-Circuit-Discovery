@@ -150,15 +150,15 @@ def experiment_visualize_mask(
 
     elif exp.sp == "edge":
         log_plotly_bar_chart(
-            x = [str(edge_tuple) for edge_tuple in all_edges],
-            y = [e.mask.item() for _, e in all_edges.items()],
+            x = [str(edge_tuple) for edge_tuple, e in all_edges.items() if e.edge_type != EdgeType.PLACEHOLDER],
+            y = [e.mask.item() for _, e in all_edges.items() if e.edge_type != EdgeType.PLACEHOLDER],
             title="Mask values for parents",
             log_title="Mask values for parents",
         )
 
         log_plotly_bar_chart(
-            x = [str(edge_tuple) for edge_tuple in all_edges],
-            y = [e.mask_score.item() for _, e in all_edges.items()],
+            x = [str(edge_tuple) for edge_tuple, e in all_edges.items() if e.edge_type != EdgeType.PLACEHOLDER],
+            y = [e.mask_score.item() for _, e in all_edges.items() if e.edge_type != EdgeType.PLACEHOLDER],
             title="Mask scores for parents",
             log_title="Mask scores for parents",
         )
