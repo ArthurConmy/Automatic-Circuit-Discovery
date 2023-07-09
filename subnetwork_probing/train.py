@@ -428,7 +428,7 @@ parser = argparse.ArgumentParser("train_induction")
 parser.add_argument("--wandb-name", type=str, required=True)
 parser.add_argument("--wandb-project", type=str, default="subnetwork-probing")
 parser.add_argument("--wandb-entity", type=str, required=True)
-parser.add_argument("--wandb-group", type=str, required=True)
+parser.add_argument("--wandb-group", type=str, required=False)
 parser.add_argument("--wandb-dir", type=str, default="/tmp/wandb")
 parser.add_argument("--wandb-mode", type=str, default="online")
 parser.add_argument("--device", type=str, default="cuda")
@@ -459,7 +459,6 @@ if __name__ == "__main__":
     --zero-ablation=0\
     --wandb-name=my_edge_runs\
     --wandb-project=edgesp\
-    --wandb-group=edgespgroupone\
     --wandb-entity=remix_school-of-rock\
     --wandb-mode=online\
     --loss-type=kl_div\
@@ -635,7 +634,7 @@ if __name__ == "__main__":
         trainer.step()
 
         if args.edge_sp or epoch == epoch_range[-1]: # for some reason our code 
-            number_of_nodes, nodes_to_mask = visualize_mask(experiment.model) if not edge.sp else visualize_mask_experiment(experiment)
+            number_of_nodes, nodes_to_mask = visualize_mask(experiment.model) if not args.edge_sp else visualize_mask_experiment(experiment)
             wandb.log(
                 {
                     "regularisation_loss": regularizer_term.item(),
