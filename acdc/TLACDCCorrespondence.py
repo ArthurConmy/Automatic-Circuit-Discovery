@@ -98,7 +98,7 @@ class TLACDCCorrespondence:
         child.parents.remove(parent)        
 
     @classmethod
-    def setup_from_model(cls, model, use_pos_embed=False, use_split_qkv=True, device=None):
+    def setup_from_model(cls, model, use_pos_embed=False, use_split_qkv=True, device=None, edge_sp=False):
         correspondence = cls()
 
         downstream_residual_nodes: List[TLACDCInterpNode] = []
@@ -127,7 +127,7 @@ class TLACDCCorrespondence:
                     correspondence.add_edge(
                         parent_node=cur_mlp,
                         child_node=residual_stream_node,
-                        edge=Edge(edge_type=EdgeType.ADDITION, device=device),
+                        edge=Edge(edge_sp=edge_sp, edge_type=EdgeType.ADDITION, device=device),
                         safe=False,
                     )
 
@@ -142,7 +142,7 @@ class TLACDCCorrespondence:
                 correspondence.add_edge(
                     parent_node=cur_mlp_input,
                     child_node=cur_mlp,
-                    edge=Edge(edge_type=EdgeType.PLACEHOLDER, device=device), # EDIT: previously, this was a DIRECT_COMPUTATION edge, but that leads to overcounting of MLP edges (I think)
+                    edge=Edge(edge_sp=edge_sp, edge_type=EdgeType.PLACEHOLDER, device=device), # EDIT: previously, this was a DIRECT_COMPUTATION edge, but that leads to overcounting of MLP edges (I think)
                     safe=False,
                 )
 
@@ -163,7 +163,7 @@ class TLACDCCorrespondence:
                     correspondence.add_edge(
                         parent_node=cur_head,
                         child_node=residual_stream_node,
-                        edge=Edge(edge_type=EdgeType.ADDITION, device=device),
+                        edge=Edge(edge_sp=edge_sp, edge_type=EdgeType.ADDITION, device=device),
                         safe=False,
                     )
 
@@ -184,14 +184,14 @@ class TLACDCCorrespondence:
                         correspondence.add_edge(
                             parent_node = hook_letter_node,
                             child_node = cur_head,
-                            edge = Edge(edge_type=EdgeType.PLACEHOLDER, device=device),
+                            edge = Edge(edge_sp=edge_sp, edge_type=EdgeType.PLACEHOLDER, device=device),
                             safe = False,
                         )
 
                         correspondence.add_edge(
                             parent_node=hook_letter_input_node,
                             child_node=hook_letter_node,
-                            edge=Edge(edge_type=EdgeType.DIRECT_COMPUTATION, device=device),
+                            edge=Edge(edge_sp=edge_sp, edge_type=EdgeType.DIRECT_COMPUTATION, device=device),
                             safe=False,
                         )
 
@@ -206,7 +206,7 @@ class TLACDCCorrespondence:
                     correspondence.add_edge(
                         parent_node = hook_head_node,
                         child_node = cur_head,
-                        edge = Edge(edge_type=EdgeType.PLACEHOLDER, device=device),
+                        edge = Edge(edge_sp=edge_sp, edge_type=EdgeType.PLACEHOLDER, device=device),
                         safe = False,
                     )
 
@@ -242,7 +242,7 @@ class TLACDCCorrespondence:
                 correspondence.add_edge(
                     parent_node=embed_node,
                     child_node=node,
-                    edge=Edge(edge_type=EdgeType.ADDITION, device=device),
+                    edge=Edge(edge_sp=edge_sp, edge_type=EdgeType.ADDITION, device=device),
                     safe=False,
                 )
     

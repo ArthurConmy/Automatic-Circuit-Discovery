@@ -118,7 +118,7 @@ class TLACDCExperiment:
             warnings.warn("Never skipping edges, for now")
             skip_edges = "no"
 
-        self.corr = TLACDCCorrespondence.setup_from_model(self.model, use_pos_embed=use_pos_embed, use_split_qkv=self.use_split_qkv, device=None if not self.edge_sp else self.model.cfg.device)
+        self.corr = TLACDCCorrespondence.setup_from_model(self.model, use_pos_embed=use_pos_embed, use_split_qkv=self.use_split_qkv, device=None if not self.edge_sp else self.model.cfg.device, edge_sp=self.edge_sp)
 
         if early_exit: 
             return

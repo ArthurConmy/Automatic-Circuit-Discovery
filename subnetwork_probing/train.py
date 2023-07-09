@@ -136,7 +136,8 @@ def experiment_regularizer( # this is used for edge sp
         return torch.sigmoid(mask - beta * np.log(-gamma / zeta)).mean()
 
     mask_scores = exp.get_mask_parameters()
-    return torch.mean(torch.stack(mask_scores))
+    regularization_terms = [regularization_term(s) for s in mask_scores]
+    return torch.mean(torch.stack(regularization_terms))
 
 def do_random_resample_caching(
     model: SPHookedTransformer, train_data: torch.Tensor
@@ -361,15 +362,16 @@ parser.add_argument('--edge-sp', type=int, default=0)
 #%%
 
 if __name__ == "__main__":
-    if ipython is not None:
+    if ipython is not None or True: # TODO delete
         # we are in a notebook
         # you can put the command you would like to run as the ... in r"""..."""
         args = parser.parse_args(
             [line.strip() for line in r"""--task=induction\
-    --lambda-reg=5.0\
+    --lambda-reg=250.0\
     --zero-ablation=0\
     --wandb-name=my_edge_runs\
     --wandb-project=edgesp\
+    --lr=0.005\
     --wandb-entity=remix_school-of-rock\
     --wandb-mode=online\
     --loss-type=kl_div\
@@ -513,7 +515,7 @@ if __name__ == "__main__":
         ref_ds=all_task_things.validation_patch_data,
         metric=all_task_things.validation_metric,
         zero_ablation=bool(args.zero_ablation),
-        hook_verbose=True,
+        hook_verbose=False,
         edge_sp=True,
         using_wandb=True,
         wandb_entity_name = args.wandb_entity,

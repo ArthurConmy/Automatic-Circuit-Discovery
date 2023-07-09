@@ -40,11 +40,14 @@ from subnetwork_probing.transformer_lens.transformer_lens.ioi_dataset import IOI
 import wandb
 torch.set_grad_enabled(True)
 
-def log_plotly_bar_chart(x: List[str], y: List[float]) -> None:
+def log_plotly_bar_chart(x: List[str], y: List[float], log_title="mask_scores", **kwargs) -> None:
     import plotly.graph_objects as go
 
-    fig = go.Figure(data=[go.Bar(x=x, y=y)])
-    wandb.log({"mask_scores": fig})
+    title = None if "title" not in kwargs else kwargs.pop("title")
+
+    fig = go.Figure(data=[go.Bar(x=x, y=y)], **kwargs)
+    fig.update_layout(title=title)
+    wandb.log({log_title: fig})
 
 
 def visualize_mask(model: HookedTransformer) -> tuple[int, list[TLACDCInterpNode]]:
@@ -110,26 +113,38 @@ def experiment_visualize_mask(
 
     # Do a check for now that all the scores for same parents
     
-    scores_for_parents = defaultdict(dict)
+    masks_for_parents = defaultdict(dict)
+    mask_scores_for_parents = defaultdict(float)
+    all_edges = exp.corr.all_edges()
 
-    for (child_name, child_index, parent_name, parent_index), edge in exp.corr.all_edges().items():
+    for (child_name, child_index, parent_name, parent_index), edge in all_edges.items():
         if edge.edge_type == EdgeType.PLACEHOLDER:
             continue
-
         try:
-            scores_for_parents[(parent_name, parent_index)][(child_name, child_index)] = edge.mask.item()
+            masks_for_parents[(parent_name, parent_index)][(child_name, child_index)] = edge.mask.item()
         except AttributeError as e:
             print(child_name, child_index, parent_name, parent_index)
             raise e
+        
+        mask_scores_for_parents[(parent_name, parent_index)] = edge.mask_score.item()
 
-    for parent_tuple in scores_for_parents:
+    for parent_tuple in masks_for_parents:
         assert (
-            torch.tensor(list(scores_for_parents[parent_tuple].values())) - list(scores_for_parents[parent_tuple].values())[0]
-        ).norm().item() < 1e-2, f"{parent_tuple=} {scores_for_parents[parent_tuple]=}"
+            torch.tensor(list(masks_for_parents[parent_tuple].values())) - list(masks_for_parents[parent_tuple].values())[0]
+        ).norm().item() < 1e-2, f"{parent_tuple=} {masks_for_parents[parent_tuple]=}"
 
     log_plotly_bar_chart(
-        x = [str(parent_tuple) for parent_tuple in scores_for_parents],
-        y = [list(scores_for_parents[parent_tuple].values())[0] for parent_tuple in scores_for_parents],
+        x = [str(parent_tuple) for parent_tuple in masks_for_parents],
+        y = [list(masks_for_parents[parent_tuple].values())[0] for parent_tuple in masks_for_parents],
+        title="Mask values for parents",
+        log_title="Mask values for parents",
+    )
+
+    log_plotly_bar_chart(
+        x = [str(parent_tuple) for parent_tuple in masks_for_parents],
+        y = [mask_scores_for_parents[parent_tuple] for parent_tuple in masks_for_parents],
+        title="Mask scores for parents",
+        log_title="Mask scores for parents",
     )
 
     return -1, [] # not done this yet...
