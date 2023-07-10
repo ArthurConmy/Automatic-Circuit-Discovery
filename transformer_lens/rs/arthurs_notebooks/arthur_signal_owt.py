@@ -38,6 +38,9 @@ clear_output()
 
 #%%
 
+filtered_examples = Path("../arthur/json_data/filtered_for_high_attention.json")
+with open(filtered_examples, "r") as f:
+    filtered_examples = json.load(f)
 max_act_fname = Path("../arthur/json_data/head_ten_point_seven_data_eight_max_importance_samples.json")
 with open(max_act_fname, "r") as f:
     head_ten_point_seven_data_eight_max_importance_samples = json.load(f)
@@ -70,6 +73,7 @@ y_data = {}
 # %%
 
 for dataset_name, raw_dataset in [
+    ("filtered_for_high_attention", filtered_examples),
     ("head_ten_point_seven_data_eight_max_importance_samples", head_ten_point_seven_data_eight_max_importance_samples),
     ("ioi_dataset", ioi_dataset),
     ("gpt_4_update_words", gpt_4_update_words),
@@ -131,6 +135,8 @@ for dataset_name, raw_dataset in [
     else:
         raise NotImplementedError()
 
+    break
+
 #%%
 
 x_axis_points = [
@@ -182,7 +188,66 @@ att_to_prev = patt[
 
 px.bar(
     list(more_top5p_examples.keys()),
-    att_to_prev,
+    att_to_prev.cpu(),
 ).show()
 
 #%%
+
+att_to_bos = patt[
+    torch.arange(len(patt)),
+    more_dataset.word_idx["end"],
+    0,
+]
+# %%
+
+px.bar(
+    list(more_top5p_examples.keys()), 
+    att_to_prev.cpu() + att_to_bos.cpu(),
+).show()
+
+# %%
+
+filtered_for_high_attention = {
+    k: v for i, (k, v) in enumerate(more_top5p_examples.items()) if att_to_prev[i].item() > 0.2 
+}
+
+# %%
+
+with open("../arthur/json_data/filtered_for_high_attention.json", "w") as f:
+    f.write(json.dumps(filtered_for_high_attention, indent=4))
+
+# %%
+
+filtered_examples = Path("../arthur/json_data/filtered_for_high_attention.json")
+with open(filtered_examples, "r") as f:
+    filtered_examples = json.load(f)
+
+#%%
+
+filtered_dataset = FakeIOIDataset(
+    sentences = list(filtered_examples.values()),
+    io_tokens=list(filtered_examples.keys()),
+    key_increment=0,
+    model=model,
+)
+
+# %%
+
+results, ioi_cache = decompose_attn_scores_full(
+    ioi_dataset=filtered_dataset,
+    batch_size=filtered_dataset.N,
+    seed=0,
+    nnmh= (10, 7),
+    model= model,
+    use_effective_embedding = False,
+    use_layer0_heads = False,
+    subtract_S1_attn_scores = True,
+    include_S1_in_unembed_projection = False,
+    project_onto_comms_space = "W_EE0A",
+    return_cache=True,
+)
+ioi_cache = ioi_cache.to("cpu")
+gc.collect()
+torch.cuda.empty_cache()
+
+# %%

@@ -197,7 +197,7 @@ def decompose_attn_scores_full(
     # adding attention head bias & all residual stream biases
     keys_decomposed[-1, 0] = keyside_components[0][1]
     # then iterating through all the others and adding them too (possibly splitting them into projections)
-    for i, (keyside_name, keyside_component) in enumerate(keyside_components[1:], 1):
+    for i, (keyside_name, keyside_component) in tqdm(list(enumerate(keyside_components[1:], 1))):
         if subtract_S1_attn_scores:
             keyside_component_IO, keyside_component_S1 = keyside_component
             projections = project(keyside_component_IO, MLP0_output), project(keyside_component_S1, MLP0_output_S1)

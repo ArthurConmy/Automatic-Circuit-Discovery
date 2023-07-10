@@ -9,7 +9,6 @@ from transformer_lens.cautils.notebook import *
 from transformer_lens.rs.callum.keys_fixed import project, get_effective_embedding_2
 from transformer_lens.rs.arthurs_notebooks.arthur_utils import *
 import argparse
-MY_FNAME = "../arthur/json_data/try_and_make_loss_recov_work.json"
 
 #%%
 
@@ -143,13 +142,10 @@ if ipython is not None:
 # <h2> Making some helpful datasets </h2>
 
 my_dict = {}
+works = 0
 if ipython is not None:
     for idx in range(len(top5p_batch_indices)):
-        # print("-"*50)
-        # print(f"Batch {top5p_batch_indices[idx]}, Seq {top5p_seq_indices[idx]}")
-
         current_tokens = batched_tokens[top5p_batch_indices[idx], :top5p_seq_indices[idx]+1].tolist()
-        # print("PROMPT:", model.to_string(batched_tokens[top5p_batch_indices[idx], :top5p_seq_indices[idx]+2]))
 
         top_negs = top5p_topks[idx].tolist()
 
@@ -163,23 +159,28 @@ if ipython is not None:
             while the_tokens.count(the_tokens[-1]) > 2:
                 the_tokens = the_tokens[1:]
 
-            if the_tokens.index(the_tokens[-1]) >= len(the_tokens) - 3:
-                print("FAIL")
-                continue
+            # # Uncomment if things are pretty cursed for doing mean ablations if the copied word is super near the end
+            # if the_tokens.index(the_tokens[-1]) >= len(the_tokens) - 3:
+            #     print("FAIL")
+            #     continue
 
+            print("Success! Here's the prompt where we added the copy suppressed thing as the last token:")
             print(model.to_string(the_tokens))
-            my_dict[model.to_string(the_tokens[-1:])] = model.to_string(the_tokens)
+            key_token = model.to_string(the_tokens[-1:])
+            assert key_token not in my_dict, "Manually remove or something, same token as repeated token in multiple cases"
+            my_dict[key_token] = model.to_string(the_tokens)
+            
         else:
             print("FAIL")
+
         print("-"*50)
-        # top_negs = top_negs[1:]
-        # print("Top negs", model.to_string(top5p_topks[idx].tolist()))
-        # print("More", print("PROMPT:", model.to_string(batched_tokens[top5p_batch_indices[idx], top5p_seq_indices[idx]:top5p_seq_indices[idx]+7])))
 
 #%%
 
-with open("/code/TransformerLens/transformer_lens/rs/arthur/json_data/even_more_top5p_examples.json", "w") as f:
+with open("/code/TransformerLens/transformer_lens/rs/arthur/json_data/and_even_more_top5p_examples.json", "w") as f:
     json.dump(my_dict, f)
+
+# And things are done!
 
 #%%
 
@@ -356,6 +357,7 @@ change_in_loss_mean = sum(change_in_loss)/len(change_in_loss)
 top5pdata = top5p_losses.cpu().tolist()
 lossdata = loss.cpu().tolist()
 
+MY_FNAME = "../arthur/json_data/try_and_make_loss_recov_work.json"
 try:
     # # read the existing data
     with open(MY_FNAME, "r") as f:
