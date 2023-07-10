@@ -25,8 +25,8 @@ model.set_use_attn_result(True)
 # %%
 
 MAX_SEQ_LEN = 512
-BATCH_SIZE = 30
-batched_tokens, targets = get_filtered_webtext(model, batch_size=BATCH_SIZE, seed=1729, device="cuda", max_seq_len=MAX_SEQ_LEN)
+BATCH_SIZE = 50
+batched_tokens, targets = get_filtered_webtext(model, batch_size=BATCH_SIZE, seed=1730, device="cuda", max_seq_len=MAX_SEQ_LEN)
 effective_embeddings = get_effective_embedding_2(model)
 
 # %%
@@ -144,7 +144,7 @@ if ipython is not None:
 
 my_dict = {}
 if ipython is not None:
-    for idx in range(30):
+    for idx in range(len(top5p_batch_indices)):
         # print("-"*50)
         # print(f"Batch {top5p_batch_indices[idx]}, Seq {top5p_seq_indices[idx]}")
 
@@ -159,14 +159,27 @@ if ipython is not None:
         if sum(list(is_in_top_negs.values()))==1:
             the_tokens = current_tokens + [top_negs[i] for i in range(3) if is_in_top_negs[i]]
             assert len(the_tokens) == len(current_tokens) + 1
+
+            while the_tokens.count(the_tokens[-1]) > 2:
+                the_tokens = the_tokens[1:]
+
+            if the_tokens.index(the_tokens[-1]) >= len(the_tokens) - 3:
+                print("FAIL")
+                continue
+
             print(model.to_string(the_tokens))
-            my_dict[model.to_string(the_tokens[-1:])] = model.to_string(the_tokens[1:])
+            my_dict[model.to_string(the_tokens[-1:])] = model.to_string(the_tokens)
         else:
             print("FAIL")
         print("-"*50)
         # top_negs = top_negs[1:]
         # print("Top negs", model.to_string(top5p_topks[idx].tolist()))
         # print("More", print("PROMPT:", model.to_string(batched_tokens[top5p_batch_indices[idx], top5p_seq_indices[idx]:top5p_seq_indices[idx]+7])))
+
+#%%
+
+with open("/code/TransformerLens/transformer_lens/rs/arthur/json_data/even_more_top5p_examples.json", "w") as f:
+    json.dump(my_dict, f)
 
 #%%
 

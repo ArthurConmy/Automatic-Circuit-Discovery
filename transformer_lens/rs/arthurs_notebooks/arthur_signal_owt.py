@@ -50,6 +50,9 @@ with open(totally_random_fname, "r") as f:
 top5p_examples_fname = Path("../arthur/json_data/top5p_examples.json")
 with open(top5p_examples_fname, "r") as f:
     top5p_examples = json.load(f)
+more_top5p_examples = Path("../arthur/json_data/more_top5p_examples.json")
+with open(more_top5p_examples, "r") as f:
+    more_top5p_examples = json.load(f)
 
 N = 60
 ioi_dataset = IOIDataset(
@@ -72,6 +75,7 @@ for dataset_name, raw_dataset in [
     ("gpt_4_update_words", gpt_4_update_words),
     ("totally_random_sentences_with_random_in_context_word_at_end", totally_random),
     ("top5p_examples", top5p_examples),
+    ("more_top5p_examples", more_top5p_examples),
 ]:
     print("Processing dataset: ", dataset_name, "...")
 
@@ -87,7 +91,7 @@ for dataset_name, raw_dataset in [
                 key_increment=inc,
                 model=model,
             )
-            cur_res[inc]=decompose_attn_scores_full(
+            cur_res[inc], ioi_cache = decompose_attn_scores_full(
                 ioi_dataset=dataset,
                 batch_size = dataset.N,
                 seed = 0,
@@ -98,7 +102,12 @@ for dataset_name, raw_dataset in [
                 subtract_S1_attn_scores = True,
                 include_S1_in_unembed_projection = False,
                 project_onto_comms_space = "W_EE0A",
+                return_cache=True,
             )
+            ioi_cache = ioi_cache.to("cpu")
+            gc.collect()
+            torch.cuda.empty_cache()
+
         data = sum(cur_res.values())
         assert len(data.shape) == 3
         data = data.sum(dim=(1, 2)) # first dim is the 6 projections
