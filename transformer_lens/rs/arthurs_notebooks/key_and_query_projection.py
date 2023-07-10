@@ -25,7 +25,7 @@ model.set_use_attn_result(True)
 
 MAX_SEQ_LEN = 512
 BATCH_SIZE = 50
-batched_tokens, targets = get_filtered_webtext(model, batch_size=BATCH_SIZE, seed=1730, device="cuda", max_seq_len=MAX_SEQ_LEN)
+batched_tokens, targets = get_filtered_webtext(model, batch_size=BATCH_SIZE, seed=1717, device="cuda", max_seq_len=MAX_SEQ_LEN)
 effective_embeddings = get_effective_embedding_2(model)
 
 # %%
@@ -167,7 +167,6 @@ if ipython is not None:
             print("Success! Here's the prompt where we added the copy suppressed thing as the last token:")
             print(model.to_string(the_tokens))
             key_token = model.to_string(the_tokens[-1:])
-            assert key_token not in my_dict, "Manually remove or something, same token as repeated token in multiple cases"
             my_dict[key_token] = model.to_string(the_tokens)
             
         else:

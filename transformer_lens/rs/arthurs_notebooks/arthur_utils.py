@@ -54,7 +54,7 @@ def get_filtered_webtext(model, batch_size=30, seed: int = 1729, device="cuda", 
         _idx += 1
         cur_tokens = model.to_tokens(dataset[_idx], truncate=False).tolist()[0]
         if (
-            len(cur_tokens) >= max_seq_len
+            len(cur_tokens) > max_seq_len # Greater Than so that we have all the targets for the context!!!
         ):  # so we're not biasing towards early sequence positions...
             filtered_tokens.append(cur_tokens[:max_seq_len])
             targets.append(cur_tokens[1 : max_seq_len + 1])
