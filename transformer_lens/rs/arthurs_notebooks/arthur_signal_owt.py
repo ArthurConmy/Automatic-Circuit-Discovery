@@ -151,3 +151,38 @@ fig.update_layout(
 )
 
 #%%
+
+more_dataset = FakeIOIDataset(
+    sentences = list(more_top5p_examples.values()),
+    io_tokens=list(more_top5p_examples.keys()),
+    key_increment=0,
+    model=model,
+)
+
+# %%
+
+logits, cache = model.run_with_cache(
+    more_dataset.toks,
+    names_filter= lambda name: name==f"blocks.10.attn.hook_pattern",
+)
+
+# %%
+
+patt = cache["blocks.10.attn.hook_pattern"][:, 7]
+
+# %%
+
+att_to_prev = patt[
+    torch.arange(len(patt)),
+    more_dataset.word_idx["end"],
+    more_dataset.word_idx["IO"],
+]
+
+# %%
+
+px.bar(
+    list(more_top5p_examples.keys()),
+    att_to_prev,
+).show()
+
+#%%
