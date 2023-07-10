@@ -24,8 +24,9 @@ model.set_use_attn_result(True)
 
 # %%
 
-BATCH_SIZE = 50
-batched_tokens, targets = get_filtered_webtext(model, batch_size=BATCH_SIZE, seed=1729, device="cuda", max_seq_len=1024)
+MAX_SEQ_LEN = 512
+BATCH_SIZE = 30
+batched_tokens, targets = get_filtered_webtext(model, batch_size=BATCH_SIZE, seed=1729, device="cuda", max_seq_len=MAX_SEQ_LEN)
 effective_embeddings = get_effective_embedding_2(model)
 
 # %%
@@ -35,7 +36,7 @@ effective_embeddings = get_effective_embedding_2(model)
 # See change in loss
 
 NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX = NEG_HEADS[model.cfg.model_name]
-NEGATIVE_HEAD_IDX, NEGATIVE_LAYER_IDX = 10, 7
+NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX = 10, 7
 # for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in [(10, 0), (10, 7), (9, 9), (11, 10)] + list(itertools.product(range(11, -1, -1), range(12))):
 
 END_STATE_HOOK = f"blocks.{model.cfg.n_layers-1}.hook_resid_post"
@@ -58,7 +59,7 @@ torch.cuda.empty_cache()
 
 # %%
 
-original_end_state = cache[get_act_name("resid_post", model.cfg.n_layers-1)]
+original_end_state = cache[END_STATE_HOOK]
 
 batched_tokens_loss = get_loss_from_end_state(
     model=model,
@@ -69,11 +70,11 @@ batched_tokens_loss = get_loss_from_end_state(
 #%%
 
 head_output = cache[get_act_name("result", NEGATIVE_LAYER_IDX)][:, :, NEGATIVE_HEAD_IDX]
-assert head_output.shape == (BATCH_SIZE, model.cfg.n_ctx, model.cfg.d_model)
+assert head_output.shape == (BATCH_SIZE, MAX_SEQ_LEN, model.cfg.d_model)
 
 #%%
 
-if ipython is not None and False: # overflo
+if ipython is not None:
     unembed = einops.einsum(
         head_output, 
         model.W_U,
@@ -82,9 +83,9 @@ if ipython is not None and False: # overflo
 
 #%% 
 
-if ipython is not None and False: # overflo
+if ipython is not None:
     the_topk = torch.topk(
-        -unembed,
+        -unembed.cpu(),
         k=10,
         dim=-1,
     ).indices
@@ -96,7 +97,7 @@ mean_head_output = einops.reduce(head_output, "b s d -> d", reduction="mean")
 
 #%%
 
-mean_ablated_end_states = cache[get_act_name("resid_post", model.cfg.n_layers-1)] - head_output + einops.repeat(mean_head_output, "d -> b s d", b=BATCH_SIZE, s=model.cfg.n_ctx)
+mean_ablated_end_states = cache[get_act_name("resid_post", model.cfg.n_layers-1)] - head_output + einops.repeat(mean_head_output, "d -> b s d", b=BATCH_SIZE, s=MAX_SEQ_LEN)
 mean_ablated_loss = get_loss_from_end_state(
     model=model,
     end_state=mean_ablated_end_states,
@@ -113,7 +114,7 @@ max_importance_examples = sorted(
             (mean_ablated_loss-batched_tokens_loss)[batch_idx, seq_idx].item(),
         )
         for batch_idx, seq_idx in itertools.product(
-            range(BATCH_SIZE), range(model.cfg.n_ctx)
+            range(BATCH_SIZE), range(MAX_SEQ_LEN)
         )
     ],
     key=lambda x: x[2],
@@ -126,8 +127,8 @@ max_importance_examples = sorted(
 all_top_5_percent = max_importance_examples[: len(max_importance_examples)//20]
 
 np.random.seed(799)
-warnings.warn("No shuffle!!!")
-# np.random.shuffle(all_top_5_percent)
+# warnings.warn("No shuffle!!!")
+np.random.shuffle(all_top_5_percent)
 top_5_percent = all_top_5_percent[: BATCH_SIZE]
 
 top5p_batch_indices = [x[0] for x in top_5_percent]
@@ -135,14 +136,14 @@ top5p_seq_indices = [x[1] for x in top_5_percent]
 
 #%%
 
-if ipython is not None and False: # overflo
+if ipython is not None:
     top5p_topks = the_topk[top5p_batch_indices, top5p_seq_indices]
 
-#%%
+#%% [markdown]
+# <h2> Making some helpful datasets </h2>
 
 my_dict = {}
-
-if ipython is not None and False: # overflo
+if ipython is not None:
     for idx in range(30):
         # print("-"*50)
         # print(f"Batch {top5p_batch_indices[idx]}, Seq {top5p_seq_indices[idx]}")
@@ -181,10 +182,10 @@ top5p_losses = batched_tokens_loss[top5p_batch_indices, top5p_seq_indices]
 # Do the key-side thing where we project onto W_U
 # selected_unembeddings = cache[get_act_name("resid_pre", NEGATIVE_LAYER_IDX)][torch.tensor(top5p_batch_indices), torch.tensor(top5p_seq_indices)]
 
-keyside_projections = t.zeros((BATCH_SIZE, model.cfg.n_ctx, model.cfg.d_model))
-keyside_orthogonals = t.zeros((BATCH_SIZE, model.cfg.n_ctx, model.cfg.d_model))
+keyside_projections = t.zeros((BATCH_SIZE, MAX_SEQ_LEN, model.cfg.d_model))
+keyside_orthogonals = t.zeros((BATCH_SIZE, MAX_SEQ_LEN, model.cfg.d_model))
 
-for batch_idx, seq_idx in tqdm(list(itertools.product(range(BATCH_SIZE), range(model.cfg.n_ctx)))):
+for batch_idx, seq_idx in tqdm(list(itertools.product(range(BATCH_SIZE), range(MAX_SEQ_LEN)))):
     keyside_vector, keyside_orthogonal = project(
         normalize(cache[get_act_name("resid_pre", NEGATIVE_LAYER_IDX)][batch_idx, seq_idx]) * np.sqrt(model.cfg.d_model), # simulate LN
         cache[get_act_name("resid_pre", 1)][batch_idx, seq_idx],
@@ -197,7 +198,7 @@ keyside_projections[:, 0] *= - 1.0
 
 #%%
 
-new_k_input = t.zeros((BATCH_SIZE, model.cfg.n_ctx, model.cfg.d_model))
+new_k_input = t.zeros((BATCH_SIZE, MAX_SEQ_LEN, model.cfg.d_model))
 
 np.random.seed(433)
 for batch_batch_idx, batch_idx in enumerate(top5p_batch_indices):
@@ -205,14 +206,14 @@ for batch_batch_idx, batch_idx in enumerate(top5p_batch_indices):
     # warnings.warn("Writing as literally the unembed...")
 
     # new_k_input[batch_batch_idx] = torch.stack([
-    #     effective_embeddings["W_E (including MLPs)"][batched_tokens[batch_idx, seq_idx]] for seq_idx in range(model.cfg.n_ctx)
+    #     effective_embeddings["W_E (including MLPs)"][batched_tokens[batch_idx, seq_idx]] for seq_idx in range(MAX_SEQ_LEN)
     # ])
 
-    rand_batch_indices = [np.random.randint(0, BATCH_SIZE) for _ in range(model.cfg.n_ctx)]
-    rand_seq_indices = [np.random.randint(0, model.cfg.n_ctx) for _ in range(model.cfg.n_ctx)]
+    rand_batch_indices = [np.random.randint(0, BATCH_SIZE) for _ in range(MAX_SEQ_LEN)]
+    rand_seq_indices = [np.random.randint(0, MAX_SEQ_LEN) for _ in range(MAX_SEQ_LEN)]
 
     new_k_input[batch_batch_idx] = torch.stack([
-        keyside_projections[batch_idx, seq_idx] + 0.0*keyside_orthogonals[rand_batch_idx][rand_seq_idx] for seq_idx, rand_batch_idx, rand_seq_idx in zip(range(model.cfg.n_ctx), rand_batch_indices, rand_seq_indices, strict=True)
+        keyside_projections[batch_idx, seq_idx] + 0.0*keyside_orthogonals[rand_batch_idx][rand_seq_idx] for seq_idx, rand_batch_idx, rand_seq_idx in zip(range(MAX_SEQ_LEN), rand_batch_indices, rand_seq_indices, strict=True)
     ])
 
 #%%
