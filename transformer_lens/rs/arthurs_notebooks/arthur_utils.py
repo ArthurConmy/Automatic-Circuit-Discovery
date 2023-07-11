@@ -81,27 +81,38 @@ def set_to_value(
     return z
 
 def dot_with_query(
-    unnormalized_keys,
+    unnormalized_keys: Float[torch.Tensor, "batch d_model"],
+    unnormalized_queries: Float[torch.Tensor, "batch d_model"],
     model,
-    unnormalized_queries,
     layer_idx,
     head_idx,
+    add_key_bias: bool = True, 
+    add_query_bias: bool = True,
+    normalize_keys: bool = True,
+    normalize_queries: bool = True,
 ):
     W_Q = model.W_Q[layer_idx, head_idx]
     W_K = model.W_K[layer_idx, head_idx]
 
-    queries_normalized = torch.stack(
-        [query / (query.var(dim=-1, keepdim=True) + model.cfg.eps).pow(0.5)
-        for query in unnormalized_queries],
-        dim=0,
-    )
-    keys_normalized = torch.stack(
-        [key / (key.var(dim=-1, keepdim=True) + model.cfg.eps).pow(0.5)
-        for key in unnormalized_keys],
-        dim=0,
-    )
+    if normalize_queries:
+        queries = torch.stack(
+            [query / (query.var(dim=-1, keepdim=True) + model.cfg.eps).pow(0.5) # todo remove
+            for query in unnormalized_queries],
+            dim=0,
+        )
+    else:
+        queries = unnormalized_queries
+    
+    if normalize_keys:
+        keys = torch.stack(
+            [key / (key.var(dim=-1, keepdim=True) + model.cfg.eps).pow(0.5) # todo remove
+            for key in unnormalized_keys],
+            dim=0,
+        )
+    else:
+        keys = unnormalized_keys
 
-    q_and_k_vectors = list(zip(queries_normalized, keys_normalized))
+    q_and_k_vectors = list(zip(queries, keys))
 
     results = []
     for q_vector, k_vector in tqdm(q_and_k_vectors): # TODO easy to batch, mate...
@@ -109,14 +120,18 @@ def dot_with_query(
             q_vector,
             W_Q,
             "d_model, d_model d_head -> d_head",
-        ) + model.b_Q[layer_idx, head_idx]
+        ) 
+        if add_query_bias:
+            query_side_vector += model.b_Q[layer_idx, head_idx]
         
         # TODO to do this addition maximally safe, assert some shapes and/or einops.repeat the bias
         key_side_vector = einops.einsum(
             k_vector,
             W_K,
             "d_model, d_model d_head -> d_head",
-        ) + model.b_K[layer_idx, head_idx]
+        )
+        if add_key_bias:
+            model.b_K[layer_idx, head_idx]
 
         assert list(query_side_vector.shape) == [
             model.cfg.d_head,

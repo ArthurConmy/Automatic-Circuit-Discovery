@@ -7,11 +7,11 @@ Mostly cribbed from transformer_lens/rs/callum/orthogonal_query_investigation_2.
 
 
 from transformer_lens.cautils.notebook import *
+from transformer_lens.rs.arthurs_notebooks.arthur_utils import dot_with_query
 from transformer_lens.rs.callum.keys_fixed import (
     project,
     get_effective_embedding_2,
 )
-
 from transformer_lens.rs.callum.orthogonal_query_investigation import (
     decompose_attn_scores_full,
     create_fucking_massive_plot_1,
@@ -19,9 +19,10 @@ from transformer_lens.rs.callum.orthogonal_query_investigation import (
     token_to_qperp_projection,
     FakeIOIDataset,
 )
-
 clear_output()
 USE_IOI = False
+LAYER_IDX, HEAD_IDX=10,7
+
 #%% [markdown] [2]:
 
 model = HookedTransformer.from_pretrained(
@@ -49,6 +50,13 @@ filtered_examples = {
     k: v for i, (k, v) in enumerate(filtered_examples.items()) if i < TRIMMED_SIZE
 } 
 
+#%%
+
+filtered_dataset = IOIDataset(
+    N = 30,
+    prompt_type="mixed",
+)
+    
 #%%
 
 filtered_dataset = FakeIOIDataset(
@@ -82,3 +90,71 @@ torch.cuda.empty_cache()
 # Breaking up these attention scores into comparison to attention scores to surrounding token, I think
 # 1. Try the manual computation of attention scores from blocks.10.hook_resid_pre
 
+default_attention_scores = dot_with_query(
+    unnormalized_keys = ioi_cache[get_act_name("resid_pre", 10)][0].to("cuda"),
+    unnormalized_queries = ioi_cache[get_act_name("resid_pre", 10)][0].to("cuda"),
+    model = model,
+    layer_idx = 10,
+    head_idx = 7,
+)
+
+# oh lol that's some diagonal crap
+
+# %%
+
+att_scores = ioi_cache[get_act_name("attn_scores", 10)][0, 7]
+
+# %%
+
+diag = att_scores[torch.arange(att_scores.shape[0]), torch.arange(att_scores.shape[0])]
+
+# %%
+
+assert torch.allclose(diag, default_attention_scores, atol=1e-1, rtol=1e-1)
+# TODO 1e-2 is super high, what's up???
+
+# %%
+
+# A) do this for exactly one example (no baseline)
+# B) do this with a baseline subtracted
+# C) do this for whole batch
+
+#%%
+
+# A) do this for exactly one example (no baseline)
+
+all_residual_stream = {}
+batch_idx = 1
+inc = -1
+
+for hook_name in ["hook_embed", "hook_pos_embed"] + [f"blocks.{layer_idx}.hook_mlp_out" for layer_idx in range(LAYER_IDX)] + [f"blocks.{layer_idx}.attn.hook_result" for layer_idx in range(LAYER_IDX)]:
+    if "attn" in hook_name:
+        for head_idx in range(model.cfg.n_heads):
+            all_residual_stream[f"{hook_name}_{head_idx}"] = ioi_cache[hook_name][batch_idx, filtered_dataset.word_idx["end"][batch_idx], head_idx, :]
+    else:
+        all_residual_stream[hook_name] = ioi_cache[hook_name][0, filtered_dataset.word_idx["end"][batch_idx], :]
+
+#%%
+
+attention_scores = dot_with_query(
+    unnormalized_keys=einops.repeat(ioi_cache[get_act_name("resid_pre", 10)][batch_idx, filtered_dataset.word_idx["IO"][batch_idx] + inc].to("cuda"), "d_model -> components d_model", components=len(all_residual_stream)).clone(),
+    normalize_keys=True,
+    add_key_bias=True,
+    unnormalized_queries=[tens.cuda() for tens in list(all_residual_stream.values())],
+    normalize_queries=False,
+    add_query_bias=False,
+    model=model,
+    layer_idx=10,
+    head_idx=7,
+)
+
+#%%
+
+px.bar(
+    x = list(all_residual_stream.keys()),
+    y = attention_scores.cpu().numpy() - saved_attention_scores.cpu().numpy(),
+).show()
+
+#   %%
+
+# C) # now, it's crucial to include that 
