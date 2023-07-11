@@ -7,11 +7,11 @@ Mostly cribbed from transformer_lens/rs/callum/orthogonal_query_investigation_2.
 
 
 from transformer_lens.cautils.notebook import *
+from transformer_lens.rs.arthurs_notebooks.arthur_utils import dot_with_query
 from transformer_lens.rs.callum.keys_fixed import (
     project,
     get_effective_embedding_2,
 )
-
 from transformer_lens.rs.callum.orthogonal_query_investigation import (
     decompose_attn_scores_full,
     create_fucking_massive_plot_1,
@@ -19,9 +19,10 @@ from transformer_lens.rs.callum.orthogonal_query_investigation import (
     token_to_qperp_projection,
     FakeIOIDataset,
 )
-
 clear_output()
 USE_IOI = False
+LAYER_IDX, HEAD_IDX=10,7
+
 #%% [markdown] [2]:
 
 model = HookedTransformer.from_pretrained(
@@ -38,190 +39,24 @@ clear_output()
 
 #%%
 
-filtered_examples = Path("../arthur/json_data/filtered_for_high_attention.json")
+filtered_examples = Path("../arthur/json_data/filtered_for_high_attention.json") # where these come from is documented in git history... it's somewhat selective but BASICALLY the easiest ~40% of the Top 5% crap
 with open(filtered_examples, "r") as f:
     filtered_examples = json.load(f)
-max_act_fname = Path("../arthur/json_data/head_ten_point_seven_data_eight_max_importance_samples.json")
-with open(max_act_fname, "r") as f:
-    head_ten_point_seven_data_eight_max_importance_samples = json.load(f)
-gpt_4_fname = Path("../arthur/json_data/gpt_4_update_words.json")
-with open(gpt_4_fname, "r") as f:
-    gpt_4_update_words = json.load(f)
-totally_random_fname = Path("../arthur/json_data/totally_random_sentences_with_random_in_context_word_at_end.json")
-with open(totally_random_fname, "r") as f:
-    totally_random = json.load(f)
-top5p_examples_fname = Path("../arthur/json_data/top5p_examples.json")
-with open(top5p_examples_fname, "r") as f:
-    top5p_examples = json.load(f)
-more_top5p_examples = Path("../arthur/json_data/more_top5p_examples.json")
-with open(more_top5p_examples, "r") as f:
-    more_top5p_examples = json.load(f)
 
-N = 60
-ioi_dataset = IOIDataset(
+#%%
+
+TRIMMED_SIZE = 20 # for real
+filtered_examples = {
+    k: v for i, (k, v) in enumerate(filtered_examples.items()) if i < TRIMMED_SIZE
+} 
+
+#%%
+
+filtered_dataset = IOIDataset(
+    N = 30,
     prompt_type="mixed",
-    N=N,
-    tokenizer=model.tokenizer,
-    prepend_bos=True,
-    seed=35795,
 )
-
-# TODO load the other examples
-
-y_data = {}
-
-# %%
-
-for dataset_name, raw_dataset in [
-    ("filtered_for_high_attention", filtered_examples),
-    ("head_ten_point_seven_data_eight_max_importance_samples", head_ten_point_seven_data_eight_max_importance_samples),
-    ("ioi_dataset", ioi_dataset),
-    ("gpt_4_update_words", gpt_4_update_words),
-    ("totally_random_sentences_with_random_in_context_word_at_end", totally_random),
-    ("top5p_examples", top5p_examples),
-    ("more_top5p_examples", more_top5p_examples),
-]:
-    print("Processing dataset: ", dataset_name, "...")
-
-    if dataset_name in y_data:
-        continue
-
-    if isinstance(raw_dataset, dict): # need to make into FakeIOIDataset
-        cur_res = {}
-        for inc in tqdm([-2, -1, 1, 2]): # some selection of *different* keys
-            dataset = FakeIOIDataset(
-                sentences = list(raw_dataset.values()),
-                io_tokens=list(raw_dataset.keys()),
-                key_increment=inc,
-                model=model,
-            )
-            cur_res[inc], ioi_cache = decompose_attn_scores_full(
-                ioi_dataset=dataset,
-                batch_size = dataset.N,
-                seed = 0,
-                nnmh = (10, 7),
-                model = model,
-                use_effective_embedding = False,
-                use_layer0_heads = False,
-                subtract_S1_attn_scores = True,
-                include_S1_in_unembed_projection = False,
-                project_onto_comms_space = "W_EE0A",
-                return_cache=True,
-            )
-            ioi_cache = ioi_cache.to("cpu")
-            gc.collect()
-            torch.cuda.empty_cache()
-
-        data = sum(cur_res.values())
-        assert len(data.shape) == 3
-        data = data.sum(dim=(1, 2)) # first dim is the 6 projections
-        y_data[dataset_name] = 100.0 * (data / data.sum()) # this is a percentage
-
-    elif isinstance(raw_dataset, IOIDataset):
-        full_results = decompose_attn_scores_full(
-            ioi_dataset=raw_dataset,
-            batch_size = raw_dataset.N,
-            seed = 0,
-            nnmh = (10, 7),
-            model = model,
-            use_effective_embedding = False,
-            use_layer0_heads = False,
-            subtract_S1_attn_scores = True,
-            include_S1_in_unembed_projection = False,
-            project_onto_comms_space = "W_EE0A",
-        ).sum(dim=(1,2))
-        y_data[dataset_name] = 100.0 * (full_results / full_results.sum()) # this is a percentage
-
-    else:
-        raise NotImplementedError()
-
-    break
-
-#%%
-
-x_axis_points = [
-    "q ∥ W<sub>U</sub>[IO], k ∥ MLP<sub>0</sub>",
-    "q ∥ W<sub>U</sub>[IO], k ⊥ MLP<sub>0</sub>", 
-    "q ⊥ W<sub>U</sub>[IO] & ∥ comms, k ∥ MLP<sub>0</sub>",
-    "q ⊥ W<sub>U</sub>[IO] & ∥ comms, k ⊥ MLP<sub>0</sub>", 
-    "q ⊥ W<sub>U</sub>[IO] & ⟂ comms, k ∥ MLP<sub>0</sub>", 
-    "q ⊥ W<sub>U</sub>[IO] & ⟂ comms, k ⊥ MLP<sub>0</sub>"
-]
-fig = go.Figure(data=[
-    go.Bar(name=dataset_name, x=x_axis_points, y=data)
-    for dataset_name, data in y_data.items()
-])
-fig.update_layout(
-    barmode='group',
-    title="Percentage relative contribution to attention scores at copy positions.",
-)
-
-#%%
-
-more_dataset = FakeIOIDataset(
-    sentences = list(more_top5p_examples.values()),
-    io_tokens=list(more_top5p_examples.keys()),
-    key_increment=0,
-    model=model,
-)
-
-# %%
-
-logits, cache = model.run_with_cache(
-    more_dataset.toks,
-    names_filter= lambda name: name==f"blocks.10.attn.hook_pattern",
-)
-
-# %%
-
-patt = cache["blocks.10.attn.hook_pattern"][:, 7]
-
-# %%
-
-att_to_prev = patt[
-    torch.arange(len(patt)),
-    more_dataset.word_idx["end"],
-    more_dataset.word_idx["IO"],
-]
-
-# %%
-
-px.bar(
-    list(more_top5p_examples.keys()),
-    att_to_prev.cpu(),
-).show()
-
-#%%
-
-att_to_bos = patt[
-    torch.arange(len(patt)),
-    more_dataset.word_idx["end"],
-    0,
-]
-# %%
-
-px.bar(
-    list(more_top5p_examples.keys()), 
-    att_to_prev.cpu() + att_to_bos.cpu(),
-).show()
-
-# %%
-
-filtered_for_high_attention = {
-    k: v for i, (k, v) in enumerate(more_top5p_examples.items()) if att_to_prev[i].item() > 0.2 
-}
-
-# %%
-
-with open("../arthur/json_data/filtered_for_high_attention.json", "w") as f:
-    f.write(json.dumps(filtered_for_high_attention, indent=4))
-
-# %%
-
-filtered_examples = Path("../arthur/json_data/filtered_for_high_attention.json")
-with open(filtered_examples, "r") as f:
-    filtered_examples = json.load(f)
-
+    
 #%%
 
 filtered_dataset = FakeIOIDataset(
@@ -251,3 +86,80 @@ gc.collect()
 torch.cuda.empty_cache()
 
 # %%
+
+# Breaking up these attention scores into comparison to attention scores to surrounding token, I think
+# 1. Try the manual computation of attention scores from blocks.10.hook_resid_pre
+
+default_attention_scores = dot_with_query(
+    unnormalized_keys = ioi_cache[get_act_name("resid_pre", 10)][0].to("cuda"),
+    unnormalized_queries = ioi_cache[get_act_name("resid_pre", 10)][0].to("cuda"),
+    model = model,
+    layer_idx = 10,
+    head_idx = 7,
+)
+
+# oh lol that's some diagonal crap
+
+# %%
+
+att_scores = ioi_cache[get_act_name("attn_scores", 10)][0, 7]
+
+# %%
+
+diag = att_scores[torch.arange(att_scores.shape[0]), torch.arange(att_scores.shape[0])]
+
+# %%
+
+assert torch.allclose(diag, default_attention_scores, atol=1e-2, rtol=1e-2)
+# TODO 1e-2 is super high, what's up???
+
+# %%
+
+# A) do this for exactly one example (no baseline)
+# B) do this with a baseline subtracted
+# C) do this for whole batch
+
+#%%
+
+all_residual_stream = {}
+for hook_name in ["hook_embed", "hook_pos_embed"] + [f"blocks.{layer_idx}.hook_mlp_out" for layer_idx in range(LAYER_IDX)] + [f"blocks.{layer_idx}.attn.hook_result" for layer_idx in range(LAYER_IDX)]:
+    if "attn" in hook_name:
+        for head_idx in range(model.cfg.n_heads):
+            all_residual_stream[f"{hook_name}_{head_idx}"] = ioi_cache[hook_name][torch.arange(filtered_dataset.N), filtered_dataset.word_idx["end"], head_idx, :]
+    else:
+        all_residual_stream[hook_name] = ioi_cache[hook_name][torch.arange(filtered_dataset.N), filtered_dataset.word_idx["end"], :]
+
+#%%
+
+for batch_idx in range(len(range(filtered_dataset.N))):
+    results = {}
+    for inc in range(-2, 3):
+        gc.collect()
+        t.cuda.empty_cache()
+        unnormalized_queries = [tens[batch_idx].cuda() for tens in list(all_residual_stream.values())]
+        attention_scores = dot_with_query(
+            unnormalized_keys=einops.repeat(ioi_cache[get_act_name("resid_pre", 10)][batch_idx, filtered_dataset.word_idx["IO"][batch_idx] + inc].to("cuda"), "d_model -> components d_model", components=len(all_residual_stream)).clone(),
+            normalize_keys=True,
+            add_key_bias=True,
+            unnormalized_queries=unnormalized_queries,
+            normalize_queries=False,
+            add_query_bias=False,
+            model=model,
+            layer_idx=10,
+            head_idx=7,
+        )
+        results[inc] = attention_scores.cpu()
+
+    mean_others_numerator = sum([value for key, value in results.items() if key != 0])
+    mean_others_denominator = len(results) - 1
+    mean_others = mean_others_numerator / mean_others_denominator
+
+    px.bar(
+        x = list(all_residual_stream.keys()),
+        y = results[0].cpu() - mean_others,
+        title = list(filtered_examples.values())[batch_idx][:40]
+    ).show()
+
+#   %%
+
+# C) # now, it's crucial to include that 
