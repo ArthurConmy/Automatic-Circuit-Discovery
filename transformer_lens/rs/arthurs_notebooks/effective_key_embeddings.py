@@ -6,6 +6,7 @@ direct effect of NMS
 """
 
 from transformer_lens.cautils.notebook import *
+from transformer_lens.rs.arthurs_notebooks.arthur_utils import dot_with_query
 
 model = HookedTransformer.from_pretrained(
     "gpt2-small",
@@ -139,61 +140,14 @@ unnormalized_query_input = cached_query_input
 
 # %%
 
-W_Q = model.W_Q[LAYER_IDX, HEAD_IDX]
-W_K = model.W_K[LAYER_IDX, HEAD_IDX]
-
-def dot_with_query(
-    unnormalized_keys,
+results = dot_with_query(
+    unnormalized_keys = cached_key_input,
     unnormalized_queries = unnormalized_query_input,
-):
-# unnormalized_queries = unnormalized_query_input
-# unnormalized_keys = cached_key_input
-# if True:
-    queries_normalized = torch.stack(
-        [query / (query.var(dim=-1, keepdim=True) + model.cfg.eps).pow(0.5)
-        for query in unnormalized_queries],
-        dim=0,
-    )
-    keys_normalized = torch.stack(
-        [key / (key.var(dim=-1, keepdim=True) + model.cfg.eps).pow(0.5)
-        for key in unnormalized_keys],
-        dim=0,
-    )
+    model = model,
+    layer_idx = LAYER_IDX,
+    head_idx = HEAD_IDX,
+)
 
-    q_and_k_vectors = list(zip(queries_normalized, keys_normalized))
-
-    results = []
-    for q_vector, k_vector in tqdm(q_and_k_vectors): # TODO easy to batch, mate...
-        query_side_vector = einops.einsum(
-            q_vector,
-            W_Q,
-            "d_model, d_model d_head -> d_head",
-        ) + model.b_Q[LAYER_IDX, HEAD_IDX]
-        
-        # TODO to do this addition maximally safe, assert some shapes and/or einops.repeat the bias
-        key_side_vector = einops.einsum(
-            k_vector,
-            W_K,
-            "d_model, d_model d_head -> d_head",
-        ) + model.b_K[LAYER_IDX, HEAD_IDX]
-
-        assert list(query_side_vector.shape) == [
-            model.cfg.d_head,
-        ], query_side_vector.shape
-        assert list(key_side_vector.shape) == [
-            model.cfg.d_head,
-        ], key_side_vector.shape
-
-        attention_scores = einops.einsum(
-            query_side_vector,
-            key_side_vector,
-            "d_head, d_head ->",
-        ) / np.sqrt(model.cfg.d_head)
-        results.append(attention_scores.item())
-        # assert False
-    return torch.tensor(results)
-
-results = dot_with_query(cached_key_input)
 assert torch.allclose(results.cpu(), cached_attention_scores.cpu(), atol=1e-2, rtol=1e-2), (results.norm().item(), cached_attention_scores.norm().item(), "dude the assertion is 1e-2 this sure should work!")
 
 #%%

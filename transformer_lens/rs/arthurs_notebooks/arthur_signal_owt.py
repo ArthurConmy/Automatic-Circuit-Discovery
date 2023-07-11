@@ -79,3 +79,6 @@ torch.cuda.empty_cache()
 
 # %%
 
+# Breaking up these attention scores into comparison to attention scores to surrounding token, I think
+# 1. Try the manual computation of attention scores from blocks.10.hook_resid_pre
+

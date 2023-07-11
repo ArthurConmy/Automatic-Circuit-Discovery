@@ -37,6 +37,7 @@ import re
 from pathlib import Path
 import einops
 from IPython.display import display, clear_output, HTML
+from dataclasses import dataclass
 try:
     import circuitsvis as cv
 except ModuleNotFoundError:
