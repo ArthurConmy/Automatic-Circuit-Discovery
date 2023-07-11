@@ -135,7 +135,7 @@ comps = torch.zeros((2, filtered_dataset.N, len(all_residual_stream)))
 
 for batch_idx in range(len(range(filtered_dataset.N))):
     results = {}
-    for mode in [-1, 1, "parallel", "perp"]:
+    for mode in [-2, -1, 1, 2, "parallel", "perp"]:
         gc.collect()
         t.cuda.empty_cache()
  
@@ -187,19 +187,23 @@ for batch_idx in range(len(range(filtered_dataset.N))):
 
 #%%
 
+relevant_indices = [i for i, key in enumerate(all_residual_stream) if key.startswith(tuple([f"blocks.{i}" for i in range(7, 12)]))]
+
 fig = go.Figure()
 for mode in ["parallel", "perp"]:    
     fig.add_trace(
         go.Bar(
-            x = list(all_residual_stream.keys()),
-            y = comps[int(mode=="parallel")].mean(dim=0).cpu(),
+            x = [key for key in list(all_residual_stream.keys()) if key.startswith(tuple([f"blocks.{i}" for i in range(7, 12)]))],
+            y = comps[int(mode=="parallel"), :, relevant_indices].mean(dim=0).cpu(),
             name = mode,
         )
     )
 try:
     fig.update_layout(
-        title = str(batch_idx) + "..." + list(filtered_examples.values())[batch_idx][:40]
+        title= "Baseline subtracted attention score contribution for each model component, on some top 5% examples"
     )
 except:
     pass
 fig.show()
+
+# %%
