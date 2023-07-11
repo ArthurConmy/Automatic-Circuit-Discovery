@@ -131,17 +131,20 @@ for hook_name in ["hook_embed", "hook_pos_embed"] + [f"blocks.{layer_idx}.hook_m
 
 #%%
 
+comps = torch.zeros((2, filtered_dataset.N, len(all_residual_stream)))
 
 for batch_idx in range(len(range(filtered_dataset.N))):
     results = {}
-    for inc in range(-2, 3):
+    for mode in [-1, 1, "parallel", "perp"]:
         gc.collect()
         t.cuda.empty_cache()
-
-        unnormalized_queries = []
-        
-        for residual_stream_key, residual_stream_value in all_residual_stream.items():
-            parallel, orthogonal = project(residual_stream_value[batch_idx].cuda(), model.W_U[:, filtered_dataset.io_tokenIDs[batch_idx]])
+ 
+        if isinstance(mode, str):
+            unnormalized_queries = [project(tens[batch_idx].cuda(), model.W_U[:, filtered_dataset.io_tokenIDs[batch_idx]])[int(mode=="parallel")] for tens in list(all_residual_stream.values())]
+            inc = 0
+        else:
+            unnormalized_queries = [tens[batch_idx].cuda() for tens in list(all_residual_stream.values())]
+            inc = mode
 
         attention_scores = dot_with_query(
             unnormalized_keys=einops.repeat(ioi_cache[get_act_name("resid_pre", 10)][batch_idx, filtered_dataset.word_idx["IO"][batch_idx] + inc].to("cuda"), "d_model -> components d_model", components=len(all_residual_stream)).clone(),
@@ -153,19 +156,50 @@ for batch_idx in range(len(range(filtered_dataset.N))):
             model=model,
             layer_idx=10,
             head_idx=7,
+            use_tqdm=False,
         )
-        results[inc] = attention_scores.cpu()
+        results[mode] = attention_scores.cpu()
 
-    mean_others_numerator = sum([value for key, value in results.items() if key != 0])
-    mean_others_denominator = len(results) - 1
+    mean_others_numerator = sum([value for key, value in results.items() if isinstance(key, int)])
+    mean_others_denominator = len([key for key in results.keys() if isinstance(key, int)])
     mean_others = mean_others_numerator / mean_others_denominator
 
-    px.bar(
-        x = list(all_residual_stream.keys()),
-        y = results[0].cpu() - mean_others,
-        title = list(filtered_examples.values())[batch_idx][:40]
-    ).show()
+    for mode in ["parallel", "perp"]:
+        comps[int(mode=="parallel"), batch_idx, :] = results[mode].cpu() - (mean_others/2)
 
-#   %%
+    if batch_idx % 10 == 0:
+        fig = go.Figure()
+        for mode in ["parallel", "perp"]:    
+            fig.add_trace(
+                go.Bar(
+                    x = list(all_residual_stream.keys()),
+                    y = results[mode].cpu() - (mean_others/2),
+                    name = mode,
+                )
+            )
+        try:
+            fig.update_layout(
+                title = str(batch_idx) + "..." + list(filtered_examples.values())[batch_idx][:40]
+            )
+        except:
+            pass
+        fig.show()
 
-# C) # now, it's crucial to include that 
+#%%
+
+fig = go.Figure()
+for mode in ["parallel", "perp"]:    
+    fig.add_trace(
+        go.Bar(
+            x = list(all_residual_stream.keys()),
+            y = comps[int(mode=="parallel")].mean(dim=0).cpu(),
+            name = mode,
+        )
+    )
+try:
+    fig.update_layout(
+        title = str(batch_idx) + "..." + list(filtered_examples.values())[batch_idx][:40]
+    )
+except:
+    pass
+fig.show()

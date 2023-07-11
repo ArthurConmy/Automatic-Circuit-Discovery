@@ -90,6 +90,7 @@ def dot_with_query(
     add_query_bias: bool = True,
     normalize_keys: bool = True,
     normalize_queries: bool = True,
+    use_tqdm: bool = True,
 ):
     W_Q = model.W_Q[layer_idx, head_idx]
     W_K = model.W_K[layer_idx, head_idx]
@@ -115,7 +116,8 @@ def dot_with_query(
     q_and_k_vectors = list(zip(queries, keys))
 
     results = []
-    for q_vector, k_vector in tqdm(q_and_k_vectors): # TODO easy to batch, mate...
+    iterator = tqdm(q_and_k_vectors) if use_tqdm else q_and_k_vectors
+    for q_vector, k_vector in iterator: # TODO easy to batch, mate...
         query_side_vector = einops.einsum(
             q_vector,
             W_Q,
