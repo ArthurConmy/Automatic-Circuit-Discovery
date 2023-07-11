@@ -163,6 +163,8 @@ for batch_idx in range(len(range(filtered_dataset.N))):
     mean_others_numerator = sum([value for key, value in results.items() if isinstance(key, int)])
     mean_others_denominator = len([key for key in results.keys() if isinstance(key, int)])
     mean_others = mean_others_numerator / mean_others_denominator
+    warnings.warn("remove")
+    mean_others *=0
 
     for mode in ["parallel", "perp"]:
         comps[int(mode=="parallel"), batch_idx, :] = results[mode].cpu() - (mean_others/2)
