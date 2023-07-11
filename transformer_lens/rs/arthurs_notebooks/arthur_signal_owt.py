@@ -131,12 +131,18 @@ for hook_name in ["hook_embed", "hook_pos_embed"] + [f"blocks.{layer_idx}.hook_m
 
 #%%
 
+
 for batch_idx in range(len(range(filtered_dataset.N))):
     results = {}
     for inc in range(-2, 3):
         gc.collect()
         t.cuda.empty_cache()
-        unnormalized_queries = [tens[batch_idx].cuda() for tens in list(all_residual_stream.values())]
+
+        unnormalized_queries = []
+        
+        for residual_stream_key, residual_stream_value in all_residual_stream.items():
+            parallel, orthogonal = project(residual_stream_value[batch_idx].cuda(), model.W_U[:, filtered_dataset.io_tokenIDs[batch_idx]])
+
         attention_scores = dot_with_query(
             unnormalized_keys=einops.repeat(ioi_cache[get_act_name("resid_pre", 10)][batch_idx, filtered_dataset.word_idx["IO"][batch_idx] + inc].to("cuda"), "d_model -> components d_model", components=len(all_residual_stream)).clone(),
             normalize_keys=True,
