@@ -21,6 +21,7 @@ setup(
         "rich",
         "accelerate",
         "typing-extensions",
+        "plotly",
     ],
     extras_require={"dev": ["pytest", "mypy", "pytest-cov"]},
 )
