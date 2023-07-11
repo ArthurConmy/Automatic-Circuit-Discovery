@@ -105,7 +105,7 @@ def dot_with_query(
     
     if normalize_keys:
         keys = torch.stack(
-            [key / (key.var(dim=-1, keepdim=True) + model.cfg.eps).pow(0.5) # todo remove
+            [key / (key.var(dim=-1, keepdim=True) + model.cfg.eps).pow(0.5)
             for key in unnormalized_keys],
             dim=0,
         )
@@ -131,7 +131,7 @@ def dot_with_query(
             "d_model, d_model d_head -> d_head",
         )
         if add_key_bias:
-            model.b_K[layer_idx, head_idx]
+            key_side_vector += model.b_K[layer_idx, head_idx]
 
         assert list(query_side_vector.shape) == [
             model.cfg.d_head,

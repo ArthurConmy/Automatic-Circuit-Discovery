@@ -110,7 +110,7 @@ diag = att_scores[torch.arange(att_scores.shape[0]), torch.arange(att_scores.sha
 
 # %%
 
-assert torch.allclose(diag, default_attention_scores, atol=1e-1, rtol=1e-1)
+assert torch.allclose(diag, default_attention_scores, atol=1e-2, rtol=1e-2)
 # TODO 1e-2 is super high, what's up???
 
 # %%
@@ -121,39 +121,44 @@ assert torch.allclose(diag, default_attention_scores, atol=1e-1, rtol=1e-1)
 
 #%%
 
-# A) do this for exactly one example (no baseline)
-
 all_residual_stream = {}
-batch_idx = 1
-inc = -1
-
 for hook_name in ["hook_embed", "hook_pos_embed"] + [f"blocks.{layer_idx}.hook_mlp_out" for layer_idx in range(LAYER_IDX)] + [f"blocks.{layer_idx}.attn.hook_result" for layer_idx in range(LAYER_IDX)]:
     if "attn" in hook_name:
         for head_idx in range(model.cfg.n_heads):
-            all_residual_stream[f"{hook_name}_{head_idx}"] = ioi_cache[hook_name][batch_idx, filtered_dataset.word_idx["end"][batch_idx], head_idx, :]
+            all_residual_stream[f"{hook_name}_{head_idx}"] = ioi_cache[hook_name][torch.arange(filtered_dataset.N), filtered_dataset.word_idx["end"], head_idx, :]
     else:
-        all_residual_stream[hook_name] = ioi_cache[hook_name][0, filtered_dataset.word_idx["end"][batch_idx], :]
+        all_residual_stream[hook_name] = ioi_cache[hook_name][torch.arange(filtered_dataset.N), filtered_dataset.word_idx["end"], :]
 
 #%%
 
-attention_scores = dot_with_query(
-    unnormalized_keys=einops.repeat(ioi_cache[get_act_name("resid_pre", 10)][batch_idx, filtered_dataset.word_idx["IO"][batch_idx] + inc].to("cuda"), "d_model -> components d_model", components=len(all_residual_stream)).clone(),
-    normalize_keys=True,
-    add_key_bias=True,
-    unnormalized_queries=[tens.cuda() for tens in list(all_residual_stream.values())],
-    normalize_queries=False,
-    add_query_bias=False,
-    model=model,
-    layer_idx=10,
-    head_idx=7,
-)
+for batch_idx in range(len(range(filtered_dataset.N))):
+    results = {}
+    for inc in range(-2, 3):
+        gc.collect()
+        t.cuda.empty_cache()
+        unnormalized_queries = [tens[batch_idx].cuda() for tens in list(all_residual_stream.values())]
+        attention_scores = dot_with_query(
+            unnormalized_keys=einops.repeat(ioi_cache[get_act_name("resid_pre", 10)][batch_idx, filtered_dataset.word_idx["IO"][batch_idx] + inc].to("cuda"), "d_model -> components d_model", components=len(all_residual_stream)).clone(),
+            normalize_keys=True,
+            add_key_bias=True,
+            unnormalized_queries=unnormalized_queries,
+            normalize_queries=False,
+            add_query_bias=False,
+            model=model,
+            layer_idx=10,
+            head_idx=7,
+        )
+        results[inc] = attention_scores.cpu()
 
-#%%
+    mean_others_numerator = sum([value for key, value in results.items() if key != 0])
+    mean_others_denominator = len(results) - 1
+    mean_others = mean_others_numerator / mean_others_denominator
 
-px.bar(
-    x = list(all_residual_stream.keys()),
-    y = attention_scores.cpu().numpy() - saved_attention_scores.cpu().numpy(),
-).show()
+    px.bar(
+        x = list(all_residual_stream.keys()),
+        y = results[0].cpu() - mean_others,
+        title = list(filtered_examples.values())[batch_idx][:40]
+    ).show()
 
 #   %%
 
