@@ -201,13 +201,79 @@ positionwise_z = einops.einsum(
 
 #%%
 
-positionwise_out = einops.einsum(
-    positionwise_z,
+top5p_positionwise_z = positionwise_z[top5p_batch_indices, top5p_seq_indices]
+del positionwise_z
+gc.collect()
+torch.cuda.empty_cache()
+
+#%%
+
+top5p_positionwise_out = einops.einsum(
+    top5p_positionwise_z,
     W_O,
-    "batch query_pos key_pos d_head, \
+    "batch key_pos d_head, \
     d_head d_model -> \
-    batch query_pos key_pos d_model",
+    batch key_pos d_model",
 )
+
+#%%
+
+top_unembeds_per_position = einops.einsum(
+    top5p_positionwise_out,
+    W_U,
+    "batch key_pos d_model, \
+    d_model d_vocab -> \
+    batch key_pos d_vocab",
+)
+
+#%%
+
+total_unembed = einops.reduce(
+    top_unembeds_per_position,
+    "batch key_pos d_vocab -> batch d_vocab",
+    reduction="sum",
+)
+
+#%%
+
+average_unembed = einops.einsum(
+    mean_head_output,
+    W_U,
+    "d_model, d_model d_vocab -> d_vocab",
+)
+
+#%%
+
+def to_string(toks):
+    s = model.to_string(toks)
+    s = s.replace("\n", "\\n")
+    return s
+
+for batch_idx in range(len(top_unembeds_per_position)):
+    the_logits = -top_unembeds_per_position[batch_idx][1:top5p_seq_indices[batch_idx]+2]
+    max_logits = the_logits[:, 1:-1].max().item()
+    my_obj = cv.logits.token_log_probs( # I am using this in a very cursed way: 
+        top5p_tokens[batch_idx][:top5p_seq_indices[batch_idx]+1],
+        the_logits - max_logits,
+        to_string = to_string
+    )
+
+    print("True completion:"+model.to_string(top5p_tokens[batch_idx][top5p_seq_indices[batch_idx]+1]))
+    print("Top negs:")
+    print(model.to_str_tokens(torch.topk(-total_unembed[batch_idx]+average_unembed, dim=-1, k=10).indices))
+    display(my_obj)
+
+#%%
+
+all_contributions = [sorted([
+    (j, contribution) for j, contribution in top_unembeds_per_position[i]
+],
+key=lambda x: x[1], reverse=True) for i in range(len(top_unembeds_per_position))]
+
+#%%
+
+for i in range(len(top5p_batch_indices)):
+    pass
 
 #%%
 
