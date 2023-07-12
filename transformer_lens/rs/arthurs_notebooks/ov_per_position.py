@@ -318,7 +318,7 @@ ov_projected_head_out = einops.einsum(
 
 #%%
 
-ov_projected_model_out = top5p_end_states - top5p_end_states + ov_projected_head_out
+ov_projected_model_out = top5p_end_states - top5p_head_outputs + ov_projected_head_out
 new_loss = get_loss_from_end_state(
     model=model,
     end_state=ov_projected_model_out.unsqueeze(1),
