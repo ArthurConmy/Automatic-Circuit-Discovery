@@ -249,24 +249,39 @@ def to_string(toks):
     s = s.replace("\n", "\\n")
     return s
 
-for batch_idx in range(len(top_unembeds_per_position)):
-    the_logits = -top_unembeds_per_position[batch_idx][1:top5p_seq_indices[batch_idx]+2]
-    max_logits = the_logits[:, 1:-1].max().item()
-    my_obj = cv.logits.token_log_probs( # I am using this in a very cursed way: 
-        top5p_tokens[batch_idx][:top5p_seq_indices[batch_idx]+1],
-        the_logits - max_logits,
-        to_string = to_string
-    )
+if DO_LOGIT_LENS:
+    for batch_idx in range(len(top_unembeds_per_position)):
+        the_logits = -top_unembeds_per_position[batch_idx][1:top5p_seq_indices[batch_idx]+2]
+        max_logits = the_logits[:, 1:-1].max().item()
+        my_obj = cv.logits.token_log_probs( # I am using this in a very cursed way: 
+            top5p_tokens[batch_idx][:top5p_seq_indices[batch_idx]+1],
+            the_logits - max_logits,
+            to_string = to_string
+        )
 
-    print("True completion:"+model.to_string(top5p_tokens[batch_idx][top5p_seq_indices[batch_idx]+1]))
-    print("Top negs:")
-    print(model.to_str_tokens(torch.topk(-total_unembed[batch_idx]+average_unembed, dim=-1, k=10).indices))
-    display(my_obj)
+        print("True completion:"+model.to_string(top5p_tokens[batch_idx][top5p_seq_indices[batch_idx]+1]))
+        print("Top negs:")
+        print(model.to_str_tokens(torch.topk(-total_unembed[batch_idx]+average_unembed, dim=-1, k=10).indices))
+        display(my_obj)
+
+#%%
+
+tot_cont = top5p_positionwise_out.sum(dim=1)[0] # batch key_pos d_model
+tot_cont_cache = cache[get_act_name("result", LAYER_IDX)][top5p_batch_indices[0], top5p_seq_indices[0], HEAD_IDX, :]
+assert tot_cont.shape == tot_cont_cache.shape, (tot_cont.shape, tot_cont_cache.shape)
+assert torch.allclose(
+    tot_cont,
+    tot_cont_cache,
+    atol=1e-4,
+    rtol = 1e-4,
+), (tot_cont.norm(), tot_cont_cache.norm())
+
+#%%
 
 #%%
 
 all_contributions = [sorted([
-    (j, contribution) for j, contribution in top_unembeds_per_position[i]
+    (j, contribution) for j, contribution in top_unembeds_per_povsition[i]
 ],
 key=lambda x: x[1], reverse=True) for i in range(len(top_unembeds_per_position))]
 
