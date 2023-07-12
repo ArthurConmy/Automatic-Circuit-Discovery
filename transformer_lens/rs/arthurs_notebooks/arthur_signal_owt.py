@@ -40,7 +40,7 @@ clear_output()
 
 s = "Then Bob had a ring that was perfect for Alice and he knew no would like it more than Alice"
 logits = model(s)
-top_logits = torch.topk(logits[0, -2s, :], k=10).indices
+top_logits = torch.topk(logits[0, -2, :], k=10).indices
 print(model.to_str_tokens(top_logits))
 
 #%%
