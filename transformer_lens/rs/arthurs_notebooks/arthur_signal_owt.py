@@ -5,7 +5,6 @@ Mostly cribbed from transformer_lens/rs/callum/orthogonal_query_investigation_2.
 (but I prefer .py investigations)
 """
 
-
 from transformer_lens.cautils.notebook import *
 from transformer_lens.rs.arthurs_notebooks.arthur_utils import dot_with_query
 from transformer_lens.rs.callum.keys_fixed import (
@@ -36,6 +35,13 @@ model.set_use_split_qkv_input(True)
 model.set_use_attn_result(True)
 # model.set_use_split_qkv_normalized_input(True)
 clear_output()
+
+#%%
+
+s = "Then Bob had a ring that was perfect for Alice and he knew no would like it more than Alice"
+logits = model(s)
+top_logits = torch.topk(logits[0, -2s, :], k=10).indices
+print(model.to_str_tokens(top_logits))
 
 #%%
 
