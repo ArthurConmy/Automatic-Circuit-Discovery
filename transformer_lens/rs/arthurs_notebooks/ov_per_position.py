@@ -297,8 +297,7 @@ projected_vectors, perpendicular_vectors = project(
 #%%
 
 print(head_pattern[:2, :2, :2])
-warnings.warn("Seems wrong; similar loss to mean ablation...")
-projected_vectors[:, :] = model_vectors[:, :] # BOS could be fucked..
+projected_vectors[:, 0] = model_vectors[:, 0] # BOS could be fucked..
 
 #%%
 
@@ -310,13 +309,7 @@ print(relevant_head_pattern[:2, :2])
 
 #%%
 
-ov_projected_head_out = einops.einsum(
-    projected_vectors,
-    relevant_head_pattern,
-    "batch key_pos d_model, \
-    batch key_pos -> \
-    batch d_model",
-)
+ov_projected_head_out = projected_vectors.sum(dim=1)
 
 #%%
 
