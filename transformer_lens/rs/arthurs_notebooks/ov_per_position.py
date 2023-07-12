@@ -297,6 +297,8 @@ projected_vectors, perpendicular_vectors = project(
 #%%
 
 print(head_pattern[:2, :2, :2])
+warnings.warn("Seems wrong; similar loss to mean ablation...")
+projected_vectors[:, :] = model_vectors[:, :] # BOS could be fucked..
 
 #%%
 
@@ -324,6 +326,7 @@ new_loss = get_loss_from_end_state(
     end_state=ov_projected_model_out.unsqueeze(1),
     targets=top5p_targets.unsqueeze(1),
 )[:, 0]
+print(new_loss.mean())
 
 #%%
 
