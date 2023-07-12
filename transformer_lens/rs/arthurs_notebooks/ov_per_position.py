@@ -22,7 +22,6 @@ from transformer_lens.rs.callum.orthogonal_query_investigation import (
 clear_output()
 USE_IOI = False
 DO_LOGIT_LENS = False
-LAYER_IDX, HEAD_IDX = 10, 7
 
 # %% [markdown] [4]:
 
@@ -53,6 +52,7 @@ MAX_SEQ_LEN = 512
 BATCH_SIZE = 50
 batched_tokens, targets = get_filtered_webtext(model, batch_size=BATCH_SIZE, seed=1717, device="cuda", max_seq_len=MAX_SEQ_LEN)
 effective_embeddings = get_effective_embedding_2(model)
+JSON_FNAME = "../arthur/json_data"
 
 # %%
 
@@ -61,8 +61,9 @@ effective_embeddings = get_effective_embedding_2(model)
 # See change in loss
 
 NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX = NEG_HEADS[model.cfg.model_name]
-NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX = 10, 7
 # for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in [(10, 0), (10, 7), (9, 9), (11, 10)] + list(itertools.product(range(11, -1, -1), range(12))):
+
+LAYER_IDX, HEAD_IDX = NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX
 
 END_STATE_HOOK = f"blocks.{model.cfg.n_layers-1}.hook_resid_post"
 # warnings.warn("Changed to scores for a diff comparison")
@@ -171,6 +172,7 @@ top5p_tokens = batched_tokens[top5p_batch_indices]
 top5p_targets = torch.LongTensor([targets[top5p_batch_idx, top5p_seq_idx] for top5p_batch_idx, top5p_seq_idx in zip(top5p_batch_indices, top5p_seq_indices)])
 top5p_end_states = original_end_state[top5p_batch_indices, top5p_seq_indices]
 top5p_head_outputs = head_output[top5p_batch_indices, top5p_seq_indices]
+top5p_mean_ablated_loss = mean_ablated_loss[top5p_batch_indices, top5p_seq_indices]
 
 #%%
 
@@ -193,6 +195,7 @@ resid_pre = cache[get_act_name("resid_pre", LAYER_IDX)]
 head_pre = model.blocks[LAYER_IDX].ln1(resid_pre)
 head_v = cache[get_act_name("v", LAYER_IDX)][:, :, HEAD_IDX, :]
 head_pattern = cache[get_act_name("pattern", LAYER_IDX)][:, HEAD_IDX, :, :]
+
 positionwise_z = einops.einsum(
     head_v,
     head_pattern,
@@ -321,113 +324,10 @@ new_loss = get_loss_from_end_state(
 )[:, 0]
 print(new_loss.mean())
 
-
-
 #%%
 
-for ovout_idx in range(len(ovout)):
-    projected, _ = project(ovout[ovout_idx], model.W_U[:, mybatch[batch_idx, seq_idx]])
-    if einops.einsum(
-        ovout[ovout_idx],
-        projected,
-        "d_model_out, d_model_out -> ",
-    ).item()>0: # only include negative components
-        ovout[ovout_idx] = projected
+print( # scrubbed loss
+    (top5p_mean_ablated_loss - new_loss).mean() / (top5p_mean_ablated_loss - top5p_losses).mean()
+)
 
 #%%
-
-all_contributions = [sorted([
-    (j, contribution) for j, contribution in top_unembeds_per_position[i]
-],
-key=lambda x: x[1], reverse=True) for i in range(len(top_unembeds_per_position))]
-
-#%%
-
-for i in range(len(top5p_batch_indices)):
-    pass
-
-#%%
-
-embeds = W_E.unsqueeze(0)
-pre_attention = model.blocks[0].ln1(embeds)
-
-# !!! b_O is not zero. Seems like b_V is, but we'll add it to be safe rather than sorry 
-assert model.b_V[0].norm().item() < 1e-4
-assert model.b_O[0].norm().item() > 1e-4
-
-vout = einops.einsum(
-    pre_attention,
-    model.W_V[0],
-    "b s d_model, num_heads d_model d_head -> b s num_heads d_head",
-) + model.b_V[0]
-post_attention = einops.einsum(
-    vout,
-    model.W_O[0],
-    "b s num_heads d_head, num_heads d_head d_model_out -> b s d_model_out",
-) + model.b_O[0]
-
-resid_mid = post_attention + embeds
-normalized_resid_mid = model.blocks[0].ln2(resid_mid)
-mlp_out = model.blocks[0].mlp(normalized_resid_mid)
-
-#%%
-
-"""
-The second one is probably what I want : ) 
-"""
-
-from matplotlib import pyplot as plt
-import numpy as np
-from matplotlib_venn import venn3, venn3_circles
-plt.figure(figsize=(4,4))
-v = venn3(subsets=(1, 1, 1, 1, 1, 1, 1), set_labels = ('A', 'B', 'C'))
-v.get_patch_by_id('100').set_alpha(1.0)
-v.get_patch_by_id('100').set_color('white')
-v.get_label_by_id('100').set_text('Unknown')
-v.get_label_by_id('A').set_text('Set "A"')
-c = venn3_circles(subsets=(1, 1, 1, 1, 1, 1, 1), linestyle='dashed')
-c[0].set_lw(1.0)
-c[0].set_ls('dotted')
-plt.title("Sample Venn diagram")
-plt.annotate('Unknown set', xy=v.get_label_by_id('100').get_position() - np.array([0, 0.05]), xytext=(-70,-70),
-                ha='center', textcoords='offset points', bbox=dict(boxstyle='round,pad=0.5', fc='gray', alpha=0.1),
-                arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0.5',color='gray'))
-plt.show()
-
-# %%
-
-import matplotlib.pyplot as plt
-from matplotlib_venn import venn3, venn3_circles
-
-# Define the set sizes and the intersections
-A = 100
-B = 80
-C = 60
-AB = 30
-AC = 20
-BC = 15
-ABC = 5
-
-venn_labels = {'100': A, '010': B, '001': C, '110': AB, '101': AC, '011': BC, '111': ABC}
-
-# Create the venn diagram
-venn = venn3(subsets=venn_labels, set_labels=('A', 'B', 'C'))
-
-# Create the venn circles to add edge color
-venn_circles = venn3_circles(subsets=venn_labels)
-
-# Define the colors for each region (7 regions for 3-set venn diagram)
-colors = ['red', 'green', 'blue', 'yellow', 'orange', 'purple', 'black']
-
-# Apply the colors to each region
-for region_color, region in zip(colors, venn_labels.keys(), strict=True):
-    venn.get_patch_by_id(region).set_color(region_color)
-    venn.get_patch_by_id(region).set_alpha(0.4)  # For better visualization
-
-# Optional: if you want to color the text as well, you can use:
-for text_color, text in zip(colors, venn.set_labels):
-    text.set_color(text_color)
-
-plt.show()
-
-# %%
