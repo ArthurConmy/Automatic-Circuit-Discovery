@@ -1,8 +1,7 @@
 # %% [markdown] [4]:
 
 """
-Runs an experiment where we see that unembedding for *one* token is a decent percentage of the usage of 
-direct effect of NMS
+Try and do experiments on our Q and K and V approximations
 """
 
 from transformer_lens.cautils.notebook import *
@@ -73,25 +72,6 @@ assert head_output.shape == (BATCH_SIZE, MAX_SEQ_LEN, model.cfg.d_model)
 
 #%%
 
-if ipython is not None:
-    unembed = einops.einsum(
-        head_output, 
-        model.W_U,
-        "b s d_model, d_model d_vocab -> b s d_vocab",
-    )
-
-#%% 
-
-if ipython is not None:
-    the_topk = torch.topk(
-        -unembed.cpu(),
-        k=10,
-        dim=-1,
-    ).indices
-
-
-#%%
-
 mean_head_output = einops.reduce(head_output, "b s d -> d", reduction="mean")
 
 #%%
@@ -135,54 +115,6 @@ top5p_seq_indices = [x[1] for x in top_5_percent]
 
 #%%
 
-if ipython is not None:
-    top5p_topks = the_topk[top5p_batch_indices, top5p_seq_indices]
-
-#%% [markdown]
-# <h2> Making some helpful datasets </h2>
-
-my_dict = {}
-works = 0
-if ipython is not None:
-    for idx in range(len(top5p_batch_indices)):
-        current_tokens = batched_tokens[top5p_batch_indices[idx], :top5p_seq_indices[idx]+1].tolist()
-
-        top_negs = top5p_topks[idx].tolist()
-
-        is_in_top_negs = {
-            i: int(top_negs[i] in current_tokens) for i in range(3)
-        }
-        if sum(list(is_in_top_negs.values()))==1:
-            the_tokens = current_tokens + [top_negs[i] for i in range(3) if is_in_top_negs[i]]
-            assert len(the_tokens) == len(current_tokens) + 1
-
-            while the_tokens.count(the_tokens[-1]) > 2:
-                the_tokens = the_tokens[1:]
-
-            # # Uncomment if things are pretty cursed for doing mean ablations if the copied word is super near the end
-            # if the_tokens.index(the_tokens[-1]) >= len(the_tokens) - 3:
-            #     print("FAIL")
-            #     continue
-
-            print("Success! Here's the prompt where we added the copy suppressed thing as the last token:")
-            print(model.to_string(the_tokens))
-            key_token = model.to_string(the_tokens[-1:])
-            my_dict[key_token] = model.to_string(the_tokens)
-            
-        else:
-            print("FAIL")
-
-        print("-"*50)
-
-#%%
-
-with open("/code/TransformerLens/transformer_lens/rs/arthur/json_data/and_even_more_top5p_examples.json", "w") as f:
-    json.dump(my_dict, f)
-
-# And things are done!
-
-#%%
-
 top5p_tokens = batched_tokens[top5p_batch_indices]
 top5p_targets = torch.LongTensor([targets[top5p_batch_idx, top5p_seq_idx] for top5p_batch_idx, top5p_seq_idx in zip(top5p_batch_indices, top5p_seq_indices)])
 
@@ -198,16 +130,61 @@ top5p_losses = batched_tokens_loss[top5p_batch_indices, top5p_seq_indices]
 keyside_projections = t.zeros((BATCH_SIZE, MAX_SEQ_LEN, model.cfg.d_model))
 keyside_orthogonals = t.zeros((BATCH_SIZE, MAX_SEQ_LEN, model.cfg.d_model))
 
+the_inputs = t.zeros((model.cfg.d_vocab, 3)).long()
+the_inputs[:, -1] = torch.arange(model.cfg.d_vocab)
+the_inputs[:, 0] = model.tokenizer.pad_token_id
+the_inputs[:, 1] = model.to_single_token("The")
+
+#%%
+
+embeddings = t.zeros((model.cfg.d_vocab, model.cfg.d_model))
+
+curbatchsize = 300
+
+for batch_idx2 in tqdm(range(0, model.cfg.d_vocab, curbatchsize)):
+    model.reset_hooks()
+    _, the_cache = model.run_with_cache(
+        the_inputs[batch_idx2:batch_idx2+curbatchsize],
+        names_filter=lambda name: name == "blocks.10.hook_resid_pre",
+    )
+    embeddings[batch_idx2:batch_idx2+curbatchsize] = the_cache["blocks.10.hook_resid_pre"][:, -1, :].detach().cpu()
+    gc.collect()
+    torch.cuda.empty_cache()    
+
+#%%
+
 for batch_idx, seq_idx in tqdm(list(itertools.product(range(BATCH_SIZE), range(MAX_SEQ_LEN)))):
     keyside_vector, keyside_orthogonal = project(
         normalize(cache[get_act_name("resid_pre", NEGATIVE_LAYER_IDX)][batch_idx, seq_idx]) * np.sqrt(model.cfg.d_model), # simulate LN
-        cache[get_act_name("resid_pre", 1)][batch_idx, seq_idx],
+        embeddings[batched_tokens[batch_idx, seq_idx]].cuda(),
     )
-    keyside_projections[batch_idx, seq_idx] = keyside_vector
-    keyside_orthogonals[batch_idx, seq_idx] = keyside_orthogonal
 
-warnings.warn("Reversing BOS directions...")
-keyside_projections[:, 0] *= - 1.0
+    if seq_idx != 0:
+        keyside_projections[batch_idx, seq_idx] = keyside_vector
+        keyside_orthogonals[batch_idx, seq_idx] = keyside_orthogonal
+
+    else: # BOS seems weird, let's just keep as-is
+        keyside_projections[batch_idx, seq_idx] = keyside_vector + keyside_orthogonal
+        keyside_orthogonals[batch_idx, seq_idx] = 0.0
+
+#%%
+
+
+queryside_vectors = t.zeros((BATCH_SIZE, model.cfg.d_model)).cuda()
+
+# just do this part for the individual queries that we need
+for batch_batch_idx, (batch_idx, seq_idx) in enumerate(list(zip(top5p_batch_indices, 
+top5p_seq_indices))):
+
+    queryside_vector, queryside_orthogonal = project(
+        cache[get_act_name("resid_pre", NEGATIVE_LAYER_IDX)][batch_idx, seq_idx],
+        dir=[model.W_U.T[batched_tokens[batch_idx, earlier_seq_idx]] for earlier_seq_idx in range(seq_idx+1)],
+    )
+    queryside_vectors[batch_batch_idx] = queryside_vector
+
+    # warnings.warn("Another lock on")
+    # queryside_vectors[batch_batch_idx] = model.W_U.T[top5p_tokens[batch_idx, seq_idx]]
+
 
 #%%
 
@@ -276,16 +253,6 @@ current_pattern = top_5p_cache[attention_pattern_hook_name][my_idx, NEGATIVE_HEA
 
 #%%
 
-if ipython is not None and False:
-    new_head_unembed = einops.einsum(
-        new_head_out[0],
-        model.W_U,
-        "seq_len dim, dim vocab -> seq_len vocab",
-    )
-    new_head_topk = t.topk(-new_head_unembed, k=10, dim=-1).indices
-
-#%%
-
 top_5p_end_state = original_end_state[top5p_batch_indices, top5p_seq_indices].unsqueeze(0)
 assert top_5p_end_state.shape == relevant_head_outs.shape == new_head_out.shape, (top_5p_end_state.shape, relevant_head_outs.shape, new_head_out.shape)
 
@@ -315,7 +282,7 @@ torch.testing.assert_close(
     rtol=1e-3,
     atol=1e-3,
 )
-the_mean_ablated_loss = [mean_ablated_loss[batch_idx, seq_idx].item() for batch_idx, seq_idx in zip(top5p_batch_indices, top5p_seq_indices)]
+the_mean_ablated_loss = torch.tensor([mean_ablated_loss[batch_idx, seq_idx].item() for batch_idx, seq_idx in zip(top5p_batch_indices, top5p_seq_indices)])
 
 #%%
 
@@ -332,7 +299,7 @@ fig.add_trace(
 fig.add_trace(
     go.Scatter(
         x = top5p_losses.cpu().tolist(),
-        y = torch.tensor(the_mean_ablated_loss),
+        y = the_mean_ablated_loss.tolist(),
         mode = "markers",
         text = [f"Batch {batch_idx}, Seq {seq_idx}" for batch_idx, seq_idx in zip(top5p_batch_indices, top5p_seq_indices)],
         name = "Mean Ablated Loss",
@@ -348,6 +315,12 @@ fig.add_trace(
     )
 )
 fig.show()
+
+#%%
+
+print(
+    (the_mean_ablated_loss - loss.cpu()).mean() / (the_mean_ablated_loss - top5p_losses.cpu()).mean()
+)
 
 # %%
 
@@ -375,7 +348,7 @@ cur_json[str((NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX))] = {
     "losses": lossdata,
     "change_in_loss": change_in_loss,
     "change_in_loss_mean": change_in_loss_mean,
-    "mean_ablated_loss": the_mean_ablated_loss,
+    "mean_ablated_loss": the_mean_ablated_loss.tolist(),
     "time": ctime()+"_remember_sometimes_this_is_an_hour_too_early",
     "how_bad_is_mean_ablation": mean_ablation_bad,
     "how_bad_is_mean_ablation_mean": sum(mean_ablation_bad)/len(mean_ablation_bad),

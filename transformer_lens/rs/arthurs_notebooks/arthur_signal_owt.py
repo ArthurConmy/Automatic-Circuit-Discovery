@@ -5,7 +5,6 @@ Mostly cribbed from transformer_lens/rs/callum/orthogonal_query_investigation_2.
 (but I prefer .py investigations)
 """
 
-
 from transformer_lens.cautils.notebook import *
 from transformer_lens.rs.arthurs_notebooks.arthur_utils import dot_with_query
 from transformer_lens.rs.callum.keys_fixed import (
@@ -36,6 +35,13 @@ model.set_use_split_qkv_input(True)
 model.set_use_attn_result(True)
 # model.set_use_split_qkv_normalized_input(True)
 clear_output()
+
+#%%
+
+s = "Then Bob had a ring that was perfect for Alice and he knew no would like it more than Alice"
+logits = model(s)
+top_logits = torch.topk(logits[0, -2, :], k=10).indices
+print(model.to_str_tokens(top_logits))
 
 #%%
 
@@ -131,12 +137,21 @@ for hook_name in ["hook_embed", "hook_pos_embed"] + [f"blocks.{layer_idx}.hook_m
 
 #%%
 
+comps = torch.zeros((2, filtered_dataset.N, len(all_residual_stream)))
+
 for batch_idx in range(len(range(filtered_dataset.N))):
     results = {}
-    for inc in range(-2, 3):
+    for mode in [-2, -1, 1, 2, "parallel", "perp"]:
         gc.collect()
         t.cuda.empty_cache()
-        unnormalized_queries = [tens[batch_idx].cuda() for tens in list(all_residual_stream.values())]
+ 
+        if isinstance(mode, str):
+            unnormalized_queries = [project(tens[batch_idx].cuda(), model.W_U[:, filtered_dataset.io_tokenIDs[batch_idx]])[int(mode=="parallel")] for tens in list(all_residual_stream.values())]
+            inc = 0
+        else:
+            unnormalized_queries = [tens[batch_idx].cuda() for tens in list(all_residual_stream.values())]
+            inc = mode
+
         attention_scores = dot_with_query(
             unnormalized_keys=einops.repeat(ioi_cache[get_act_name("resid_pre", 10)][batch_idx, filtered_dataset.word_idx["IO"][batch_idx] + inc].to("cuda"), "d_model -> components d_model", components=len(all_residual_stream)).clone(),
             normalize_keys=True,
@@ -147,19 +162,56 @@ for batch_idx in range(len(range(filtered_dataset.N))):
             model=model,
             layer_idx=10,
             head_idx=7,
+            use_tqdm=False,
         )
-        results[inc] = attention_scores.cpu()
+        results[mode] = attention_scores.cpu()
 
-    mean_others_numerator = sum([value for key, value in results.items() if key != 0])
-    mean_others_denominator = len(results) - 1
+    mean_others_numerator = sum([value for key, value in results.items() if isinstance(key, int)])
+    mean_others_denominator = len([key for key in results.keys() if isinstance(key, int)])
     mean_others = mean_others_numerator / mean_others_denominator
+    warnings.warn("remove")
+    mean_others *=0
 
-    px.bar(
-        x = list(all_residual_stream.keys()),
-        y = results[0].cpu() - mean_others,
-        title = list(filtered_examples.values())[batch_idx][:40]
-    ).show()
+    for mode in ["parallel", "perp"]:
+        comps[int(mode=="parallel"), batch_idx, :] = results[mode].cpu() - (mean_others/2)
 
-#   %%
+    if batch_idx % 10 == 0:
+        fig = go.Figure()
+        for mode in ["parallel", "perp"]:    
+            fig.add_trace(
+                go.Bar(
+                    x = list(all_residual_stream.keys()),
+                    y = results[mode].cpu() - (mean_others/2),
+                    name = mode,
+                )
+            )
+        try:
+            fig.update_layout(
+                title = str(batch_idx) + "..." + list(filtered_examples.values())[batch_idx][:40]
+            )
+        except:
+            pass
+        fig.show()
 
-# C) # now, it's crucial to include that 
+#%%
+
+relevant_indices = [i for i, key in enumerate(all_residual_stream) if key.startswith(tuple([f"blocks.{i}" for i in range(7, 12)]))]
+
+fig = go.Figure()
+for mode in ["parallel", "perp"]:    
+    fig.add_trace(
+        go.Bar(
+            x = [key for key in list(all_residual_stream.keys()) if key.startswith(tuple([f"blocks.{i}" for i in range(7, 12)]))],
+            y = comps[int(mode=="parallel"), :, relevant_indices].mean(dim=0).cpu(),
+            name = mode,
+        )
+    )
+try:
+    fig.update_layout(
+        title= "Baseline subtracted attention score contribution for each model component, on some top 5% examples"
+    )
+except:
+    pass
+fig.show()
+
+# %%
