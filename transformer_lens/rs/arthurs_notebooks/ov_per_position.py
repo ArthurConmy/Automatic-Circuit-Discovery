@@ -169,6 +169,8 @@ if ipython is not None and DO_LOGIT_LENS:
 
 top5p_tokens = batched_tokens[top5p_batch_indices]
 top5p_targets = torch.LongTensor([targets[top5p_batch_idx, top5p_seq_idx] for top5p_batch_idx, top5p_seq_idx in zip(top5p_batch_indices, top5p_seq_indices)])
+top5p_end_states = original_end_state[top5p_batch_indices, top5p_seq_indices]
+top5p_head_outputs = head_output[top5p_batch_indices, top5p_seq_indices]
 
 #%%
 
@@ -311,12 +313,17 @@ ov_projected_head_out = einops.einsum(
     relevant_head_pattern,
     "batch key_pos d_model, \
     batch key_pos -> \
-    batch key_pos d_model",
+    batch d_model",
 )
 
 #%%
 
-
+ov_projected_model_out = top5p_end_states - top5p_end_states + ov_projected_head_out
+new_loss = get_loss_from_end_state(
+    model=model,
+    end_state=ov_projected_model_out.unsqueeze(1),
+    targets=top5p_targets.unsqueeze(1),
+)[:, 0]
 
 #%%
 
