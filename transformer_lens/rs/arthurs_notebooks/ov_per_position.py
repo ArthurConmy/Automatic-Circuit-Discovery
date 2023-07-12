@@ -278,10 +278,61 @@ assert torch.allclose(
 
 #%%
 
+# See how much loss is recovered when we project these OVs onto the unembedding for given tokens?
+
+projection_directions = einops.rearrange(
+    W_U[:, batched_tokens],
+    "d_model batch vocab -> batch vocab d_model",
+)[top5p_batch_indices]
+model_vectors = top5p_positionwise_out # batch key_pos d_model
+
+projected_vectors, perpendicular_vectors = project(
+    x = model_vectors,
+    dir = projection_directions,
+    return_type = "projections",
+)
+
+#%%
+
+print(head_pattern[:2, :2, :2])
+
+#%%
+
+relevant_head_pattern = head_pattern[top5p_batch_indices, top5p_seq_indices]
+
+#%%
+
+print(relevant_head_pattern[:2, :2])
+
+#%%
+
+ov_projected_head_out = einops.einsum(
+    projected_vectors,
+    relevant_head_pattern,
+    "batch key_pos d_model, \
+    batch key_pos -> \
+    batch key_pos d_model",
+)
+
+#%%
+
+
+
+#%%
+
+for ovout_idx in range(len(ovout)):
+    projected, _ = project(ovout[ovout_idx], model.W_U[:, mybatch[batch_idx, seq_idx]])
+    if einops.einsum(
+        ovout[ovout_idx],
+        projected,
+        "d_model_out, d_model_out -> ",
+    ).item()>0: # only include negative components
+        ovout[ovout_idx] = projected
+
 #%%
 
 all_contributions = [sorted([
-    (j, contribution) for j, contribution in top_unembeds_per_povsition[i]
+    (j, contribution) for j, contribution in top_unembeds_per_position[i]
 ],
 key=lambda x: x[1], reverse=True) for i in range(len(top_unembeds_per_position))]
 
