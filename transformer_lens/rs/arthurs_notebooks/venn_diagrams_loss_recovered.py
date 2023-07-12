@@ -156,7 +156,7 @@ for batch_idx2 in tqdm(range(0, model.cfg.d_vocab, curbatchsize)):
 for batch_idx, seq_idx in tqdm(list(itertools.product(range(BATCH_SIZE), range(MAX_SEQ_LEN)))):
     keyside_vector, keyside_orthogonal = project(
         normalize(cache[get_act_name("resid_pre", NEGATIVE_LAYER_IDX)][batch_idx, seq_idx]) * np.sqrt(model.cfg.d_model), # simulate LN
-        embeddings[batched_tokens[batch_idx, seq_idx]],
+        embeddings[batched_tokens[batch_idx, seq_idx]].cuda(),
     )
 
     if seq_idx != 0:
@@ -211,16 +211,16 @@ for batch_batch_idx, batch_idx in enumerate(top5p_batch_indices):
 model.set_use_split_qkv_input(True)
 model.set_use_split_qkv_normalized_input(True)
 model.reset_hooks()
-# model.add_hook(
-#     get_act_name("k_normalized_input", NEGATIVE_LAYER_IDX),
-#     partial(set_to_value, head_idx=NEGATIVE_HEAD_IDX, new_value=new_k_input.to("cuda")),
-#     level=1,
-# )
 model.add_hook(
-    get_act_name("q_input", NEGATIVE_LAYER_IDX),
-    partial(set_to_value, head_idx=NEGATIVE_HEAD_IDX, seq_indices = top5p_seq_indices, new_value=queryside_vectors.to("cuda")),
+    get_act_name("k_normalized_input", NEGATIVE_LAYER_IDX),
+    partial(set_to_value, head_idx=NEGATIVE_HEAD_IDX, new_value=new_k_input.to("cuda")),
     level=1,
 )
+# model.add_hook(
+#     get_act_name("q_input", NEGATIVE_LAYER_IDX),
+#     partial(set_to_value, head_idx=NEGATIVE_HEAD_IDX, seq_indices = top5p_seq_indices, new_value=queryside_vectors.to("cuda")),
+#     level=1,
+# )
 model.to("cuda")
 logits, top_5p_cache = model.run_with_cache(
     top5p_tokens.to("cuda"),
