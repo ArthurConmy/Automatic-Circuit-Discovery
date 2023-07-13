@@ -19,3 +19,4 @@ docs/build
 .coverage*
 .Ds_Store
 .pylintrc
+*.pkl

@@ -1,0 +1,6 @@
+numpy
+plotly
+pandas
+torch
+pathlib
+pickle

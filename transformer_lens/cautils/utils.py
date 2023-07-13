@@ -10,6 +10,7 @@ warnings.warn("Setting grad enabled false...")
 t.set_grad_enabled(False)
 
 import numpy as np
+import pickle
 import time
 from datasets import load_dataset
 from copy import deepcopy
@@ -20,6 +21,7 @@ import itertools
 from torch.utils.data import Dataset, DataLoader
 from torch.distributions.categorical import Categorical
 import torch.nn.functional as F
+import pandas as pd
 if str(__file__).startswith("/code"): # Hofvarpnir seems annoying...
     from tqdm import tqdm
 else:
