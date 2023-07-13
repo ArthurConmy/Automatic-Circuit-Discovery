@@ -166,7 +166,7 @@ parser.add_argument("--only-save-canonical", action="store_true", help="Only sav
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task ioi --mode edges --metric kl_div --alg edgesp --device cuda".split())
+    args = parser.parse_args("--task docstring --mode edges --metric docstring_metric --alg edgesp --device cuda".split())
 else:
     args = parser.parse_args()
 
@@ -252,12 +252,27 @@ SIXTEEN_HEADS_PRE_RUN_FILTER = {
 SIXTEEN_HEADS_RUN_FILTER = None
 
 EDGESP_PROJECT_NAME = "remix_school-of-rock/edgesp"
+
+all_edge_sp_run_filters = [
+    { # mainline status
+        "state": "finished",
+        "config.task": TASK,
+        "config.metric": METRIC,
+        "config.zero_ablation": ZERO_ABLATION,
+        "config.reset_network": RESET_NETWORK,
+    },
+]
+
+# we did some runs of edge sp with cursed configs : ( so let's single these out
+if (
+    ((TASK, METRIC) in [("ioi", "kl_div"), ("docstring", "docstring_metric"), ("induction", "kl_div")]) and not ZERO_ABLATION and not RESET_NETWORK
+):
+    all_edge_sp_run_filters.append({
+        "summary_metrics.num_edges": {"ioi": 32923, "induction": 305, "docstring": 1377}[TASK],
+    })
+
 EDGESP_PRE_RUN_FILTER = {
-    "state": "finished",
-    "config.task": TASK,
-    "config.metric": METRIC,
-    "config.zero_ablation": ZERO_ABLATION,
-    "config.reset_network": RESET_NETWORK,
+    "$or": all_edge_sp_run_filters,
 }
 
 USE_POS_EMBED = False
