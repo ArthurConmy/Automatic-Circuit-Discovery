@@ -31,7 +31,7 @@ if IPython.get_ipython() is not None:
     IPython.get_ipython().run_line_magic("autoreload", "2")  # type: ignore
 
 from copy import deepcopy
-from subnetwork_probing.train import iterative_correspondence_from_mask
+from subnetwork_probing.utils_train import iterative_correspondence_from_mask
 from acdc.acdc_utils import filter_nodes, get_edge_stats, get_node_stats, get_present_nodes, reset_network
 import pandas as pd
 import gc
@@ -153,7 +153,7 @@ parser.add_argument("--mode", type=str, required=False, choices=["edges", "nodes
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
 parser.add_argument('--metric', type=str, default="kl_div", help="Which metric to use for the experiment")
 parser.add_argument('--reset-network', type=int, default=0, help="Whether to reset the network we're operating on before running interp on it")
-parser.add_argument("--alg", type=str, default="none", choices=["none", "acdc", "sp", "16h", "canonical"])
+parser.add_argument("--alg", type=str, default="none", choices=["none", "acdc", "sp", "16h", "canonical", "edgesp"])
 parser.add_argument("--skip-sixteen-heads", action="store_true", help="Skip the 16 heads stuff")
 parser.add_argument("--skip-sp", action="store_true", help="Skip the SP stuff")
 parser.add_argument("--testing", action="store_true", help="Use testing data instead of validation data")
@@ -166,7 +166,7 @@ parser.add_argument("--only-save-canonical", action="store_true", help="Only sav
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task ioi --mode edges --metric kl_div --alg sp --device cuda".split())
+    args = parser.parse_args("--task ioi --mode edges --metric kl_div --alg edgesp --device cuda".split())
 else:
     args = parser.parse_args()
 
@@ -202,12 +202,15 @@ if args.alg != "none":
     SKIP_SP = False if args.alg == "sp" else True
     SKIP_SIXTEEN_HEADS = False if args.alg == "16h" else True
     SKIP_CANONICAL = False if args.alg == "canonical" else True
+    SKIP_EDGESP = False if args.alg == "edgesp" else True
+
     OUT_FILE = OUT_DIR / f"{args.alg}-{args.task}-{args.metric}-{args.zero_ablation}-{args.reset_network}.json"
 
     if OUT_FILE.exists():
         print(f"File {str(OUT_FILE)} already exists, skipping")
         # sys.exit(0)
         assert False
+
 else:
     OUT_FILE = None
 
@@ -248,9 +251,16 @@ SIXTEEN_HEADS_PRE_RUN_FILTER = {
 }
 SIXTEEN_HEADS_RUN_FILTER = None
 
+EDGESP_PROJECT_NAME = "remix_school-of-rock/edgesp"
+EDGESP_PRE_RUN_FILTER = {
+    "state": "finished",
+    "config.task": TASK,
+    "config.metric": METRIC,
+    "config.zero_ablation": ZERO_ABLATION,
+    "config.reset_network": RESET_NETWORK,
+}
+
 USE_POS_EMBED = False
-
-
 ROOT = Path(os.environ["HOME"]) / ".cache" / "artifacts_for_plot"
 ROOT.mkdir(exist_ok=True)
 
@@ -687,6 +697,42 @@ if not SKIP_ACDC: # this is slow, so run once
     print("acdc_corrs", len(acdc_corrs))
 
 # %%
+
+def get_edgesp_corrs(
+    model = None if things is None else things.tl_model,
+    project_name = EDGESP_PROJECT_NAME,
+    pre_run_filter = EDGESP_PRE_RUN_FILTER,
+    run_filter = None,
+    clip = None,
+):
+    if clip is None: 
+        clip = 100_000
+    
+    api = wandb.Api()
+    runs = api.runs(project_name, filters=pre_run_filter)
+    if run_filter is None:
+        filtered_runs = runs[:clip]
+    else:
+        filtered_runs = list(filter(run_filter, tqdm(runs[:clip])))
+    print(f"loading {len(filtered_runs)} runs")
+    
+    if things is None:
+        return [
+            (None, {"score": run.config["lambda_reg"], **{k: v for k, v in run.summary.items() if k.startswith("test")}})
+            for run in runs
+        ]
+
+    corrs = []
+    raise NotImplementedError()
+
+#%%
+
+if not SKIP_EDGESP:
+    edge_sp_corrs = get_edgesp_corrs(None if things is None else exp, clip = 1 if TESTING else None)
+    assert len(edge_sp_corrs) > 1
+    print("number of edge sp corrs", len(edge_sp_corrs))
+
+#%%
 
 def get_canonical_corrs(exp):
     all_present_corr = deepcopy(exp.corr)

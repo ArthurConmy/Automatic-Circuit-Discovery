@@ -226,7 +226,7 @@ def get_ioi_true_edges(model):
                     )
 
 
-    from subnetwork_probing.train import iterative_correspondence_from_mask
+    from subnetwork_probing.utils_train import iterative_correspondence_from_mask
     corr, _ = iterative_correspondence_from_mask(
         nodes_to_mask=nodes_to_mask,
         model = model,

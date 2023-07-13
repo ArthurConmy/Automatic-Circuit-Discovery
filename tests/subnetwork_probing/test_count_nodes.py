@@ -16,7 +16,7 @@ import sys
 
 sys.path.append(str(Path(__file__).parent.parent / "code"))
 
-from subnetwork_probing.train import iterative_correspondence_from_mask
+from subnetwork_probing.utils_train import iterative_correspondence_from_mask
 import networkx as nx
 from acdc.TLACDCInterpNode import parse_interpnode
 
