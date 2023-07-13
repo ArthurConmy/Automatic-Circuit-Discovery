@@ -19,11 +19,12 @@ model = HookedTransformer.from_pretrained(
 )
 model.set_use_attn_result(True)
 DEVICE = "cuda"
-SHOW_PLOT = False
+SHOW_PLOT = True
 DATASET_SIZE = 500
 BATCH_SIZE = 30  # seems to be about the limit of what this box can handle
 NUM_THINGS = 300
 USE_RANDOM_SAMPLE=True
+INDIRECT=True # disable for orig funcitonality
 
 # %%
 
@@ -59,9 +60,9 @@ names_filter1 = (
     or name.endswith(".hook_resid_pre")
 )
 
-model = model.to("cuda:1")
+model = model.to("cuda:0")
 logits, cache = model.run_with_cache(
-    mybatch.to("cuda:1"),
+    mybatch.to("cuda:0"),
     names_filter=names_filter1,
     device="cpu",
 )
@@ -136,21 +137,57 @@ else:
             return_logits=False,
         ).cpu()
 
+        if INDIRECT:
+            # also do an indirect effect experiment
+
+            def setter_hook(z, hook, setter_head_idx):
+                assert list(z.shape) == [BATCH_SIZE, max_seq_len, model.cfg.n_heads, model.cfg.d_model]
+                z[:, :, setter_head_idx] = mean_output[None, None]
+                return z
+            
+            def resetter_hook(z, hook, reset_value):
+                assert list(z.shape) == [BATCH_SIZE, max_seq_len, model.cfg.d_model]
+                z += reset_value
+                return z
+            
+            model.reset_hooks()
+            model.add_hook(
+                head_output_hook,
+                partial(setter_hook, setter_head_idx=head_idx),
+            )
+            _, indirect_cache = model.run_with_cache(
+                mybatch.to("cuda:0"),
+                names_filter=lambda name: name == END_STATE_HOOK,
+                device="cpu",
+            )
+            indirect_loss = get_loss_from_end_state(
+                model=model,
+                end_state=indirect_cache[END_STATE_HOOK].to(DEVICE),
+                targets=mytargets,
+                return_logits=False,
+            ).cpu()
+
         loss_changes = (mean_ablation_loss - my_loss).cpu()
         flattened_loss_changes = einops.rearrange(
             loss_changes, "batch seq_len -> (batch seq_len)"
         )
 
         if SHOW_PLOT:
+            assert INDIRECT
             hist(
                 [
                     einops.rearrange(
                         mean_ablation_loss - my_loss, "batch seq_len -> (batch seq_len)"
-                    )
+                    ),
+                    einops.rearrange(
+                        indirect_loss - my_loss, "batch seq_len -> (batch seq_len)"
+                    ),
                 ],
+                names = ["direct", "indirect"],
                 nbins=500,
                 title=f"Change in loss when mean ablating {layer_idx}.{head_idx}",
             )
+            assert False
 
         results_log[(layer_idx, head_idx)] = {
             "mean_change_in_loss": flattened_loss_changes.mean().item(),
