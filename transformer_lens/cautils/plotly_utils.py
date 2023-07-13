@@ -125,7 +125,8 @@ def hist(tensor, renderer=None, **kwargs):
                 fig.add_vline(x=arr[i].mean(), line_width=3, line_dash="dash", line_color="black", annotation_text=f"Mean = {arr.mean():.3f}", annotation_position="top")
     if names is not None:
         for i in range(len(fig.data)):
-            fig.data[i]["name"] = names[i // 2]
+            warnings.warn("Arthur changed i//2 to i")
+            fig.data[i]["name"] = names[i]
     if draw: 
         fig.update_layout(modebar_add=MODEBAR_ADD)
     else:

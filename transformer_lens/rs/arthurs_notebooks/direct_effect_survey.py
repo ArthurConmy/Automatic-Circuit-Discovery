@@ -118,7 +118,7 @@ if (tl_path / "results_log_NO_MANUAL.pt").exists():
 
 else:
     results_log={}
-    for layer_idx, head_idx in list(itertools.product(
+    for layer_idx, head_idx in [(10, 7)] + list(itertools.product(
         range(model.cfg.n_layers - 1, -1, -1), range(model.cfg.n_heads))
     ):
         head_output_hook = f"blocks.{layer_idx}.attn.hook_result"
@@ -160,12 +160,18 @@ else:
                 names_filter=lambda name: name == END_STATE_HOOK,
                 device="cpu",
             )
-            indirect_loss = get_loss_from_end_state(
+            mean_ablated_total_loss = get_loss_from_end_state(
                 model=model,
                 end_state=indirect_cache[END_STATE_HOOK].to(DEVICE),
                 targets=mytargets,
                 return_logits=False,
             ).cpu()
+            mean_ablated_indirect_loss = get_loss_from_end_state(
+                model=model,
+                end_state=(indirect_cache[END_STATE_HOOK].cpu() + head_output - mean_output[None, None]).to(DEVICE),
+                targets=mytargets,
+                return_logits=False,
+            )
 
         loss_changes = (mean_ablation_loss - my_loss).cpu()
         flattened_loss_changes = einops.rearrange(
@@ -174,18 +180,26 @@ else:
 
         if SHOW_PLOT:
             assert INDIRECT
+
+            all_losses = {
+                "loss": my_loss,
+                "mean_ablation_direct_loss": mean_ablation_loss,
+                "mean_ablated_total_loss": mean_ablated_total_loss,
+                "mean_ablated_indirect_loss": mean_ablated_indirect_loss,
+            }
+            all_losses_keys = list(all_losses.keys())
+            for key in all_losses_keys:
+                all_losses[key] = einops.rearrange(
+                    all_losses[key], "batch seq_len -> (batch seq_len)"
+                )
+                print(key, all_losses[key].mean())
+            normal_loss = all_losses.pop("loss")
+
             hist(
-                [
-                    einops.rearrange(
-                        mean_ablation_loss - my_loss, "batch seq_len -> (batch seq_len)"
-                    ),
-                    einops.rearrange(
-                        indirect_loss - my_loss, "batch seq_len -> (batch seq_len)"
-                    ),
-                ],
-                names = ["direct", "indirect"],
+                [v.cpu() - normal_loss for v in all_losses.values()],
+                names=list(all_losses.keys()),
                 nbins=500,
-                title=f"Change in loss when mean ablating {layer_idx}.{head_idx}",
+                title=f"Distributions of losses for {layer_idx}.{head_idx}",
             )
             assert False
 
