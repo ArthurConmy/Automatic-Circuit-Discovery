@@ -83,6 +83,7 @@ class TLACDCExperiment:
         names_mode: Literal["normal", "reverse", "shuffle"] = "normal",
         wandb_config: Optional[Namespace] = None,
         early_exit: bool = False,
+        use_split_qkv: bool = True,
     ):
         """Initialize the ACDC experiment"""
 
@@ -91,6 +92,7 @@ class TLACDCExperiment:
 
         model.reset_hooks()
 
+        self.use_split_qkv = use_split_qkv
         self.remove_redundant = remove_redundant
         self.indices_mode = indices_mode
         self.names_mode = names_mode
@@ -110,7 +112,7 @@ class TLACDCExperiment:
             warnings.warn("Never skipping edges, for now")
             skip_edges = "no"
 
-        self.corr = TLACDCCorrespondence.setup_from_model(self.model, use_pos_embed=use_pos_embed)
+        self.corr = TLACDCCorrespondence.setup_from_model(self.model, use_pos_embed=use_pos_embed, use_split_qkv=self.use_split_qkv)
 
         if early_exit: 
             return
@@ -186,7 +188,16 @@ class TLACDCExperiment:
         if not self.model.cfg.attn_only and "use_hook_mlp_in" in self.model.cfg.to_dict():
             assert self.model.cfg.use_hook_mlp_in, "Need to be able to see hook MLP inputs"
         assert self.model.cfg.use_attn_result, "Need to be able to see split by head outputs"
-        assert self.model.cfg.use_split_qkv_input, "Need to be able to see split by head QKV inputs"
+        
+        if self.use_split_qkv:
+            assert self.model.cfg.use_split_qkv_input, "Need to be able to see split by head QKV inputs"
+        else:
+            try:
+                assert self.model.cfg.use_attn_in
+            except AttributeError:
+                raise Exception("You need to be using the attention in version of the TransformerLens library, available here: https://github.com/ArthurConmy/TransformerLens/tree/arthur-add-attn-in . Alternatively, hopefully this is merged into Neel's main branch by the time you read this!")
+            except Exception as e:
+                raise e
 
     def update_cur_metric(self, recalc_metric=True, recalc_edges=True, initial=False):
         if recalc_metric:
@@ -644,6 +655,7 @@ class TLACDCExperiment:
                 print("Removing redundant node", self.current_node)
             self.remove_redundant_node(self.current_node)
 
+        # TODO add back
         if is_this_node_used and self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value:
             fname = f"ims/img_new_{self.step_idx}.png"
             show(
@@ -776,10 +788,6 @@ class TLACDCExperiment:
             print("No edge", cnt)
         return cnt
 
-    def reload_hooks(self):
-        old_corr = self.corr
-        self.corr = TLACDCCorrespondence.setup_from_model(self.model)
-
     def save_subgraph(self, fpath: Optional[str]=None, return_it=False) -> None:
         """Saves the subgraph as a Dictionary of all the edges, so it can be reloaded (or return that)"""
 
@@ -806,7 +814,11 @@ class TLACDCExperiment:
             receiver_name, receiver_torch_index, sender_name, sender_torch_index = tupl
             receiver_index, sender_index = receiver_torch_index.hashable_tuple, sender_torch_index.hashable_tuple
             set_of_edges.add((receiver_name, receiver_index, sender_name, sender_index))
-        assert set(subgraph.keys()) == set_of_edges, f"Ensure that the dictionary includes exactly the correct keys... e.g missing {list( set(set_of_edges) - set(subgraph.keys()) )[:1]} and has excess stuff { list(set(subgraph.keys()) - set_of_edges)[:1] }"
+
+        assert len(set(subgraph.keys()) - set_of_edges) == 0 or set(subgraph.keys()) == set_of_edges, f"Ensure that the dictionary includes exactly the correct keys... e.g missing {list( set(set_of_edges) - set(subgraph.keys()) )[:1]} and has excess stuff { list(set(subgraph.keys()) - set_of_edges)[:1] }"
+        if set(subgraph.keys()) != set_of_edges:
+            for edge in set_of_edges - set(subgraph.keys()):
+                subgraph[edge] = False
 
         print("Editing all edges...")
         for (receiver_name, receiver_index, sender_name, sender_index), is_present in subgraph.items():

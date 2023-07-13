@@ -9,6 +9,7 @@
 # <p>Janky code to do different setup when run in a Colab notebook vs VSCode (adapted from e.g <a href="https://github.com/neelnanda-io/TransformerLens/blob/5c89b7583e73ce96db5e46ef86a14b15f303dde6/demos/Activation_Patching_in_TL_Demo.ipynb">this notebook</a>)</p>
 
 #%%
+
 try:
     import google.colab
 
@@ -163,6 +164,7 @@ parser.add_argument('--torch-num-threads', type=int, default=0, help="How many t
 parser.add_argument('--seed', type=int, default=1234)
 parser.add_argument("--max-num-epochs",type=int, default=100_000)
 parser.add_argument('--single-step', action='store_true', help='Use single step, mostly for testing')
+parser.add_argument("--dont-split-qkv", action="store_true", help="Dont splits qkv")
 parser.add_argument("--abs-value-threshold", action='store_true', help='Use the absolute value of the result to check threshold')
 
 if ipython is not None:
@@ -170,16 +172,21 @@ if ipython is not None:
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
         [line.strip() for line in r"""--task=induction\
---zero-ablation\
---threshold=0.71\
+--threshold=0.0175\
+--metric=kl_div\
 --indices-mode=reverse\
 --first-cache-cpu=False\
 --second-cache-cpu=False\
---max-num-epochs=100000""".split("\\\n")]
-    )
+--max-num-epochs=100000\
+--dont-split-qkv\
+--using-wandb""".split("\\\n")]
+    ) # also 0.39811 # also on the main machine you just added two lines here.
+
 else:
     # read from command line
     args = parser.parse_args()
+
+print(args)
 
 # process args
 
@@ -216,6 +223,7 @@ NAMES_MODE = args.names_mode
 DEVICE = args.device
 RESET_NETWORK = args.reset_network
 SINGLE_STEP = True if args.single_step else False
+SPLIT_QKV = False if args.dont_split_qkv else True
 
 #%% [markdown] 
 # <h2>Setup Task</h2>
@@ -227,7 +235,7 @@ use_pos_embed = TASK.startswith("tracr")
 if TASK == "ioi":
     num_examples = 100
     things = get_all_ioi_things(
-        num_examples=num_examples, device=DEVICE, metric_name=args.metric
+        num_examples=num_examples, device=DEVICE, metric_name=args.metric, split_qkv=SPLIT_QKV,
     )
 elif TASK == "tracr-reverse":
     num_examples = 6
@@ -337,22 +345,23 @@ exp = TLACDCExperiment(
     add_receiver_hooks=False,
     remove_redundant=False,
     show_full_index=use_pos_embed,
+    use_split_qkv=SPLIT_QKV,
 )
 
 # %% [markdown]
 # <h2>Run steps of ACDC: iterate over a NODE in the model's computational graph</h2>
 # <p>WARNING! This will take a few minutes to run, but there should be rolling nice pictures too : )</p>
-
 #%%
+
 for i in range(args.max_num_epochs):
     exp.step(testing=False)
 
+    # TODO add back
     show(
         exp.corr,
         f"ims/img_new_{i+1}.png",
         show_full_index=use_pos_embed,
     )
-
     if IN_COLAB or ipython is not None:
         # so long as we're not running this as a script, show the image!
         display(Image(f"ims/img_new_{i+1}.png"))
@@ -387,3 +396,5 @@ if USING_WANDB:
 exp.save_subgraph(
     return_it=True,
 ) 
+
+#%% HELLO
