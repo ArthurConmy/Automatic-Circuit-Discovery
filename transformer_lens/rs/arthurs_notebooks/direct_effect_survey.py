@@ -147,7 +147,7 @@ if (tl_path / "results_log_NO_MANUAL.pt").exists():
 
 else:
     results_log={}
-    for layer_idx, head_idx in [(10, 7)] + list(itertools.product(
+    for layer_idx, head_idx in [(NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX)] + list(itertools.product(
         range(model.cfg.n_layers - 1, -1, -1), range(model.cfg.n_heads))
     ):
         head_output_hook = f"blocks.{layer_idx}.attn.hook_result"
@@ -192,61 +192,55 @@ else:
                 return_logits=False,
             )
 
-            # and the "controlled" indirect effect plot
-            # blocks.10.hook_resid_mid
-            # blocks.11.hook_resid_pre
-            # blocks.11.hook_resid_post
-            # the hooks here are like... set to cache normal 
+            if (NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX) == (layer_idx, head_idx) == (10, 7):
+                model.reset_hooks()
+                for cache_hook_name, dest_hook_name in [
+                    (get_act_name("resid_mid", 10), get_act_name("mlp_in", 10)),
+                    (get_act_name("resid_pre", 11), get_act_name("attn_in", 11)),
+                    (get_act_name("resid_mid", 11), get_act_name("mlp_in", 11)),
+                ]:
+                    setting_value = cache[cache_hook_name] - head_output + mean_output
 
-            model.reset_hooks()
-            for cache_hook_name, dest_hook_name in [
-                (get_act_name("resid_mid", 10), get_act_name("mlp_in", 10)),
-                (get_act_name("resid_pre", 11), get_act_name("attn_in", 11)),
-                (get_act_name("resid_mid", 11), get_act_name("mlp_in", 11)),
-            ]:
-                setting_value = cache[cache_hook_name] - head_output + mean_output
-
-                model.add_hook(
-                    dest_hook_name,
-                    partial(setter_hook, setting_value=setting_value),
+                    model.add_hook(
+                        dest_hook_name,
+                        partial(setter_hook, setting_value=setting_value),
+                    )
+                _, controlled_indirect_cache = model.run_with_cache(
+                    mybatch.to("cuda:0"),
+                    names_filter=lambda name: name == END_STATE_HOOK,
+                    device="cpu",
                 )
-            _, controlled_indirect_cache = model.run_with_cache(
-                mybatch.to("cuda:0"),
-                names_filter=lambda name: name == END_STATE_HOOK,
-                device="cpu",
-            )
-            controlled_indirect_loss = get_loss_from_end_state(
-                model=model,
-                end_state=controlled_indirect_cache[END_STATE_HOOK].to(DEVICE),
-                targets=mytargets,
-                return_logits=False,
-            ).cpu()
+                controlled_indirect_loss = get_loss_from_end_state(
+                    model=model,
+                    end_state=controlled_indirect_cache[END_STATE_HOOK].to(DEVICE),
+                    targets=mytargets,
+                    return_logits=False,
+                ).cpu()
 
-            # Add the total version, except 11.10 sees normal stuff
-            # (I hope that the loss is more than 50% of the way up to the direct effect loss)
+                # Add the total version, except 11.10 sees normal stuff
+                # (I hope that the loss is more than 50% of the way up to the direct effect loss)
+                model.reset_hooks()
+                model.add_hook(
+                    head_output_hook,
+                    partial(setter_hook, setting_value=mean_output, setter_head_idx=head_idx),
+                )
+                model.add_hook(
+                    get_act_name("attn_in", 11), 
+                    partial(setter_hook, setting_value=cache[get_act_name("resid_pre", 11)], setter_head_idx=10),
+                )
 
-            model.reset_hooks()
-            model.add_hook(
-                head_output_hook,
-                partial(setter_hook, setting_value=mean_output, setter_head_idx=head_idx),
-            )
-            model.add_hook(
-                get_act_name("attn_in", 11), 
-                partial(setter_hook, setting_value=cache[get_act_name("resid_pre", 11)], setter_head_idx=10),
-            )
+                _, total_control_11 = model.run_with_cache(
+                    mybatch.to("cuda:0"),
+                    names_filter=lambda name: name == END_STATE_HOOK,
+                    device="cpu",
+                )
 
-            _, total_control_11 = model.run_with_cache(
-                mybatch.to("cuda:0"),
-                names_filter=lambda name: name == END_STATE_HOOK,
-                device="cpu",
-            )
-
-            total_control_11_loss = get_loss_from_end_state(
-                model=model,
-                end_state=total_control_11[END_STATE_HOOK].to(DEVICE), # + head_output.to(DEVICE) - mean_output.to(DEVICE),
-                targets=mytargets,
-                return_logits=False,
-            ).cpu()
+                total_control_11_loss = get_loss_from_end_state(
+                    model=model,
+                    end_state=total_control_11[END_STATE_HOOK].to(DEVICE), # + head_output.to(DEVICE) - mean_output.to(DEVICE),
+                    targets=mytargets,
+                    return_logits=False,
+                ).cpu()
 
         loss_changes = (mean_ablation_loss - my_loss).cpu()
         flattened_loss_changes = einops.rearrange(
@@ -262,8 +256,11 @@ else:
                 "mean_ablated_total_loss": mean_ablated_total_loss,
                 "mean_ablated_indirect_loss": mean_ablated_indirect_loss,
                 "controlled_indirect_loss": controlled_indirect_loss,
-                "total_control_11_loss": total_control_11_loss,
             }
+
+            if (NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX) == (layer_idx, head_idx) == (10, 7):
+                all_losses["total_control_11_loss"]=total_control_11_loss
+
             all_losses_keys = list(all_losses.keys())
             for key in all_losses_keys:
                 all_losses[key] = einops.rearrange(
@@ -286,7 +283,7 @@ else:
                 # error_y=[y.std().item()/np.sqrt(len(y)) for y in all_losses.values()], # TODO find a way to sample tons of points to drive down std
             ).show()
             normal_loss = all_losses.pop("loss")
-            assert False
+            # assert False
 
         results_log[(layer_idx, head_idx)] = {
             "mean_change_in_loss": flattened_loss_changes.mean().item(),
@@ -297,7 +294,6 @@ else:
             "mean_ablation_loss": mean_ablation_loss.cpu(),
         }
         print(list(results_log.items())[-1])
-
 
 #%%
 
@@ -329,9 +325,7 @@ print(f"Percentage of increase in loss contribution from the Top 1/{FRACTION_DEN
 #%%
 
 # The global plot is weird 11.0 with crazy importance, 10.7 variance low ... ?
-
 CAP = 10000
-
 px.bar(
     x=[str(x) for x in list(results_log.keys())][:CAP],
     y=[x["mean_change_in_loss"] for x in results_log.values()][:CAP],
@@ -355,8 +349,7 @@ px.bar(
 #%%
 
 props={}
-
-for layer_idx, head_idx in tqdm(list(itertools.product(range(model.cfg.n_layers), range(model.cfg.n_heads)))):
+for layer_idx, head_idx in results_log.keys():
     all_results = list(enumerate(results_log[(layer_idx, head_idx)]["flattened_loss_changes"]))
     sorted_results = sorted(
         all_results,
