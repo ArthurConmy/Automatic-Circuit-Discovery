@@ -58,6 +58,8 @@ names_filter1 = (
     lambda name: name == END_STATE_HOOK
     or name.endswith("hook_result")
     or name.endswith(".hook_resid_pre")
+    or name == get_act_name("resid_mid", NEGATIVE_LAYER_IDX)
+    or name == get_act_name("resid_pre", NEGATIVE_LAYER_IDX+1)
 )
 
 model = model.to("cuda:0")
@@ -113,6 +115,23 @@ assert "/TransformerLens/" in str(tl_path), "This is a hacky way to get the path
 while tl_path.stem!="TransformerLens" and str(tl_path.parent)!=str(tl_path):
     tl_path = tl_path.parent
 
+def setter_hook(z, hook, setting_value, setter_head_idx=None):
+
+    if setter_head_idx is not None:
+        assert list(z.shape) == [BATCH_SIZE, max_seq_len, model.cfg.n_heads, model.cfg.d_model]
+        z[:, :, setter_head_idx] = mean_output[None, None]
+
+    else: 
+        assert list(z.shape) == [BATCH_SIZE, max_seq_len, model.cfg.d_model] == list(setting_value.shape)
+        z[:] = setting_value
+
+    return z
+
+def resetter_hook(z, hook, reset_value):
+    assert list(z.shape) == [BATCH_SIZE, max_seq_len, model.cfg.d_model]
+    z += reset_value
+    return z
+
 if (tl_path / "results_log_NO_MANUAL.pt").exists():
     results_log = torch.load(tl_path / "results_log.pt")
 
@@ -139,21 +158,11 @@ else:
 
         if INDIRECT:
             # also do an indirect effect experiment
-
-            def setter_hook(z, hook, setter_head_idx):
-                assert list(z.shape) == [BATCH_SIZE, max_seq_len, model.cfg.n_heads, model.cfg.d_model]
-                z[:, :, setter_head_idx] = mean_output[None, None]
-                return z
-            
-            def resetter_hook(z, hook, reset_value):
-                assert list(z.shape) == [BATCH_SIZE, max_seq_len, model.cfg.d_model]
-                z += reset_value
-                return z
             
             model.reset_hooks()
             model.add_hook(
                 head_output_hook,
-                partial(setter_hook, setter_head_idx=head_idx),
+                partial(setter_hook, setting_value=mean_output, setter_head_idx=head_idx),
             )
             _, indirect_cache = model.run_with_cache(
                 mybatch.to("cuda:0"),
@@ -173,6 +182,40 @@ else:
                 return_logits=False,
             )
 
+            # and the "controlled" indirect effect plot
+            # blocks.10.hook_resid_mid
+            # blocks.11.hook_resid_pre
+            # blocks.11.hook_resid_post
+            # the hooks here are like... set to cache normal 
+
+            model.reset_hooks()
+            for hook_name in [
+                get_act_name("resid_mid", 10),
+                get_act_name("resid_pre", 11),
+                get_act_name("resid_mid", 11),
+            ]:
+                model.add_hook(
+                    hook_name,
+                    partial(setter_hook, setting_value=cache[hook_name] - head_output + mean_output),
+                )
+
+            model.add_hook(
+                
+            )
+
+            _, controlled_indirect_cache = model.run_with_cache(
+                mybatch.to("cuda:0"),
+                names_filter=lambda name: name == END_STATE_HOOK,
+                device="cpu",
+            )
+
+            controlled_indirect_loss = get_loss_from_end_state(
+                model=model,
+                end_state=controlled_indirect_cache[END_STATE_HOOK].to(DEVICE),
+                targets=mytargets,
+                return_logits=False,
+            ).cpu()
+
         loss_changes = (mean_ablation_loss - my_loss).cpu()
         flattened_loss_changes = einops.rearrange(
             loss_changes, "batch seq_len -> (batch seq_len)"
@@ -186,6 +229,7 @@ else:
                 "mean_ablation_direct_loss": mean_ablation_loss,
                 "mean_ablated_total_loss": mean_ablated_total_loss,
                 "mean_ablated_indirect_loss": mean_ablated_indirect_loss,
+                "controlled_indirect_loss": controlled_indirect_loss,
             }
             all_losses_keys = list(all_losses.keys())
             for key in all_losses_keys:
@@ -213,7 +257,8 @@ else:
         }
         print(list(results_log.items())[-1])
 
-# %%
+
+#%%
 
 # The global plot is weird 11.0 with crazy importance, 10.7 variance low ... ?
 
