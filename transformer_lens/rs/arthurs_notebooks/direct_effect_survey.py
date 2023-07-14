@@ -122,7 +122,7 @@ def setter_hook(z, hook, setting_value, setter_head_idx=None):
 
     if setter_head_idx is not None:
         assert list(z.shape) == [BATCH_SIZE, max_seq_len, model.cfg.n_heads, model.cfg.d_model]
-        z[:, :, setter_head_idx] = mean_output[None, None]
+        z[:, :, setter_head_idx] = setting_value
 
     else: 
         if len(z.shape) == 3:
@@ -222,6 +222,32 @@ else:
                 return_logits=False,
             ).cpu()
 
+            # Add the total version, except 11.10 sees normal stuff
+            # (I hope that the loss is more than 50% of the way up to the direct effect loss)
+
+            model.reset_hooks()
+            model.add_hook(
+                head_output_hook,
+                partial(setter_hook, setting_value=mean_output, setter_head_idx=head_idx),
+            )
+            model.add_hook(
+                get_act_name("attn_in", 11), 
+                partial(setter_hook, setting_value=cache[get_act_name("resid_pre", 11)], setter_head_idx=10),
+            )
+
+            _, total_control_11 = model.run_with_cache(
+                mybatch.to("cuda:0"),
+                names_filter=lambda name: name == END_STATE_HOOK,
+                device="cpu",
+            )
+
+            total_control_11_loss = get_loss_from_end_state(
+                model=model,
+                end_state=total_control_11[END_STATE_HOOK].to(DEVICE), # + head_output.to(DEVICE) - mean_output.to(DEVICE),
+                targets=mytargets,
+                return_logits=False,
+            ).cpu()
+
         loss_changes = (mean_ablation_loss - my_loss).cpu()
         flattened_loss_changes = einops.rearrange(
             loss_changes, "batch seq_len -> (batch seq_len)"
@@ -236,6 +262,7 @@ else:
                 "mean_ablated_total_loss": mean_ablated_total_loss,
                 "mean_ablated_indirect_loss": mean_ablated_indirect_loss,
                 "controlled_indirect_loss": controlled_indirect_loss,
+                "total_control_11_loss": total_control_11_loss,
             }
             all_losses_keys = list(all_losses.keys())
             for key in all_losses_keys:
