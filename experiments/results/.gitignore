@@ -6,3 +6,8 @@ tmp/
 
 plots_with_qkv_deleted
 plots_with_qkv_deleted_two
+plots_old_colors_rgb
+.auctex-auto/*
+auc_tables.aux
+auc_tables.pdf
+auc_tables.synctex.gz
