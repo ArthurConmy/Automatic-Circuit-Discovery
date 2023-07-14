@@ -23,14 +23,14 @@ model.set_use_attn_in(True)
 DEVICE = "cuda"
 SHOW_PLOT = True
 DATASET_SIZE = 500
-BATCH_SIZE = 30  # seems to be about the limit of what this box can handle
+BATCH_SIZE = 37  # seems to be about the limit of what this box can handle
 NUM_THINGS = 300
 USE_RANDOM_SAMPLE=True
 INDIRECT=True # disable for orig funcitonality
 
 # %%
 
-dataset = get_webtext(seed=1729)
+dataset = get_webtext(seed=17299)
 max_seq_len = model.tokenizer.model_max_length
 
 # %%
@@ -44,7 +44,7 @@ while len(filtered_tokens) < DATASET_SIZE:
     _idx += 1
     cur_tokens = model.to_tokens(dataset[_idx], truncate=False).tolist()[0]
     if (
-        len(cur_tokens) >= max_seq_len
+        len(cur_tokens) > max_seq_len
     ):  # so we're not biasing towards early sequence positions...
         filtered_tokens.append(cur_tokens[:max_seq_len])
         targets.append(cur_tokens[1 : max_seq_len + 1])
@@ -210,13 +210,11 @@ else:
                     dest_hook_name,
                     partial(setter_hook, setting_value=setting_value),
                 )
-
             _, controlled_indirect_cache = model.run_with_cache(
                 mybatch.to("cuda:0"),
                 names_filter=lambda name: name == END_STATE_HOOK,
                 device="cpu",
             )
-
             controlled_indirect_loss = get_loss_from_end_state(
                 model=model,
                 end_state=controlled_indirect_cache[END_STATE_HOOK].to(DEVICE),
@@ -245,14 +243,22 @@ else:
                     all_losses[key], "batch seq_len -> (batch seq_len)"
                 )
                 print(key, all_losses[key].mean())
-            normal_loss = all_losses.pop("loss")
 
-            hist(
-                [v.cpu() - normal_loss for v in all_losses.values()],
-                names=list(all_losses.keys()),
-                nbins=500,
-                title=f"Distributions of losses for {layer_idx}.{head_idx}",
-            )
+            # sort all losses by mean
+            all_losses = dict(sorted(all_losses.items(), key=lambda x: x[1].mean()))
+
+            # actually I prefer a bar chart
+            px.bar(
+                x=[str(x) for x in list(all_losses.keys())],
+                y=[y.mean().item() for y in all_losses.values()],
+                color = ["blue" for _ in range(len(all_losses)-1)] + ["red"],
+                labels={
+                    "x": "10.7 Ablation Type",
+                    "y": "Average OWT Loss",
+                },
+                # error_y=[y.std().item()/np.sqrt(len(y)) for y in all_losses.values()], # TODO find a way to sample tons of points to drive down std
+            ).show()
+            normal_loss = all_losses.pop("loss")
             assert False
 
         results_log[(layer_idx, head_idx)] = {
@@ -265,6 +271,33 @@ else:
         }
         print(list(results_log.items())[-1])
 
+
+#%%
+
+# How much EV is explained by the direct effect of the head?
+
+sorted_loss_change = torch.tensor(sorted(
+    [
+        mean_ablation_loss[batch_idx, seq_idx].item() -
+        my_loss[batch_idx, seq_idx].item() for batch_idx, seq_idx in itertools.product(
+            range(BATCH_SIZE), range(max_seq_len)
+        )
+    ], 
+    reverse=True,
+))
+
+useful_loss_changes = torch.nn.functional.relu(sorted_loss_change)
+number_useful = useful_loss_changes.gt(0).sum().item()
+FRACTION_DENOM = 20 # The denominator of the fraction of the tokens we will study
+assert number_useful > len(sorted_loss_change) // FRACTION_DENOM, "Calcs won't make sense"
+
+proportion_of_loss = useful_loss_changes[:len(sorted_loss_change)//FRACTION_DENOM].sum() / useful_loss_changes.sum()
+
+print(f"Average increase in loss from mean ablation of 10.7 direct effect *conditional on mean ablation being harmful* is\n{useful_loss_changes.sum().item() / number_useful=}\n")
+print(f"Percentage of increase in loss contribution from the Top 1/{FRACTION_DENOM} is\n{proportion_of_loss*100 :.2f}%\n")
+
+# I think this will explain 40% of the good loss
+# Woo more than 50% : ) 
 
 #%%
 
