@@ -278,7 +278,7 @@ else:
             px.bar(
                 x=[str(x) for x in list(all_losses.keys())],
                 y=[y.mean().item() for y in all_losses.values()],
-                color = ["blue" for _ in range(len(all_losses)-1)] + ["red"],
+                color = ["blue" for _ in range(len(all_losses)-2)] + ["red", "blue"],
                 labels={
                     "x": "10.7 Ablation Type",
                     "y": "Average OWT Loss",
