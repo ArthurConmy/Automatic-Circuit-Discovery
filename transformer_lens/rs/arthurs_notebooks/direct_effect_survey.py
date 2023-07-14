@@ -18,6 +18,8 @@ model = HookedTransformer.from_pretrained(
     refactor_factored_attn_matrices=False,
 )
 model.set_use_attn_result(True)
+model.set_use_hook_mlp_in(True)
+model.set_use_attn_in(True)
 DEVICE = "cuda"
 SHOW_PLOT = True
 DATASET_SIZE = 500
@@ -60,6 +62,7 @@ names_filter1 = (
     or name.endswith(".hook_resid_pre")
     or name == get_act_name("resid_mid", NEGATIVE_LAYER_IDX)
     or name == get_act_name("resid_pre", NEGATIVE_LAYER_IDX+1)
+    or name == get_act_name("resid_mid", NEGATIVE_LAYER_IDX+1)
 )
 
 model = model.to("cuda:0")
@@ -122,7 +125,14 @@ def setter_hook(z, hook, setting_value, setter_head_idx=None):
         z[:, :, setter_head_idx] = mean_output[None, None]
 
     else: 
-        assert list(z.shape) == [BATCH_SIZE, max_seq_len, model.cfg.d_model] == list(setting_value.shape)
+        if len(z.shape) == 3:
+            assert list(z.shape) == [BATCH_SIZE, max_seq_len, model.cfg.d_model] == list(setting_value.shape), f"z.shape: {z.shape}, setting_value.shape: {setting_value.shape}, {[BATCH_SIZE, max_seq_len, model.cfg.d_model]}"
+        elif len(z.shape) == 4: # blegh annoying hack
+            assert "attn_in" in hook.name
+            if len(setting_value.shape) == 3:
+                setting_value = einops.repeat(setting_value, "a b c -> a b n c", n=model.cfg.n_heads)
+            assert list(z.shape) == list(setting_value.shape), f"z.shape: {z.shape}, setting_value.shape: {setting_value.shape}"
+
         z[:] = setting_value
 
     return z
@@ -189,19 +199,17 @@ else:
             # the hooks here are like... set to cache normal 
 
             model.reset_hooks()
-            for hook_name in [
-                get_act_name("resid_mid", 10),
-                get_act_name("resid_pre", 11),
-                get_act_name("resid_mid", 11),
+            for cache_hook_name, dest_hook_name in [
+                (get_act_name("resid_mid", 10), get_act_name("mlp_in", 10)),
+                (get_act_name("resid_pre", 11), get_act_name("attn_in", 11)),
+                (get_act_name("resid_mid", 11), get_act_name("mlp_in", 11)),
             ]:
-                model.add_hook(
-                    hook_name,
-                    partial(setter_hook, setting_value=cache[hook_name] - head_output + mean_output),
-                )
+                setting_value = cache[cache_hook_name] - head_output + mean_output
 
-            model.add_hook(
-                
-            )
+                model.add_hook(
+                    dest_hook_name,
+                    partial(setter_hook, setting_value=setting_value),
+                )
 
             _, controlled_indirect_cache = model.run_with_cache(
                 mybatch.to("cuda:0"),
