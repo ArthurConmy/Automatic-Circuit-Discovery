@@ -23,10 +23,10 @@ model.set_use_attn_in(True)
 DEVICE = "cuda"
 SHOW_PLOT = True
 DATASET_SIZE = 500
-BATCH_SIZE = 37  # seems to be about the limit of what this box can handle
+BATCH_SIZE = 20  # seems to be about the limit of what this box can handle
 NUM_THINGS = 300
-USE_RANDOM_SAMPLE=True
-INDIRECT=True # disable for orig funcitonality
+USE_RANDOM_SAMPLE = True
+INDIRECT = True # disable for orig funcitonality
 USE_GPT2XL = True
 
 # %%
@@ -61,18 +61,19 @@ if USE_GPT2XL:
 #%%
 
 if USE_GPT2XL:
-    xl_probs = t.zeros((BATCH_SIZE, max_seq_len, model.cfg.d_vocab))
+    log_xl_probs = t.zeros((BATCH_SIZE, max_seq_len, model.cfg.d_vocab))
     print("Starting GPT2-XL stuff")
     assert model.cfg.d_vocab == gpt2xl.cfg.d_vocab, "Probably incompatible"
     for batch_idx in tqdm(range(BATCH_SIZE)):
         logits = gpt2xl(mybatch[batch_idx : batch_idx + 1].to(DEVICE))[0]
         assert list(logits.shape) == [max_seq_len, gpt2xl.cfg.d_vocab]
-        xl_probs[batch_idx] = t.nn.functional.softmax(logits, dim=-1).cpu()
+        log_xl_probs[batch_idx] = t.nn.functional.log_softmax(logits, dim=-1).cpu()
         gc.collect()
         t.cuda.empty_cache()
     del gpt2xl
     gc.collect()
     t.cuda.empty_cache()
+    # xl_probs = log_xl_probs.cuda()
     print("Done GPT2-XL stuff")
 
 # %%
@@ -189,6 +190,31 @@ else:
             return_logits=False,
         ).cpu()
 
+        if USE_GPT2XL:
+            gc.collect()
+            t.cuda.empty_cache()
+
+            # also do a GPT2-XL experiment
+            gpt2xl_kl = get_metric_from_end_state(
+                model=model,
+                end_state=end_state.cpu(),
+                targets=None,
+                return_logits=False,
+                mode="kl",
+                log_probs_reference=log_xl_probs,
+                device="cuda",
+            )
+
+            mean_ablation_kl = get_metric_from_end_state(
+                model=model,
+                end_state=(end_state.cpu() - head_output + mean_output[None, None]),
+                targets=None,
+                return_logits=False,
+                mode="kl",
+                log_probs_reference=log_xl_probs,
+                device="cuda",
+            )
+
         if INDIRECT:
             # also do an indirect effect experiment
             
@@ -284,6 +310,10 @@ else:
             if (NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX) == (layer_idx, head_idx) == (10, 7):
                 all_losses["total_control_11_loss"]=total_control_11_loss
 
+            if USE_GPT2XL:
+                all_losses["gpt2xl_kl"] = gpt2xl_kl
+                all_losses["mean_ablation_kl"] = mean_ablation_kl
+
             all_losses_keys = list(all_losses.keys())
             for key in all_losses_keys:
                 all_losses[key] = einops.rearrange(
@@ -316,16 +346,25 @@ else:
             "loss_changes": loss_changes.cpu(),
             "mean_ablation_loss": mean_ablation_loss.cpu(),
         }
+
+        if USE_GPT2XL:
+            results_log[(layer_idx, head_idx)]["gpt2xl_kl"] = gpt2xl_kl.cpu()
+            results_log[(layer_idx, head_idx)]["mean_ablation_kl"] = mean_ablation_kl.cpu()
+            results_log[(layer_idx, head_idx)]["gpt2xl_kl_change"] = (mean_ablation_kl - gpt2xl_kl).cpu()
+
         print(list(results_log.items())[-1])
+        break
 
 #%%
 
-# How much EV is explained by the direct effect of the head?
+thing_used_as_mean_ablation = mean_ablation_loss if not USE_GPT2XL else mean_ablation_kl
+thing_used_as_my_metric = my_loss if not USE_GPT2XL else gpt2xl_kl
 
+# How much EV is explained by the direct effect of the head?
 sorted_loss_change = torch.tensor(sorted(
     [
-        mean_ablation_loss[batch_idx, seq_idx].item() -
-        my_loss[batch_idx, seq_idx].item() for batch_idx, seq_idx in itertools.product(
+        (thing_used_as_mean_ablation[batch_idx, seq_idx].item() -
+        thing_used_as_my_metric[batch_idx, seq_idx].item()) for batch_idx, seq_idx in itertools.product(
             range(BATCH_SIZE), range(max_seq_len)
         )
     ], 
@@ -339,11 +378,35 @@ assert number_useful > len(sorted_loss_change) // FRACTION_DENOM, "Calcs won't m
 
 proportion_of_loss = useful_loss_changes[:len(sorted_loss_change)//FRACTION_DENOM].sum() / useful_loss_changes.sum()
 
+if USE_GPT2XL:
+    warnings.warn("We often say `loss` here when we're discussing KL divergence, essentially")
+
 print(f"Average increase in loss from mean ablation of 10.7 direct effect *conditional on mean ablation being harmful* is\n{useful_loss_changes.sum().item() / number_useful=}\n")
 print(f"Percentage of increase in loss contribution from the Top 1/{FRACTION_DENOM} is\n{proportion_of_loss*100 :.2f}%\n")
 
 # I think this will explain 40% of the good loss
 # Woo more than 50% : ) 
+
+#%%
+
+cumulative_useful_loss_changes = torch.cumsum(useful_loss_changes, dim=0)
+fig = px.scatter(
+    x=100* torch.tensor(range(len(cumulative_useful_loss_changes))) / len(cumulative_useful_loss_changes),
+    y=100 * cumulative_useful_loss_changes / cumulative_useful_loss_changes[-1].item(),
+)
+fig.update_layout(
+    title="Cumulative percentage of useful loss reduction explained by the direct effect of 10.7",
+    xaxis_title="Percentage of tokens",
+    yaxis_title="Percentage of loss explained",
+)
+fig.add_annotation(x=90, y=90,
+    text="On these token completions, 10.7's direct effect increases loss",
+    showarrow=True,
+    arrowhead=1,
+    ax=-10,
+    ay=30,
+)
+fig.show()
 
 #%%
 
@@ -485,7 +548,8 @@ for layer_idx, head_idx in [(10, 7)] + list(
             (
                 batch_idx,
                 seq_idx,
-                results_log[(layer_idx, head_idx)]["loss_changes"][
+                (results_log[(layer_idx, head_idx)]["gpt2xl_kl_change"] if USE_GPT2XL else results_log[(layer_idx, head_idx)]["loss_changes"])
+                [
                     batch_idx, seq_idx
                 ].item(),
             )
@@ -523,15 +587,15 @@ for layer_idx, head_idx in [(10, 7)] + list(
 
         cur_output = (head_output-mean_output)[batch_idx, seq_idx]
 
-        # unembed = einops.einsum(
-        #     cur_output,
-        #     model.W_U,
-        #     "d_model_out, d_model_out d_vocab -> d_vocab",
-        # )
-        # topk = torch.topk(unembed, k=10).indices
-        # print([model.to_string([tk]) for tk in topk])
-        # print([model.to_string([j]) for j in mybatch[batch_idx, max(0, seq_idx-100):seq_idx+1]])
-        # print(model.to_string([mybatch[batch_idx, seq_idx+1]]))
+        unembed = einops.einsum(
+            cur_output,
+            model.W_U,
+            "d_model_out, d_model_out d_vocab -> d_vocab",
+        )
+        topk = torch.topk(unembed, k=10).indices
+        print([model.to_string([tk]) for tk in topk])
+        print([model.to_string([j]) for j in mybatch[batch_idx, max(0, seq_idx-100):seq_idx+1]])
+        print(model.to_string([mybatch[batch_idx, seq_idx+1]]))
 
         names_filter2 = lambda name: name.endswith("hook_v") or name.endswith(
             "hook_pattern"
