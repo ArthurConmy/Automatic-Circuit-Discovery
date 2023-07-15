@@ -1,14 +1,45 @@
 # %% [markdown] [4]:
 
 """
-Runs an experiment where we see that unembedding for *one* token is a decent percentage of the usage of 
-direct effect of NMS
+SoLU Experiments1
 """
 
 from transformer_lens.cautils.notebook import *
 from transformer_lens.rs.callum.keys_fixed import project
 from transformer_lens.rs.arthurs_notebooks.arthur_utils import get_loss_from_end_state
 import argparse
+
+#%%
+
+# just a quick check of something...
+model = HookedTransformer.from_pretrained("gpt2")
+tokens = torch.arange(5).long().unsqueeze(0).cuda()
+
+#%%
+
+logits = model(tokens)
+
+#%%
+
+assert model.unembed.W_U.mean(0).abs().max() < 1e-5
+assert model.unembed.W_U.mean(1).abs().max() < 1e-5
+
+#%%
+
+model.unembed.W_U -= model.unembed.W_U.mean(0, keepdim=True)
+
+#%%
+
+assert model.unembed.W_U.mean(0).abs().max() < 1e-5
+assert model.unembed.W_U.mean(1).abs().max() < 1e-5
+
+#%%
+
+new_logits = model(tokens)
+
+#%%
+
+torch.testing.assert_allclose(logits, new_logits)
 
 #%%
 
