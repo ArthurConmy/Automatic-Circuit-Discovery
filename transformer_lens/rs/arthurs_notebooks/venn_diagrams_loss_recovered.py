@@ -59,7 +59,7 @@ torch.cuda.empty_cache()
 
 original_end_state = cache[END_STATE_HOOK]
 
-batched_tokens_loss = get_loss_from_end_state(
+batched_tokens_loss = get_metric_from_end_state(
     model=model,
     end_state=original_end_state,
     targets=targets,
@@ -77,7 +77,7 @@ mean_head_output = einops.reduce(head_output, "b s d -> d", reduction="mean")
 #%%
 
 mean_ablated_end_states = cache[get_act_name("resid_post", model.cfg.n_layers-1)] - head_output + einops.repeat(mean_head_output, "d -> b s d", b=BATCH_SIZE, s=MAX_SEQ_LEN)
-mean_ablated_loss = get_loss_from_end_state(
+mean_ablated_loss = get_metric_from_end_state(
     model=model,
     end_state=mean_ablated_end_states,
     targets=targets,
@@ -261,7 +261,7 @@ top_5p_end_state += new_head_out
 
 #%%
 
-loss = get_loss_from_end_state(
+loss = get_metric_from_end_state(
     end_state=top_5p_end_state,
     model=model,
     logits=None,
@@ -270,7 +270,7 @@ loss = get_loss_from_end_state(
 
 #%%
 
-mean_ablation_loss = get_loss_from_end_state(
+mean_ablation_loss = get_metric_from_end_state(
     end_state=top_5p_end_state-new_head_out+mean_head_output,
     logits=None,
     targets=top5p_targets.unsqueeze(0),

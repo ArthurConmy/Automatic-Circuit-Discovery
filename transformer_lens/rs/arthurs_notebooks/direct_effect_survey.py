@@ -7,7 +7,7 @@ direct effect of NMS
 
 from transformer_lens.cautils.notebook import *
 from transformer_lens.rs.callum.keys_fixed import project
-from transformer_lens.rs.arthurs_notebooks.arthur_utils import get_loss_from_end_state
+from transformer_lens.rs.arthurs_notebooks.arthur_utils import get_metric_from_end_state
 import argparse
 
 model = HookedTransformer.from_pretrained(
@@ -27,6 +27,7 @@ BATCH_SIZE = 37  # seems to be about the limit of what this box can handle
 NUM_THINGS = 300
 USE_RANDOM_SAMPLE=True
 INDIRECT=True # disable for orig funcitonality
+USE_GPT2XL = True
 
 # %%
 
@@ -51,6 +52,28 @@ while len(filtered_tokens) < DATASET_SIZE:
 
 mybatch = torch.LongTensor(filtered_tokens[:BATCH_SIZE])
 mytargets = torch.LongTensor(targets[:BATCH_SIZE])
+
+#%%
+
+if USE_GPT2XL:
+    gpt2xl = HookedTransformer.from_pretrained("gpt2-xl")
+
+#%%
+
+if USE_GPT2XL:
+    xl_probs = t.zeros((BATCH_SIZE, max_seq_len, model.cfg.d_vocab))
+    print("Starting GPT2-XL stuff")
+    assert model.cfg.d_vocab == gpt2xl.cfg.d_vocab, "Probably incompatible"
+    for batch_idx in tqdm(range(BATCH_SIZE)):
+        logits = gpt2xl(mybatch[batch_idx : batch_idx + 1].to(DEVICE))[0]
+        assert list(logits.shape) == [max_seq_len, gpt2xl.cfg.d_vocab]
+        xl_probs[batch_idx] = t.nn.functional.softmax(logits, dim=-1).cpu()
+        gc.collect()
+        t.cuda.empty_cache()
+    del gpt2xl
+    gc.collect()
+    t.cuda.empty_cache()
+    print("Done GPT2-XL stuff")
 
 # %%
 
@@ -82,7 +105,7 @@ torch.cuda.empty_cache()
 
 # %%
 
-my_loss = get_loss_from_end_state(model, end_state.to(DEVICE), mytargets).cpu()
+my_loss = get_metric_from_end_state(model, end_state.to(DEVICE), mytargets).cpu()
 
 # %%
 
@@ -159,7 +182,7 @@ else:
             "batch seq_len hidden_size -> hidden_size",
             reduction="mean",
         )
-        mean_ablation_loss = get_loss_from_end_state(
+        mean_ablation_loss = get_metric_from_end_state(
             model=model,
             end_state=(end_state.cpu() - head_output + mean_output[None, None]).to(DEVICE),
             targets=mytargets,
@@ -179,13 +202,13 @@ else:
                 names_filter=lambda name: name == END_STATE_HOOK,
                 device="cpu",
             )
-            mean_ablated_total_loss = get_loss_from_end_state(
+            mean_ablated_total_loss = get_metric_from_end_state(
                 model=model,
                 end_state=indirect_cache[END_STATE_HOOK].to(DEVICE),
                 targets=mytargets,
                 return_logits=False,
             ).cpu()
-            mean_ablated_indirect_loss = get_loss_from_end_state(
+            mean_ablated_indirect_loss = get_metric_from_end_state(
                 model=model,
                 end_state=(indirect_cache[END_STATE_HOOK].cpu() + head_output - mean_output[None, None]).to(DEVICE),
                 targets=mytargets,
@@ -210,7 +233,7 @@ else:
                     names_filter=lambda name: name == END_STATE_HOOK,
                     device="cpu",
                 )
-                controlled_indirect_loss = get_loss_from_end_state(
+                controlled_indirect_loss = get_metric_from_end_state(
                     model=model,
                     end_state=controlled_indirect_cache[END_STATE_HOOK].to(DEVICE),
                     targets=mytargets,
@@ -235,7 +258,7 @@ else:
                     device="cpu",
                 )
 
-                total_control_11_loss = get_loss_from_end_state(
+                total_control_11_loss = get_metric_from_end_state(
                     model=model,
                     end_state=total_control_11[END_STATE_HOOK].to(DEVICE), # + head_output.to(DEVICE) - mean_output.to(DEVICE),
                     targets=mytargets,
@@ -569,7 +592,7 @@ for layer_idx, head_idx in [(10, 7)] + list(
         #     rtol=1e-3,
         # )
 
-        new_loss = get_loss_from_end_state(
+        new_loss = get_metric_from_end_state(
             model,
             end_state=(
                 end_state[batch_idx : batch_idx + 1, seq_idx : seq_idx + 1]

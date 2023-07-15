@@ -63,12 +63,16 @@ def imshow(
     )
     fig.show()
 
-dataset = get_webtext(dataset="NeelNanda/c4-code-20k")
-
 # %%
 
-MODEL_NAME = "solu-10l"
 # MODEL_NAME = "solu-10l"
+# MODEL_NAME = "solu-10l"
+# MODEL_NAME = "gpt2-large"
+# MODEL_NAME = "gpt2-medium"
+MODEL_NAME = "stanford-gpt2-small-e"
+
+dataset = get_webtext(dataset=("NeelNanda/c4-code-20k" if "solu" in MODEL_NAME.lower() else "stas/openwebtext-10k"))
+
 model = transformer_lens.HookedTransformer.from_pretrained(MODEL_NAME)
 from transformer_lens.hackathon.ioi_dataset import IOIDataset, NAMES
 

@@ -6,7 +6,7 @@ SoLU Experiments1
 
 from transformer_lens.cautils.notebook import *
 from transformer_lens.rs.callum.keys_fixed import project
-from transformer_lens.rs.arthurs_notebooks.arthur_utils import get_loss_from_end_state
+from transformer_lens.rs.arthurs_notebooks.arthur_utils import get_metric_from_end_state
 import argparse
 
 #%%
@@ -186,7 +186,7 @@ direct effect of NMS
 
 from transformer_lens.cautils.notebook import *
 from transformer_lens.rs.callum.keys_fixed import project
-from transformer_lens.rs.arthurs_notebooks.arthur_utils import get_loss_from_end_state
+from transformer_lens.rs.arthurs_notebooks.arthur_utils import get_metric_from_end_state
 import argparse
 
 #%%

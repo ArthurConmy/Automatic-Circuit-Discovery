@@ -1,15 +1,19 @@
 from transformer_lens.cautils.utils import *
 import torch
 
-def get_loss_from_end_state(
+def get_metric_from_end_state(
     model,
     end_state,
     targets,
-    logits=None,
-    return_logits=False,
+    logits = None,
+    return_logits = False,
+    mode: Literal["loss", "kl"] = "loss",
+    kl_reference: Optional[torch.Tensor] = None,
 ):
     # end state has shape batch, seq_len, hidden_size
     # targets has shape batch, seq_len
+
+    assert mode == "loss" 
 
     if logits is None:
         assert list(end_state.shape) == list(targets.shape) + [

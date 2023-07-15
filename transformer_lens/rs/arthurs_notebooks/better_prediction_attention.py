@@ -63,7 +63,7 @@ for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in [(10, 0), (11, 10)] + list(itertool
 
     original_end_state = cache[get_act_name("resid_post", model.cfg.n_layers-1)]
 
-    batched_tokens_loss = get_loss_from_end_state(
+    batched_tokens_loss = get_metric_from_end_state(
         model=model,
         end_state=original_end_state,
         targets=targets,
@@ -100,7 +100,7 @@ for NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX in [(10, 0), (11, 10)] + list(itertool
     #%%
 
     mean_ablated_end_states = cache[get_act_name("resid_post", model.cfg.n_layers-1)] - head_output + einops.repeat(mean_head_output, "d -> b s d", b=BATCH_SIZE, s=MAX_SEQ_LEN)
-    mean_ablated_loss = get_loss_from_end_state(
+    mean_ablated_loss = get_metric_from_end_state(
         model=model,
         end_state=mean_ablated_end_states,
         targets=targets,
