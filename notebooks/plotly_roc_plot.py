@@ -65,7 +65,7 @@ if IS_ADRIA or ipython is None:
     DATA_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / "plots_data"
 
 else:
-    DATA_DIR = Path(__file__).resolve().parent.parent.parent / "experiments" / "results" / "plots_data"
+    DATA_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / "plots_data"
 
 X_LABELS = [1, 2, 5, 10, 20, 50, 100, 200]
 
