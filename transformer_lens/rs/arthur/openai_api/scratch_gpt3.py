@@ -57,7 +57,7 @@ large_logits = model2(tensor_tokens).squeeze()
 
 #%%
 
-def get_labels_true_kls_est_kls(str_tokens, small_logits, large_logits, k=5, include_top_small=False):
+def get_labels_true_kls_est_kls(str_tokens, small_logits, large_logits, k=5, include_top_small=False, rescaling=False):
     labels = []
     true_kls = []
     est_kls = []
