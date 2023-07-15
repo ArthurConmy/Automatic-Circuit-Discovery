@@ -535,6 +535,9 @@ torch.cuda.empty_cache()
 
 # In the max importance examples, which token does the head have the most effect on?
 datab = {}
+
+USE_TOP5P_SAMPLE = True
+
 model.set_use_split_qkv_input(True)
 for layer_idx, head_idx in [(10, 7)] + list(
     itertools.product(range(11, 8, -1), range(model.cfg.n_heads))
@@ -570,17 +573,21 @@ for layer_idx, head_idx in [(10, 7)] + list(
         "batch seq_len hidden_size -> hidden_size",
         reduction="mean",
     )
-    mean_ablation_loss = results_log[(layer_idx, head_idx)]["mean_ablation_loss"]
 
     mals = []
     new_losses = []
     orig_losses = []
 
     random_indices = np.random.choice(len(max_importance_examples), NUM_THINGS, replace=False).tolist()
+    top5p_indices = np.random.choice(len(max_importance_examples)//20, NUM_THINGS, replace=False).tolist()
+
     progress_bar = tqdm(random_indices) if USE_RANDOM_SAMPLE else tqdm(max_importance_examples[:NUM_THINGS])
+    if USE_TOP5P_SAMPLE:
+        assert not USE_RANDOM_SAMPLE
+        progress_bar = tqdm(top5p_indices)
 
     for current_iter_element in progress_bar:
-        if USE_RANDOM_SAMPLE:
+        if USE_RANDOM_SAMPLE or USE_TOP5P_SAMPLE:
             batch_idx, seq_idx, change_in_loss = max_importance_examples[current_iter_element]
         else:
             batch_idx, seq_idx, change_in_loss = current_iter_element
@@ -592,9 +599,9 @@ for layer_idx, head_idx in [(10, 7)] + list(
             model.W_U,
             "d_model_out, d_model_out d_vocab -> d_vocab",
         )
-        topk = torch.topk(unembed, k=10).indices
+        topk = torch.topk(-unembed, k=10).indices
         print([model.to_string([tk]) for tk in topk])
-        print([model.to_string([j]) for j in mybatch[batch_idx, max(0, seq_idx-100):seq_idx+1]])
+        print("|".join([model.to_string([j]).replace("\n", "<|NEWLINE|>") for j in mybatch[batch_idx, max(0, seq_idx-100000):seq_idx+1]]))
         print(model.to_string([mybatch[batch_idx, seq_idx+1]]))
 
         names_filter2 = lambda name: name.endswith("hook_v") or name.endswith(
@@ -667,31 +674,31 @@ for layer_idx, head_idx in [(10, 7)] + list(
             ),
             targets=mytargets[batch_idx : batch_idx + 1, seq_idx : seq_idx + 1],
         ).item()
-        mal = mean_ablation_loss[batch_idx, seq_idx]
-        orig_loss = my_loss[batch_idx, seq_idx]
 
-        mals.append(mal.item())
-        new_losses.append(new_loss)
-        orig_losses.append(orig_loss.item())
+        # mal = mean_ablation_loss[batch_idx, seq_idx]
+        # orig_loss = my_loss[batch_idx, seq_idx]
+
+        # mals.append(mal.item())
+        # new_losses.append(new_loss)
+        # orig_losses.append(orig_loss.item())
 
         # print(f"{mal.item():.2f} {orig_loss.item():.2f} {new_loss:.2f}")
+    # datab[(layer_idx, head_idx)] = {
+    #     "mals_mean": np.mean(mals),
+    #     "mals_std": np.std(mals),
+    #     "new_losses_mean": np.mean(new_losses),
+    #     "new_losses_std": np.std(new_losses),
+    #     "orig_losses_mean": np.mean(orig_losses),
+    #     "orig_losses_std": np.std(orig_losses),
+    #     "mals": mals,
+    #     "new_losses": new_losses,
+    #     "orig_losses": orig_losses,
+    # }
 
-    datab[(layer_idx, head_idx)] = {
-        "mals_mean": np.mean(mals),
-        "mals_std": np.std(mals),
-        "new_losses_mean": np.mean(new_losses),
-        "new_losses_std": np.std(new_losses),
-        "orig_losses_mean": np.mean(orig_losses),
-        "orig_losses_std": np.std(orig_losses),
-        "mals": mals,
-        "new_losses": new_losses,
-        "orig_losses": orig_losses,
-    }
-
-    for k in datab[(layer_idx, head_idx)]:
-        if k.endswith("mean") or k.endswith("std"):
-            print(k, datab[(layer_idx, head_idx)][k], end="/")
-    print()
+    # for k in datab[(layer_idx, head_idx)]:
+    #     if k.endswith("mean") or k.endswith("std"):
+    #         print(k, datab[(layer_idx, head_idx)][k], end="/")
+    # print()
 
 # %%
 
