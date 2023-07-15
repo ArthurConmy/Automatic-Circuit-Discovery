@@ -165,9 +165,11 @@ parser.add_argument('--seed', type=int, default=42, help="Random seed")
 parser.add_argument("--canonical-graph-save-dir", type=str, default="DEFAULT")
 parser.add_argument("--only-save-canonical", action="store_true", help="Only save the canonical graph")
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
+parser.add_argument("--set-missing-score", action="store_true", help="Missing scores set to -1")
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task docstring --mode edges --metric docstring_metric --alg edgesp --device cuda".split())
+    args = parser.parse_args("--task docstring --mode edges --metric docstring_metric --alg edgesp --device cuda --set-missing-score".split())
+
 else:
     args = parser.parse_args()
 
@@ -178,6 +180,7 @@ if args.torch_num_threads > 0:
     torch.set_num_threads(args.torch_num_threads)
 torch.manual_seed(args.seed)
 
+assert not (args.set_missing_score and args.ignore_missing_score), "Only one of these"
 TASK = args.task
 METRIC = args.metric
 DEVICE = args.device
@@ -280,7 +283,7 @@ USE_POS_EMBED = False
 ROOT = Path(os.environ["HOME"]) / ".cache" / "artifacts_for_plot"
 ROOT.mkdir(exist_ok=True)
 
-#%% [markdown]
+3#%% [markdown]
 # Setup
 # substantial copy paste from main.py, with some new configs, directories...
 
@@ -520,11 +523,15 @@ class ThresholdToRunMapManager(dict):
     def add_run_for_processing(self, candidate: AcdcRunCandidate):
         if candidate.threshold not in self:
             self[candidate.threshold] = candidate
+
         else:
             if candidate.steps > self[candidate.threshold].steps:
                 self[candidate.threshold] = candidate
 
 threshold_to_run_map = ThresholdToRunMapManager()
+
+def all_test_fns(data: torch.Tensor) -> dict[str, float]:
+    return {f"test_{name}": fn(data).item() for name, fn in things.test_metrics.items()}
 
 def get_acdc_runs(
     exp,
@@ -689,8 +696,6 @@ def get_acdc_runs(
             ))
 
     # Now add the test_fns to the score_d of the remaining runs
-    def all_test_fns(data: torch.Tensor) -> dict[str, float]:
-        return {f"test_{name}": fn(data).item() for name, fn in things.test_metrics.items()}
 
     all_candidates = list(threshold_to_run_map.values())
     for candidate in all_candidates:
@@ -719,7 +724,22 @@ def get_edgesp_corrs(
     pre_run_filter = EDGESP_PRE_RUN_FILTER,
     run_filter = None,
     clip = None,
+    return_ids = False,
+    return_filtered_runs = False, # for debugging
 ):
+
+# model = things.tl_model
+# project_name = EDGESP_PROJECT_NAME
+# pre_run_filter = EDGESP_PRE_RUN_FILTER
+# run_filter = None
+# clip = None
+# return_ids = False
+# return_filtered_runs = False
+
+    np.random.seed(42)
+
+    """A lot of copy + paste from get_acdc_runs"""
+
     if clip is None: 
         clip = 100_000
     
@@ -731,44 +751,91 @@ def get_edgesp_corrs(
         filtered_runs = list(filter(run_filter, tqdm(runs[:clip])))
     print(f"Loading {len(filtered_runs)} runs")
 
-    for run in filtered_runs:    
+    threshold_to_run_map = ThresholdToRunMapManager()
+
+    if return_filtered_runs:
+        return filtered_runs
+
+    for run in filtered_runs: 
+        score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
+        try:
+            score_d["steps"] = run.summary["_step"]
+        except KeyError:
+            print("Sketchy error re steps; maybe this should not be skipped")
+            continue  # Run has crashed too much
+
+        try:
+            score_d["score"] = run.config["threshold"]
+        except KeyError:
+            try:
+                score_d["score"] = float(run.name)
+            except ValueError:
+                try:
+                    score_d["score"] = float(run.name.split("_")[-1])
+                except ValueError as e:
+                    if args.ignore_missing_score:
+                        print("Ignoring missing score")
+                        continue
+                    if args.set_missing_score:
+                        score_d["score"] = int(run.summary["_timestamp"]) * 100000 + np.random.randint(1000) # somewhat cursed, so that all these are counted as unique
+                    else:
+                        raise e
+
+        threshold = score_d["score"]
+        edges_artifact = None
+
         for art in run.logged_artifacts():
             if "edges.pth" in art.name:
+                assert edges_artifact is None, "Multiple edges artifacts found"
                 edges_artifact = art
 
-                corr = deepcopy(exp.corr)
-                all_edges = corr.all_edges()
-                for edge in all_edges.values():
-                    edge.present = False
+        if edges_artifact is None:
+            print(run.id, "did not have edges file :-(")
+            continue
 
-                this_root = ROOT / edges_artifact.name
-                # Load the edges
-                for f in edges_artifact.files():
-                    with f.download(root=this_root, replace=True, exist_ok=True) as fopen:
-                        # Sadly f.download opens in text mode
-                        with open(fopen.name, "rb") as fopenb:
-                            edges_pth = pickle.load(fopenb)
+        corr = deepcopy(exp.corr)
+        all_edges = corr.all_edges()
+        for edge in all_edges.values():
+            edge.present = False
 
-                for (n_to, idx_to, n_from, idx_from), _effect_size in edges_pth:
-                    n_to = n_to.replace("hook_resid_mid", "hook_mlp_in")
-                    n_from = n_from.replace("hook_resid_mid", "hook_mlp_in")
-                    all_edges[(n_to, idx_to, n_from, idx_from)].present = True
+        this_root = ROOT / edges_artifact.name
+        # Load the edges
+        for f in edges_artifact.files():
+            with f.download(root=this_root, replace=True, exist_ok=True) as fopen:
+                # Sadly f.download opens in text mode
+                with open(fopen.name, "rb") as fopenb:
+                    edges_pth = pickle.load(fopenb)
 
-                add_run_for_processing(AcdcRunCandidate(
-                    threshold=threshold,
-                    steps=score_d["steps"],
-                    run=run,
-                    score_d=score_d,
-                    corr=corr,
-                ))
+        for (n_to, idx_to, n_from, idx_from), _effect_size in edges_pth:
+            n_to = n_to.replace("hook_resid_mid", "hook_mlp_in")
+            n_from = n_from.replace("hook_resid_mid", "hook_mlp_in")
+            all_edges[(n_to, idx_to, n_from, idx_from)].present = True
 
-            else:
-                print(run.id, "did not have edges file : (")
+        threshold_to_run_map.add_run_for_processing(AcdcRunCandidate(
+            threshold=threshold,
+            steps=score_d["steps"],
+            run=run,
+            score_d=score_d,
+            corr=corr,
+        ))
+
+    all_candidates = list(threshold_to_run_map.values())
+    for candidate in all_candidates:
+        test_metrics = exp.call_metric_with_corr(candidate.corr, all_test_fns, things.test_data)
+        candidate.score_d.update(test_metrics)
+        print(f"Added run with threshold={candidate.threshold}, n_edges={candidate.corr.count_no_edges()}; Run: {candidate.run.id}")
+
+    corrs = [(candidate.corr, candidate.score_d) for candidate in all_candidates]
+
+    if return_ids:
+        return corrs, [candidate.run.id for candidate in all_candidates]
+    return corrs
+
 
 #%%
 
 if not SKIP_EDGESP:
-    edge_sp_corrs = get_edgesp_corrs(None if things is None else exp, clip = 1 if TESTING else None)
+    edge_sp_corrs = get_edgesp_corrs(None if things is None else exp, clip = 1 if TESTING else None, return_filtered_runs=False)
     assert len(edge_sp_corrs) > 1
     print("number of edge sp corrs", len(edge_sp_corrs))
 
@@ -921,6 +988,7 @@ if not SKIP_CANONICAL: methods.append("CANONICAL")
 if not SKIP_ACDC: methods.append("ACDC") 
 if not SKIP_SP: methods.append("SP")
 if not SKIP_SIXTEEN_HEADS: methods.append("16H")
+if not SKIP_EDGESP: methods.append("EDGESP")
 
 #%%
 
@@ -1017,7 +1085,6 @@ if "CANONICAL" in methods:
     if "CANONICAL" not in points: points["CANONICAL"] = []
     points["CANONICAL"].extend(get_points(canonical_corrs))
 
-
 #%%
 
 if "SP" in methods:
@@ -1029,6 +1096,12 @@ if "SP" in methods:
 if "16H" in methods:
     if "16H" not in points: points["16H"] = []
     points["16H"].extend(get_points(sixteen_heads_corrs, decreasing=False))
+
+#%%
+
+if "EDGESP" in methods:
+    if "EDGESP" not in points: points["EDGESP"] = []
+    points["EDGESP"].extend(get_points(edge_sp_corrs))
 
 #%%
 

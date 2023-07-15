@@ -122,6 +122,9 @@ class TLACDCExperiment:
 
         self.corr = TLACDCCorrespondence.setup_from_model(self.model, use_pos_embed=use_pos_embed, use_split_qkv=self.use_split_qkv, device=None if self.sp is None else self.model.cfg.device, sp=self.sp)
 
+        self.online_cache_cpu = online_cache_cpu
+        self.corrupted_cache_cpu = corrupted_cache_cpu
+
         if early_exit: 
             return
             
@@ -132,8 +135,6 @@ class TLACDCExperiment:
 
         self.ds = ds
         self.ref_ds = ref_ds
-        self.online_cache_cpu = online_cache_cpu
-        self.corrupted_cache_cpu = corrupted_cache_cpu
 
         if zero_ablation:
             if self.ref_ds is None:
