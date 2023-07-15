@@ -25,7 +25,7 @@ SHOW_PLOT = True
 DATASET_SIZE = 500
 BATCH_SIZE = 20  # seems to be about the limit of what this box can handle
 NUM_THINGS = 300
-USE_RANDOM_SAMPLE = True
+USE_RANDOM_SAMPLE = False
 INDIRECT = True # disable for orig funcitonality
 USE_GPT2XL = True
 
@@ -98,7 +98,7 @@ logits, cache = model.run_with_cache(
 model = model.to("cuda:0")
 print("Done")
 end_state = cache[END_STATE_HOOK].to("cuda")  # shape (batch_size, seq_len, hidden_size)
-full_logits = logits
+full_log_probs = torch.nn.functional.log_softmax(logits.cuda(), dim=-1).cpu()
 
 del logits
 gc.collect()
@@ -183,13 +183,18 @@ else:
             "batch seq_len hidden_size -> hidden_size",
             reduction="mean",
         )
-        mean_ablation_loss = get_metric_from_end_state(
+        mean_ablation_loss, mean_ablation_logits = get_metric_from_end_state(
             model=model,
             end_state=(end_state.cpu() - head_output + mean_output[None, None]).to(DEVICE),
             targets=mytargets,
-            return_logits=False,
-        ).cpu()
-
+            return_logits=True,
+        )
+        mean_ablation_loss = mean_ablation_loss.cpu()
+        mean_ablation_log_probs = torch.nn.functional.log_softmax(mean_ablation_logits, dim=-1)
+        del mean_ablation_logits
+        gc.collect()
+        t.cuda.empty_cache()
+        
         if USE_GPT2XL:
             gc.collect()
             t.cuda.empty_cache()
@@ -395,12 +400,12 @@ fig = px.scatter(
     y=100 * cumulative_useful_loss_changes / cumulative_useful_loss_changes[-1].item(),
 )
 fig.update_layout(
-    title="Cumulative percentage of useful loss reduction explained by the direct effect of 10.7",
+    title=f"Cumulative percentage of useful {'loss' if not USE_GPT2XL else 'KL divergence'} reduction explained by the direct effect of 10.7",
     xaxis_title="Percentage of tokens",
     yaxis_title="Percentage of loss explained",
 )
 fig.add_annotation(x=90, y=90,
-    text="On these token completions, 10.7's direct effect increases loss",
+    text=f"On these token completions, 10.7's direct effect increases {'loss' if not USE_GPT2XL else 'KL divergence'}",
     showarrow=True,
     arrowhead=1,
     ax=-10,
@@ -545,6 +550,7 @@ for layer_idx, head_idx in [(10, 7)] + list(
     print("-"*50)
     print(layer_idx, head_idx)
 
+
     # for layer_idx, head_idx in [(10, 7)]:
     max_importance_examples = sorted(
         [
@@ -586,6 +592,10 @@ for layer_idx, head_idx in [(10, 7)] + list(
         assert not USE_RANDOM_SAMPLE
         progress_bar = tqdm(top5p_indices)
 
+    token_log_probs_mean_ablation = []
+    token_log_probs_gpt2xl = []
+    token_log_probs_gpt2 = []
+
     for current_iter_element in progress_bar:
         if USE_RANDOM_SAMPLE or USE_TOP5P_SAMPLE:
             batch_idx, seq_idx, change_in_loss = max_importance_examples[current_iter_element]
@@ -603,6 +613,17 @@ for layer_idx, head_idx in [(10, 7)] + list(
         print([model.to_string([tk]) for tk in topk])
         print("|".join([model.to_string([j]).replace("\n", "<|NEWLINE|>") for j in mybatch[batch_idx, max(0, seq_idx-100000):seq_idx+1]]))
         print(model.to_string([mybatch[batch_idx, seq_idx+1]]))
+
+        for tok_idx in topk:
+            token_log_probs_mean_ablation.append(
+                mean_ablation_log_probs[batch_idx, seq_idx, tok_idx]
+            )
+            token_log_probs_gpt2xl.append(
+                log_xl_probs[batch_idx, seq_idx, tok_idx]
+            )
+            token_log_probs_gpt2.append(
+                full_log_probs[batch_idx, seq_idx, tok_idx]
+            )
 
         names_filter2 = lambda name: name.endswith("hook_v") or name.endswith(
             "hook_pattern"
@@ -675,6 +696,8 @@ for layer_idx, head_idx in [(10, 7)] + list(
             targets=mytargets[batch_idx : batch_idx + 1, seq_idx : seq_idx + 1],
         ).item()
 
+    break
+
         # mal = mean_ablation_loss[batch_idx, seq_idx]
         # orig_loss = my_loss[batch_idx, seq_idx]
 
@@ -701,6 +724,79 @@ for layer_idx, head_idx in [(10, 7)] + list(
     # print()
 
 # %%
+
+fig = go.Figure()
+CAP = 100_000
+
+fig = hist(
+    [
+        torch.tensor(token_log_probs_mean_ablation).cpu()[:CAP]-torch.tensor(token_log_probs_gpt2xl).cpu()[:CAP],
+        torch.tensor(token_log_probs_gpt2).cpu()[:CAP]-torch.tensor(token_log_probs_gpt2xl).cpu()[:CAP],
+    ],
+    labels={"variable": "Version", "value": "Log prob difference"},
+    opacity=0.7,
+    # marginal="box",
+    template="simple_white",
+    names = ["Mean ablation of 10.7", "Normal GPT-2 Small"],
+    title = "(GPT-2 Small Log Probs on Copy Suppressed Token) - (GPT-2 XL Log Probs on Copy Suppressed Token)",
+    return_fig = True,
+)
+
+# add a line at x = 0
+
+fig.add_trace(
+    go.Scatter(
+        x=[0, 0],
+        y=[0, 200],
+        mode="lines",
+        name="y=0",
+        marker=dict(color="black"),
+    )
+)
+
+fig.show()
+
+
+#%%
+
+fig.add_trace(
+    go.Scatter(
+        x=torch.tensor(token_log_probs_mean_ablation).cpu()[:CAP],
+        y=torch.tensor(token_log_probs_gpt2xl).cpu()[:CAP],
+        mode="markers",
+        name="Mean ablation of 10.7 direct effect logprobs",
+    )
+)
+
+fig.add_trace(
+    go.Scatter(
+        x=torch.tensor(token_log_probs_gpt2).cpu()[:CAP],
+        y=torch.tensor(token_log_probs_gpt2xl).cpu()[:CAP],
+        mode="markers",
+        name="Normal GPT-2 Small logprobs",
+    )
+)
+
+# add y = x line
+
+fig.add_trace(
+    go.Scatter(
+        x=[-10, 0],
+        y=[-10, 0],
+        mode="lines",
+        name="y=x",
+    )
+)
+
+fig.update_layout(
+    title="Logprobs of tokens in the Top 10 most important tokens for 10.7 direct effect",
+    xaxis_title="Logprob of token GPT-2 Small",
+    yaxis_title="Logprob of token in GPT-2 XL",
+)
+
+fig.show()
+
+#%%
 
 # TODO speed this up and do Callum's proposed experiment with one component in unembed direction 
 
