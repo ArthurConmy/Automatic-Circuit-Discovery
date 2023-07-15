@@ -37,6 +37,7 @@ import pandas as pd
 import gc
 import math
 import sys
+from datetime import datetime
 import re
 from typing import (
     List,
@@ -512,6 +513,19 @@ class AcdcRunCandidate:
     score_d: dict
     corr: TLACDCCorrespondence
 
+class ThresholdToRunMapManager(dict):
+    def __init__(self):
+        super().__init__()
+
+    def add_run_for_processing(self, candidate: AcdcRunCandidate):
+        if candidate.threshold not in self:
+            self[candidate.threshold] = candidate
+        else:
+            if candidate.steps > self[candidate.threshold].steps:
+                self[candidate.threshold] = candidate
+
+threshold_to_run_map = ThresholdToRunMapManager()
+
 def get_acdc_runs(
     exp,
     project_name: str = ACDC_PROJECT_NAME,
@@ -520,13 +534,6 @@ def get_acdc_runs(
     clip: Optional[int] = None,
     return_ids: bool = False,
 ):
-# experiment = exp
-# project_name = ACDC_PROJECT_NAME
-# pre_run_filter = ACDC_PRE_RUN_FILTER
-# run_filter = ACDC_RUN_FILTER
-# clip = None
-# return_ids = False
-# if True:
     if clip is None:
         clip = 100_000 # so we don't clip anything
 
@@ -538,14 +545,7 @@ def get_acdc_runs(
         filtered_runs = list(filter(run_filter, tqdm(list(runs)[:clip])))
     print(f"loading {len(filtered_runs)} runs with filter {pre_run_filter} and {run_filter}")
 
-    threshold_to_run_map: dict[float, AcdcRunCandidate] = {}
-
-    def add_run_for_processing(candidate: AcdcRunCandidate):
-        if candidate.threshold not in threshold_to_run_map:
-            threshold_to_run_map[candidate.threshold] = candidate
-        else:
-            if candidate.steps > threshold_to_run_map[candidate.threshold].steps:
-                threshold_to_run_map[candidate.threshold] = candidate
+    threshold_to_run_map = ThresholdToRunMapManager()
 
     for run in filtered_runs:
         score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
@@ -636,7 +636,7 @@ def get_acdc_runs(
 
                 # Correct score_d to reflect the actual number of steps that we are collecting
                 score_d["steps"] = latest_fname_step
-                add_run_for_processing(AcdcRunCandidate(
+                threshold_to_run_map.add_run_for_processing(AcdcRunCandidate(
                     threshold=threshold,
                     steps=score_d["steps"],
                     run=run,
@@ -650,7 +650,7 @@ def get_acdc_runs(
                     with run.file("output.log").download(root=ROOT / run.id, replace=False, exist_ok=True) as f:
                         log_text = f.read()
                     exp.load_from_wandb_run(log_text)
-                    add_run_for_processing(AcdcRunCandidate(
+                    threshold_to_run_map.add_run_for_processing(AcdcRunCandidate(
                         threshold=threshold,
                         steps=score_d["steps"],
                         run=run,
@@ -680,7 +680,7 @@ def get_acdc_runs(
                 n_from = n_from.replace("hook_resid_mid", "hook_mlp_in")
                 all_edges[(n_to, idx_to, n_from, idx_from)].present = True
 
-            add_run_for_processing(AcdcRunCandidate(
+            threshold_to_run_map.add_run_for_processing(AcdcRunCandidate(
                 threshold=threshold,
                 steps=score_d["steps"],
                 run=run,
@@ -729,16 +729,41 @@ def get_edgesp_corrs(
         filtered_runs = runs[:clip]
     else:
         filtered_runs = list(filter(run_filter, tqdm(runs[:clip])))
-    print(f"loading {len(filtered_runs)} runs")
-    
-    if things is None:
-        return [
-            (None, {"score": run.config["lambda_reg"], **{k: v for k, v in run.summary.items() if k.startswith("test")}})
-            for run in runs
-        ]
+    print(f"Loading {len(filtered_runs)} runs")
 
-    corrs = []
-    raise NotImplementedError()
+    for run in filtered_runs:    
+        for art in run.logged_artifacts():
+            if "edges.pth" in art.name:
+                edges_artifact = art
+
+                corr = deepcopy(exp.corr)
+                all_edges = corr.all_edges()
+                for edge in all_edges.values():
+                    edge.present = False
+
+                this_root = ROOT / edges_artifact.name
+                # Load the edges
+                for f in edges_artifact.files():
+                    with f.download(root=this_root, replace=True, exist_ok=True) as fopen:
+                        # Sadly f.download opens in text mode
+                        with open(fopen.name, "rb") as fopenb:
+                            edges_pth = pickle.load(fopenb)
+
+                for (n_to, idx_to, n_from, idx_from), _effect_size in edges_pth:
+                    n_to = n_to.replace("hook_resid_mid", "hook_mlp_in")
+                    n_from = n_from.replace("hook_resid_mid", "hook_mlp_in")
+                    all_edges[(n_to, idx_to, n_from, idx_from)].present = True
+
+                add_run_for_processing(AcdcRunCandidate(
+                    threshold=threshold,
+                    steps=score_d["steps"],
+                    run=run,
+                    score_d=score_d,
+                    corr=corr,
+                ))
+
+            else:
+                print(run.id, "did not have edges file : (")
 
 #%%
 
