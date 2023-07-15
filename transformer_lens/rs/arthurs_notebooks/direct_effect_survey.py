@@ -542,6 +542,7 @@ torch.cuda.empty_cache()
 datab = {}
 
 USE_TOP5P_SAMPLE = True
+DO_MEAN_TOP_THINGS = True
 
 model.set_use_split_qkv_input(True)
 for layer_idx, head_idx in [(10, 7)] + list(
@@ -610,6 +611,9 @@ for layer_idx, head_idx in [(10, 7)] + list(
             "d_model_out, d_model_out d_vocab -> d_vocab",
         )
         topk = torch.topk(-unembed, k=10).indices
+        if DO_MEAN_TOP_THINGS:
+            torch.topk(full_log_probs[batch_idx, seq_idx], k=10).indices
+
         print([model.to_string([tk]) for tk in topk])
         print("|".join([model.to_string([j]).replace("\n", "<|NEWLINE|>") for j in mybatch[batch_idx, max(0, seq_idx-100000):seq_idx+1]]))
         print(model.to_string([mybatch[batch_idx, seq_idx+1]]))
@@ -733,12 +737,12 @@ fig = hist(
         torch.tensor(token_log_probs_mean_ablation).cpu()[:CAP]-torch.tensor(token_log_probs_gpt2xl).cpu()[:CAP],
         torch.tensor(token_log_probs_gpt2).cpu()[:CAP]-torch.tensor(token_log_probs_gpt2xl).cpu()[:CAP],
     ],
-    labels={"variable": "Version", "value": "Log prob difference"},
+    labels={"variable": "Version", "value": "Log prob difference                           *On the Top 10 predictions per token completion from the GPT-2 Small forward pass"},
     opacity=0.7,
     # marginal="box",
     template="simple_white",
     names = ["Mean ablation of 10.7", "Normal GPT-2 Small"],
-    title = "(GPT-2 Small Log Probs on Copy Suppressed Token) - (GPT-2 XL Log Probs on Copy Suppressed Token)",
+    title = "Histogram of (GPT-2 Small Log Probs) - (GPT-2 XL Log Probs)",
     return_fig = True,
 )
 
