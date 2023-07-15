@@ -168,7 +168,7 @@ parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore 
 parser.add_argument("--set-missing-score", action="store_true", help="Missing scores set to -1")
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task docstring --mode edges --metric docstring_metric --alg edgesp --device cuda --set-missing-score".split())
+    args = parser.parse_args("--task induction --mode edges --metric kl_div --alg edgesp --device cuda --set-missing-score".split())
 
 else:
     args = parser.parse_args()
@@ -420,7 +420,7 @@ things.tl_model.reset_hooks()
 exp = TLACDCExperiment(
     model=things.tl_model,
     threshold=100_000,
-    early_exit=SKIP_ACDC and SKIP_CANONICAL,
+    early_exit=SKIP_ACDC and SKIP_CANONICAL and SKIP_EDGESP,
     using_wandb=False,
     zero_ablation=bool(ZERO_ABLATION),
     ds=things.test_data,
