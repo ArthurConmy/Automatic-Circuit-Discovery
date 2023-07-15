@@ -309,11 +309,11 @@ else:
                 "mean_ablation_direct_loss": mean_ablation_loss,
                 "mean_ablated_total_loss": mean_ablated_total_loss,
                 "mean_ablated_indirect_loss": mean_ablated_indirect_loss,
-                "controlled_indirect_loss": controlled_indirect_loss,
             }
 
             if (NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX) == (layer_idx, head_idx) == (10, 7):
                 all_losses["total_control_11_loss"]=total_control_11_loss
+                all_losses["controlled_indirect_loss"]=controlled_indirect_loss
 
             if USE_GPT2XL:
                 all_losses["gpt2xl_kl"] = gpt2xl_kl
@@ -359,6 +359,22 @@ else:
 
         print(list(results_log.items())[-1])
         break
+
+#%%
+
+all_kls = (gpt2xl_kl).flatten()[:20000]
+all_losses = (mean_ablation_loss - my_loss).flatten()[:20000]
+
+indices = torch.argsort(all_losses)[:len(all_kls)//20]
+
+px.scatter(
+    x = all_kls[indices],
+    y = all_losses[indices],
+    labels = {
+        "x": "KL Divergence to GPT-2 XL",
+        "y": "Change in GPT-2 Small loss when mean ablating 10.7",
+    }
+).show()
 
 #%%
 
@@ -545,7 +561,7 @@ USE_TOP5P_SAMPLE = True
 DO_MEAN_TOP_THINGS = True
 
 model.set_use_split_qkv_input(True)
-for layer_idx, head_idx in [(10, 7)] + list(
+for layer_idx, head_idx in [(11, 10)] + list(
     itertools.product(range(11, 8, -1), range(model.cfg.n_heads))
 ):
     print("-"*50)
@@ -756,46 +772,6 @@ fig.add_trace(
         name="y=0",
         marker=dict(color="black"),
     )
-)
-
-fig.show()
-
-
-#%%
-
-fig.add_trace(
-    go.Scatter(
-        x=torch.tensor(token_log_probs_mean_ablation).cpu()[:CAP],
-        y=torch.tensor(token_log_probs_gpt2xl).cpu()[:CAP],
-        mode="markers",
-        name="Mean ablation of 10.7 direct effect logprobs",
-    )
-)
-
-fig.add_trace(
-    go.Scatter(
-        x=torch.tensor(token_log_probs_gpt2).cpu()[:CAP],
-        y=torch.tensor(token_log_probs_gpt2xl).cpu()[:CAP],
-        mode="markers",
-        name="Normal GPT-2 Small logprobs",
-    )
-)
-
-# add y = x line
-
-fig.add_trace(
-    go.Scatter(
-        x=[-10, 0],
-        y=[-10, 0],
-        mode="lines",
-        name="y=x",
-    )
-)
-
-fig.update_layout(
-    title="Logprobs of tokens in the Top 10 most important tokens for 10.7 direct effect",
-    xaxis_title="Logprob of token GPT-2 Small",
-    yaxis_title="Logprob of token in GPT-2 XL",
 )
 
 fig.show()
