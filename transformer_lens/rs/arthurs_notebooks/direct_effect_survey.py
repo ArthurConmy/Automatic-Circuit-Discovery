@@ -23,7 +23,7 @@ model.set_use_attn_in(True)
 DEVICE = "cuda"
 SHOW_PLOT = True
 DATASET_SIZE = 500
-BATCH_SIZE = 20  # seems to be about the limit of what this box can handle
+BATCH_SIZE = 25 # seems to be about the limit of what this box can handle
 NUM_THINGS = 300
 USE_RANDOM_SAMPLE = False
 INDIRECT = True # disable for orig funcitonality
@@ -561,7 +561,7 @@ USE_TOP5P_SAMPLE = True
 DO_MEAN_TOP_THINGS = True
 
 model.set_use_split_qkv_input(True)
-for layer_idx, head_idx in [(11, 10)] + list(
+for layer_idx, head_idx in [(NEGATIVE_LAYER_IDX, NEGATIVE_HEAD_IDX)] + list(
     itertools.product(range(11, 8, -1), range(model.cfg.n_heads))
 ):
     print("-"*50)
@@ -609,9 +609,7 @@ for layer_idx, head_idx in [(11, 10)] + list(
         assert not USE_RANDOM_SAMPLE
         progress_bar = tqdm(top5p_indices)
 
-    token_log_probs_mean_ablation = []
-    token_log_probs_gpt2xl = []
-    token_log_probs_gpt2 = []
+    log_probs_reference = {"xl": defaultdict(list), "small":defaultdict(list), "small_mean_ablation": defaultdict(list), "top_unembeds": defaultdict(list)}
 
     for current_iter_element in progress_bar:
         if USE_RANDOM_SAMPLE or USE_TOP5P_SAMPLE:
@@ -626,25 +624,37 @@ for layer_idx, head_idx in [(11, 10)] + list(
             model.W_U,
             "d_model_out, d_model_out d_vocab -> d_vocab",
         )
-        topk = torch.topk(-unembed, k=10).indices
-        if DO_MEAN_TOP_THINGS:
-            torch.topk(full_log_probs[batch_idx, seq_idx], k=10).indices
-
+        k=3 
+        topk = torch.topk(-unembed, k=k).indices
         print([model.to_string([tk]) for tk in topk])
         print("|".join([model.to_string([j]).replace("\n", "<|NEWLINE|>") for j in mybatch[batch_idx, max(0, seq_idx-100000):seq_idx+1]]))
-        print(model.to_string([mybatch[batch_idx, seq_idx+1]]))
+        print(model.to_string([mytargets[batch_idx, seq_idx]]))
 
-        for tok_idx in topk:
-            token_log_probs_mean_ablation.append(
-                mean_ablation_log_probs[batch_idx, seq_idx, tok_idx]
-            )
-            token_log_probs_gpt2xl.append(
-                log_xl_probs[batch_idx, seq_idx, tok_idx]
-            )
-            token_log_probs_gpt2.append(
-                full_log_probs[batch_idx, seq_idx, tok_idx]
-            )
+        if DO_MEAN_TOP_THINGS:
+            for topk_reference in ["top_unembeds", "xl", "small", "small_mean_ablation"]:
+                if topk_reference == "top_unembeds":
+                    pass
+                elif topk_reference == "xl":
+                    topk = torch.topk(log_xl_probs[batch_idx, seq_idx], k=k).indices
+                elif topk_reference == "small":
+                    topk = torch.topk(full_log_probs[batch_idx, seq_idx], k=k).indices
+                elif topk_reference == "small_mean_ablation":
+                    topk = torch.topk(mean_ablation_log_probs[batch_idx, seq_idx], k=k).indices
+                else:
+                    assert False             
 
+                for tok_idx in topk:
+                    log_probs_reference[topk_reference]["mean_ablation"].append(
+                        mean_ablation_log_probs[batch_idx, seq_idx, tok_idx]
+                    )
+                    log_probs_reference[topk_reference]["xl"].append(
+                        log_xl_probs[batch_idx, seq_idx, tok_idx]
+                    )
+                    log_probs_reference[topk_reference]["small"].append(
+                        full_log_probs[batch_idx, seq_idx, tok_idx]
+                    )
+
+            continue
         names_filter2 = lambda name: name.endswith("hook_v") or name.endswith(
             "hook_pattern"
         )
@@ -748,33 +758,38 @@ for layer_idx, head_idx in [(11, 10)] + list(
 fig = go.Figure()
 CAP = 100_000
 
-fig = hist(
-    [
-        torch.tensor(token_log_probs_mean_ablation).cpu()[:CAP]-torch.tensor(token_log_probs_gpt2xl).cpu()[:CAP],
-        torch.tensor(token_log_probs_gpt2).cpu()[:CAP]-torch.tensor(token_log_probs_gpt2xl).cpu()[:CAP],
-    ],
-    labels={"variable": "Version", "value": "Log prob difference                           *On the Top 10 predictions per token completion from the GPT-2 Small forward pass"},
-    opacity=0.7,
-    # marginal="box",
-    template="simple_white",
-    names = ["Mean ablation of 10.7", "Normal GPT-2 Small"],
-    title = "Histogram of (GPT-2 Small Log Probs) - (GPT-2 XL Log Probs)",
-    return_fig = True,
-)
+for reference in ["xl", "small", "small_mean_ablation", "top_unembeds"]:
+    mean_abl_results = torch.tensor(log_probs_reference[reference]["mean_ablation"][:CAP]) - torch.tensor(log_probs_reference[reference]["xl"][:CAP])
+    small_results = torch.tensor(log_probs_reference[reference]["small"][:CAP]) - torch.tensor(log_probs_reference[reference]["xl"][:CAP])
+    print(f"{mean_abl_results.mean().item()=}, {small_results.mean().item()=}")
 
-# add a line at x = 0
-
-fig.add_trace(
-    go.Scatter(
-        x=[0, 0],
-        y=[0, 200],
-        mode="lines",
-        name="y=0",
-        marker=dict(color="black"),
+    fig = hist(
+        [
+            mean_abl_results,
+            small_results,
+        ],
+        labels={"variable": "Version", "value": (f"Log prob difference                           *On the Top {k} predictions per token completion from the {reference} forward pass" if reference!="top_unembeds" else f"Log prob difference                          *On the Top {k} negative unembeddings from 10.7 per token completion")},
+        opacity=0.7,
+        # marginal="box",
+        template="simple_white",
+        names = ["Mean ablation of 10.7", "Normal GPT-2 Small"],
+        title = "Histogram of (GPT-2 Small Log Probs) - (GPT-2 XL Log Probs)",
+        return_fig = True,
     )
-)
 
-fig.show()
+    # add a line at x = 0
+
+    fig.add_trace(
+        go.Scatter(
+            x=[0, 0],
+            y=[0, 200],
+            mode="lines",
+            name="y=0",
+            marker=dict(color="black"),
+        )
+    )
+
+    fig.show()
 
 #%%
 
