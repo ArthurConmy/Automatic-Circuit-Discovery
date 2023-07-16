@@ -791,7 +791,7 @@ for reference in ["xl", "small", "small_mean_ablation", "top_unembeds"]:
 
     fig.show()
 
-#%%
+ #%%
 
 # TODO speed this up and do Callum's proposed experiment with one component in unembed direction 
 

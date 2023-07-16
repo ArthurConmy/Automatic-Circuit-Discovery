@@ -13,9 +13,19 @@ from transformer_lens import HookedTransformer
 from transformer_lens.hook_points import HookPoint
 from IPython import get_ipython
 ipython = get_ipython()
-ipython.run_line_magic("load_ext", "autoreload")
-ipython.run_line_magic("autoreload", "2")
+if ipython is not None:
+    ipython.run_line_magic("load_ext", "autoreload")
+    ipython.run_line_magic("autoreload", "2")
 from transformer_lens.cautils.notebook import *
+
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("--model-name", type=str, default="gpt2")
+
+if ipython is not None:
+    args = parser.parse_args(args=["--model-name", "gpt2"])
+else:
+    args = parser.parse_args()
 
 import torch as t
 import torch
@@ -69,7 +79,7 @@ def imshow(
 # MODEL_NAME = "solu-10l"
 # MODEL_NAME = "gpt2-large"
 # MODEL_NAME = "gpt2-medium"
-MODEL_NAME = "stanford-gpt2-small-e"
+MODEL_NAME = args.model_name
 
 dataset = get_webtext(dataset=("NeelNanda/c4-code-20k" if "solu" in MODEL_NAME.lower() else "stas/openwebtext-10k"))
 
@@ -459,6 +469,36 @@ if False:
             mean_version=False,
         )
 
+#%%
+
+
+scores = t.zeros(12, 12).float().to(device)
+
+for layer, head in tqdm(list(itertools.product(range(12), range(12)))):
+    results = []
+    for idx in range(OUTER_LEN):
+        softmaxed_attn = get_EE_QK_circuit(
+            layer,
+            head,
+            show_plot=False,
+            random_seeds=None,
+            bags_of_words=bags_of_words[idx:idx+1],
+            num_samples=None,
+            mean_version=False,
+            # W_E_query_side=W_U,
+            # W_E_key_side=W_EE,
+        )
+
+        # now sort each 
+
+        results.append(softmaxed_attn.diag().mean())
+
+    results = sum(results) / len(results)
+
+    scores[layer, head] = results
+
+imshow(scores, width=750, labels={"x": "Head", "y": "Layer"}, title="Prediction-attn scores for bag of words (including MLPs in embedding)")
+
 #%% [markdown]
 # <p> Observe that a large value of num_samples gives better results </p>
 
@@ -513,99 +553,5 @@ unembedding = model.W_U.clone()
 LAYER_IDX = 10
 HEAD_IDX = 7
 HOOK_NAME = f"blocks.{LAYER_IDX}.attn.hook_result"
-
-head_output = cache["result", LAYER_IDX][t.arange(N), ioi_dataset.word_idx["end"], HEAD_IDX, :]
-
-head_logits = einops.einsum(
-head_output,
-unembedding,
-"b d, d V -> b V",
-)
-
-for b in range(10, 12):
-print("PROMPT:")
-print(ioi_dataset.tokenized_prompts[b])
-
-for outps_type, outps in [
-    ("TOP TOKENS", t.topk(head_logits[b], 10).indices),
-    ("BOTTOM_TOKENS", t.topk(-head_logits[b], 10).indices),
-]:
-    print(outps_type)
-    for i in outps:
-        print(ioi_dataset.tokenizer.decode(i))
-print()
-
-print("So it seems like the bottom tokens (checked on more prompts, seems legit) are JUST the correct answer, and the top tokens are not interpretable")
-
-# %% [markdown]
-# <p> Okay let's look more generally at OWT...</p>
-
-#%%
-
-# Let's see some WEBTEXT
-raw_dataset = load_dataset("stas/openwebtext-10k")
-train_dataset = raw_dataset["train"]
-dataset = [train_dataset[i]["text"] for i in range(len(train_dataset))]
-
-# %%
-
-# In this cell I look at the sequence positions where the
-# NORM of the 10.7 output (divided by the layer norm scale)
-# is very large across several documents
-# 
-# we find that 
-# i) just like in IOI, the top tokens are not interpretable and the bottom tokens repress certain tokens in prompt
-# ii) unlike in IOI it seems that it is helpfully blocks the wrong tokens from prompt from being activated - example:
-# 
-# ' blacks', ' are', ' arrested', ' for', ' marijuana', ' possession', ' between', ' four', ' and', ' twelve', ' times', ' more', ' than'] -> 10.7 REPRESSES " blacks"
-
-contributions = []
-
-for i in tqdm(list(range(2)) + [5]):
-tokens = model.tokenizer(
-    dataset[i], 
-    return_tensors="pt", 
-    truncation=True, 
-    padding=True
-)["input_ids"].to(DEVICE)
-
-if tokens.shape[1] < 256: # lotsa short docs here
-    print("SKIPPING short document", tokens.shape)
-    continue
-
-tokens = tokens[0:1, :256]
-
-model.reset_hooks()
-logits, cache = model.run_with_cache(
-    tokens,
-    names_filter = lambda name: name in [HOOK_NAME, "ln_final.hook_scale"],
-)
-output = cache[HOOK_NAME][0, :, HEAD_IDX] / cache["ln_final.hook_scale"][0, :, 0].unsqueeze(dim=-1) # account for layer norm scaling
-
-contribution = einops.einsum(
-    output,
-    unembedding,
-    "s d, d V -> s V",
-)
-contributions.append(contribution.clone())
-
-for j in range(256):
-    if contribution[j].norm().item() > 80:
-        print(model.to_str_tokens(tokens[0, j-30: j+1]))
-        print(model.tokenizer.decode(tokens[0, j+1]))
-        print()
-
-        top_tokens = t.topk(contribution[j], 10).indices
-        bottom_tokens = t.topk(-contribution[j], 10).indices
-
-        print("TOP TOKENS")
-        for i in top_tokens:
-            print(model.tokenizer.decode(i))
-        print()
-        print("BOTTOM TOKENS")
-        for i in bottom_tokens:
-            print(model.tokenizer.decode(i))
-
-full_contributions = t.cat(contributions, dim=0)
 
 # %%
