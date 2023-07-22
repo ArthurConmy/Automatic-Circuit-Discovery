@@ -3,7 +3,7 @@
 #
 # <p>This notebook gives a high-level overview of the main abstractions used in the ACDC codebase.</p>
 #
-# <p>If you are interested in models that are >10x the size of GPT-2 small, this library currently may be too slow and we would recommend you look at the path patching implementations in `TransformerLens` (forthcoming)</p>
+# <p>If you are interested in models that are >=1B parameters, this library currently may be too slow and we would recommend you look at the path patching implementations in `TransformerLens` (for example, see <a href="https://colab.research.google.com/drive/15CJ1WAf8AWm6emI3t2nVfnO85-hxwyJU">this</a> notebook)</p>
 #
 # <h3>Setup</h2>
 #
@@ -50,7 +50,6 @@ except Exception as e:
         ipython.run_line_magic("autoreload", "2")  # type: ignore
     else:
         print("Running as a .py script")
-
 
 # %% [markdown]
 # <h2>Imports etc</h2>
