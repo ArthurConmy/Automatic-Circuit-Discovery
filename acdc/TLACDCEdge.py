@@ -1,7 +1,7 @@
 import sys
 from collections import defaultdict
 from enum import Enum
-from typing import Optional
+from typing import Optional, List
 
 
 class EdgeType(Enum):
@@ -52,14 +52,16 @@ class TorchIndex:
     (e.g hook_result covers all heads in a layer)
     
     `TorchIndex`s are essentially indices that say which part of the tensor is being affected. 
-    
+
     EXAMPLES: Initialise [:, :, 3] with TorchIndex([None, None, 3]) and [:] with TorchIndex([None])    
 
-    Also we want to be able to call e.g `my_dictionary[my_torch_index]` hence the hashable tuple stuff"""
+    Also we want to be able to call e.g `my_dictionary[my_torch_index]` hence the hashable tuple stuff
+    
+    note: ideally this would be integrated with transformer_lens.utils.Slice in future; they are accomplishing similar but different things"""
 
     def __init__(
         self, 
-        list_of_things_in_tuple,
+        list_of_things_in_tuple: List,
     ):
         # check correct types
         for arg in list_of_things_in_tuple:
