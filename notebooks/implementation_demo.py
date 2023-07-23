@@ -26,7 +26,7 @@ try:
 
     ipython.run_line_magic( # install ACDC
         "pip",
-        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@9d5844a",
+        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git", # TODO pin to the version of main that we have this demo on
     )
 
 except Exception as e:
@@ -68,6 +68,7 @@ except Exception as e:
 #%%
 
 import pygraphviz as pgv
+import numpy as np
 import subprocess
 from transformer_lens import HookedTransformer
 from acdc.TLACDCExperiment import TLACDCExperiment, TLACDCCorrespondence
@@ -84,23 +85,33 @@ from IPython.display import display, Image
 # 
 # <p> The reason to focus on subsets of edges in transformer computational graphs rather than subsets of nodes is that we can distinguish between the effect model components in Layer 0 have on Layer 1 independently from the effect model components have on Layer 2, i.e the lesson from <a href="https://transformer-circuits.pub/2021/framework/index.html">A Mathematical Framework for Transformer Circuits</a>. </p> 
 # 
-# <p> Therefore we'll start our discussion with a drawing of the components of our transformer that have a direct effect on the end state of the residual stream </p>
-#
+# <p> Therefore we'll start our discussion with a drawing of the components of our transformer that have a direct effect on the end state of the residual stream. Let's setup the model, and show the two direct effect edges on the output. We're just using objects for vizualization purposes here, but this should make understanding the `receiver_hook` easier. We call these edges addition edges, because the final state of the residual stream is the sum of the previous contributions. </p>
+
 #%%
 
 # Load a 1-Layer transformer
-transformer = HookedTransformer.from_pretrained("gelu-1l")
+cfg = {'n_layers': 1,
+    'd_model': 1,
+    'n_ctx': 1,
+    'd_head': 1,
+    'model_name': 'GELU_1L512W_C4_Code',
+    'n_heads': 1,
+    'attn_only': True,
+    "d_vocab": 1,
+}
+transformer = HookedTransformer(cfg)
 
 # Add some extra HookPoints that ACDC needs
 transformer.set_use_attn_result(True)
 transformer.set_use_hook_mlp_in(True)
+transformer.set_use_split_qkv_input(True)
 
 # Load the correspondence; this represents the graph-like object in ACDC
 correspondence = TLACDCCorrespondence.setup_from_model(model=transformer)
 
 #%%
 
-# Edit to show the two direct effect edges
+# Edit to show the two addition edges
 
 end_state_name = "blocks.0.hook_resid_post"
 head_name = "blocks.0.attn.hook_result"
@@ -109,14 +120,74 @@ embeds_name = "blocks.0.hook_resid_pre"
 head_index = TorchIndex([None, None, 0])
 null_index = TorchIndex([None])
 
+# We're using ACDC code to pretend these edges have an effect size (this notebook is just for vizualization purposes)
+
 correspondence.edges[end_state_name][null_index][head_name][head_index].effect_size = 1.0
 correspondence.edges[end_state_name][null_index][embeds_name][null_index].effect_size = 1.0
 
 #%%
 
-# Make a graphic
+# Make a graphic!
 
-show(correspondence, "correspondence.png", show_full_index=False) # TODO ideally turn off the randomised Attention Is All You Need paper head colours
-display(Image("correspondence.png"))
+def show_corr(corr):
+    show(corr, "correspondence.png", show_full_index=True, edge_type_colouring=True, seed=42, show_placeholders=True)
+    display(Image("correspondence.png"))
 
+show_corr(correspondence)
+
+# %% [markdown]
+#
+# <p> We now need to introduce a second type of edge, which we'll call a "placeholder" edge. </p>
+# 
+
+#%%
+
+for letter in "qkv":
+    e = correspondence.edges[head_name][head_index][f"blocks.0.attn.hook_{letter}"][head_index]
+    e.effect_size = 1.0
+
+# %%
+
+show_corr(correspondence)
+
+# %%
+#
+# <p>These edges have to be different from the two addition edges, because an attention head is NOT the sum of its computed queries, keys and values (these tensors aren't even the correct shape!) </p>
+# 
+# <p>In fact, because of the condition 2 we do not want to do any transformer computation inside the hooks editing the forward pass, and so we actually just include all placeholder edges in ACDC graphs by default! Have no fear however, our next trick will show that this is a totally reasonable thing to do. While we always add placeholder edges under the hood in ACDC, we don't generally show these in the printouts. You'll see why once you understand the third **and final** type of edge, the direct computation edge. Here's a colour guide: </p>
+#
+#%% [markdown]
+#
+# <p> <span style="color:blue"> Blue </span> edges are addition edges. </p>
+# <p> <span style="color:green"> Green </span> edges are placeholder edges. </p>
+# <p> <span style="color:red"> Red </span> edges are direct computation edges. </p>
+#
+# %%
+
+for letter in "qkv":
+    e = correspondence.edges[f"blocks.0.attn.hook_{letter}"][head_index][f"blocks.0.hook_{letter}_input"][head_index]
+    e.effect_size = 1.0
+
+show_corr(correspondence)
+
+# %% [markdown]
+#
+# <p> We make a rule: if an node has an incoming direct computation edge (like `blocks.0.attn.hook_q[:, :, 0]`), then we do not allow it to have any other incoming edges. </p>
+#
+# <p> Why? This means that we have the lovely property that we don't need do computation inside the hooks: all we need to do is store the value of `blocks.0.attn.hook_q[:, :, 0]` on the corrupted data point. Then by the ACDC algorithm, if the direct computation edge is included in the ACDC computational graph, we do nothing and let the `hook_q` compute the query vector. Alternatively, if this edge is not present, we simply overwrite `hook_q` with the corrupted queries. In both cases, no new transformer computation is done in the hook! </p>
+#
+# <p> Let's round this out with all the edges in this computational graph: </p> 
+# 
+# %%
+
+for _, edge in correspondence.all_edges().items():
+    edge.effect_size = 1.0
+
+show_corr(correspondence)
+
+# %% [markdown]
+# 
+# <p> That's it! You'll want to check the `receiver_hook` in `TLACDCExperiment` for how we implement the addition and direct computation edges, and also check how we use MLPs (it's much easier, just a `mlp_in` and `mlp_out` node connected by a direct computation edge). </p>
+# 
+# <p> I'd love to see extensions of these abstractions; for example it extends easily to splitting by positions: https://github.com/ArthurConmy/Automatic-Circuit-Discovery/pull/44 and neurons. </p> 
 # %%

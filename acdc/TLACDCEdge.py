@@ -5,7 +5,7 @@ from typing import Optional, List
 
 
 class EdgeType(Enum):
-    """TODO Arthur explain this more clearly and use GPT-4 for clarity/coherence. Ping Arthur if you want a better explanation and this isn't done!!!
+    """
     Property of edges in the computational graph - either 
     
     ADDITION: the child (hook_name, index) is a sum of the parent (hook_name, index)s
@@ -14,7 +14,9 @@ class EdgeType(Enum):
     
     Q: Why do we do this?
 
-    A: We need something inside TransformerLens to represent the edges of a computational graph.
+    There are two answers to this question: A1 is an interactive notebook, see <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Editing_Edges_Demo.ipynb">this Colab notebook</a>, which is in this repo at notebooks/implementation_demo.py. A2 is an answer that is write here below, but probably not as clear as A1 (though shorter).
+
+    A2: We need something inside TransformerLens to represent the edges of a computational graph.
     The object we choose is pairs (hook_name, index). For example the output of Layer 11 Heads is a hook (blocks.11.attn.hook_result) and to sepcify the 3rd head we add the index [:, :, 3]. Then we can build a computational graph on these! 
 
     However, when we do ACDC there turn out to be two conflicting things "removing edges" wants to do: 
@@ -29,7 +31,6 @@ class EdgeType(Enum):
     PLACEHOLDER = 2
 
     def __eq__(self, other):
-        # TODO WTF? Why do I need this?? To busy to look into now, check the commit where we add this later
         return self.value == other.value
 
 class Edge:
@@ -57,7 +58,7 @@ class TorchIndex:
 
     Also we want to be able to call e.g `my_dictionary[my_torch_index]` hence the hashable tuple stuff
     
-    note: ideally this would be integrated with transformer_lens.utils.Slice in future; they are accomplishing similar but different things"""
+    Note: ideally this would be integrated with transformer_lens.utils.Slice in future; they are accomplishing similar but different things"""
 
     def __init__(
         self, 
@@ -85,13 +86,13 @@ class TorchIndex:
 
     # some graphics things
 
-    def __repr__(self, graphviz_index=False) -> str:
+    def __repr__(self, use_actual_colon=True) -> str: # graphviz, an old library used to dislike actual colons in strings, but this shouldn't be an issue anymore
         ret = "["
         for idx, x in enumerate(self.hashable_tuple):
             if idx > 0:
                 ret += ", "
             if x is None:
-                ret += ":" if not graphviz_index else "COLON"
+                ret += ":" if use_actual_colon else "COLON"
             elif type(x) == int:
                 ret += str(x)
             else:
@@ -99,5 +100,5 @@ class TorchIndex:
         ret += "]"
         return ret
 
-    def graphviz_index(self) -> str:
-        return self.__repr__(graphviz_index=True)
+    def graphviz_index(self, use_actual_colon=True) -> str:
+        return self.__repr__(use_actual_colon=use_actual_colon)

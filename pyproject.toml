@@ -26,6 +26,8 @@ plotly = "^5.12.0"
 kaleido = "0.2.1"
 pygraphviz = "^1.11"
 tracr = {git = "https://github.com/deepmind/tracr.git", rev = "e75ecda"}
+jupytext = "^1.14.7"
+papermill = "^2.4.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2.0"
