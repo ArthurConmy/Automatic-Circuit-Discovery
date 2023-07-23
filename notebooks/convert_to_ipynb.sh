@@ -29,7 +29,7 @@ done
 # Define the file paths
 declare -A file_paths
 file_paths=(
-    # ["notebooks/editing_edges.py"]="notebooks/_converted/editing_edges.ipynb notebooks/colabs/ACDC_Editing_Edges_Demo.ipynb"
+    ["notebooks/editing_edges.py"]="notebooks/_converted/editing_edges.ipynb notebooks/colabs/ACDC_Editing_Edges_Demo.ipynb"
     ["acdc/main.py"]="notebooks/_converted/main_demo.ipynb notebooks/colabs/ACDC_Main_Demo.ipynb"
     ["notebooks/implementation_demo.py"]="notebooks/_converted/implementation_demo.ipynb notebooks/colabs/ACDC_Implementation_Demo.ipynb"
 )
