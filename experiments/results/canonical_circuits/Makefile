@@ -14,7 +14,7 @@ docstring.gv:
 	python ../../../notebooks/roc_plot_generator.py --task=docstring --only-save-canonical
 
 %.pdf: %.gv
-	dot -Tpdf $< -o $@
+	neato -Tpdf $< -o $@
 
 all: tracr-proportion.pdf tracr-reverse.pdf ioi.pdf greaterthan.pdf docstring.pdf ioi_heads.pdf ioi_heads_qkv.pdf greaterthan_heads.pdf greaterthan_heads_qkv.pdf
 

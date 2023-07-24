@@ -20,6 +20,7 @@ from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from acdc.TLACDCInterpNode import TLACDCInterpNode
 from acdc.acdc_utils import EdgeType
 import pygraphviz as pgv
+from pathlib import Path
 
 def generate_random_color(colorscheme: str) -> str:
     """
@@ -100,18 +101,35 @@ def show(
     remove_self_loops: bool = True,
     remove_qkv: bool = False,
     show_effect_size_none: bool = False,
+    layout: str="dot",
 ) -> pgv.AGraph:
     """
     Colorscheme: a color for each node name, or a string corresponding to a cmapy color scheme
     """
-    return
+    g = pgv.AGraph(directed=True, bgcolor="transparent", overlap="false", splines="true", layout=layout)
 
-    g = pgv.AGraph(directed=True, bgcolor="transparent")
-
+    groups = {}
     if isinstance(colorscheme, str):
         colors = build_colorscheme(correspondence, colorscheme, show_full_index=show_full_index)
     else:
         colors = colorscheme
+        for name, color in colors.items():
+            if color not in groups:
+                groups[color] = [name]
+            else:
+                groups[color].append(name)
+
+    node_pos = {}
+    if fname is not None:
+        base_fname = ".".join(str(fname).split(".")[:-1])
+
+        base_path = Path(base_fname)
+        fpath = base_path / "layout.gv"
+        if fpath.exists():
+            g_pos = pgv.AGraph()
+            g_pos.read(fpath)
+            for node in g_pos.nodes():
+                node_pos[node.name] = node.attr["pos"]
 
     # create all nodes
     for child_hook_name in correspondence.edges:
@@ -136,27 +154,45 @@ def show(
 
                     if edge.present and (show_effect_size_none or edge.effect_size is not None) and edge.edge_type != EdgeType.PLACEHOLDER:
                         for node_name in [parent_name, child_name]:
+                            maybe_pos = {}
+                            if node_name in node_pos:
+                                maybe_pos["pos"] = node_pos[node_name]
                             g.add_node(
                                 node_name,
                                 fillcolor=colors[node_name],
+                                color="black",
                                 style="filled, rounded",
                                 shape="box",
-                                fontname="Helvetica"
+                                fontname="Helvetica",
+                                **maybe_pos,
                             )
                         
                         cur_effect_size = edge.effect_size if edge.effect_size is not None else 0
                         g.add_edge(
                             parent_name,
                             child_name,
-                            penwidth=str(max(minimum_penwidth, cur_effect_size)),
+                            penwidth=str(max(minimum_penwidth, edge.effect_size) * 2),
                             color=colors[parent_name],
                         )
 
     if fname is not None:
-        gv_fname = ".".join(str(fname).split(".")[:-1]) + ".gv"
-        g.write(path=gv_fname)
-        if gv_fname != fname:
-            g.draw(path=fname, prog="dot")
+        base_fname = ".".join(str(fname).split(".")[:-1])
+
+        base_path = Path(base_fname)
+        base_path.mkdir(exist_ok=True)
+        for k, s in groups.items():
+            g2 = pgv.AGraph(directed=True, bgcolor="transparent", overlap="false", splines="true", layout="neato")
+            for node_name in s:
+                g2.add_node(
+                    node_name,
+                    style="filled, rounded",
+                    shape="box",
+                )
+            for i in range(len(s)):
+                for j in range(i + 1, len(s)):
+                    g2.add_edge(s[i], s[j], style="invis", weight=200)
+            g2.write(path=base_path / f"{k}.gv")
+        g.write(path=base_fname + ".gv")
     return g
 
 # -------------------------------------------
