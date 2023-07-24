@@ -52,7 +52,7 @@ parser.add_argument('--hisp-yellow', action='store_true', help='make HISP yellow
 parser.add_argument("--min-score", type=float, default=1e-6, help="minimum score cutoff for ACDC runs")
 
 if get_ipython() is not None:
-    args = parser.parse_args(["--hisp-yellow", "--percentage-annotation", "--arrows"])
+    args = parser.parse_args(["--hisp-yellow", "--arrows"])
 else:
     args = parser.parse_args()
 
@@ -72,6 +72,7 @@ X_TICKVALS = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]
 all_data = {}
 
 for fname in os.listdir(DATA_DIR):
+    print(fname)
     if fname.endswith(".json"):
         with open(DATA_DIR / fname, "r") as f:
             data = json.load(f)
@@ -89,6 +90,7 @@ alg_names = {
     "16H": "HISP",
     "SP": "SP",
     "ACDC": "ACDC",
+    "EDGESP": "EDGESP",
 }
 
 TASK_NAMES = {
@@ -129,12 +131,14 @@ if args.hisp_yellow:
         "ACDC": "Purp_r",
         "SP": "Greens_r",
         "HISP": "YlOrBr_r",
+        "EDGESP": "Greens_r",
     }
 else:
     colorscale_names = {
         "ACDC": "YlOrRd_r",
         "SP": "Greens_r",
         "HISP": "Blues",
+        "EDGESP": "Purp_r",
     }
 
 colorscales = {}
@@ -163,6 +167,7 @@ symbol = {
     "ACDC": "circle",
     "SP": "x",
     "HISP": "diamond",
+    "EDGESP": "diamond", # because HISP is bad
 }
 
 weights_type_symbols = {
@@ -178,6 +183,7 @@ score_name = {
     "ACDC": "threshold",
     "SP": "lambda",
     "HISP": "score",
+    "EDGESP": "lambda",
 }
 
 
@@ -311,6 +317,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     else:
                         ablation_type = "random_ablation"
 
+                print(weights_type, ablation_type, task_idx, metric_name, alg_idx, x_key, y_key, "pre scores")
                 scores = np.array(all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["score"])
 
                 if methodof == "HISP":
@@ -802,10 +809,14 @@ PLOT_DIR.mkdir(exist_ok=True)
 first = True
 
 all_dfs = []
-for metric_idx in [0, 1]:
-    for ablation_type in ["random_ablation", "zero_ablation"]:
-        for weights_type in ["trained", "reset"]:  # Didn't scramble the weights enough it seems
+for metric_idx in [0]:
+    for ablation_type in ["random_ablation"]:
+        for weights_type in ["trained"]:
+
+            print(metric_idx, ablation_type, weights_type)
+
             for plot_type in ["metric_edges_induction", "kl_edges_induction", "roc_edges", "kl_edges", "precision_recall", "roc_nodes", "roc_edges", "metric_edges"]: # metric_edges_4, kl_edges_4
+                print(plot_type)
                 x_key, y_key = plot_type_keys[plot_type]
                 fig, df = make_fig(metric_idx=metric_idx, weights_types=["trained"] if weights_type == "trained" else ["trained", weights_type], ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type)
                 if len(df):
@@ -818,19 +829,5 @@ for metric_idx in [0, 1]:
                     first = False
 
 pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
-
-# %%
-
-# Stefan
-#   1 hour ago
-# Very nice plots! Small changes
-# 1st title should be IOI, "Cicuit Recovery" should be above or somewhere else
-# [Minor] Unify xlim=ylim=[-0.01, 1.01] or so
-# :raised_hands:
-# 1
-# if len(df
-# x_key, y_key = plot_type_keys["kl_edges"]
-# fig, _ = make_fig(metric_idx=0, weights_type="reset", ablation_type="zero_ablation", plot_type="kl_edges")
-# fig.show()
 
 # %%
