@@ -1,5 +1,9 @@
 #%%
 
+"""
+This file makes several key figures in the paper and appendix, including the ROC plots and the pareto frontier plots
+"""
+
 import os
 os.environ["ACCELERATE_DISABLE_RICH"] = "1"
 
@@ -18,7 +22,7 @@ if ipython is not None:
     initial_path = Path(get_ipython().run_line_magic('pwd', ''))
     if str(initial_path.stem) == "notebooks":
         initial_path = initial_path.parent
-    __file__ = str(initial_path / "notebooks" / "plotly_roc_plot.py")
+    __file__ = str(initial_path / "notebooks" / "make_plotly_plots.py")
 
     if IS_ADRIA:
           set_plotly_renderer("emacs")
