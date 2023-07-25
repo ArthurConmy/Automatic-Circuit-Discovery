@@ -126,6 +126,7 @@ from acdc.induction.utils import (
     get_mask_repeat_candidates,
 )
 from acdc.greaterthan.utils import get_all_greaterthan_things
+from acdc.gendered_pronouns.utils import get_all_gendered_pronouns_things
 from acdc.acdc_graphics import (
     build_colorscheme,
     show,
@@ -144,7 +145,7 @@ torch.autograd.set_grad_enabled(False)
 
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
 
-task_choices = ['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan']
+task_choices = ['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan', 'gendered-pronouns']
 parser.add_argument('--task', type=str, required=True, choices=task_choices, help=f'Choose a task from the available options: {task_choices}')
 parser.add_argument('--threshold', type=float, required=True, help='Value for THRESHOLD') # also use this for the regularization parameter in SP???
 parser.add_argument('--first-cache-cpu', type=str, required=False, default="True", help='Value for FIRST_CACHE_CPU (the old name for the `online_cache`)')
@@ -168,6 +169,7 @@ parser.add_argument("--max-num-epochs",type=int, default=100_000)
 parser.add_argument('--single-step', action='store_true', help='Use single step, mostly for testing')
 parser.add_argument("--dont-split-qkv", action="store_true", help="Dont splits qkv")
 parser.add_argument("--abs-value-threshold", action='store_true', help='Use the absolute value of the result to check threshold')
+parser.add_argument('--use-positions', action='store_true', help='Use positions in the transformer')
 
 if ipython is not None:# or True: # TODO remove this!!!
     # we are in a notebook
@@ -185,6 +187,17 @@ if ipython is not None:# or True: # TODO remove this!!!
 # --using-wandb""".split("\\\n")]
     # ) # also 0.39811 # also on the main machine you just added two lines here.
 
+    args = parser.parse_args( # TODO add back zero ablation
+        [line.strip() for line in r"""--task=tracr-proportion\
+--zero-ablation\
+--metric=l2\
+--threshold=0.0001\
+--indices-mode=reverse\
+--first-cache-cpu=False\
+--second-cache-cpu=False\
+--use-positions\
+--max-num-epochs=10""".split("\\\n")]
+    )
 else:
     # read from command line
     args = parser.parse_args()
@@ -225,6 +238,7 @@ DEVICE = args.device
 RESET_NETWORK = args.reset_network
 SINGLE_STEP = True if args.single_step else False
 SPLIT_QKV = False if args.dont_split_qkv else True
+USE_POSITIONS = True if args.use_positions else False
 
 #%% [markdown] 
 # <h2>Setup Task</h2>
@@ -277,6 +291,9 @@ elif TASK == "greaterthan":
     things = get_all_greaterthan_things(
         num_examples=num_examples, metric_name=args.metric, device=DEVICE
     )
+elif TASK == 'gendered-pronouns':
+
+    pass
 else:
     raise ValueError(f"Unknown task {TASK}")
 
@@ -294,7 +311,7 @@ tl_model = things.tl_model # transformerlens model
 if RESET_NETWORK:
     reset_network(TASK, DEVICE, tl_model)
 
-#%% [markdown]
+#%%markdow # TODO fix
 # <h2>Setup ACDC Experiment</h2>
 
 #%%
@@ -348,9 +365,10 @@ exp = TLACDCExperiment(
     remove_redundant=False,
     show_full_index=use_pos_embed,
     use_split_qkv=SPLIT_QKV,
+    positions=list(range(toks_int_values.shape[-1])) if USE_POSITIONS else [None],
 )
 
-# %% [markdown]
+# %%markdown] # TODO revert
 # <h2>Run steps of ACDC: iterate over a NODE in the model's computational graph</h2>
 # <p>WARNING! This will take a few minutes to run, but there should be rolling nice pictures too : )</p>
 #%%

@@ -102,11 +102,17 @@ If you use ACDC, please reach out! You can reference the work as follows:
 
 [ x ] Delete `arthur-try-merge-tl` references from the repo
 
+<<<<<<< HEAD
 [ ] Make notebook on abstractions
 
 [ ? ] Fix huge edge sizes in Induction Main example and change that occurred
 
 [ x ] Find a better way to deal with the versioning on the Colabs installs...
+=======
+[ ] Add `hook_mlp_in` to `TransformerLens` and delete `hook_resid_mid`
+
+[ ] Delete `arthur-try-merge-tl` references from the repo
+>>>>>>> origin/arthur-add-positional
 
 [ ] Neuron-level experiments
 

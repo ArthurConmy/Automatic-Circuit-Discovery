@@ -54,7 +54,7 @@ def get_node_name(node: TLACDCInterpNode, show_full_index=True):
         name = "pos_embeds" if "pos" in node.name else "token_embeds"
 
     # Handle q_input and hook_q etc
-    elif any([node.name.endswith(qkv_input_substring) for qkv_input_substring in qkv_input_substrings]):
+    elif any([node.name.endswith(qkv_input_substring) for qkv_input_substring in qkv_input_substrings]) or any([qkv_substring in node.name for qkv_substring in qkv_substrings]):
         relevant_letter = None
         for letter, qkv_substring in zip(["q", "k", "v"], qkv_substrings):
             if qkv_substring in node.name:
@@ -153,6 +153,7 @@ def show(
                         continue
 
                     if edge.present and (show_effect_size_none or edge.effect_size is not None) and edge.edge_type != EdgeType.PLACEHOLDER:
+
                         for node_name in [parent_name, child_name]:
                             maybe_pos = {}
                             if node_name in node_pos:

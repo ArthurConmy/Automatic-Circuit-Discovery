@@ -85,6 +85,7 @@ class TLACDCExperiment:
         early_exit: bool = False,
         sp: Optional[Literal["edge", "node"]] = None, # new functionality for doing SP. At node level and edge level
         use_split_qkv: bool = True,
+        positions: Union[List[int], List[None]] = [None], # if [None], do not split by position
     ):
         """Initialize the ACDC experiment"""
 
@@ -101,6 +102,15 @@ class TLACDCExperiment:
         model.reset_hooks()
 
         self.use_split_qkv = use_split_qkv
+        seq_len = ds.shape[-1]
+        if ref_ds is not None:
+            assert ref_ds.shape==ds.shape, (ref_ds.shape, ds.shape)
+
+        self.positions = positions
+        if self.positions != [None]: 
+            assert self.positions == list(range(seq_len)), (self.positions, list(range(seq_len)), "for now, we only support either no positional splitting or splitting by every position")
+            # TODO enforce that positions is strictly increasing when we get round to this
+
         self.remove_redundant = remove_redundant
         self.indices_mode = indices_mode
         self.names_mode = names_mode
@@ -120,7 +130,7 @@ class TLACDCExperiment:
             warnings.warn("Never skipping edges, for now")
             skip_edges = "no"
 
-        self.corr = TLACDCCorrespondence.setup_from_model(self.model, use_pos_embed=use_pos_embed, use_split_qkv=self.use_split_qkv, device=None if self.sp is None else self.model.cfg.device, sp=self.sp)
+        self.corr = TLACDCCorrespondence.setup_from_model(self.model, use_pos_embed=use_pos_embed, use_split_qkv=self.use_split_qkv, device=None if self.sp is None else self.model.cfg.device, sp=self.sp, positions=self.positions)
 
         self.online_cache_cpu = online_cache_cpu
         self.corrupted_cache_cpu = corrupted_cache_cpu
@@ -368,10 +378,14 @@ class TLACDCExperiment:
         # ii) add back to residual_stream_in the (hopefully small number of) clean activations, by firstly subtracting their corrupted activation, and then adding back the clean activations
         
         for receiver_node_index in self.corr.edges[hook.name]:
+
+            incoming_edge_type = self.corr.graph[hook.name][receiver_node_index].incoming_edge_type
+
             for sender_node_name in self.corr.edges[hook.name][receiver_node_index]:
                 for sender_node_index in self.corr.edges[hook.name][receiver_node_index][sender_node_name]:
 
                     edge = self.corr.edges[hook.name][receiver_node_index][sender_node_name][sender_node_index] # TODO maybe less crazy nested indexes ... just make local variables each time?
+                    assert edge.edge_type == incoming_edge_type, f"Edge type {edge.edge_type} should be the same as {incoming_edge_type}"
 
                     if not edge.present and self.sp is None:
                         continue # don't do patching stuff, if it wastes time
@@ -632,6 +646,10 @@ class TLACDCExperiment:
                 cur_parent = self.corr.graph[sender_name][sender_index]
 
                 if edge.edge_type == EdgeType.PLACEHOLDER:
+
+                    if self.positions != [None]:
+                        edge.effect_size = 0.42 # show is currently broken, currently a dumb fix of that
+
                     is_this_node_used = True
                     continue # include by default
 
