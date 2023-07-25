@@ -125,8 +125,11 @@ from acdc.induction.utils import (
     get_good_induction_candidates,
     get_mask_repeat_candidates,
 )
-from acdc.greaterthan.utils import get_all_greaterthan_things
-from acdc.gendered_pronouns.utils import get_all_gendered_pronouns_things
+try:
+    from acdc.greaterthan.utils import get_all_greaterthan_things
+    from acdc.gendered_pronouns.utils import get_all_gendered_pronouns_things
+except:
+    print("No genedrerd p")
 from acdc.acdc_graphics import (
     build_colorscheme,
     show,
@@ -171,11 +174,11 @@ parser.add_argument("--dont-split-qkv", action="store_true", help="Dont splits q
 parser.add_argument("--abs-value-threshold", action='store_true', help='Use the absolute value of the result to check threshold')
 parser.add_argument('--use-positions', action='store_true', help='Use positions in the transformer')
 
-if ipython is not None:# or True: # TODO remove this!!!
+if ipython is not None or True: # TODO remove this!!!
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
-    ["--task", "induction", "--wandb-run-name", "reproduce_induction_" + str(0.001), "--wandb-project-name", "acdc", "--using-wandb", "--threshold", str(0.001), "--indices-mode", "reverse", "--first-cache-cpu", "False", "--second-cache-cpu", "False"])
+    ["--task", "induction", "--wandb-run-name", "ioi_pos" + str(0.04), "--wandb-project-name", "acdc", "--using-wandb", "--threshold", str(0.04), "--indices-mode", "reverse", "--first-cache-cpu", "False", "--second-cache-cpu", "False", "--use-positions"])
 #         [line.strip() for line in r"""--task=tracr-reverse\
 # --threshold=1.0\
 # --metric=l2\
@@ -187,17 +190,6 @@ if ipython is not None:# or True: # TODO remove this!!!
 # --using-wandb""".split("\\\n")]
     # ) # also 0.39811 # also on the main machine you just added two lines here.
 
-    args = parser.parse_args( # TODO add back zero ablation
-        [line.strip() for line in r"""--task=tracr-proportion\
---zero-ablation\
---metric=l2\
---threshold=0.0001\
---indices-mode=reverse\
---first-cache-cpu=False\
---second-cache-cpu=False\
---use-positions\
---max-num-epochs=10""".split("\\\n")]
-    )
 else:
     # read from command line
     args = parser.parse_args()
@@ -292,7 +284,6 @@ elif TASK == "greaterthan":
         num_examples=num_examples, metric_name=args.metric, device=DEVICE
     )
 elif TASK == 'gendered-pronouns':
-
     pass
 else:
     raise ValueError(f"Unknown task {TASK}")
