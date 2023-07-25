@@ -5,6 +5,7 @@ from acdc.TLACDCEdge import (
     EdgeType,
 )  # these introduce several important classes !!!
 from acdc.TLACDCInterpNode import TLACDCInterpNode
+from subnetwork_probing.train import iterative_correspondence_from_mask
 import warnings
 from functools import partial
 from copy import deepcopy
@@ -229,8 +230,6 @@ CIRCUIT = {
 }
 
 def get_greaterthan_true_edges(model):
-    from subnetwork_probing.train import iterative_correspondence_from_mask
-
     corr, _ = iterative_correspondence_from_mask(
         model=model,
         nodes_to_mask = [],
