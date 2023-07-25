@@ -1,0 +1,40 @@
+{
+    "trained": {
+      "random_ablation": {
+        "tracr-proportion": {
+          "l2": {
+            "EDGESP": {
+              "score": [
+                Infinity,
+                -Infinity
+              ],
+              "test_match_nll": [
+                Infinity,
+                -Infinity
+              ],
+              "steps": [
+                Infinity,
+                -Infinity
+              ],
+              "test_kl_div": [
+                Infinity,
+                -Infinity
+              ],
+              "test_nll": [
+                Infinity,
+                -Infinity
+              ],
+              "n_edges": [
+                NaN,
+                NaN
+              ],
+              "n_nodes": [
+                NaN,
+                NaN
+              ]
+            }
+          }
+        }
+      }
+    }
+}

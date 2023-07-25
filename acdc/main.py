@@ -169,20 +169,21 @@ parser.add_argument('--single-step', action='store_true', help='Use single step,
 parser.add_argument("--dont-split-qkv", action="store_true", help="Dont splits qkv")
 parser.add_argument("--abs-value-threshold", action='store_true', help='Use the absolute value of the result to check threshold')
 
-if ipython is not None:
+if ipython is not None:# or True: # TODO remove this!!!
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
-        [line.strip() for line in r"""--task=tracr-reverse\
---threshold=1.0\
---metric=l2\
---indices-mode=reverse\
---using-wandb\
---first-cache-cpu=False\
---second-cache-cpu=False\
---max-num-epochs=100000\
---using-wandb""".split("\\\n")]
-    ) # also 0.39811 # also on the main machine you just added two lines here.
+    ["--task", "induction", "--wandb-run-name", "reproduce_induction_" + str(0.001), "--wandb-project-name", "acdc", "--using-wandb", "--threshold", str(0.001), "--indices-mode", "reverse", "--first-cache-cpu", "False", "--second-cache-cpu", "False"])
+#         [line.strip() for line in r"""--task=tracr-reverse\
+# --threshold=1.0\
+# --metric=l2\
+# --indices-mode=reverse\
+# --using-wandb\
+# --first-cache-cpu=False\
+# --second-cache-cpu=False\
+# --max-num-epochs=100000\
+# --using-wandb""".split("\\\n")]
+    # ) # also 0.39811 # also on the main machine you just added two lines here.
 
 else:
     # read from command line

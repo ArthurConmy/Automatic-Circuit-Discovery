@@ -6,9 +6,11 @@ This file makes several key figures in the paper and appendix, including the ROC
 
 import os
 os.environ["ACCELERATE_DISABLE_RICH"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
 import warnings
 from IPython import get_ipython
+from copy import deepcopy
 from pathlib import Path
 from notebooks.emacs_plotly_render import set_plotly_renderer
 
@@ -318,7 +320,8 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                         ablation_type = "random_ablation"
 
                 print(weights_type, ablation_type, task_idx, metric_name, alg_idx, x_key, y_key, "pre scores")
-                scores = np.array(all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["score"])
+
+                scores = np.array(all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["score"])   
 
                 if methodof == "HISP":
                     scores = np.array(all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["n_nodes"])
@@ -815,7 +818,7 @@ for metric_idx in [0]:
 
             print(metric_idx, ablation_type, weights_type)
 
-            for plot_type in ["metric_edges_induction", "kl_edges_induction", "roc_edges", "kl_edges", "precision_recall", "roc_nodes", "roc_edges", "metric_edges"]: # metric_edges_4, kl_edges_4
+            for plot_type in ["roc_edges", "metric_edges_induction", "kl_edges_induction", "roc_edges", "kl_edges", "precision_recall", "roc_nodes", "metric_edges"]: # metric_edges_4, kl_edges_4
                 print(plot_type)
                 x_key, y_key = plot_type_keys[plot_type]
                 fig, df = make_fig(metric_idx=metric_idx, weights_types=["trained"] if weights_type == "trained" else ["trained", weights_type], ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type)

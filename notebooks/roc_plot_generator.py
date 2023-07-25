@@ -168,7 +168,7 @@ parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore 
 parser.add_argument("--set-missing-score", action="store_true", help="Missing scores set to -1")
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task induction --mode edges --metric kl_div --alg edgesp --device cpu --set-missing-score".split())
+    args = parser.parse_args("--task induction --mode edges --metric kl_div --alg edgesp --device cuda:0 --set-missing-score".split())
 
 else:
     args = parser.parse_args()
@@ -213,7 +213,7 @@ if args.alg != "none":
     if OUT_FILE.exists():
         print(f"File {str(OUT_FILE)} already exists, skipping")
         # sys.exit(0)
-        assert False
+        # assert False
 
 else:
     OUT_FILE = None
