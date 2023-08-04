@@ -56,7 +56,7 @@ def get_or_with_trivial_attn_0(seq_len=1, device="cuda") -> HookedTransformer:
 
     # Identity key
     model.blocks[0].attn.W_K[:, torch.arange(seq_len+1), torch.arange(seq_len+1)] = 1.0 # Shape [head_index d_model d_head]
-    # model.blocks[0].attn.W_K # ???
+    model.blocks[0].attn.W_V[:, -3, 0] = 1.0 # Shape [head_index d_model d_head]
 
     model.blocks[0].attn.W_O[torch.arange(1, seq_len+1), 0, -2] = 1.0 # Shape [head_index d_head d_model]
     # model.blocks[0].attn.b_O[-2] += 0.5
@@ -230,7 +230,7 @@ def get_all_logic_gate_things(mode: str = "AND", device=None, seq_len = 5, num_e
 or_model = get_or_with_trivial_attn_0(seq_len=3, device = "cpu")
 
 logits, cache = or_model.run_with_cache(
-    torch.tensor([[1, 0, 1, 0]]).to(torch.long),
+    torch.tensor([[1, 0, 0, 0]]).to(torch.long),
 )
 print(logits)
 
