@@ -1,5 +1,3 @@
-#%%
-
 import torch
 from typing import Literal
 from transformer_lens.HookedTransformer import HookedTransformer, HookedTransformerConfig
@@ -14,7 +12,7 @@ def get_logic_gate_model(mode: Literal["OR", "AND"] = "OR", seq_len=1, device="c
     cfg = HookedTransformerConfig.from_dict(
         {
             "n_layers": 1, 
-            "d_model": 3 if mode == "OR" else 2,
+            "d_model": 3 if mode == "AND" else 2,
             "n_ctx": seq_len,
             "n_heads": 1,
             "d_head": 1,
@@ -24,7 +22,7 @@ def get_logic_gate_model(mode: Literal["OR", "AND"] = "OR", seq_len=1, device="c
             "d_vocab_out": 1,
             "normalization_type": None,
             "attention_dir": "bidirectional",
-            "attn_only": (mode == "AND"),
+            "attn_only": (mode == "OR"),
         }
     )
 
@@ -37,7 +35,7 @@ def get_logic_gate_model(mode: Literal["OR", "AND"] = "OR", seq_len=1, device="c
         param.requires_grad = False
         param[:] = 0.0
 
-    if mode == "OR":
+    if mode == "AND":
 
         # # Embed 1s as 1.0 in residual component 0
         model.embed.W_E[1, 0] = 1.0
@@ -57,22 +55,17 @@ def get_logic_gate_model(mode: Literal["OR", "AND"] = "OR", seq_len=1, device="c
 
         model.unembed.W_U[2, 0] = 1.0 # Shape [d_model d_vocab_out]
 
-    elif mode == "AND":
-        # Do: if we picked up on ANY 0 then kill everything. Else all good
-        # Okay sure how do we convert to 1 and 0, though
+    elif mode == "OR":
+        model.embed.W_E[1, 0] = 1.0
 
-        # Confusingly, embed the 0s as 1.0
-        model.embed.W_E[0, 0] = 1.0
-
-        # If there are 0s present, attend to them only
+        # If there are 1s present, attend to them only
         model.blocks[0].attn.W_Q[0, 0, 0] = 0.0
         model.blocks[0].attn.b_Q[0] = 1.0
         model.blocks[0].attn.W_K[0, 0, 0] = int(1e9)
 
-        # Write 0 to residual component 1 if 0s are present. Else 1
+        # Write 1 to residual component 1 if any 1s are present
         model.blocks[0].attn.W_V[0, 0, 0] = 1.0 # Shape [head_index d_model d_head]
-        model.blocks[0].attn.W_O[0, 0, 1] = -1.0 # Shape [head_index d_head d_model]
-        model.blocks[0].attn.b_O[1] += 1
+        model.blocks[0].attn.W_O[0, 0, 1] = 1.0 # Shape [head_index d_head d_model]
 
         model.unembed.W_U[1, 0] = 1.0 # Shape [d_model d_vocab_out]
 
@@ -81,18 +74,26 @@ def get_logic_gate_model(mode: Literal["OR", "AND"] = "OR", seq_len=1, device="c
 
     return model
 
-# %%
+def test_logical_models():
+    """
+    Test that the OR and AND mod
+    """
+    
+    seq_len=3
+    and_model = get_logic_gate_model(mode="AND", seq_len=seq_len, device = "cpu")
 
-model = get_logic_gate_model(mode="AND", seq_len=2, device="cpu")
+    all_inputs = []
+    for i in range(2**seq_len):
+        input = torch.tensor([int(x) for x in f"{i:03b}"]).unsqueeze(0).long()
+        all_inputs.append(input)
+    input = torch.cat(all_inputs, dim=0)
 
-# %%
+    and_output = and_model(input)[:, 0, :]
+    assert torch.equal(and_output[:2**seq_len - 1], torch.zeros(2**seq_len - 1, 1))
+    torch.testing.assert_allclose(and_output[2**seq_len - 1], torch.ones(1))
 
-model_out, cache = model.run_with_cache(torch.tensor([[1, 0]]))
-print(model_out[:, 0, :])
+    or_model = get_logic_gate_model(mode="OR", seq_len=seq_len, device = "cpu")
+    or_output = or_model(input)[:, 0, :]
 
-# %%
-
-for key in cache:
-    print(key, "\n", cache[key].shape, "\n", cache[key])
-
-# %%
+    torch.testing.assert_allclose(or_output[1:], torch.ones(2**seq_len - 1, 1))
+    assert torch.equal(or_output[0], torch.zeros(1))
