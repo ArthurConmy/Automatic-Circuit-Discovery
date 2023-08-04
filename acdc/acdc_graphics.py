@@ -204,9 +204,10 @@ def show(
                 for j in range(i + 1, len(s)):
                     g2.add_edge(s[i], s[j], style="invis", weight=200)
             g2.write(path=base_path / f"{k}.gv")
+
         g.write(path=base_fname + ".gv")
 
-        if not fname.endswith(".gv"):
+        if not fname.endswith(".gv"): # turn the .gv file into a .png file
             g.draw(path=fname, prog="dot")
 
     return g
