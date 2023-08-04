@@ -47,6 +47,8 @@ import warnings
 parser = argparse.ArgumentParser()
 parser.add_argument('--arrows', action='store_true', help='Include help arrows')
 parser.add_argument('--hisp-yellow', action='store_true', help='make HISP yellow')
+parser.add_argument('--write-json', action='store_true', help='write json')
+
 # Some ACDC tracr runs have its threshold go down to 1e-9 but that doesn't change results at all, we don't want to plot
 # them.
 parser.add_argument("--min-score", type=float, default=1e-6, help="minimum score cutoff for ACDC runs")
@@ -55,6 +57,8 @@ if get_ipython() is not None:
     args = parser.parse_args([])
 else:
     args = parser.parse_args()
+
+WRITE_JSON = args.write_json
 
 # %%
 
@@ -812,7 +816,13 @@ for metric_idx in [0, 1]:
                     all_dfs.append(df.T)
                     print(all_dfs[-1])
                 metric = "kl" if metric_idx == 0 else "other"
-                fig.write_image(PLOT_DIR / ("--".join([metric, weights_type, ablation_type, plot_type]) + ".pdf"))
+                fname = "--".join([metric, weights_type, ablation_type, plot_type])
+
+                fig.write_image(PLOT_DIR / (fname + ".pdf"))
+
+                if WRITE_JSON:
+                    fig.write_json(PLOT_DIR / (fname + ".json"))
+
                 if first:
                     fig.show()
                     first = False
