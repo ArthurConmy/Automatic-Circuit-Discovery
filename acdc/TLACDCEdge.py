@@ -30,9 +30,6 @@ class EdgeType(Enum):
     DIRECT_COMPUTATION = 1
     PLACEHOLDER = 2
 
-    def __eq__(self, other):
-        return self.value == other.value
-
 class Edge:
     def __init__(
         self,
