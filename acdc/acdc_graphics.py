@@ -54,7 +54,7 @@ def get_node_name(node: TLACDCInterpNode, show_full_index=True):
         name = "pos_embeds" if "pos" in node.name else "token_embeds"
 
     # Handle q_input and hook_q etc
-    elif any([node.name.endswith(qkv_input_substring) for qkv_input_substring in qkv_input_substrings]):
+    elif any([node.name.endswith(qkv_input_substring) for qkv_input_substring in qkv_input_substrings]) or any([qkv_substring in node.name for qkv_substring in qkv_substrings]):
         relevant_letter = None
         for letter, qkv_substring in zip(["q", "k", "v"], qkv_substrings):
             if qkv_substring in node.name:
@@ -63,7 +63,7 @@ def get_node_name(node: TLACDCInterpNode, show_full_index=True):
         name += "a" + node.name.split(".")[1] + "." + str(node.index.hashable_tuple[2]) + "_" + relevant_letter
 
     # Handle attention hook_result
-    elif "hook_result" in node.name or any([qkv_substring in node.name for qkv_substring in qkv_substrings]):
+    elif "hook_result" in node.name: # TODO check this move # or any([qkv_substring in node.name for qkv_substring in qkv_substrings]):
         name = "a" + node.name.split(".")[1] + "." + str(node.index.hashable_tuple[2])
 
     # Handle MLPs
