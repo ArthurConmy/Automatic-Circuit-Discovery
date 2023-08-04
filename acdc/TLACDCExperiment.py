@@ -83,7 +83,7 @@ class TLACDCExperiment:
         names_mode: Literal["normal", "reverse", "shuffle"] = "normal",
         wandb_config: Optional[Namespace] = None,
         early_exit: bool = False,
-        positions: Union[List[int], List[None]] = [None], # if [None], do not split by position
+        positions: Optional[List[int]] = None, # if [None], do not split by position
     ):
         """Initialize the ACDC experiment"""
 
@@ -237,11 +237,15 @@ class TLACDCExperiment:
         cache_keys = list(cache.keys())
         cache_keys.reverse()
 
+        if "output_node" in self.corr.graph.keys(): # A hack for positional things
+            new_graph["output_node"] = self.corr.graph["output_node"]
+
         for hook_name in cache_keys:
             print(hook_name)            
             if hook_name in self.corr.graph:
                 new_graph[hook_name] = self.corr.graph[hook_name]
 
+        assert set(self.corr.graph.keys()) == set(new_graph.keys()), (set(self.corr.graph.keys()), set(new_graph.keys()))
         self.corr.graph = new_graph
 
     def sender_hook(self, z, hook, verbose=False, cache="online", device=None):
@@ -314,7 +318,7 @@ class TLACDCExperiment:
     
             return hook_point_input
 
-        assert incoming_edge_types == [EdgeType.ADDITION for _ in incoming_edge_types], f"All incoming edges should be the same type, not {incoming_edge_types}"
+        assert incoming_edge_types == [EdgeType.ADDITION for _ in incoming_edge_types], (f"All incoming edges should be the same type, not {incoming_edge_types}", hook.name, [EdgeType.ADDITION for _ in incoming_edge_types])
 
         # corrupted_cache (and thus z) contains the residual stream for the corrupted data
         # That is, the sum of all heads and MLPs and biases from previous layers

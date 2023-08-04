@@ -1,3 +1,4 @@
+import warnings
 from acdc.TLACDCInterpNode import TLACDCInterpNode
 from collections import OrderedDict
 from acdc.TLACDCEdge import (
@@ -101,17 +102,24 @@ class TLACDCCorrespondence:
         child.parents.remove(parent)        
 
     @classmethod
-    def setup_from_model(cls, model, seq_len, use_pos_embed=False, positions=Union[List[int], List[None]]):
+    def setup_from_model(cls, model, seq_len, use_pos_embed=False, positions: Optional[List[None]] = None):
         correspondence = cls()
 
+        if positions is None:
+            positions = [None]
+
         downstream_residual_nodes: Dict[Optional[int], List[TLACDCInterpNode]] = OrderedDefaultdict(list) # if we don't use positions we just use None as the only key
-        
+
+        warnings.warn("Surely this gets in a spot of bother down the line")
+
         logits_node = TLACDCInterpNode(
-            name=f"blocks.{model.cfg.n_layers-1}.hook_resid_post",
+            name=f"blocks.{model.cfg.n_layers-1}.hook_resid_post" if positions is None else "output_node",
             index=TorchIndex([None]),
             incoming_edge_type = EdgeType.PLACEHOLDER,
         )
         correspondence.add_node(logits_node)
+        print(correspondence.first_node())
+
 
         for position in positions:
             logits_pos_node = TLACDCInterpNode(
@@ -133,7 +141,7 @@ class TLACDCCorrespondence:
         for layer_idx in range(model.cfg.n_layers - 1, -1, -1):
             # connect MLPs
             if not model.cfg.attn_only: 
-                # this MLP writed to all future residual stream things
+                # This MLP writed to all future residual stream things
                 ### START MAYBE INDENT
                 cur_mlp_name = f"blocks.{layer_idx}.hook_mlp_out"
                 for position in positions:

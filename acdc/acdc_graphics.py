@@ -77,7 +77,8 @@ def get_node_name(node: TLACDCInterpNode, show_full_index=True):
         name += "resid_post"
 
     else:
-        raise ValueError(f"Unrecognized node name {node.name}")
+        warnings.warn("Unsupported node name")
+        name = node.name
 
     if show_full_index:
         name += f"_{str(node.index.graphviz_index())}"
@@ -100,6 +101,7 @@ def show(
     remove_self_loops: bool = True,
     remove_qkv: bool = False,
     layout: str="dot",
+    show_placeholders: bool = False,
 ) -> pgv.AGraph:
     """
     Colorscheme: a color for each node name, or a string corresponding to a cmapy color scheme
@@ -150,7 +152,7 @@ def show(
                         # Important this go after the qkv removal
                         continue
 
-                    if edge.present and edge.effect_size is not None and edge.edge_type != EdgeType.PLACEHOLDER:
+                    if edge.present and edge.effect_size is not None and (edge.edge_type != EdgeType.PLACEHOLDER or show_placeholders):
                         for node_name in [parent_name, child_name]:
                             maybe_pos = {}
                             if node_name in node_pos:

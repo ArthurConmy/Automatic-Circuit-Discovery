@@ -27,10 +27,9 @@ class EdgeType(Enum):
     ADDITION = 0
     DIRECT_COMPUTATION = 1
     PLACEHOLDER = 2
-
-    def __eq__(self, other):
-        # TODO WTF? Why do I need this?? To busy to look into now, check the commit where we add this later
-        return self.value == other.value
+    
+    def __repr__(self):
+        return self.name
 
 class Edge:
     def __init__(

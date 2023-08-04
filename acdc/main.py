@@ -125,7 +125,12 @@ from acdc.induction.utils import (
     get_mask_repeat_candidates,
 )
 from acdc.greaterthan.utils import get_all_greaterthan_things
-from acdc.gendered_pronouns.utils import get_all_gendered_pronouns_things
+
+try:
+    from acdc.gendered_pronouns.utils import get_all_gendered_pronouns_things
+except:
+    pass # Still need port this I think
+
 from acdc.acdc_graphics import (
     build_colorscheme,
     show,
@@ -143,11 +148,7 @@ torch.autograd.set_grad_enabled(False)
 #%%
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
 
-<<<<<<< HEAD
 task_choices = ['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan', 'or_gate']
-=======
-task_choices = ['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan', 'gendered-pronouns']
->>>>>>> origin/arthur-add-positional
 parser.add_argument('--task', type=str, required=True, choices=task_choices, help=f'Choose a task from the available options: {task_choices}')
 parser.add_argument('--threshold', type=float, required=True, help='Value for THRESHOLD')
 parser.add_argument('--first-cache-cpu', type=str, required=False, default="True", help='Value for FIRST_CACHE_CPU (the old name for the `online_cache`)')
@@ -341,6 +342,7 @@ exp = TLACDCExperiment(
     wandb_group_name=WANDB_GROUP_NAME,
     wandb_notes=notes,
     wandb_dir=args.wandb_dir,
+    early_exit=False,
     wandb_mode=args.wandb_mode,
     wandb_config=args,
     zero_ablation=ZERO_ABLATION,
@@ -363,11 +365,12 @@ exp = TLACDCExperiment(
     positions=list(range(toks_int_values.shape[-1])) if USE_POSITIONS else [None],
 )
 
-# %%markdown] # TODO revert
+#%% [markdown] # TODO revert
 # <h2>Run steps of ACDC: iterate over a NODE in the model's computational graph</h2>
 # <p>WARNING! This will take a few minutes to run, but there should be rolling nice pictures too : )</p>
 
 #%%
+
 for i in range(args.max_num_epochs):
     exp.step(testing=False)
 
