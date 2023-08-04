@@ -246,7 +246,7 @@ elif TASK == "tracr-proportion":
         device=DEVICE,
     )
 elif TASK == "induction":
-    num_examples = 10 if IN_COLAB else 50
+    num_examples = 10 if IN_COLAB else 3
     seq_len = 300
     # TODO initialize the `tl_model` with the right model
     things = get_all_induction_things(
