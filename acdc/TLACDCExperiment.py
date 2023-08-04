@@ -580,7 +580,7 @@ class TLACDCExperiment:
 
                 if edge.edge_type == EdgeType.PLACEHOLDER:
 
-                    if self.positions != [None]:
+                    if self.positions != None:
                         edge.effect_size = 0.42 # show is currently broken, currently a dumb fix of that
 
                     is_this_node_used = True
@@ -672,6 +672,7 @@ class TLACDCExperiment:
                 self.corr,
                 fname=fname,
                 show_full_index=self.show_full_index,
+                show_placeholders=self.positions is not None,
             )
             if self.using_wandb:
                 wandb.log(

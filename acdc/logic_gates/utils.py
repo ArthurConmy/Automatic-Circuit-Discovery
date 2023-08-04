@@ -24,7 +24,7 @@ def get_logic_gate_model(mode: Literal["OR", "AND"] = "OR", seq_len=1, device="c
             "d_mlp": 1,
             "d_vocab_out": 1,
             "normalization_type": None,
-            "attention_dir": "bidirectional",
+            # "attention_dir": "bidirectional",
             "attn_only": (mode == "OR"),
 
         }
@@ -97,14 +97,14 @@ def test_logical_models():
         all_inputs.append(input)
     input = torch.cat(all_inputs, dim=0)
 
-    and_output = and_model(input)[:, 0, :]
+    and_output = and_model(input)[:, -1, :]
     assert torch.equal(and_output[:2**seq_len - 1], torch.zeros(2**seq_len - 1, 1))
-    torch.testing.assert_allclose(and_output[2**seq_len - 1], torch.ones(1))
+    torch.testing.assert_close(and_output[2**seq_len - 1], torch.ones(1))
 
     or_model = get_logic_gate_model(mode="OR", seq_len=seq_len, device = "cpu")
-    or_output = or_model(input)[:, 0, :]
+    or_output = or_model(input)[:, -1, :]
 
-    torch.testing.assert_allclose(or_output[1:], torch.ones(2**seq_len - 1, 1))
+    torch.testing.assert_close(or_output[1:], torch.ones(2**seq_len - 1, 1))
     assert torch.equal(or_output[0], torch.zeros(1))
 
 def get_all_logic_gate_things(mode: str = "AND", device=None, seq_len = 5, num_examples = 10):
@@ -137,10 +137,10 @@ def get_all_logic_gate_things(mode: str = "AND", device=None, seq_len = 5, num_e
 
     model = get_logic_gate_model(mode=mode, seq_len=seq_len, device = device)
 
-    correct_answers = model(data)[:, 0, :]
+    correct_answers = model(data)[:, -1, :]
 
     def validation_metric(output, correct):
-        output = output[:, 0, :]
+        output = output[:, -1, :]
         assert output.shape == correct.shape
         return torch.mean((output - correct)**2)
 
@@ -157,4 +157,3 @@ def get_all_logic_gate_things(mode: str = "AND", device=None, seq_len = 5, num_e
         test_mask=None,
         test_patch_data=None,
     )
-

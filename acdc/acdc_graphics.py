@@ -48,7 +48,6 @@ def get_node_name(node: TLACDCInterpNode, show_full_index=True):
         name += "embed"
         if len(node.index.hashable_tuple) > 2:
             name += f"_[{node.index.hashable_tuple[2]}]"
-        return name
 
     elif "embed" in node.name:
         name = "pos_embeds" if "pos" in node.name else "token_embeds"

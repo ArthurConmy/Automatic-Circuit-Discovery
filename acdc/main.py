@@ -184,6 +184,7 @@ if ipython is not None:
 --use-positions\
 --second-cache-cpu=False\
 --device=cpu\
+--seed=4\
 --max-num-epochs=100000""".split("\\\n")]
     )
 else:
@@ -245,9 +246,9 @@ elif TASK == "or_gate":
     seq_len = 4
 
     things = get_all_logic_gate_things(
-        mode="OR", 
-        num_examples=num_examples, 
-        seq_len=seq_len,
+        mode="OR",
+        num_examples=2,
+        seq_len=2,
         device = DEVICE,
     )
 
@@ -361,8 +362,8 @@ exp = TLACDCExperiment(
     use_pos_embed=use_pos_embed,
     add_receiver_hooks=False,
     remove_redundant=False,
-    show_full_index=use_pos_embed,
-    positions=list(range(toks_int_values.shape[-1])) if USE_POSITIONS else [None],
+    show_full_index=use_pos_embed or USE_POSITIONS,
+    positions=list(range(toks_int_values.shape[-1])) if USE_POSITIONS else None,
 )
 
 #%% [markdown] # TODO revert
@@ -377,7 +378,8 @@ for i in range(args.max_num_epochs):
     show(
         exp.corr,
         f"ims/img_new_{i+1}.png",
-        show_full_index=use_pos_embed,
+        show_full_index=use_pos_embed or USE_POSITIONS,
+        show_placeholders=USE_POSITIONS,
     )
 
     if IN_COLAB or ipython is not None:
