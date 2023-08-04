@@ -1,3 +1,5 @@
+#%%
+
 from functools import partial
 import time
 import torch
@@ -8,9 +10,71 @@ from acdc.tracr_task.utils import get_perm
 
 MAX_LOGIC_GATE_SEQ_LEN = 100_000 # Can be increased further provided numerics and memory do not explode
 
+def get_or_with_trivial_attn_0(seq_len=1, device="cuda") -> HookedTransformer:
+    """To compare to HISP and SP, we need to actually have components e.g Attention Heads. So let's use an Attention Head per position"""
+
+    cfg = HookedTransformerConfig.from_dict(
+        {
+            "n_layers": 2,
+            "d_model": 1 + seq_len + 3,
+            "n_ctx": seq_len + 1,
+            "n_heads": seq_len + 1,
+            "d_head": seq_len + 1,
+            "act_fn": "relu",
+            "d_vocab": 2,
+            "d_mlp": None,
+            "d_vocab_out": 1,
+            "normalization_type": None,
+            "attn_only": True,
+        }
+    )
+
+    model = HookedTransformer(cfg).to(device)
+    model.set_use_attn_result(True)
+    model.set_use_split_qkv_input(True)
+    if "use_hook_mlp_in" in model.cfg.to_dict():
+        model.set_use_hook_mlp_in(True)
+
+    model = model.to(torch.double)
+
+    # Turn off model gradient so we can edit weights
+    # And also set all the weights to 0
+    for param in model.parameters():
+        param.requires_grad = False
+        param[:] = 0.0
+
+    model.pos_embed.W_pos[torch.arange(seq_len+1), torch.arange(seq_len+1)] = 1.0 # Embed as identity
+    model.pos_embed.W_pos[:, 0] = 1.0
+    model.pos_embed.W_pos[0, 0] = 2.0 # n_ctx, d_model
+    model.embed.W_E[1, -3] = 1.0 # d_vocab d_model
+
+    # Generate all-identity attention patterns:
+    model.blocks[0].attn.W_Q[torch.arange(1, seq_len+1), torch.arange(1, seq_len+1), torch.arange(1, seq_len+1)] = 300.0 # Shape [head_index d_model d_head]
+    model.blocks[0].attn.W_Q[:, 0, 0] = 100.0
+
+    # hook_k [batch, pos, head_index, d_head]
+
+    # Identity key
+    model.blocks[0].attn.W_K[:, torch.arange(seq_len+1), torch.arange(seq_len+1)] = 1.0 # Shape [head_index d_model d_head]
+    # model.blocks[0].attn.W_K # ???
+
+    model.blocks[0].attn.W_O[torch.arange(1, seq_len+1), 0, -2] = 1.0 # Shape [head_index d_head d_model]
+    # model.blocks[0].attn.b_O[-2] += 0.5
+
+    model.blocks[1].attn.W_Q[0, -2, 0] = 0.0
+    model.blocks[1].attn.b_Q[:] = 1.0
+    model.blocks[1].attn.W_K[0, -2, 0] = int(1e9)
+
+    model.blocks[1].attn.W_V[0, -2, 0] = 1.0 # Shape [head_index d_model d_head]
+    model.blocks[1].attn.W_O[0, 0, -1] = 1.0 # Shape [head_index d_head d_model]
+
+    model.unembed.W_U[-1, 0] = 1.0 # Shape [d_model d_vocab_out]
+
+    return model
+
 def get_logic_gate_model(mode: Literal["OR", "AND"] = "OR", seq_len=1, device="cuda") -> HookedTransformer:
 
-    assert 1 <= seq_len <= MAX_LOGIC_GATE_SEQ_LEN, "We need some bound on sequence length, but this can be increased if the "
+    assert 1 <= seq_len <= MAX_LOGIC_GATE_SEQ_LEN, "We need some bound on sequence length, but this can be increased if the variable at the top is increased"
 
     cfg = HookedTransformerConfig.from_dict(
         {
@@ -24,7 +88,6 @@ def get_logic_gate_model(mode: Literal["OR", "AND"] = "OR", seq_len=1, device="c
             "d_mlp": 1,
             "d_vocab_out": 1,
             "normalization_type": None,
-            # "attention_dir": "bidirectional",
             "attn_only": (mode == "OR"),
 
         }
@@ -99,13 +162,15 @@ def test_logical_models():
 
     and_output = and_model(input)[:, -1, :]
     assert torch.equal(and_output[:2**seq_len - 1], torch.zeros(2**seq_len - 1, 1))
-    torch.testing.assert_close(and_output[2**seq_len - 1], torch.ones(1))
+    torch.testing.assert_close(and_output[2**seq_len - 1], torch.ones(1).to(torch.double))
 
-    or_model = get_logic_gate_model(mode="OR", seq_len=seq_len, device = "cpu")
-    or_output = or_model(input)[:, -1, :]
+    for or_model in [get_logic_gate_model(mode="OR", seq_len=seq_len, device = "cpu"), get_or_with_trivial_attn_0(seq_len=seq_len, device = "cpu")]:
+        or_output = or_model(input)[:, -1, :]
 
-    torch.testing.assert_close(or_output[1:], torch.ones(2**seq_len - 1, 1))
-    assert torch.equal(or_output[0], torch.zeros(1))
+        torch.testing.assert_close(or_output[1:], torch.ones(2**seq_len - 1, 1).to(torch.double))
+        assert torch.equal(or_output[0], torch.zeros(1)), f"or_output[0] = {or_output}"
+
+#%%
 
 def get_all_logic_gate_things(mode: str = "AND", device=None, seq_len = 5, num_examples = 10):
 
@@ -157,3 +222,26 @@ def get_all_logic_gate_things(mode: str = "AND", device=None, seq_len = 5, num_e
         test_mask=None,
         test_patch_data=None,
     )
+
+# test_logical_models()
+
+# %%
+
+or_model = get_or_with_trivial_attn_0(seq_len=3, device = "cpu")
+
+logits, cache = or_model.run_with_cache(
+    torch.tensor([[1, 0, 1, 0]]).to(torch.long),
+)
+print(logits)
+
+# %%
+
+for key in cache.keys():
+    print(key)
+    print(cache[key].shape)
+    print(cache[key])
+    print("\n\n\n")
+
+# %%
+
+#batch pos head_index d_head for hook_q
