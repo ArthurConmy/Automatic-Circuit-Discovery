@@ -22,6 +22,12 @@ from acdc.acdc_utils import EdgeType
 import pygraphviz as pgv
 from pathlib import Path
 
+EDGE_TYPE_COLORS = {
+    EdgeType.ADDITION.value: "#FF0000", # Red
+    EdgeType.DIRECT_COMPUTATION.value: "#00FF00", # Green
+    EdgeType.PLACEHOLDER.value: "#0000FF", # Blue
+}
+
 def generate_random_color(colorscheme: str) -> str:
     """
     https://stackoverflow.com/questions/28999287/generate-random-colors-rgb
@@ -34,53 +40,56 @@ def generate_random_color(colorscheme: str) -> str:
         """
         return "#{:02x}{:02x}{:02x}".format(rgb[0], rgb[1], rgb[2])
 
-    return rgb2hex(cmapy.color("Pastel2", random.randrange(0, 256), rgb_order=True))
+    return rgb2hex(cmapy.color("Pastel2", np.random.randint(0, 256), rgb_order=True))
 
 def get_node_name(node: TLACDCInterpNode, show_full_index=True):
     """Node name for use in pretty graphs"""
-    name = ""
-    qkv_substrings = [f"hook_{letter}" for letter in ["q", "k", "v"]]
-    qkv_input_substrings = [f"hook_{letter}_input" for letter in ["q", "k", "v"]]
 
-    # Handle embedz
-    if "resid_pre" in node.name:
-        assert "0" in node.name and not any([str(i) in node.name for i in range(1, 10)])
-        name += "embed"
-        if len(node.index.hashable_tuple) > 2:
-            name += f"_[{node.index.hashable_tuple[2]}]"
-        return name
+    if not show_full_index:
+        name = ""
+        qkv_substrings = [f"hook_{letter}" for letter in ["q", "k", "v"]]
+        qkv_input_substrings = [f"hook_{letter}_input" for letter in ["q", "k", "v"]]
 
-    elif "embed" in node.name:
-        name = "pos_embeds" if "pos" in node.name else "token_embeds"
+        # Handle embedz
+        if "resid_pre" in node.name:
+            assert "0" in node.name and not any([str(i) in node.name for i in range(1, 10)])
+            name += "embed"
+            if len(node.index.hashable_tuple) > 2:
+                name += f"_[{node.index.hashable_tuple[2]}]"
+            return name
 
-    # Handle q_input and hook_q etc
-    elif any([node.name.endswith(qkv_input_substring) for qkv_input_substring in qkv_input_substrings]):
-        relevant_letter = None
-        for letter, qkv_substring in zip(["q", "k", "v"], qkv_substrings):
-            if qkv_substring in node.name:
-                assert relevant_letter is None
-                relevant_letter = letter
-        name += "a" + node.name.split(".")[1] + "." + str(node.index.hashable_tuple[2]) + "_" + relevant_letter
+        elif "embed" in node.name:
+            name = "pos_embeds" if "pos" in node.name else "token_embeds"
 
-    # Handle attention hook_result
-    elif "hook_result" in node.name or any([qkv_substring in node.name for qkv_substring in qkv_substrings]):
-        name = "a" + node.name.split(".")[1] + "." + str(node.index.hashable_tuple[2])
+        # Handle q_input and hook_q etc
+        elif any([node.name.endswith(qkv_input_substring) for qkv_input_substring in qkv_input_substrings]):
+            relevant_letter = None
+            for letter, qkv_substring in zip(["q", "k", "v"], qkv_substrings):
+                if qkv_substring in node.name:
+                    assert relevant_letter is None
+                    relevant_letter = letter
+            name += "a" + node.name.split(".")[1] + "." + str(node.index.hashable_tuple[2]) + "_" + relevant_letter
 
-    # Handle MLPs
-    elif node.name.endswith("resid_mid"):
-        raise ValueError("We removed resid_mid annotations. Call these mlp_in now.")
-    elif node.name.endswith("mlp_out") or node.name.endswith("mlp_in"):
-        name = "m" + node.name.split(".")[1]
+        # Handle attention hook_result
+        elif "hook_result" in node.name or any([qkv_substring in node.name for qkv_substring in qkv_substrings]):
+            name = "a" + node.name.split(".")[1] + "." + str(node.index.hashable_tuple[2])
 
-    # Handle resid_post
-    elif "resid_post" in node.name:
-        name += "resid_post"
+        # Handle MLPs
+        elif node.name.endswith("resid_mid"):
+            raise ValueError("We removed resid_mid annotations. Call these mlp_in now.")
+        elif node.name.endswith("mlp_out") or node.name.endswith("mlp_in"):
+            name = "m" + node.name.split(".")[1]
+
+        # Handle resid_post
+        elif "resid_post" in node.name:
+            name += "resid_post"
+
+        else:
+            raise ValueError(f"Unrecognized node name {node.name}")
 
     else:
-        raise ValueError(f"Unrecognized node name {node.name}")
-
-    if show_full_index:
-        name += f"_{str(node.index.graphviz_index())}"
+        
+        name = node.name + str(node.index.graphviz_index(use_actual_colon=True))
 
     return "<" + name + ">"
 
@@ -100,11 +109,17 @@ def show(
     remove_self_loops: bool = True,
     remove_qkv: bool = False,
     layout: str="dot",
+    edge_type_colouring: bool = False,
+    show_placeholders: bool = False,
+    seed: Optional[int] = None
 ) -> pgv.AGraph:
     """
     Colorscheme: a color for each node name, or a string corresponding to a cmapy color scheme
     """
     g = pgv.AGraph(directed=True, bgcolor="transparent", overlap="false", splines="true", layout=layout)
+
+    if seed is not None:
+        np.random.seed(seed)
 
     groups = {}
     if isinstance(colorscheme, str):
@@ -150,7 +165,7 @@ def show(
                         # Important this go after the qkv removal
                         continue
 
-                    if edge.present and edge.effect_size is not None and edge.edge_type != EdgeType.PLACEHOLDER:
+                    if (edge.present and edge.effect_size is not None) and (edge.edge_type != EdgeType.PLACEHOLDER or show_placeholders):
                         for node_name in [parent_name, child_name]:
                             maybe_pos = {}
                             if node_name in node_pos:
@@ -169,7 +184,7 @@ def show(
                             parent_name,
                             child_name,
                             penwidth=str(max(minimum_penwidth, edge.effect_size) * 2),
-                            color=colors[parent_name],
+                            color=colors[parent_name] if not edge_type_colouring else EDGE_TYPE_COLORS[edge.edge_type.value],
                         )
 
     if fname is not None:
@@ -189,6 +204,7 @@ def show(
                 for j in range(i + 1, len(s)):
                     g2.add_edge(s[i], s[j], style="invis", weight=200)
             g2.write(path=base_path / f"{k}.gv")
+
         g.write(path=base_fname + ".gv")
 
         if not fname.endswith(".gv"): # turn the .gv file into a .png file

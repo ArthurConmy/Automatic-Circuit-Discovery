@@ -8,7 +8,7 @@ This is the accompanying code to the paper ["Towards Automated Circuit Discovery
 
 * :zap: To run ACDC, see `acdc/main.py`, or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Main_Demo.ipynb">this Colab notebook</a>
 * :wrench: To see how edit edges in computational graphs in models, see `notebooks/editing_edges.py` or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Editing_Edges_Demo.ipynb">this Colab notebook</a>
-* :sparkle: To look at the abstractions we use to make ACDC, look at our upcoming notebook on them.
+* :sparkle: To understand the low-level implementation of completely editable computational graphs, see <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Editing_Edges_Demo.ipynb">this Colab notebook</a> or `notebooks/implementation_demo.py`
 
 This library builds upon the abstractions (`HookPoint`s and standardised `HookedTransformer`s) from [TransformerLens](https://github.com/neelnanda-io/TransformerLens) :mag_right:
 
@@ -96,13 +96,18 @@ If you use ACDC, please reach out! You can reference the work as follows:
 
 ## TODO
 
+<!--> Make this appear in a drop down <-->
+
+<details>
+<summary>Mostly finished TODO list</summary>
+
 [ x ] Make `TransformerLens` install be Neel's code not my PR
 
 [ x ] Add `hook_mlp_in` to `TransformerLens` and delete `hook_resid_mid` (and test to ensure no bad things?)
 
 [ x ] Delete `arthur-try-merge-tl` references from the repo
 
-[ ] Make notebook on abstractions
+[ x ] Make notebook on abstractions
 
 [ ? ] Fix huge edge sizes in Induction Main example and change that occurred
 
@@ -112,6 +117,10 @@ If you use ACDC, please reach out! You can reference the work as follows:
 
 [ ] Position-level experiments
 
+[ ] Edge gradient descent experiments
+
+[ ] Implement the circuit breaking papers
+
 [ x ] `tracr` and other dependencies better managed
 
 [ ? ] Make SP tests work (lots outdated so skipped) - and check SubnetworkProbing installs properly (no __init__.pys !!!)
@@ -119,3 +128,4 @@ If you use ACDC, please reach out! You can reference the work as follows:
 [ ? ] Make the 9 tests also failing on TransformerLens-main pass
 
 [ x ] Remove Codebase under construction
+</details>
