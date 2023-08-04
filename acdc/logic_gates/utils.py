@@ -1,7 +1,10 @@
+from functools import partial
+import time
 import torch
 from typing import Literal
 from transformer_lens.HookedTransformer import HookedTransformer, HookedTransformerConfig
 from acdc.docstring.utils import AllDataThings
+from acdc.tracr_task.utils import get_perm
 
 MAX_LOGIC_GATE_SEQ_LEN = 100_000 # Can be increased further provided numerics and memory do not explode
 
@@ -23,10 +26,16 @@ def get_logic_gate_model(mode: Literal["OR", "AND"] = "OR", seq_len=1, device="c
             "normalization_type": None,
             "attention_dir": "bidirectional",
             "attn_only": (mode == "OR"),
+
         }
     )
 
     model = HookedTransformer(cfg).to(device)
+    model.set_use_attn_result(True)
+    model.set_use_split_qkv_input(True)
+    if "use_hook_mlp_in" in model.cfg.to_dict():
+        model.set_use_hook_mlp_in(True)
+
     model = model.to(torch.double)
 
     # Turn off model gradient so we can edit weights
@@ -97,3 +106,55 @@ def test_logical_models():
 
     torch.testing.assert_allclose(or_output[1:], torch.ones(2**seq_len - 1, 1))
     assert torch.equal(or_output[0], torch.zeros(1))
+
+def get_all_logic_gate_things(mode: str = "AND", device=None, seq_len = 5, num_examples = 10):
+
+    assert mode in ["AND", "OR"]
+    # Create a set to hold our unique binary strings
+    unique_binary_strings = set()
+
+    assert num_examples <= 2**seq_len, "We can't have more examples than there are possible binary strings"
+
+    start_time = time.time()
+
+    # Keep adding binary strings until we have enough examples
+    while len(unique_binary_strings) < num_examples and time.time() - start_time < 20:
+        binary_string = torch.randint(0, 2, (seq_len,)).to(device)
+        binary_str_representation = "".join(str(i) for i in binary_string.tolist())  # convert tensor to string
+        unique_binary_strings.add(binary_str_representation)
+
+    if len(unique_binary_strings) < num_examples:
+        raise ValueError(f"Could not generate enough unique binary strings in {time.time() - start_time} seconds")
+
+    # Convert the set of binary string back llto tensor
+    data = []
+    for bin_str in unique_binary_strings:
+        data.append([int(ch) for ch in bin_str])
+    data = torch.tensor(data).to(device)
+
+    rand_perm = get_perm(num_examples).to(device)
+    randomised_data = data[rand_perm]
+
+    model = get_logic_gate_model(mode=mode, seq_len=seq_len, device = device)
+
+    correct_answers = model(data)[:, 0, :]
+
+    def validation_metric(output, correct):
+        output = output[:, 0, :]
+        assert output.shape == correct.shape
+        return torch.mean((output - correct)**2)
+
+    return AllDataThings(
+        tl_model=model,
+        validation_metric=partial(validation_metric, correct=correct_answers),
+        validation_data=data,
+        validation_labels=None,
+        validation_mask=None,
+        validation_patch_data=randomised_data,
+        test_metrics=None,
+        test_data=None,
+        test_labels=None,
+        test_mask=None,
+        test_patch_data=None,
+    )
+

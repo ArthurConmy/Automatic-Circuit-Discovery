@@ -218,7 +218,7 @@ class TLACDCExperiment:
         new_graph = OrderedDict()
         cache=OrderedDict()
         self.model.cache_all(cache)
-        self.model(torch.arange(5)) # some random forward pass so that we can see all the hook names
+        self.model(torch.arange(self.model.cfg.d_vocab)) # some random forward pass so that we can see all the hook names
         self.model.reset_hooks()
 
         if self.verbose:

@@ -95,6 +95,7 @@ try:
 except Exception as e:
     print(f"Could not import `tracr` because {e}; the rest of the file should work but you cannot use the tracr tasks")
 from acdc.docstring.utils import get_all_docstring_things
+from acdc.logic_gates.utils import get_all_logic_gate_things
 from acdc.acdc_utils import (
     make_nd_dict,
     reset_network,
@@ -141,7 +142,7 @@ torch.autograd.set_grad_enabled(False)
 #%%
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
 
-task_choices = ['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan']
+task_choices = ['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan', 'or_gate']
 parser.add_argument('--task', type=str, required=True, choices=task_choices, help=f'Choose a task from the available options: {task_choices}')
 parser.add_argument('--threshold', type=float, required=True, help='Value for THRESHOLD')
 parser.add_argument('--first-cache-cpu', type=str, required=False, default="True", help='Value for FIRST_CACHE_CPU (the old name for the `online_cache`)')
@@ -169,12 +170,12 @@ if ipython is not None:
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
-        [line.strip() for line in r"""--task=induction\
---zero-ablation\
---threshold=0.71\
+        [line.strip() for line in r"""--task=or_gate\
+--threshold=0.00001\
 --indices-mode=reverse\
 --first-cache-cpu=False\
 --second-cache-cpu=False\
+--device=cpu\
 --max-num-epochs=100000""".split("\\\n")]
     )
 else:
@@ -221,6 +222,7 @@ SINGLE_STEP = True if args.single_step else False
 # <h2>Setup Task</h2>
 
 #%%
+
 second_metric = None  # some tasks only have one metric
 use_pos_embed = TASK.startswith("tracr")
 
@@ -229,6 +231,17 @@ if TASK == "ioi":
     things = get_all_ioi_things(
         num_examples=num_examples, device=DEVICE, metric_name=args.metric
     )
+elif TASK == "or_gate":
+    num_examples = 16
+    seq_len = 4
+
+    things = get_all_logic_gate_things(
+        mode="OR", 
+        num_examples=num_examples, 
+        seq_len=seq_len,
+        device = DEVICE,
+    )
+
 elif TASK == "tracr-reverse":
     num_examples = 6
     things = get_all_tracr_things(
@@ -269,7 +282,6 @@ elif TASK == "greaterthan":
     )
 else:
     raise ValueError(f"Unknown task {TASK}")
-
 
 #%% [markdown]
 # <p> Let's define the four most important objects for ACDC experiments:
@@ -378,6 +390,7 @@ if USING_WANDB:
     wandb.finish()
 
 # %% [markdown]
+
 # <h2>Save the final subgraph of the model</h2>
 # <p>There are more than `exp.count_no_edges()` here because we include some "placeholder" edges needed to make ACDC work that don't actually matter</p>
 # <p>Also note that the final image has more than 12 edges, because the edges from a0.0_q and a0.0_k are not connected to the input</p>
@@ -387,3 +400,5 @@ if USING_WANDB:
 exp.save_subgraph(
     return_it=True,
 ) 
+
+#%%
