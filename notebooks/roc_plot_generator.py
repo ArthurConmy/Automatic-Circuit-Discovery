@@ -165,7 +165,7 @@ parser.add_argument("--only-save-canonical", action="store_true", help="Only sav
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task ioi --mode edges --metric kl_div --alg none --device cuda:0 --set-missing-score".split())
+    args = parser.parse_args("--task ioi --mode edges --metric kl_div --alg none --device cuda:0".split())
 
     if "arthur" not in __file__ and "arthur" not in str(os.environ.get("CONDA_DEFAULT_ENV")):
         __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
@@ -775,7 +775,6 @@ def get_sp_corrs(
             print("Bugged run", run.id)
             continue
         nodes_to_mask = [parse_interpnode(s) for s in nodes_to_mask_strings]
-        print(nodes_to_mask)
         corr, head_parents = iterative_correspondence_from_mask(
             model = model,
             nodes_to_mask=nodes_to_mask,
@@ -787,9 +786,6 @@ def get_sp_corrs(
         score_d["steps"] = run.summary["_step"]
         score_d["score"] = run.config["lambda_reg"]
         print(corr.count_no_edges(), "num edges")
-        if corr.count_no_edges() < 10_000:
-            return (nodes_to_mask, corr)
-
         corrs.append((deepcopy(corr), score_d))
 
     return corrs

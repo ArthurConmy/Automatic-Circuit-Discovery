@@ -30,6 +30,10 @@ class EdgeType(Enum):
     DIRECT_COMPUTATION = 1
     PLACEHOLDER = 2
 
+    def __eq__(self, other):
+        assert isinstance(other, EdgeType), f"Other is {other}; type is {type(other)}"
+        return self.value == other.value
+
 class Edge:
     def __init__(
         self,
