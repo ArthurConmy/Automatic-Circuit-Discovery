@@ -31,7 +31,7 @@ if ipython is not None:
     IPython.get_ipython().run_line_magic("autoreload", "2")  # type: ignore
 
 from copy import deepcopy
-from subnetwork_probing.train import iterative_correspondence_from_mask
+from subnetwork_probing.train import iterative_correspondence_from_mask, correspondence_from_mask
 from acdc.acdc_utils import filter_nodes, get_edge_stats, get_node_stats, get_present_nodes, reset_network
 import pandas as pd
 import gc
@@ -780,13 +780,21 @@ def get_sp_corrs(
             continue
         
         nodes_to_mask = [parse_interpnode(s) for s in nodes_to_mask_strings]
-        corr, head_parents = iterative_correspondence_from_mask(
+
+        # corr, head_parents = iterative_correspondence_from_mask(
+        #     model = model,
+        #     nodes_to_mask=nodes_to_mask,
+        #     use_pos_embed = USE_POS_EMBED,
+        #     corr = None,
+        #     head_parents = None,
+        # )
+
+        corr = correspondence_from_mask(
             model = model,
             nodes_to_mask=nodes_to_mask,
             use_pos_embed = USE_POS_EMBED,
-            corr = None,
-            head_parents=head_parents
         )
+
         print(run.id)
         
         # if run.id == "5qrb70nk":
