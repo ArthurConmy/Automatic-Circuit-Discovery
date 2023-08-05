@@ -60,7 +60,7 @@ def iterative_correspondence_from_mask(model: HookedTransformer, nodes_to_mask: 
             additional_nodes_to_mask.append(TLACDCInterpNode(child_name + "_input", node.index, EdgeType.ADDITION))
 
             if head_parents[child_name, node.index] == 3:
-                additional_nodes_to_mask.append(TLACDCInterpNode(child_name, node.index, EdgeType.ADDITION))
+                additional_nodes_to_mask.append(TLACDCInterpNode(child_name, node.index, EdgeType.PLACEHOLDER))
 
     for node in nodes_to_mask + additional_nodes_to_mask:
         # Mark edges where this is child as not present

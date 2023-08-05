@@ -25,7 +25,8 @@
 import collections
 import IPython
 
-if IPython.get_ipython() is not None:
+ipython = IPython.get_ipython()
+if ipython is not None:
     IPython.get_ipython().run_line_magic("load_ext", "autoreload")  # type: ignore
     IPython.get_ipython().run_line_magic("autoreload", "2")  # type: ignore
 
@@ -165,7 +166,7 @@ parser.add_argument("--only-save-canonical", action="store_true", help="Only sav
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task ioi --mode edges --metric kl_div --alg none --device cuda:0".split())
+    args = parser.parse_args("--task ioi --mode edges --metric kl_div --alg sp --device cuda:0".split())
 
     if "arthur" not in __file__ and "arthur" not in str(os.environ.get("CONDA_DEFAULT_ENV")):
         __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
@@ -209,9 +210,12 @@ if args.alg != "none":
     SKIP_CANONICAL = False if args.alg == "canonical" else True
     OUT_FILE = OUT_DIR / f"{args.alg}-{args.task}-{args.metric}-{args.zero_ablation}-{args.reset_network}.json"
 
+
     if OUT_FILE.exists():
-        print("File already exists, skipping")
-        sys.exit(0)
+        warnings.warn("File already exists, skipping if we're running as a script")
+        if ipython is None:
+            sys.exit(0)
+
 else:
     OUT_FILE = None
 
@@ -774,14 +778,22 @@ def get_sp_corrs(
         except KeyError:
             print("Bugged run", run.id)
             continue
+        
         nodes_to_mask = [parse_interpnode(s) for s in nodes_to_mask_strings]
         corr, head_parents = iterative_correspondence_from_mask(
             model = model,
             nodes_to_mask=nodes_to_mask,
             use_pos_embed = USE_POS_EMBED,
-            corr=corr,
+            corr = None,
             head_parents=head_parents
         )
+        print(run.id)
+        
+        # if run.id == "5qrb70nk":
+        #     print(corr.count_no_edges())
+        #     print(nodes_to_mask)
+        #     assert False
+
         score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
         score_d["steps"] = run.summary["_step"]
         score_d["score"] = run.config["lambda_reg"]
