@@ -772,8 +772,10 @@ def get_sp_corrs(
         try:
             nodes_to_mask_strings = run.summary["nodes_to_mask"]
         except KeyError:
+            print("Bugged run", run.id)
             continue
         nodes_to_mask = [parse_interpnode(s) for s in nodes_to_mask_strings]
+        print(nodes_to_mask)
         corr, head_parents = iterative_correspondence_from_mask(
             model = model,
             nodes_to_mask=nodes_to_mask,
@@ -784,6 +786,10 @@ def get_sp_corrs(
         score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
         score_d["steps"] = run.summary["_step"]
         score_d["score"] = run.config["lambda_reg"]
+        print(corr.count_no_edges(), "num edges")
+        if corr.count_no_edges() < 10_000:
+            return (nodes_to_mask, corr)
+
         corrs.append((deepcopy(corr), score_d))
 
     return corrs
