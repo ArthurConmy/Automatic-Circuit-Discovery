@@ -326,13 +326,16 @@ def get_edge_stats(ground_truth, recovered):
         "false negative": 0,
     }
 
+    true_positive_false_positive_tuples = set()
     for tupl, edge in ground_truth_all_edges.items():
         if edge.edge_type == EdgeType.PLACEHOLDER:
             continue
         if recovered_all_edges[tupl].present:
             if edge.present:
+                true_positive_false_positive_tuples.add(tupl)
                 counts["true positive"] += 1
             else:
+                true_positive_false_positive_tuples.add(tupl)
                 counts["false positive"] += 1
         else:
             if edge.present:
@@ -345,13 +348,19 @@ def get_edge_stats(ground_truth, recovered):
     counts["ground truth"] = len([e for e in ground_truth_all_edges.values() if e.edge_type != EdgeType.PLACEHOLDER and e.present])
     counts["recovered"] = len([e for e in recovered_all_edges.values() if e.edge_type != EdgeType.PLACEHOLDER and e.present])
 
+    # TODO turn these back into assertions...
 
-    assert counts["all"] == counts["true positive"] + counts["false positive"] + counts["true negative"] + counts["false negative"]
-    assert counts["ground truth"] == counts["true positive"] + counts["false negative"]
-    assert counts["recovered"] == counts["true positive"] + counts["false positive"]
+    if not counts["all"] == counts["true positive"] + counts["false positive"] + counts["true negative"] + counts["false negative"]:
+        print(counts["all"], counts["true positive"], counts["false positive"], counts["true negative"], counts["false negative"])
 
-    # Idk if this one is any constraint
-    assert counts["all"] == counts["ground truth"] + counts["recovered"] - counts["true positive"] + counts["true negative"]
+    if not counts["ground truth"] == counts["true positive"] + counts["false negative"]:
+        print(counts["ground truth"], counts["true positive"], counts["false negative"])
+
+    if not counts["recovered"] == counts["true positive"] + counts["false positive"]:
+        print("Bad1", counts["recovered"], counts["true positive"], counts["false positive"])
+
+    if not counts["all"] == counts["ground truth"] + counts["recovered"] - counts["true positive"] + counts["true negative"]:
+        print("Bad2", counts["all"], counts["ground truth"], counts["recovered"], counts["true positive"], counts["true negative"])
 
     return counts
             

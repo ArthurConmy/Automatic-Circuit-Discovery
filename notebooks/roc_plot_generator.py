@@ -421,6 +421,7 @@ COLORSCHEME_FOR = collections.defaultdict(lambda: (lambda: "Pastel2"), {
 if TASK != "induction":
     d = {(d[0], d[1].hashable_tuple, d[2], d[3].hashable_tuple): False for d in exp.corr.all_edges()}
     d_trues = get_true_edges()
+
     # if ONLY_SAVE_CANONICAL and TASK == "ioi":
     #     # Remove non-adjacent layer connections
     #     def layer(name):
@@ -887,6 +888,9 @@ def get_points(corrs_and_scores, decreasing=True):
     n_skipped = 0
 
     for idx, (corr, score) in tqdm(enumerate(sorted(corrs_and_scores, key=lambda x: x[1]["score"], reverse=decreasing))):
+
+        print(idx)
+
         if set(score.keys()) != keys:
             a = init_point.copy()
             a.update(score)
@@ -901,17 +905,17 @@ def get_points(corrs_and_scores, decreasing=True):
             edge_stats = get_edge_stats(ground_truth=canonical_circuit_subgraph, recovered=corr)
             node_stats = get_node_stats(ground_truth=canonical_circuit_subgraph, recovered=corr)
 
-            assert n_edges == edge_stats["recovered"]
-            assert n_nodes == node_stats["recovered"]
+            assert n_edges == edge_stats["recovered"], f"{n_edges} != {edge_stats['recovered']}"
+            assert n_nodes == node_stats["recovered"], f"{n_nodes} != {node_stats['recovered']}"
 
-            assert edge_stats["all"] == max_subgraph_size
-            assert edge_stats["ground truth"] == canonical_circuit_subgraph_size
-            assert edge_stats["recovered"] == n_edges
+            assert edge_stats["all"] == max_subgraph_size, f"{edge_stats['all']} != {max_subgraph_size}"
+            assert edge_stats["ground truth"] == canonical_circuit_subgraph_size, f"{edge_stats['ground truth']} != {canonical_circuit_subgraph_size}"
+            assert edge_stats["recovered"] == n_edges, f"{edge_stats['recovered']} != {n_edges}"
 
             for prefix, stats in [("edge", edge_stats), ("node", node_stats)]:
-                assert (stats["all"] - stats["ground truth"]) == stats["false positive"] + stats["true negative"]
-                assert stats["ground truth"] == stats["true positive"] + stats["false negative"]
-                assert stats["recovered"] == stats["true positive"] + stats["false positive"]
+                assert (stats["all"] - stats["ground truth"]) == stats["false positive"] + stats["true negative"], f"{stats['all']} - {stats['ground truth']} != {stats['false positive']} + {stats['true negative']}"
+                assert stats["ground truth"] == stats["true positive"] + stats["false negative"], f"{stats['ground truth']} != {stats['true positive']} + {stats['false negative']}"
+                assert stats["recovered"] == stats["true positive"] + stats["false positive"], f"{stats['recovered']} != {stats['true positive']} + {stats['false positive']}"
 
                 score.update(
                     {
@@ -938,12 +942,12 @@ points = {}
 if "ACDC" in methods:
     if "ACDC" not in points: points["ACDC"] = []
     points["ACDC"].extend(get_points(acdc_corrs))
+
 #%%
 
 if "CANONICAL" in methods:
     if "CANONICAL" not in points: points["CANONICAL"] = []
     points["CANONICAL"].extend(get_points(canonical_corrs))
-
 
 #%%
 
