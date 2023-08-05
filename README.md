@@ -96,8 +96,6 @@ If you use ACDC, please reach out! You can reference the work as follows:
 
 ## TODO
 
-<!--> Make this appear in a drop down <-->
-
 <details>
 <summary>Mostly finished TODO list</summary>
 
@@ -119,7 +117,7 @@ If you use ACDC, please reach out! You can reference the work as follows:
 
 [ ] Edge gradient descent experiments
 
-[ ] Implement the circuit breaking papers
+[ ] Implement the circuit breaking paper
 
 [ x ] `tracr` and other dependencies better managed
 
@@ -128,4 +126,5 @@ If you use ACDC, please reach out! You can reference the work as follows:
 [ ? ] Make the 9 tests also failing on TransformerLens-main pass
 
 [ x ] Remove Codebase under construction
+
 </details>
