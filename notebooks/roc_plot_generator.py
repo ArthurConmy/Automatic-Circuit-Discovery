@@ -166,7 +166,7 @@ parser.add_argument("--only-save-canonical", action="store_true", help="Only sav
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task ioi --mode edges --metric kl_div --alg sp --device cuda:0".split())
+    args = parser.parse_args("--task ioi --mode edges --metric kl_div --alg none --device cuda:0".split())
 
     if "arthur" not in __file__ and "arthur" not in str(os.environ.get("CONDA_DEFAULT_ENV")):
         __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
@@ -838,6 +838,7 @@ def get_sixteen_heads_corrs(
 
     corr, head_parents = iterative_correspondence_from_mask(model=model, nodes_to_mask=[], use_pos_embed=exp.use_pos_embed)
     corrs = [(corr, {"score": 0.0, **score_d_list[0]})]
+    
     for (nodes, hook_name, idx, score), score_d in tqdm(zip(nodes_names_indices, score_d_list[1:])):
         if score == "NaN":
             score = 0.0
@@ -845,7 +846,7 @@ def get_sixteen_heads_corrs(
             corr = None
         else:
             nodes_to_mask += list(map(parse_interpnode, nodes))
-            corr, head_parents = iterative_correspondence_from_mask(model=model, nodes_to_mask=nodes_to_mask, use_pos_embed=exp.use_pos_embed, corr=corr, head_parents=head_parents)
+            corr, head_parents = iterative_correspondence_from_mask(model=model, nodes_to_mask=nodes_to_mask, use_pos_embed=exp.use_pos_embed, corr=None, head_parents=None)
         cum_score += score
         score_d = {"score": cum_score, **score_d}
         corrs.append((deepcopy(corr), score_d))
@@ -1045,3 +1046,8 @@ if OUT_FILE is not None:
         json.dump(out_dict, f, indent=2)
 
 # %%
+
+for method_name, method_corrs in zip(
+    [],
+    [],
+)
