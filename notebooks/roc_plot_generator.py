@@ -135,9 +135,11 @@ import argparse
 from acdc.greaterthan.utils import get_all_greaterthan_things, get_greaterthan_true_edges, greaterthan_group_colorscheme
 from pathlib import Path
 
-from notebooks.emacs_plotly_render import set_plotly_renderer
-set_plotly_renderer("emacs")
+IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root") and not "aconmy" in __file__
 
+if IS_ADRIA: 
+    from notebooks.emacs_plotly_render import set_plotly_renderer
+    set_plotly_renderer("emacs")
 
 def get_col(df, col): # dumb util
     non_null_entries = list(df.loc[df[col].notnull(), col])
@@ -978,46 +980,6 @@ if "16H" in methods:
     points["16H"].extend(get_points(sixteen_heads_corrs, decreasing=False))
 
 #%%
-1
-def get_roc_figure(all_points, names): # TODO make the plots grey / black / yellow?
-    """Points are (false positive rate, true positive rate)"""
-    roc_figure = go.Figure()
-    for points, name in zip(all_points, names):
-        try: # TODO test this try block
-            points[0].keys()     
-    
-        except:
-            x = [p[0] for p in points]
-            y = [p[1] for p in points]
-
-        else:
-            x=None
-            y=None
-            for key in points[0].keys():
-                if "fpr" in key:
-                    x = [p[key] for p in points]
-                if "tpr" in key:
-                    y = [p[key] for p in points]
-            assert x is not None and y is not None, "Could not process with either indices or keys"
-        
-        roc_figure.add_trace(
-            go.Scatter(
-                x=x,
-                y=y,
-                mode="lines",
-                line=dict(shape='hv'),  # Adding this line will make the curve stepped.
-                name=name,
-            )
-        )
-    roc_figure.update_xaxes(title_text="Precision")
-    roc_figure.update_yaxes(title_text="True positive rate")
-    return roc_figure
-
-if OUT_FILE is None:
-    fig = get_roc_figure(list(points.values()), list(points.keys()))
-    fig.show()
-
-#%%
 
 if OUT_FILE is not None:
     assert args.alg != "none"
@@ -1047,8 +1009,70 @@ if OUT_FILE is not None:
 
 # %%
 
-for method_name, method_corrs in zip(
+for method_name, method_corrs_and_scores in zip(
     ["ACDC", "SP", "16H"],
     [acdc_corrs, sp_corrs, sixteen_heads_corrs],
+    strict=True,
 ):
-    pass
+    corrs, scores = zip(*method_corrs_and_scores)
+
+    sorted_corrs = sorted(
+        corrs, 
+        key = lambda corr: corr.count_no_edges(),
+    )
+
+    nodes = []
+
+    for node_str in sorted_corrs[0].graph:
+        for node_index in sorted_corrs[0].graph[node_str]:
+            node = sorted_corrs[0].graph[node_str][node_index]
+            nodes.append((node.name, node.index.hashable_tuple))
+
+    node_present_counts = []
+    is_node_present_lists = []
+
+    for corr in tqdm(corrs):
+        
+        is_node_present = [0 for _ in range(len(nodes))]
+
+        for (receiver_str, receiver_index, sender_str, sender_node_index), edge in corr.all_edges().items():
+            if edge.present:
+                is_node_present[nodes.index((receiver_str, receiver_index.hashable_tuple))] = 1
+                is_node_present[nodes.index((sender_str, sender_node_index.hashable_tuple))] = 1
+
+        node_present_counts.append(is_node_present.count(1))
+        is_node_present_lists.append(is_node_present)
+
+    corrs_and_node_present_counts = list(zip(corrs, node_present_counts, is_node_present_lists, strict=True))
+
+    corrs_and_node_present_counts = sorted(
+        corrs_and_node_present_counts,
+        key = lambda x: x[1],
+    )
+
+    corrs, node_present_counts, is_node_present_lists = zip(*corrs_and_node_present_counts)
+
+    # make the x axis nodes, for all the is_node_present_lists
+    # Create a consolidated DataFrame
+    df_list = []
+    for i, node_presence in enumerate(is_node_present_lists):
+        df_list.append(pd.DataFrame({
+            'Nodes': [str(node) for node in nodes],
+            'Presence': node_presence,
+            'corr': i
+        }))
+    df = pd.concat(df_list)
+
+    # Create the animated bar chart
+    fig = px.bar(
+        df,
+        x='Nodes',
+        y='Presence',
+        animation_frame='corr',
+        range_y=[0, 1],  # Since presence is either 0 or 1
+        title='Node Presence for Each Corr'
+    )
+    fig.show()
+
+    break
+# %%
