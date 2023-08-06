@@ -775,8 +775,8 @@ def get_sp_corrs(
             model = model,
             nodes_to_mask=nodes_to_mask,
             use_pos_embed = USE_POS_EMBED,
-            corr=corr,
-            head_parents=head_parents
+            corr=None,
+            head_parents=None
         )
         score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
         score_d["steps"] = run.summary["_step"]
