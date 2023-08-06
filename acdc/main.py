@@ -180,6 +180,7 @@ if ipython is not None:
         [line.strip() for line in r"""--task=or_gate\
 --threshold=0.00001\
 --indices-mode=reverse\
+--zero-ablation\
 --first-cache-cpu=False\
 --use-positions\
 --second-cache-cpu=False\
@@ -242,14 +243,14 @@ if TASK == "ioi":
         num_examples=num_examples, device=DEVICE, metric_name=args.metric
     )
 elif TASK == "or_gate":
-    num_examples = 16
-    seq_len = 4
+    num_examples = 1
+    seq_len = 1
 
     things = get_all_logic_gate_things(
         mode="OR",
-        num_examples=2,
-        seq_len=2,
-        device = DEVICE,
+        num_examples=num_examples,
+        seq_len=seq_len,
+        device=DEVICE,
     )
 
 elif TASK == "tracr-reverse":
