@@ -182,7 +182,6 @@ if ipython is not None:
 --indices-mode=reverse\
 --zero-ablation\
 --first-cache-cpu=False\
---use-positions\
 --second-cache-cpu=False\
 --device=cpu\
 --seed=4\
@@ -310,7 +309,7 @@ tl_model = things.tl_model # transformerlens model
 if RESET_NETWORK:
     reset_network(TASK, DEVICE, tl_model)
 
-#%%markdow # TODO fix
+#%%[markdown]
 # <h2>Setup ACDC Experiment</h2>
 
 #%%

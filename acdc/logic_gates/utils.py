@@ -83,8 +83,6 @@ def get_logic_gate_model(mode: Literal["OR", "AND"] = "OR", seq_len: Optional[in
         model.unembed.W_U[2, 0] = 1.0 # Shape [d_model d_vocab_out]
 
     elif mode == "OR":
-        assert seq_len is None, "This model does not support variable length sequences"
-
         model.embed.W_E[0, 0] = 0.0 # ... ?
 
         # Both heads dump a 1 into the residual stream
@@ -137,6 +135,7 @@ def get_all_logic_gate_things(mode: str = "AND", device=None, seq_len: Optional[
     model = get_logic_gate_model(mode=mode, seq_len=seq_len, device=device)
     # Convert the set of binary string back llto tensor
     data = torch.tensor([[0.0]]).long() # Input is actually meaningless, all that matters is Attention Heads 0 and 1
+    correct_answers = data.clone().to(torch.double)
 
     def validation_metric(output, correct):
         output = output[:, -1, :]
@@ -149,7 +148,7 @@ def get_all_logic_gate_things(mode: str = "AND", device=None, seq_len: Optional[
         validation_data=data,
         validation_labels=None,
         validation_mask=None,
-        validation_patch_data=randomised_data,
+        validation_patch_data=data.clone(), # We're doing zero ablation so irrelevant
         test_metrics=None,
         test_data=None,
         test_labels=None,

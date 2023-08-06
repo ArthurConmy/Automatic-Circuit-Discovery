@@ -97,7 +97,7 @@ class TLACDCExperiment:
             assert ref_ds.shape==ds.shape, (ref_ds.shape, ds.shape)
 
         self.positions = positions
-        if self.positions != [None]: 
+        if self.positions != None: 
             assert self.positions == list(range(seq_len)), (self.positions, list(range(seq_len)), "for now, we only support either no positional splitting or splitting by every position")
             # TODO enforce that positions is strictly increasing when we get round to this
 

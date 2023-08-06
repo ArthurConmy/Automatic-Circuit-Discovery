@@ -110,10 +110,8 @@ class TLACDCCorrespondence:
 
         downstream_residual_nodes: Dict[Optional[int], List[TLACDCInterpNode]] = OrderedDefaultdict(list) # if we don't use positions we just use None as the only key
 
-        warnings.warn("Surely this gets in a spot of bother down the line")
-
         logits_node = TLACDCInterpNode(
-            name=f"blocks.{model.cfg.n_layers-1}.hook_resid_post" if positions is None else "output_node",
+            name=f"blocks.{model.cfg.n_layers-1}.hook_resid_post" if positions == [None] else "output_node",
             index=TorchIndex([None]),
             incoming_edge_type = EdgeType.PLACEHOLDER,
         )
@@ -247,12 +245,12 @@ class TLACDCCorrespondence:
             if use_pos_embed:
                 token_embed_node = TLACDCInterpNode(
                     name="hook_embed",
-                    index=TorchIndex([None, position] if positions != [None] else None),
+                    index=TorchIndex([None, position] if positions != [None] else [None]),
                     incoming_edge_type=EdgeType.PLACEHOLDER,
                 )
                 pos_embed_node = TLACDCInterpNode(
                     name="hook_pos_embed",
-                    index=TorchIndex([None, position] if positions != [None] else None),
+                    index=TorchIndex([None, position] if positions != [None] else [None]),
                     incoming_edge_type=EdgeType.PLACEHOLDER,
                 )
                 embed_nodes = [token_embed_node, pos_embed_node]
@@ -261,7 +259,7 @@ class TLACDCCorrespondence:
                 # add the embedding node
                 embedding_node = TLACDCInterpNode(
                     name="blocks.0.hook_resid_pre",
-                    index=TorchIndex([None, position] if positions != [None] else None),
+                    index=TorchIndex([None, position] if positions != [None] else [None]),
                     incoming_edge_type=EdgeType.PLACEHOLDER, # TODO maybe add some NoneType or something???
                 )
                 embed_nodes = [embedding_node]

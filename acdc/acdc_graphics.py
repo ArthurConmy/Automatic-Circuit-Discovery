@@ -76,7 +76,7 @@ def get_node_name(node: TLACDCInterpNode, show_full_index=True):
         name += "resid_post"
 
     else:
-        warnings.warn("Unsupported node name")
+        warnings.warn("Unsupported node name" + str(node.name))
         name = node.name
 
     if show_full_index:
