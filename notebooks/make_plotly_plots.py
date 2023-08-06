@@ -89,8 +89,10 @@ time.sleep(1)
 
 # %%
 
+warnings.warn("We're waiting on some completions for HISP, so removing now")
+
 alg_names = {
-    "16H": "HISP",
+    # "16H": "HISP",
     "SP": "SP",
     "ACDC": "ACDC",
 }
@@ -124,21 +126,17 @@ METRICS_FOR_TASK = {
     "greaterthan": ["kl_div", "greaterthan"],
 }
 
-
-methods = ["ACDC", "SP", "HISP"]
-
-
 if args.hisp_yellow:
     colorscale_names = {
         "ACDC": "Purp_r",
         "SP": "Greens_r",
-        "HISP": "YlOrBr_r",
+        # "HISP": "YlOrBr_r",
     }
 else:
     colorscale_names = {
         "ACDC": "YlOrRd_r",
         "SP": "Greens_r",
-        "HISP": "Blues",
+        # "HISP": "Blues",
     }
 
 colorscales = {}
@@ -155,7 +153,7 @@ for methodof, name in colorscale_names.items():
 
 # Want to sample here when making HISP yellow
 custom_color_scales = {
-    ("HISP", True): 0.02,
+    # ("HISP", True): 0.02,
     ("ACDC", True): 0.02,
     ("HISP", False): 0.8,
 }
@@ -166,7 +164,7 @@ colors = {k: pc.sample_colorscale(v, custom_color_scales.get((k, args.hisp_yello
 symbol = {
     "ACDC": "circle",
     "SP": "x",
-    "HISP": "diamond",
+    # "HISP": "diamond",
 }
 
 weights_type_symbols = {
@@ -174,14 +172,14 @@ weights_type_symbols = {
     "reset":  {
         "ACDC": "circle-open-dot",
         "SP": "x-open-dot",
-        "HISP": "diamond-open-dot",
+        # "HISP": "diamond-open-dot",
     },
 }
 
 score_name = {
     "ACDC": "threshold",
     "SP": "lambda",
-    "HISP": "score",
+    # "HISP": "score",
 }
 
 
@@ -315,9 +313,14 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     else:
                         ablation_type = "random_ablation"
 
-                scores = np.array(all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["score"])
+                try:
+                    scores = np.array(all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["score"])
+                except Exception as e:
+                    print(weights_type, ablation_type, task_idx, metric_name, alg_idx)
+                    raise e
 
                 if methodof == "HISP":
+                    assert False
                     scores = np.array(all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["n_nodes"])
                     nanmax_scores = np.max(np.nan_to_num(scores, nan=-np.inf, neginf=-np.inf, posinf=-np.inf))
                     scores *= 100 / nanmax_scores
@@ -348,7 +351,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
             out = (x - x_min) / (x_max - x_min) * (scale_max - scale_min)  + scale_min
         return out
 
-    HEATMAP_ALGS = ["ACDC", "SP", "HISP"]
+    HEATMAP_ALGS = ["ACDC", "SP"]
     for i, methodof in enumerate(HEATMAP_ALGS):
         alg_min, alg_max = bounds_for_alg[methodof]
         # nums = normalize(heatmap_ys, alg_min, alg_max)
@@ -808,8 +811,8 @@ first = True
 all_dfs = []
 for metric_idx in [0, 1]:
     for ablation_type in ["random_ablation", "zero_ablation"]:
-        for weights_type in ["reset", "trained"]:  # Didn't scramble the weights enough it seems
-            for plot_type in ["metric_edges_induction", "kl_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "roc_edges", "metric_edges"]:
+        for weights_type in ["trained", "reset"]:  # Didn't scramble the weights enough it seems
+            for plot_type in ["roc_edges", "metric_edges_induction", "kl_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "metric_edges"]:
                 x_key, y_key = plot_type_keys[plot_type]
                 fig, df = make_fig(metric_idx=metric_idx, weights_types=["trained"] if weights_type == "trained" else ["trained", weights_type], ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type)
                 if len(df):
