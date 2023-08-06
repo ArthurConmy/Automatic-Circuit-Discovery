@@ -846,7 +846,7 @@ def get_sixteen_heads_corrs(
             corr = None
         else:
             nodes_to_mask += list(map(parse_interpnode, nodes))
-            corr, head_parents = iterative_correspondence_from_mask(model=model, nodes_to_mask=nodes_to_mask, use_pos_embed=exp.use_pos_embed, corr=None, head_parents=None)
+            corr, head_parents = iterative_correspondence_from_mask(model=model, nodes_to_mask=nodes_to_mask, use_pos_embed=exp.use_pos_embed, corr=corr, head_parents=head_parents)
         cum_score += score
         score_d = {"score": cum_score, **score_d}
         corrs.append((deepcopy(corr), score_d))
@@ -1048,6 +1048,7 @@ if OUT_FILE is not None:
 # %%
 
 for method_name, method_corrs in zip(
-    [],
-    [],
-)
+    ["ACDC", "SP", "16H"],
+    [acdc_corrs, sp_corrs, sixteen_heads_corrs],
+):
+    pass
