@@ -178,7 +178,7 @@ if ipython is not None:
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
         [line.strip() for line in r"""--task=or_gate\
---threshold=0.00001\
+--threshold=0.001\
 --indices-mode=reverse\
 --zero-ablation\
 --first-cache-cpu=False\
@@ -363,6 +363,7 @@ exp = TLACDCExperiment(
 # <p>WARNING! This will take a few minutes to run, but there should be rolling nice pictures too : )</p>
 
 #%%
+
 for i in range(args.max_num_epochs):
     exp.step(testing=False)
 
@@ -406,3 +407,5 @@ if USING_WANDB:
 exp.save_subgraph(
     return_it=True,
 ) 
+
+# %%

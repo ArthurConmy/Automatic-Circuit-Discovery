@@ -415,7 +415,7 @@ class TLACDCExperiment:
             # we need zero out all the outputs into the residual stream
 
             # all hooknames that output into the residual stream
-            hook_name_substrings = ["attn_result", "mlp_out", "hook_embed"]
+            hook_name_substrings = ["hook_result", "mlp_out", "hook_embed"]
             if self.use_pos_embed:
                 hook_name_substrings.append("hook_pos_embed")
 

@@ -92,7 +92,7 @@ def get_logic_gate_model(mode: Literal["OR", "AND"] = "OR", seq_len: Optional[in
         model.blocks[0].mlp.W_in[0, 0] = -1.0 # [d_model d_mlp]
         model.blocks[0].mlp.b_in[:] = 1.0 # [d_mlp]
         
-        model.blocks[0].mlp.W_out[0, 0] = -1.0 # 0 into -1 here
+        model.blocks[0].mlp.W_out[0, 1] = -1.0 # 0 into -1 here
         model.blocks[0].mlp.b_out[:] = 1.0 # [d_model]
 
         model.unembed.W_U[1, 0] = 1.0 # Shape [d_model d_vocab_out]
@@ -135,7 +135,7 @@ def get_all_logic_gate_things(mode: str = "AND", device=None, seq_len: Optional[
     model = get_logic_gate_model(mode=mode, seq_len=seq_len, device=device)
     # Convert the set of binary string back llto tensor
     data = torch.tensor([[0.0]]).long() # Input is actually meaningless, all that matters is Attention Heads 0 and 1
-    correct_answers = data.clone().to(torch.double)
+    correct_answers = data.clone().to(torch.double) + 1
 
     def validation_metric(output, correct):
         output = output[:, -1, :]
@@ -156,14 +156,18 @@ def get_all_logic_gate_things(mode: str = "AND", device=None, seq_len: Optional[
         test_patch_data=None,
     )
 
-# # test_logical_models()
+
+# # # test_logical_models()
 # # %%
-# or_model = get_logic_gate_model(seq_len=2, device = "cpu")
+
+# or_model = get_logic_gate_model(seq_len=1, device = "cpu")
 # logits, cache = or_model.run_with_cache(
 #     torch.tensor([[0]]).to(torch.long),
 # )
 # print(logits)
+
 # # %%
+
 # for key in cache.keys():
 #     print(key)
 #     print(cache[key].shape)
@@ -171,3 +175,4 @@ def get_all_logic_gate_things(mode: str = "AND", device=None, seq_len: Optional[
 #     print("\n\n\n")
 # # %%
 # #batch pos head_index d_head for hook_q
+# %%
