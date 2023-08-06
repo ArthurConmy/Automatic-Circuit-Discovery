@@ -148,6 +148,7 @@ torch.autograd.set_grad_enabled(False)
 #%%
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
 
+
 task_choices = ['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan', 'or_gate']
 parser.add_argument('--task', type=str, required=True, choices=task_choices, help=f'Choose a task from the available options: {task_choices}')
 parser.add_argument('--threshold', type=float, required=True, help='Value for THRESHOLD')
@@ -171,7 +172,6 @@ parser.add_argument('--seed', type=int, default=1234)
 parser.add_argument("--max-num-epochs",type=int, default=100_000)
 parser.add_argument('--single-step', action='store_true', help='Use single step, mostly for testing')
 parser.add_argument("--abs-value-threshold", action='store_true', help='Use the absolute value of the result to check threshold')
-parser.add_argument('--use-positions', action='store_true', help='Use positions in the transformer')
 
 if ipython is not None:
     # we are in a notebook
@@ -226,13 +226,11 @@ NAMES_MODE = args.names_mode
 DEVICE = args.device
 RESET_NETWORK = args.reset_network
 SINGLE_STEP = True if args.single_step else False
-USE_POSITIONS = True if args.use_positions else False
 
 #%% [markdown] 
 # <h2>Setup Task</h2>
 
 #%%
-
 second_metric = None  # some tasks only have one metric
 use_pos_embed = TASK.startswith("tracr")
 
@@ -251,7 +249,6 @@ elif TASK == "or_gate":
         seq_len=seq_len,
         device=DEVICE,
     )
-
 elif TASK == "tracr-reverse":
     num_examples = 6
     things = get_all_tracr_things(
@@ -269,9 +266,8 @@ elif TASK == "tracr-proportion":
         device=DEVICE,
     )
 elif TASK == "induction":
-    num_examples = 10 if IN_COLAB else 3
+    num_examples = 10 if IN_COLAB else 50
     seq_len = 300
-    # TODO initialize the `tl_model` with the right model
     things = get_all_induction_things(
         num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric=args.metric
     )
@@ -290,11 +286,9 @@ elif TASK == "greaterthan":
     things = get_all_greaterthan_things(
         num_examples=num_examples, metric_name=args.metric, device=DEVICE
     )
-elif TASK == 'gendered-pronouns':
-
-    pass
 else:
     raise ValueError(f"Unknown task {TASK}")
+
 
 #%% [markdown]
 # <p> Let's define the four most important objects for ACDC experiments:
@@ -309,7 +303,7 @@ tl_model = things.tl_model # transformerlens model
 if RESET_NETWORK:
     reset_network(TASK, DEVICE, tl_model)
 
-#%%[markdown]
+#%% [markdown]
 # <h2>Setup ACDC Experiment</h2>
 
 #%%
@@ -343,7 +337,6 @@ exp = TLACDCExperiment(
     wandb_group_name=WANDB_GROUP_NAME,
     wandb_notes=notes,
     wandb_dir=args.wandb_dir,
-    early_exit=False,
     wandb_mode=args.wandb_mode,
     wandb_config=args,
     zero_ablation=ZERO_ABLATION,
@@ -362,24 +355,21 @@ exp = TLACDCExperiment(
     use_pos_embed=use_pos_embed,
     add_receiver_hooks=False,
     remove_redundant=False,
-    show_full_index=use_pos_embed or USE_POSITIONS,
-    positions=list(range(toks_int_values.shape[-1])) if USE_POSITIONS else None,
+    show_full_index=use_pos_embed,
 )
 
-#%% [markdown] # TODO revert
+# %% [markdown]
 # <h2>Run steps of ACDC: iterate over a NODE in the model's computational graph</h2>
 # <p>WARNING! This will take a few minutes to run, but there should be rolling nice pictures too : )</p>
 
 #%%
-
 for i in range(args.max_num_epochs):
     exp.step(testing=False)
 
     show(
         exp.corr,
         f"ims/img_new_{i+1}.png",
-        show_full_index=use_pos_embed or USE_POSITIONS,
-        show_placeholders=USE_POSITIONS,
+        show_full_index=use_pos_embed,
     )
 
     if IN_COLAB or ipython is not None:
@@ -407,7 +397,6 @@ if USING_WANDB:
     wandb.finish()
 
 # %% [markdown]
-
 # <h2>Save the final subgraph of the model</h2>
 # <p>There are more than `exp.count_no_edges()` here because we include some "placeholder" edges needed to make ACDC work that don't actually matter</p>
 # <p>Also note that the final image has more than 12 edges, because the edges from a0.0_q and a0.0_k are not connected to the input</p>
@@ -417,5 +406,3 @@ if USING_WANDB:
 exp.save_subgraph(
     return_it=True,
 ) 
-
-#%%

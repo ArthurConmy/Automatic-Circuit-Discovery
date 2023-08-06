@@ -83,7 +83,6 @@ class TLACDCExperiment:
         names_mode: Literal["normal", "reverse", "shuffle"] = "normal",
         wandb_config: Optional[Namespace] = None,
         early_exit: bool = False,
-        positions: Optional[List[int]] = None, # if [None], do not split by position
     ):
         """Initialize the ACDC experiment"""
 
@@ -91,15 +90,6 @@ class TLACDCExperiment:
             raise ValueError("It's not possible to do zero ablation with remove redundant, talk to Arthur about this bizarre special case if curious!")
 
         model.reset_hooks()
-
-        seq_len = ds.shape[-1]
-        if ref_ds is not None:
-            assert ref_ds.shape==ds.shape, (ref_ds.shape, ds.shape)
-
-        self.positions = positions
-        if self.positions != None: 
-            assert self.positions == list(range(seq_len)), (self.positions, list(range(seq_len)), "for now, we only support either no positional splitting or splitting by every position")
-            # TODO enforce that positions is strictly increasing when we get round to this
 
         self.remove_redundant = remove_redundant
         self.indices_mode = indices_mode
@@ -120,7 +110,7 @@ class TLACDCExperiment:
             warnings.warn("Never skipping edges, for now")
             skip_edges = "no"
 
-        self.corr = TLACDCCorrespondence.setup_from_model(self.model, use_pos_embed=use_pos_embed, positions=self.positions, seq_len=seq_len)
+        self.corr = TLACDCCorrespondence.setup_from_model(self.model, use_pos_embed=use_pos_embed)
 
         if early_exit: 
             return
@@ -228,7 +218,7 @@ class TLACDCExperiment:
         new_graph = OrderedDict()
         cache=OrderedDict()
         self.model.cache_all(cache)
-        self.model(torch.arange(self.model.cfg.d_vocab)) # some random forward pass so that we can see all the hook names
+        self.model(torch.arange(self.model.cfg.d_vocab).unsqueeze(0)) # some random forward pass so that we can see all the hook names
         self.model.reset_hooks()
 
         if self.verbose:
@@ -237,15 +227,11 @@ class TLACDCExperiment:
         cache_keys = list(cache.keys())
         cache_keys.reverse()
 
-        if "output_node" in self.corr.graph.keys(): # A hack for positional things
-            new_graph["output_node"] = self.corr.graph["output_node"]
-
         for hook_name in cache_keys:
             print(hook_name)            
             if hook_name in self.corr.graph:
                 new_graph[hook_name] = self.corr.graph[hook_name]
 
-        assert set(self.corr.graph.keys()) == set(new_graph.keys()), (set(self.corr.graph.keys()), set(new_graph.keys()))
         self.corr.graph = new_graph
 
     def sender_hook(self, z, hook, verbose=False, cache="online", device=None):
@@ -318,7 +304,7 @@ class TLACDCExperiment:
     
             return hook_point_input
 
-        assert incoming_edge_types == [EdgeType.ADDITION for _ in incoming_edge_types], (f"All incoming edges should be the same type, not {incoming_edge_types}", hook.name, [EdgeType.ADDITION for _ in incoming_edge_types])
+        assert incoming_edge_types == [EdgeType.ADDITION for _ in incoming_edge_types], f"All incoming edges should be the same type, not {incoming_edge_types}"
 
         # corrupted_cache (and thus z) contains the residual stream for the corrupted data
         # That is, the sum of all heads and MLPs and biases from previous layers
@@ -333,14 +319,10 @@ class TLACDCExperiment:
         # ii) add back to residual_stream_in the (hopefully small number of) clean activations, by firstly subtracting their corrupted activation, and then adding back the clean activations
         
         for receiver_node_index in self.corr.edges[hook.name]:
-
-            incoming_edge_type = self.corr.graph[hook.name][receiver_node_index].incoming_edge_type
-
             for sender_node_name in self.corr.edges[hook.name][receiver_node_index]:
                 for sender_node_index in self.corr.edges[hook.name][receiver_node_index][sender_node_name]:
 
                     edge = self.corr.edges[hook.name][receiver_node_index][sender_node_name][sender_node_index] # TODO maybe less crazy nested indexes ... just make local variables each time?
-                    assert edge.edge_type == incoming_edge_type, f"Edge type {edge.edge_type} should be the same as {incoming_edge_type}"
 
                     if not edge.present:
                         continue # don't do patching stuff, if it wastes time
@@ -579,10 +561,6 @@ class TLACDCExperiment:
                 cur_parent = self.corr.graph[sender_name][sender_index]
 
                 if edge.edge_type == EdgeType.PLACEHOLDER:
-
-                    if self.positions != None:
-                        edge.effect_size = 0.42 # show is currently broken, currently a dumb fix of that
-
                     is_this_node_used = True
                     continue # include by default
 
@@ -672,7 +650,6 @@ class TLACDCExperiment:
                 self.corr,
                 fname=fname,
                 show_full_index=self.show_full_index,
-                show_placeholders=self.positions is not None,
             )
             if self.using_wandb:
                 wandb.log(
@@ -798,6 +775,10 @@ class TLACDCExperiment:
         if self.verbose:
             print("No edge", cnt)
         return cnt
+
+    def reload_hooks(self):
+        old_corr = self.corr
+        self.corr = TLACDCCorrespondence.setup_from_model(self.model)
 
     def save_subgraph(self, fpath: Optional[str]=None, return_it=False) -> None:
         """Saves the subgraph as a Dictionary of all the edges, so it can be reloaded (or return that)"""
