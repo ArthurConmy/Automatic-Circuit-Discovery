@@ -43,6 +43,7 @@ def main():
                     for task in TASKS:
                         for metric in METRICS_FOR_TASK[task]:
                             if alg == "canonical" and metric == "kl_div":
+                                # There's a canonical circuit for induction; all or no edges I think?
                                 # No need to repeat the canonical calculations for both train metrics
                                 # (they're the same, nothing is trained)
                                 continue
@@ -111,14 +112,16 @@ def main():
         f.write("tracr-reverse: " + " ".join(sorted(tracr_reverse_files)) + "\n\n")
         f.write("tracr-proportion: " + " ".join(sorted(tracr_proportion_files)) + "\n\n")
         f.write("induction: " + " ".join(sorted(induction_files)) + "\n\n")
+            
+        print(actual_files - possible_files)
+        assert len(actual_files - possible_files) == 0, f"There are files that shouldn't be there; {actual_files - possible_files}"
 
-    print(actual_files - possible_files)
-    assert len(actual_files - possible_files) == 0, "There are files that shouldn't be there"
+        missing_files = possible_files - actual_files
+        print(f"Missing {len(missing_files)} files:")
+        for missing_file in missing_files:
+            print(missing_file)
 
-    missing_files = possible_files - actual_files
-    print(f"Missing {len(missing_files)} files:")
-    for missing_file in missing_files:
-        print(missing_file)
+        f.write("missing: " + " ".join(sorted(missing_files)) + "\n\n")
 
 if __name__ == "__main__":
     main()
