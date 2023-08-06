@@ -31,6 +31,11 @@ class EdgeType(Enum):
     def __repr__(self):
         return self.name
 
+    def __eq__(self, other):
+        assert isinstance(other, EdgeType)
+        return self.value == other.value
+
+
 class Edge:
     def __init__(
         self,

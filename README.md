@@ -1,6 +1,6 @@
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue)]() [![Open Pull Requests](https://img.shields.io/github/issues-pr/ArthurConmy/Automatic-Circuit-Discovery.svg)](https://github.com/ArthurConmy/Automatic-Circuit-Discovery/pulls)
 
-# Automated Circuit DisCovery 
+# Automatic Circuit DisCovery 
 
 ![](assets/acdc_finds_subgraph.png)
 
@@ -8,7 +8,7 @@ This is the accompanying code to the paper ["Towards Automated Circuit Discovery
 
 * :zap: To run ACDC, see `acdc/main.py`, or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Main_Demo.ipynb">this Colab notebook</a>
 * :wrench: To see how edit edges in computational graphs in models, see `notebooks/editing_edges.py` or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Editing_Edges_Demo.ipynb">this Colab notebook</a>
-* :sparkle: To look at the abstractions we use to make ACDC, look at our upcoming notebook on them.
+* :sparkle: To understand the low-level implementation of completely editable computational graphs, see <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Editing_Edges_Demo.ipynb">this Colab notebook</a> or `notebooks/implementation_demo.py`
 
 This library builds upon the abstractions (`HookPoint`s and standardised `HookedTransformer`s) from [TransformerLens](https://github.com/neelnanda-io/TransformerLens) :mag_right:
 
@@ -96,27 +96,28 @@ If you use ACDC, please reach out! You can reference the work as follows:
 
 ## TODO
 
+<details>
+<summary>Mostly finished TODO list</summary>
+
 [ x ] Make `TransformerLens` install be Neel's code not my PR
 
 [ x ] Add `hook_mlp_in` to `TransformerLens` and delete `hook_resid_mid` (and test to ensure no bad things?)
 
 [ x ] Delete `arthur-try-merge-tl` references from the repo
 
-<<<<<<< HEAD
-[ ] Make notebook on abstractions
+[ x ] Make notebook on abstractions
 
 [ ? ] Fix huge edge sizes in Induction Main example and change that occurred
 
 [ x ] Find a better way to deal with the versioning on the Colabs installs...
-=======
-[ ] Add `hook_mlp_in` to `TransformerLens` and delete `hook_resid_mid`
-
-[ ] Delete `arthur-try-merge-tl` references from the repo
->>>>>>> origin/arthur-add-positional
 
 [ ] Neuron-level experiments
 
 [ ] Position-level experiments
+
+[ ] Edge gradient descent experiments
+
+[ ] Implement the circuit breaking paper
 
 [ x ] `tracr` and other dependencies better managed
 
@@ -125,3 +126,5 @@ If you use ACDC, please reach out! You can reference the work as follows:
 [ ? ] Make the 9 tests also failing on TransformerLens-main pass
 
 [ x ] Remove Codebase under construction
+
+</details>

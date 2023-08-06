@@ -126,11 +126,6 @@ from acdc.induction.utils import (
 )
 from acdc.greaterthan.utils import get_all_greaterthan_things
 
-try:
-    from acdc.gendered_pronouns.utils import get_all_gendered_pronouns_things
-except:
-    pass # Still need port this I think
-
 from acdc.acdc_graphics import (
     build_colorscheme,
     show,
