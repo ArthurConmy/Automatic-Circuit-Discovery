@@ -795,12 +795,14 @@ def get_sp_corrs(
             use_pos_embed = USE_POS_EMBED,
         )
 
-        print(run.id)
-        
-        # if run.id == "5qrb70nk":
-        #     print(corr.count_no_edges())
-        #     print(nodes_to_mask)
-        #     assert False
+        # # print(run.id)
+        if run.id == "5qrb70nk":
+            print(corr.count_no_edges(verbose=True))
+            # return nodes_to_mask_strings
+            return nodes_to_mask
+            assert False
+        # #     print(nodes_to_mask)
+        # #     assert False
 
         score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
         score_d["steps"] = run.summary["_step"]
