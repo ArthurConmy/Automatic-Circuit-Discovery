@@ -31,8 +31,9 @@ if ipython is not None:
     IPython.get_ipython().run_line_magic("autoreload", "2")  # type: ignore
 
 from copy import deepcopy
+from typing import List, Dict, MutableMapping, Optional, Tuple, Union, Set, Callable, TypeVar, Iterable, Any
 from subnetwork_probing.train import iterative_correspondence_from_mask, correspondence_from_mask
-from acdc.acdc_utils import filter_nodes, get_edge_stats, get_node_stats, get_present_nodes, reset_network
+from acdc.acdc_utils import filter_nodes, get_edge_stats, get_node_stats, get_present_nodes, reset_network, make_nd_dict
 import pandas as pd
 import gc
 import math
@@ -782,6 +783,7 @@ def get_sp_corrs(
             continue
         
         nodes_to_mask = [parse_interpnode(s) for s in nodes_to_mask_strings]
+        print(nodes_to_mask)
 
         # corr, head_parents = iterative_correspondence_from_mask(
         #     model = model,
@@ -985,7 +987,7 @@ if OUT_FILE is not None:
     assert args.alg != "none"
     ALG = args.alg.upper()
 
-    os.makedirs(OUT_FILE.parent, exist_ok=True)
+    # os.makedirs(OUT_FILE.parent, exist_ok=True)
 
     ablation = "zero_ablation" if ZERO_ABLATION else "random_ablation"
     weights = "reset" if RESET_NETWORK else "trained"
@@ -1008,6 +1010,8 @@ if OUT_FILE is not None:
         json.dump(out_dict, f, indent=2)
 
 # %%
+
+all_figs = []
 
 for method_name, method_corrs_and_scores in zip(
     ["ACDC", "SP", "16H"],
@@ -1032,7 +1036,6 @@ for method_name, method_corrs_and_scores in zip(
     is_node_present_lists = []
 
     for corr in tqdm(corrs):
-        
         is_node_present = [0 for _ in range(len(nodes))]
 
         for (receiver_str, receiver_index, sender_str, sender_node_index), edge in corr.all_edges().items():
@@ -1043,14 +1046,14 @@ for method_name, method_corrs_and_scores in zip(
         node_present_counts.append(is_node_present.count(1))
         is_node_present_lists.append(is_node_present)
 
-    corrs_and_node_present_counts = list(zip(corrs, node_present_counts, is_node_present_lists, strict=True))
+    corrs_and_node_present_counts = list(zip(corrs, node_present_counts, is_node_present_lists, scores, strict=True))
 
     corrs_and_node_present_counts = sorted(
         corrs_and_node_present_counts,
         key = lambda x: x[1],
     )
 
-    corrs, node_present_counts, is_node_present_lists = zip(*corrs_and_node_present_counts)
+    corrs, node_present_counts, is_node_present_lists, scores = zip(*corrs_and_node_present_counts)
 
     # make the x axis nodes, for all the is_node_present_lists
     # Create a consolidated DataFrame
@@ -1070,9 +1073,73 @@ for method_name, method_corrs_and_scores in zip(
         y='Presence',
         animation_frame='corr',
         range_y=[0, 1],  # Since presence is either 0 or 1
-        title='Node Presence for Each Corr'
+        title='Node Presence for Each Corr with' + method_name,
     )
     fig.show()
+    all_figs.append(fig)
 
-    break
+    if method_name == "ACDC": 
+        saved_acdc_corrs = corrs
+
+    # Do some remove redundant to see if we do any better by the metrics???
+
+#%%
+
+acdc_corr_zero = deepcopy(saved_acdc_corrs[0])
+sender_to_receiver_edges: MutableMapping[str, MutableMapping[TorchIndex, MutableMapping[str, MutableMapping[TorchIndex, Edge]]]] = make_nd_dict(end_type=None, n=4)
+
+for (receiver_str, receiver_index, sender_str, sender_node_index), edge in tqdm(acdc_corr_zero.all_edges().items()):
+    new_edge = deepcopy(edge)
+    new_edge.present = False
+    sender_to_receiver_edges[sender_str][sender_node_index][receiver_str][receiver_index] = new_edge # presences... shaky
+
+#%%
+
+new_acdc_corrs = []
+
+for corr_idx, corr in enumerate(saved_acdc_corrs):
+
+    new_corr = deepcopy(corr)
+    for _, e in new_corr.all_edges().items():
+        e.present = False
+
+    used_nodes = set()
+    cur_BFS = [corr.graph["blocks.0.hook_resid_pre"][TorchIndex([None])]]
+    used_nodes.add(cur_BFS[0].to_tuple())
+    
+    while len(cur_BFS) > 0:
+
+        new_BFS = []
+
+        for cur_node in cur_BFS:
+            potential_receiver_dict = sender_to_receiver_edges[cur_node.name][cur_node.index]
+
+            for receiver_node_string in potential_receiver_dict:
+                for receiver_node_index in potential_receiver_dict[receiver_node_string]:
+                    edge = corr.edges[receiver_node_string][receiver_node_index][cur_node.name][cur_node.index]
+                    if edge.present or edge.edge_type == EdgeType.PLACEHOLDER:
+                        if (receiver_node_string, receiver_node_index.hashable_tuple) not in used_nodes:
+                            new_corr.edges[receiver_node_string][receiver_node_index][cur_node.name][cur_node.index].present = True
+                            new_BFS.append(corr.graph[receiver_node_string][receiver_node_index])
+                            used_nodes.add((receiver_node_string, receiver_node_index.hashable_tuple))
+
+        cur_BFS = new_BFS
+
+    print(corr.count_no_edges(), new_corr.count_no_edges())
+    new_acdc_corrs.append(new_corr)
+
+    # for (receiver_str, receiver_index, sender_str, sender_node_index), edge in corr.all_edges().items():
+    #     if edge.present:
+    #         is_node_present[nodes.index((receiver_str, receiver_index.hashable_tuple))] = 1
+    #         is_node_present[nodes.index((sender_str, sender_node_index.hashable_tuple))] = 1
+
+    # node_present_counts.append(is_node_present.count(1))
+    # is_node_present_lists.append(is_node_present)
+
+# %%
+
+acdc_corrs = [(new_acdc_corrs[i], acdc_corrs[i][1]) for i in range(len(acdc_corrs))]
+
+# After this I remade the ACDC ROC figure; it was far worse, sad
+
 # %%

@@ -1,5 +1,5 @@
 import argparse
-from typing import List
+from typing import List, Optional
 import random
 from copy import deepcopy
 from functools import partial
@@ -99,6 +99,9 @@ def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACD
 
             # Forgot to add these in earlier versions of Subnetwork Probing, and so the edge counts were inflated
             additional_nodes_to_mask.append(TLACDCInterpNode(child_name + "_input", node.index, EdgeType.ADDITION))
+        
+        if node.name.endswith(("mlp_in", "resid_mid")):
+            additional_nodes_to_mask.append(TLACDCInterpNode(node.name.replace("resid_mid", "mlp_out").replace("mlp_in", "mlp_out"), node.index, EdgeType.PLACEHOLDER))
 
     # assert all([v <= 3 for v in head_parents.values()])
 
@@ -167,7 +170,7 @@ def visualize_mask(model: HookedTransformer) -> tuple[int, list[TLACDCInterpNode
         # these errors so that plots are correct
         for node_name, edge_type in [
             (f"blocks.{layer_index}.hook_mlp_out", EdgeType.PLACEHOLDER),
-            (f"blocks.{layer_index}.hook_resid_mid", EdgeType.ADDITION),
+            (f"blocks.{layer_index}.hook_resid_mid", EdgeType.ADDITION), # Still use hook_resid_mid with the subnetwork_probing/... files
         ]:
             node_name_list.append(node_name)
             node = TLACDCInterpNode(node_name, TorchIndex([None]), incoming_edge_type=edge_type)

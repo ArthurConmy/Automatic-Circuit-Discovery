@@ -40,6 +40,9 @@ class TLACDCInterpNode:
         index_str = "" if len(self.index.hashable_tuple) < 3 else f"_{self.index.hashable_tuple[2]}"
         return f"{self.name}{self.index}"
 
+    def to_tuple(self):
+        return (self.name, self.index.hashable_tuple)
+
 # ------------------ 
 # some munging utils
 # ------------------
@@ -55,6 +58,7 @@ def parse_interpnode(s: str) -> TLACDCInterpNode:
                 idx = int(idx[-2])
             except:
                 idx = None
+
         return TLACDCInterpNode(name, TorchIndex([None, None, idx]) if idx is not None else TorchIndex([None]), EdgeType.ADDITION)
 
     except Exception as e: 
