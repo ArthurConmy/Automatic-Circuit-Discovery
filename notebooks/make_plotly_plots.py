@@ -17,8 +17,8 @@ IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root") and not
 
 ipython = get_ipython()
 if ipython is not None:
-    ipython.run_line_magic('load_ext autoreload')
-    ipython.run_line_magic('autoreload 2')
+    ipython.run_line_magic('load_ext', 'autoreload')
+    ipython.run_line_magic('autoreload', '2')
 
     initial_path = Path(get_ipython().run_line_magic('pwd', ''))
     if str(initial_path.stem) == "notebooks":
