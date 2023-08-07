@@ -8,6 +8,7 @@ import os
 os.environ["ACCELERATE_DISABLE_RICH"] = "1"
 
 import warnings
+from contextlib import contextmanager, nullcontext
 from IPython import get_ipython
 from pathlib import Path
 from notebooks.emacs_plotly_render import set_plotly_renderer
@@ -16,8 +17,8 @@ IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root") and not
 
 ipython = get_ipython()
 if ipython is not None:
-    ipython.magic('load_ext autoreload')
-    ipython.magic('autoreload 2')
+    ipython.run_line_magic('load_ext autoreload')
+    ipython.run_line_magic('autoreload 2')
 
     initial_path = Path(get_ipython().run_line_magic('pwd', ''))
     if str(initial_path.stem) == "notebooks":
@@ -70,7 +71,7 @@ if IS_ADRIA or ipython is None:
     DATA_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / "plots_data"
 
 else:
-    DATA_DIR = Path(__file__).resolve().parent.parent.parent / "experiments" / "results" / "plots_data"
+    DATA_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / "plots_data"
 
 X_TICKVALS = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]
 all_data = {}
@@ -183,7 +184,6 @@ score_name = {
     "SP": "lambda",
     "HISP": "score",
 }
-
 
 x_names = {
     "edge_fpr": "False positive rate (edges)",
@@ -796,6 +796,7 @@ plot_type_keys = {
     "precision_recall": ("edge_tpr", "edge_precision"),
     "roc_nodes": ("node_fpr", "node_tpr"),
     "roc_edges": ("edge_fpr", "edge_tpr"),
+    "roc_edges_neurips_reviewers": ("edge_fpr", "edge_tpr"),
     "kl_edges": ("n_edges", "test_kl_div"),
     "metric_edges": ("n_edges", "test_loss"),
     "kl_edges_4": ("n_edges", "test_kl_div"),
@@ -803,6 +804,18 @@ plot_type_keys = {
     "kl_edges_induction": ("n_edges", "test_kl_div"),
     "metric_edges_induction": ("n_edges", "test_loss"),
 }
+
+#%%
+
+@contextmanager
+def swap_ioi_metrics():
+    """Arthur + GPT-4 = What could go wrong"""
+    original_metrics = METRICS_FOR_TASK["ioi"].copy()
+    try:
+        METRICS_FOR_TASK["ioi"] = METRICS_FOR_TASK["ioi"][::-1]  # Swap the order
+        yield
+    finally:
+        METRICS_FOR_TASK["ioi"] = original_metrics  # Reset to original value
 
 #%%
 
@@ -814,23 +827,27 @@ all_dfs = []
 for metric_idx in [0, 1]:
     for ablation_type in ["random_ablation", "zero_ablation"]:
         for weights_type in ["trained", "reset"]:  # Didn't scramble the weights enough it seems
-            for plot_type in ["roc_edges", "metric_edges_induction", "kl_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "metric_edges"]:
-                x_key, y_key = plot_type_keys[plot_type]
-                fig, df = make_fig(metric_idx=metric_idx, weights_types=["trained"] if weights_type == "trained" else ["trained", weights_type], ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type)
-                if len(df):
-                    all_dfs.append(df.T)
-                    print(all_dfs[-1])
-                metric = "kl" if metric_idx == 0 else "other"
-                fname = "--".join([metric, weights_type, ablation_type, plot_type])
+            for plot_type in ["roc_edges_neurips_reviewers", "roc_edges", "metric_edges_induction", "kl_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "metric_edges"]:
 
-                fig.write_image(PLOT_DIR / (fname + ".pdf"))
+                context_manager = swap_ioi_metrics if plot_type == "roc_edges_neurips_reviewers" else nullcontext
 
-                if WRITE_JSON:
-                    fig.write_json(PLOT_DIR / (fname + ".json"))
+                with context_manager():
+                    x_key, y_key = plot_type_keys[plot_type]
+                    fig, df = make_fig(metric_idx=metric_idx, weights_types=["trained"] if weights_type == "trained" else ["trained", weights_type], ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type)
+                    if len(df):
+                        all_dfs.append(df.T)
+                        print(all_dfs[-1])
+                    metric = "kl" if metric_idx == 0 else "other"
+                    fname = "--".join([metric, weights_type, ablation_type, plot_type])
 
-                if first:
-                    fig.show()
-                    first = False
+                    fig.write_image(PLOT_DIR / (fname + ".pdf"))
+
+                    if WRITE_JSON:
+                        fig.write_json(PLOT_DIR / (fname + ".json"))
+
+                    if first:
+                        fig.show()
+                        first = False
 
 pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
 
@@ -847,3 +864,5 @@ pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
 # x_key, y_key = plot_type_keys["kl_edges"]
 # fig, _ = make_fig(metric_idx=0, weights_type="reset", ablation_type="zero_ablation", plot_type="kl_edges")
 # fig.show()
+
+# %%
