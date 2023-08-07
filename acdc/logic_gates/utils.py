@@ -86,6 +86,7 @@ def get_logic_gate_model(mode: Literal["OR", "AND"] = "OR", seq_len: Optional[in
 
         # a0.0 and a0.1 are the two inputs to the OR gate; they always dump 1.0 into the residual stream
         # Both heads dump a 1 into the residual stream
+        # We can test our circuit recovery methods with zero ablation to see if they recover either or both heads!
         model.blocks[0].attn.b_V[:, 0] = 1.0 # [num_heads, d_head]
         model.blocks[0].attn.W_O[:, 0, 0] = 1.0 # [num_heads, d_head, d_model]
 
