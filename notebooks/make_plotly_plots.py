@@ -17,8 +17,8 @@ IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root") and not
 
 ipython = get_ipython()
 if ipython is not None:
-    ipython.run_line_magic('load_ext autoreload')
-    ipython.run_line_magic('autoreload 2')
+    ipython.run_line_magic('load_ext', 'autoreload')
+    ipython.run_line_magic('autoreload', '2')
 
     initial_path = Path(get_ipython().run_line_magic('pwd', ''))
     if str(initial_path.stem) == "notebooks":
@@ -118,8 +118,8 @@ measurement_names = {
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
-    "tracr-reverse": ["l2", "l2"],
-    "tracr-proportion": ["l2", "l2"],
+    "tracr-reverse": ["l2", "kl_div"], # TODO remove
+    "tracr-proportion": ["l2", "kl_div"], # TODO remove 
     "induction": ["kl_div", "nll"],
     "docstring": ["kl_div", "docstring_metric"],
     "greaterthan": ["kl_div", "greaterthan"],
@@ -186,9 +186,9 @@ score_name = {
 }
 
 x_names = {
-    "edge_fpr": "False positive rate (edges)",
+    "fpr": "False positive rate (edges)",
     "node_fpr": "False positive rate (nodes)",
-    "edge_tpr": "True positive rate (edges)",
+    "tpr": "True positive rate (edges)",
     "node_tpr": "True positive rate (nodes)",
     "edge_precision": "Precision (edges)",
     "node_precision": "Precision (nodes)",
@@ -210,7 +210,7 @@ def discard_non_pareto_optimal(points, auxiliary, cmp="gt"):
 
 #%%
 
-def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("trained",), ablation_type="random_ablation", plot_type="roc_nodes", scale_max=1.0):
+def make_fig(metric_idx=0, x_key="fpr", y_key="tpr", weights_types=("trained",), ablation_type="random_ablation", plot_type="roc_nodes", scale_max=1.0):
     scale_min = 0.01 if args.hisp_yellow else 0.2
     TOP_MARGIN = (
         0.09
@@ -218,7 +218,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         + (0.10 if plot_type.startswith("metric_edges") or plot_type.startswith("kl_edges") else 0.0)
     )
     LEFT_MARGIN = -0.02
-    RIGHT_MARGIN = 0.02 if y_key in ["edge_tpr", "node_tpr"] else 0.00
+    RIGHT_MARGIN = 0.02 if y_key in ["tpr", "node_tpr"] else 0.00
     if plot_type.startswith(("roc_nodes", "roc_edges", "precision_recall")):
         rows_cols_task_idx = [
             ((1, 1), "ioi"),
@@ -322,12 +322,13 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     print(weights_type, ablation_type, task_idx, metric_name, alg_idx)
                     raise e
 
-                if methodof == "HISP":
+                if methodof == "HISP" and False: # TODO remove
                     scores = np.array(all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["n_nodes"])
                     nanmax_scores = np.max(np.nan_to_num(scores, nan=-np.inf, neginf=-np.inf, posinf=-np.inf))
                     scores *= 100 / nanmax_scores
 
                     log_scores = scores  # Use linear scale for colors
+
                 else:
                     if methodof == "ACDC":
                         # Filter scores that are too small
@@ -425,7 +426,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     print(f"{task_idx=} {metric_name=} {alg_idx=} {y_key=}")
                     raise e
 
-                if methodof == "HISP":
+                if methodof == "HISP" and False: # TODO remove
                     scores = np.array(this_data[task_idx][metric_name][alg_idx]["n_nodes"])
                     nanmax_scores = np.max(np.nan_to_num(scores, nan=-np.inf, neginf=-np.inf, posinf=-np.inf))
                     scores *= 100 / nanmax_scores
@@ -459,7 +460,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
 
 
                 points = list(zip(x_data, y_data))
-                if y_key not in ["node_tpr", "edge_tpr"]:
+                if y_key not in ["node_tpr", "tpr"]:
                     pareto_optimal = [] # list(sorted(points))  # Not actually pareto optimal but we want to plot all of them
                     pareto_log_scores = []
                     pareto_scores = []
@@ -671,7 +672,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                             xref="x", yref="y",
                             x=0.65, y=0.35, showarrow=False, font=dict(size=8), row=row, col=col) # TODO could add two text boxes
 
-                    if y_key in ["edge_fpr", "edge_tpr", "node_fpr", "node_tpr", "precision"]:
+                    if y_key in ["fpr", "tpr", "node_fpr", "node_tpr", "precision"]:
                         fig.update_yaxes(visible=True, row=row, col=col, tickangle=-45, dtick=0.25, range=[-0.05, 1.05]) # ???
                     else:
                         fig.update_yaxes(visible=True, row=row, col=col, tickangle=-45)
@@ -693,7 +694,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
 
                 else:
                     # If the subplot is not the large plot, hide its axes
-                    if y_key in ["edge_fpr", "edge_tpr", "node_tpr", "node_fpr", "precision"]:
+                    if y_key in ["fpr", "tpr", "node_tpr", "node_fpr", "precision"]:
                         fig.update_yaxes(visible=True, row=row, col=col, tickangle=-45, dtick=0.25, tickvals=[0, 0.25, 0.5, 0.75, 1.], ticktext=["0", "", "0.5", "", "1"], range=[-0.05, 1.05]) # ???
                     else:
                         fig.update_yaxes(visible=True, row=row, col=col, tickangle=-45)
@@ -807,10 +808,10 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
     return ret
 
 plot_type_keys = {
-    "precision_recall": ("edge_tpr", "edge_precision"),
+    "precision_recall": ("tpr", "edge_precision"),
     "roc_nodes": ("node_fpr", "node_tpr"),
-    "roc_edges": ("edge_fpr", "edge_tpr"),
-    "roc_edges_neurips_reviewers": ("edge_fpr", "edge_tpr"),
+    "roc_edges": ("fpr", "tpr"),
+    "roc_edges_neurips_reviewers": ("fpr", "tpr"),
     "kl_edges": ("n_edges", "test_kl_div"),
     "metric_edges": ("n_edges", "test_loss"),
     "kl_edges_4": ("n_edges", "test_kl_div"),
@@ -831,6 +832,7 @@ def swap_ioi_metrics():
     finally:
         METRICS_FOR_TASK["ioi"] = original_metrics  # Reset to original value
 
+
 #%%
 
 PLOT_DIR = DATA_DIR.parent / "plots"
@@ -841,7 +843,7 @@ all_dfs = []
 for metric_idx in [1, 0]:
     for ablation_type in ["random_ablation", "zero_ablation"]:
         for weights_type in ["trained", "reset"]:  # Didn't scramble the weights enough it seems
-            for plot_type in ["roc_edges_neurips_reviewers", "kl_edges_induction", "roc_edges", "metric_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "metric_edges"]:
+            for plot_type in ["roc_edges", "kl_edges_induction", "roc_edges", "metric_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "metric_edges"]:
 
                 context_manager = swap_ioi_metrics if plot_type == "roc_edges_neurips_reviewers" else nullcontext
 
