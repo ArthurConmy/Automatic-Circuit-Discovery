@@ -28,11 +28,10 @@ kaleido = "0.2.1"
 pygraphviz = "^1.11"
 tracr = {git = "https://github.com/deepmind/tracr.git", rev = "e75ecda"}
 
+
+
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.2.0"
-pytest-cov = "^4.0.0"
-jupyterlab = "^3.5.0"
-jupyter = "^1.0.0"
+ipykernel = "^6.25.1"
 
 [build-system]
 requires = ["poetry-core"]

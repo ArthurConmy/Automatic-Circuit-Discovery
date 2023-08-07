@@ -75,6 +75,7 @@ import numpy as np
 import einops
 from tqdm import tqdm
 import yaml
+import pandas
 from transformers import AutoModelForCausalLM, AutoConfig, AutoTokenizer
 
 import matplotlib.pyplot as plt
@@ -172,15 +173,17 @@ if ipython is not None:
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
-        [line.strip() for line in r"""--task=or_gate\
---threshold=0.001\
---indices-mode=reverse\
---zero-ablation\
---first-cache-cpu=False\
---second-cache-cpu=False\
---device=cpu\
---seed=4\
---max-num-epochs=100000""".split("\\\n")]
+        [line.strip() for line in r"""
+            --task=or_gate\
+            --threshold=0.000001\
+            --indices-mode=reverse\
+            --zero-ablation\
+            --first-cache-cpu=False\
+            --second-cache-cpu=False\
+            --device=cpu\
+            --seed=4\
+            --max-num-epochs=100000
+         """.split("\\\n")]
     )
 else:
     # read from command line

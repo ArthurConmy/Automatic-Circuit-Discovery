@@ -17,6 +17,7 @@ import gc
 import networkx as nx
 import numpy as np
 from acdc.docstring.utils import AllDataThings, get_all_docstring_things
+from acdc.logic_gates.utils import get_all_logic_gate_things
 import pandas as pd
 import torch
 import torch.nn.functional as F
@@ -281,28 +282,32 @@ def train_induction(
         print(f"Final train/validation metric: {specific_metric_term:.4f}")
 
         test_specific_metrics = {}
-        for k, fn in test_metric_fns.items():
-            torch.random.set_rng_state(rng_state)
-            test_specific_metric_term = 0.0
-            # Test loss
-            for _ in range(args.n_loss_average_runs):
-                if args.zero_ablation:
-                    do_zero_caching(induction_model)
-                else:
-                    do_random_resample_caching(induction_model, all_task_things.test_patch_data)
-                test_specific_metric_term += fn(
-                    induction_model(all_task_things.test_data)
-                ).item()
-            test_specific_metrics[f"test_{k}"] = test_specific_metric_term
+        try:
+            for k, fn in test_metric_fns.items():
+                torch.random.set_rng_state(rng_state)
+                test_specific_metric_term = 0.0
+                # Test loss
+                for _ in range(args.n_loss_average_runs):
+                    if args.zero_ablation:
+                        do_zero_caching(induction_model)
+                    else:
+                        do_random_resample_caching(induction_model, all_task_things.test_patch_data)
+                    test_specific_metric_term += fn(
+                        induction_model(all_task_things.test_data)
+                    ).item()
+                test_specific_metrics[f"test_{k}"] = test_specific_metric_term
 
-        print(f"Final test metric: {test_specific_metrics}")
+            print(f"Final test metric: {test_specific_metrics}")
 
-        to_log_dict = dict(
-            number_of_nodes=number_of_nodes,
-            specific_metric=specific_metric_term,
-            nodes_to_mask=nodes_to_mask,
-            **test_specific_metrics,
-        )
+            to_log_dict = dict(
+                number_of_nodes=number_of_nodes,
+                specific_metric=specific_metric_term,
+                nodes_to_mask=nodes_to_mask,
+                **test_specific_metrics,
+            )
+            print('type(test_metric_fns)', type(test_metric_fns))
+        except Exception as e:
+            breakpoint()
     return induction_model, to_log_dict
 
 
@@ -386,25 +391,25 @@ def get_nodes_mask_dict(model: HookedTransformer):
 
 
 parser = argparse.ArgumentParser("train_induction")
-parser.add_argument("--wandb-name", type=str, required=True)
+parser.add_argument("--wandb-name", type=str, default="subnetwork-probing")
 parser.add_argument("--wandb-project", type=str, default="subnetwork-probing")
-parser.add_argument("--wandb-entity", type=str, required=True)
-parser.add_argument("--wandb-group", type=str, required=True)
+parser.add_argument("--wandb-entity", type=str,  default="remix_school-of-rock")
+parser.add_argument("--wandb-group", type=str,  default="subnetwork-probing")
 parser.add_argument("--wandb-dir", type=str, default="/tmp/wandb")
 parser.add_argument("--wandb-mode", type=str, default="online")
-parser.add_argument("--device", type=str, default="cuda")
+parser.add_argument("--device", type=str, default="cpu")
 parser.add_argument("--lr", type=float, default=0.001)
-parser.add_argument("--loss-type", type=str, required=True)
+parser.add_argument("--loss-type", type=str,  default='kl_div')
 parser.add_argument("--epochs", type=int, default=3000)
 parser.add_argument("--verbose", type=int, default=1)
 parser.add_argument("--lambda-reg", type=float, default=100)
-parser.add_argument("--zero-ablation", type=int, required=True)
+parser.add_argument("--zero-ablation", type=int, default=False)
 parser.add_argument("--reset-subject", type=int, default=0)
 parser.add_argument("--seed", type=int, default=random.randint(0, 2 ** 31 - 1), help="Random seed (default: random)")
 parser.add_argument("--num-examples", type=int, default=50)
 parser.add_argument("--seq-len", type=int, default=300)
 parser.add_argument("--n-loss-average-runs", type=int, default=20)
-parser.add_argument("--task", type=str, required=True)
+parser.add_argument("--task", type=str, )
 parser.add_argument('--torch-num-threads', type=int, default=0, help="How many threads to use for torch (0=all)")
 
 def get_transformer_config():
@@ -491,6 +496,17 @@ if __name__ == "__main__":
             metric_name=args.loss_type,
             device=args.device,
         )
+    elif args.task == "or_gate":
+        num_examples = 1
+        seq_len = 1
+
+        all_task_things = get_all_logic_gate_things(
+            mode="OR",
+            num_examples=num_examples,
+            seq_len=seq_len,
+            device=args.device,
+        )
+        all_task_things.test_metrics = all_task_things.validation_metric
     else:
         raise ValueError(f"Unknown task {args.task}")
 

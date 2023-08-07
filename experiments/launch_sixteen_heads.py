@@ -37,6 +37,7 @@ from acdc.TLACDCEdge import (
 from acdc.acdc_utils import reset_network
 from acdc.docstring.utils import get_all_docstring_things
 from acdc.greaterthan.utils import get_all_greaterthan_things
+from acdc.logic_gates.utils import get_all_logic_gate_things
 from acdc.induction.utils import (
     get_all_induction_things,
     get_good_induction_candidates,
@@ -60,7 +61,7 @@ set_plotly_renderer("emacs")
 #%%
 
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
-parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr-reverse, tracr-proportion, greaterthan')
+parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan', 'or_gate'], help='Choose a task from the available options: ioi, docstring, induction, tracr-reverse, tracr-proportion, greaterthan')
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
 parser.add_argument('--wandb-entity', type=str, required=False, default="remix_school-of-rock", help='Value for WANDB_ENTITY_NAME')
 parser.add_argument('--wandb-group', type=str, required=False, default="default", help='Value for WANDB_GROUP_NAME')
@@ -76,7 +77,7 @@ parser.add_argument('--torch-num-threads', type=int, default=0, help="How many t
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args([line.strip() for line in r"""--task=tracr-proportion \
+    args = parser.parse_args([line.strip() for line in r"""--task=or_gate \
 --wandb-mode=offline \
 --wandb-dir=/tmp/wandb \
 --wandb-entity=remix_school-of-rock \
@@ -130,6 +131,16 @@ elif args.task == "docstring":
 elif args.task == "greaterthan":
     num_examples = 100
     things = get_all_greaterthan_things(num_examples=num_examples, metric_name=args.metric, device=args.device)
+elif args.task == "or_gate":
+    num_examples = 1
+    seq_len = 1
+
+    things = get_all_logic_gate_things(
+        mode="OR",
+        num_examples=num_examples,
+        seq_len=seq_len,
+        device=args.device,
+    )
 else:
     raise ValueError(f"Unknown task {args.task}")
 
@@ -217,8 +228,10 @@ if model.cfg.d_mlp == -1:
     for k in list(prune_scores.keys()):
         if "mlp" in k:
             del prune_scores[k]
-
-per_example_metric = things.validation_metric(model(things.validation_data), return_one_element=False)
+if args.task != 'or_gate':
+    per_example_metric = things.validation_metric(model(things.validation_data), return_one_element=False)
+else:
+    per_example_metric = things.validation_metric(model(things.validation_data))
 assert per_example_metric.ndim == 1
 
 for i in tqdm.trange(len(per_example_metric)):
@@ -279,12 +292,12 @@ def test_metrics(logits, score):
     return d
 
 # Log metrics without ablating anything
-logits = do_random_resample_caching(model, things.test_data)
-wandb.log(test_metrics(logits, math.inf))
+# logits = do_random_resample_caching(model, things.test_data)
+# wandb.log(test_metrics(logits, math.inf))
 
 # %%
 
-do_random_resample_caching(model, things.test_patch_data)
+# do_random_resample_caching(model, things.test_patch_data)
 if args.zero_ablation:
     do_zero_caching(model)
 
@@ -308,7 +321,8 @@ for nodes, hook_name, idx in tqdm.tqdm(nodes_names_indices):
             done = True
     assert done, f"Could not find {hook_name}[{idx}]"
 
-    to_log_dict = test_metrics(model(things.test_data), score)
+    # to_log_dict = test_metrics(model(things.test_data), score)
+    to_log_dict = test_metrics(model(things.validation_data), score)
     to_log_dict["number_of_edges"] = corr.count_no_edges()
 
     print(to_log_dict)

@@ -128,7 +128,7 @@ def test_logical_models():
 
 #%%
 
-def get_all_logic_gate_things(mode: str = "AND", device=None, seq_len: Optional[int] = 5, num_examples: Optional[int] = 10):
+def get_all_logic_gate_things(mode: str = "AND", device=None, seq_len: Optional[int] = 5, num_examples: Optional[int] = 10, return_one_example: bool = False) -> AllDataThings:
 
     assert mode == "OR" 
 
@@ -139,8 +139,12 @@ def get_all_logic_gate_things(mode: str = "AND", device=None, seq_len: Optional[
 
     def validation_metric(output, correct):
         output = output[:, -1, :]
+
         assert output.shape == correct.shape
-        return torch.mean((output - correct)**2)
+        if not return_one_example:
+            return torch.mean((output - correct)**2, dim=0)
+        else:
+            return ((output - correct)**2).squeeze(1)
 
     return AllDataThings(
         tl_model=model,
