@@ -219,7 +219,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
     )
     LEFT_MARGIN = -0.02
     RIGHT_MARGIN = 0.02 if y_key in ["edge_tpr", "node_tpr"] else 0.00
-    if plot_type in ["roc_nodes", "roc_edges", "precision_recall"]:
+    if plot_type.startswith(("roc_nodes", "roc_edges", "precision_recall")):
         rows_cols_task_idx = [
             ((1, 1), "ioi"),
             ((1, 3), "tracr-reverse"),
@@ -407,9 +407,23 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     y_key = "test_" + METRICS_FOR_TASK[task_idx][1] # gets overwritten to "test NLL" 
 
                 this_data = all_data[weights_type][ablation_type]
-                x_data = np.array(this_data[task_idx][metric_name][alg_idx][x_key])
-                y_data = np.array(this_data[task_idx][metric_name][alg_idx][y_key])
-                scores = np.array(this_data[task_idx][metric_name][alg_idx]["score"])
+                try:
+                    x_data = np.array(this_data[task_idx][metric_name][alg_idx][x_key])
+                except Exception as e:
+                    print(f"{task_idx=} {metric_name=} {alg_idx=} {x_key=}")
+                    raise e
+                
+                try:
+                    y_data = np.array(this_data[task_idx][metric_name][alg_idx][y_key])
+                except Exception as e:
+                    print(f"{task_idx=} {metric_name=} {alg_idx=} {y_key=}")
+                    raise e
+
+                try:
+                    scores = np.array(this_data[task_idx][metric_name][alg_idx]["score"])
+                except Exception as e:
+                    print(f"{task_idx=} {metric_name=} {alg_idx=} {y_key=}")
+                    raise e
 
                 if methodof == "HISP":
                     scores = np.array(this_data[task_idx][metric_name][alg_idx]["n_nodes"])
@@ -457,7 +471,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                 auc = None
                 if len(pareto_optimal):
                     x_data, y_data = zip(*pareto_optimal)
-                    if plot_type in ["roc_nodes", "roc_edges"]:
+                    if plot_type.startswith(("roc_nodes", "roc_edges")):
                         try:
                             auc = pessimistic_auc(x_data, y_data)
                         except Exception as e:
@@ -486,7 +500,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     test_kl_div = [x / 20 for x in test_kl_div]
                     test_loss = [x / 20 for x in test_loss]
 
-                if plot_type in ["roc_nodes", "roc_edges"]:
+                if plot_type.startswith(("roc_nodes", "roc_edges")):
                     all_series.append(pd.Series({
                         "task": task_idx,
                         "method": methodof,
@@ -603,8 +617,8 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                 #     title=plot_type,
                 # )
 
-                if (row, col) == rows_and_cols[0]:
-                    if plot_type in ["roc_nodes", "roc_edges"] and args.arrows:
+                if (row, col) == rows_and_cols[0]: # type error??
+                    if plot_type.startswith(("roc_nodes", "roc_edges")) and args.arrows:
                         fig.add_annotation(
                             xref="x domain",
                             yref="y",
@@ -824,10 +838,10 @@ PLOT_DIR.mkdir(exist_ok=True)
 first = True
 
 all_dfs = []
-for metric_idx in [0, 1]:
+for metric_idx in [1, 0]:
     for ablation_type in ["random_ablation", "zero_ablation"]:
         for weights_type in ["trained", "reset"]:  # Didn't scramble the weights enough it seems
-            for plot_type in ["roc_edges_neurips_reviewers", "roc_edges", "metric_edges_induction", "kl_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "metric_edges"]:
+            for plot_type in ["roc_edges_neurips_reviewers", "kl_edges_induction", "roc_edges", "metric_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "metric_edges"]:
 
                 context_manager = swap_ioi_metrics if plot_type == "roc_edges_neurips_reviewers" else nullcontext
 
@@ -864,5 +878,93 @@ pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
 # x_key, y_key = plot_type_keys["kl_edges"]
 # fig, _ = make_fig(metric_idx=0, weights_type="reset", ablation_type="zero_ablation", plot_type="kl_edges")
 # fig.show()
+
+# %%
+
+# TODO delete 
+
+s = """experiments/results/plots_data/16h-greaterthan-greaterthan-False-0.json (new) |  4951 ++++++++++++++++++++++
+ experiments/results/plots_data/16h-greaterthan-greaterthan-False-1.json (new) |  4951 ++++++++++++++++++++++
+ experiments/results/plots_data/16h-greaterthan-greaterthan-True-0.json (new)  |  4951 ++++++++++++++++++++++
+ experiments/results/plots_data/16h-greaterthan-greaterthan-True-1.json (new)  |  4951 ++++++++++++++++++++++
+ experiments/results/plots_data/16h-greaterthan-kl_div-False-0.json            |  7718 +++++++++++++++++------------------
+ experiments/results/plots_data/16h-greaterthan-kl_div-False-1.json (new)      |  4951 ++++++++++++++++++++++
+ experiments/results/plots_data/16h-greaterthan-kl_div-True-0.json (new)       |  4951 ++++++++++++++++++++++
+ experiments/results/plots_data/16h-greaterthan-kl_div-True-1.json (new)       |  4951 ++++++++++++++++++++++
+ experiments/results/plots_data/16h-ioi-kl_div-False-0.json                    |  9592 +++++++++++++++++++++----------------------
+ experiments/results/plots_data/16h-ioi-kl_div-False-1.json (new)              |  6298 ++++++++++++++++++++++++++++
+ experiments/results/plots_data/16h-ioi-kl_div-True-0.json (new)               |  6298 ++++++++++++++++++++++++++++
+ experiments/results/plots_data/16h-ioi-kl_div-True-1.json (new)               |  6298 ++++++++++++++++++++++++++++
+ experiments/results/plots_data/16h-ioi-logit_diff-False-0.json (new)          |  6298 ++++++++++++++++++++++++++++
+ experiments/results/plots_data/16h-ioi-logit_diff-False-1.json (new)          |  6298 ++++++++++++++++++++++++++++
+:...skipping...
+ acdc/TLACDCExperiment.py                                                      |     2 +-
+ acdc/TLACDCInterpNode.py                                                      |     4 -
+ acdc/acdc_utils.py                                                            |    19 +-
+ acdc_with_remove_redundant.json (gone)                                        |   537 ---
+ experiments/results/plots_data/16h-greaterthan-greaterthan-False-0.json (new) |  4951 ++++++++++++++++++++++
+ experiments/results/plots_data/16h-greaterthan-greaterthan-False-1.json (new) |  4951 ++++++++++++++++++++++
+ experiments/results/plots_data/16h-greaterthan-greaterthan-True-0.json (new)  |  4951 ++++++++++++++++++++++
+ experiments/results/plots_data/16h-greaterthan-greaterthan-True-1.json (new)  |  4951 ++++++++++++++++++++++
+ experiments/results/plots_data/16h-greaterthan-kl_div-False-0.json            |  7718 +++++++++++++++++------------------
+ experiments/results/plots_data/16h-greaterthan-kl_div-False-1.json (new)      |  4951 ++++++++++++++++++++++
+ experiments/results/plots_data/16h-greaterthan-kl_div-True-0.json (new)       |  4951 ++++++++++++++++++++++
+ experiments/results/plots_data/16h-greaterthan-kl_div-True-1.json (new)       |  4951 ++++++++++++++++++++++
+ experiments/results/plots_data/16h-ioi-kl_div-False-0.json                    |  9592 +++++++++++++++++++++----------------------
+ experiments/results/plots_data/16h-ioi-kl_div-False-1.json (new)              |  6298 ++++++++++++++++++++++++++++
+ experiments/results/plots_data/16h-ioi-kl_div-True-0.json (new)               |  6298 ++++++++++++++++++++++++++++
+ experiments/results/plots_data/16h-ioi-kl_div-True-1.json (new)               |  6298 ++++++++++++++++++++++++++++
+ experiments/results/plots_data/16h-ioi-logit_diff-False-0.json (new)          |  6298 ++++++++++++++++++++++++++++
+ experiments/results/plots_data/16h-ioi-logit_diff-False-1.json (new)          |  6298 ++++++++++++++++++++++++++++
+ experiments/results/plots_data/16h-ioi-logit_diff-True-0.json (new)           |  6298 ++++++++++++++++++++++++++++
+ experiments/results/plots_data/16h-ioi-logit_diff-True-1.json (new)           |  6298 ++++++++++++++++++++++++++++
+ experiments/results/plots_data/16h-tracr-proportion-l2-False-0.json           |    94 +-
+ experiments/results/plots_data/16h-tracr-proportion-l2-False-1.json (new)     |   155 +
+ experiments/results/plots_data/16h-tracr-proportion-l2-True-0.json (new)      |   155 +
+ experiments/results/plots_data/16h-tracr-proportion-l2-True-1.json (new)      |   155 +
+ experiments/results/plots_data/16h-tracr-reverse-l2-False-0.json              |   134 +-
+ experiments/results/plots_data/16h-tracr-reverse-l2-False-1.json (new)        |   243 ++
+ experiments/results/plots_data/16h-tracr-reverse-l2-True-0.json (new)         |   243 ++
+ experiments/results/plots_data/16h-tracr-reverse-l2-True-1.json (new)         |   243 ++
+ experiments/results/plots_data/Makefile                                       |     2 -
+ experiments/results/plots_data/generate_makefile.py                           |    15 +-
+ experiments/results/plots_data/sp-greaterthan-greaterthan-False-0.json        |   168 +-
+ experiments/results/plots_data/sp-greaterthan-greaterthan-False-1.json (new)  |   120 +
+ experiments/results/plots_data/sp-greaterthan-greaterthan-True-0.json (new)   |   312 ++
+ experiments/results/plots_data/sp-greaterthan-greaterthan-True-1.json (new)   |   120 +
+ experiments/results/plots_data/sp-greaterthan-kl_div-False-0.json             |   340 +-
+ experiments/results/plots_data/sp-greaterthan-kl_div-False-1.json (new)       |   120 +
+ experiments/results/plots_data/sp-greaterthan-kl_div-True-0.json (new)        |    96 +
+ experiments/results/plots_data/sp-greaterthan-kl_div-True-1.json (new)        |   120 +
+ experiments/results/plots_data/sp-ioi-kl_div-False-0.json                     |   536 +--
+ experiments/results/plots_data/sp-ioi-kl_div-False-1.json (new)               |   147 +
+ experiments/results/plots_data/sp-ioi-kl_div-True-0.json (new)                |   582 +++
+ experiments/results/plots_data/sp-ioi-kl_div-True-1.json (new)                |   147 +
+ experiments/results/plots_data/sp-ioi-logit_diff-False-0.json                 |   330 +-
+ experiments/results/plots_data/sp-ioi-logit_diff-False-1.json (new)           |   147 +
+ experiments/results/plots_data/sp-ioi-logit_diff-True-0.json (new)            |   387 ++
+ experiments/results/plots_data/sp-ioi-logit_diff-True-1.json (new)            |   147 +
+ experiments/results/plots_data/sp-tracr-proportion-l2-False-0.json            |   120 +-
+ experiments/results/plots_data/sp-tracr-proportion-l2-False-1.json (new)      |   324 ++
+ experiments/results/plots_data/sp-tracr-proportion-l2-True-0.json (new)       |   192 +
+ experiments/results/plots_data/sp-tracr-proportion-l2-True-1.json (new)       |   324 ++
+ experiments/results/plots_data/sp-tracr-reverse-l2-False-0.json               |   148 +-
+ experiments/results/plots_data/sp-tracr-reverse-l2-False-1.json (new)         |   192 +
+ experiments/results/plots_data/sp-tracr-reverse-l2-True-0.json (new)          |   192 +
+ experiments/results/plots_data/sp-tracr-reverse-l2-True-1.json (new)          |   192 +
+ notebooks/make_plotly_plots.py                                                |    64 +-
+ notebooks/my_file.json (gone)                                                 |   552 ---
+ notebooks/my_json.json (gone)                                                 | 33902 -------------------------------------------------------------------------------------------------------------------------------------------------------
+ notebooks/roc_plot_generator.py                                               |   243 +-
+ subnetwork_probing/train.py                                                   |    51 +-
+ 59 files changed, 93486 insertions(+), 44883 deletions(-)""".split(" ")
+
+for i in range(len(s)-1):
+    if s[i].endswith("0.json") and s[i+1] == "(new)":
+        print(s[i])
+
+# %%
+
+plotly.io.renderers.default = "browser"
 
 # %%
