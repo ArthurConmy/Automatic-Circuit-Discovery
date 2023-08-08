@@ -74,6 +74,8 @@ parser.add_argument('--metric', type=str, default="kl_div", help="Which metric t
 parser.add_argument('--seed', type=int, default=1234)
 parser.add_argument('--torch-num-threads', type=int, default=0, help="How many threads to use for torch (0=all)")
 
+# --task=tracr-proportion --wandb-run-name=16h-tracr-00001 --wandb-project=acdc --device=cpu --reset-network=0 --seed=3964471176 --metric=kl_div --wandb-dir=/root/.cache/huggingface/tracr-training/16heads --wandb-mode=online
+
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if get_ipython() is not None: # heheh get around this failing in notebooks
     args = parser.parse_args([line.strip() for line in r"""--task=tracr-proportion \
@@ -82,7 +84,7 @@ if get_ipython() is not None: # heheh get around this failing in notebooks
 --wandb-entity=remix_school-of-rock \
 --wandb-group=default \
 --wandb-project=acdc \
---wandb-run-name=notebook-testing \
+--wandb-run-name=notebook-testing-2 \
 --device=cpu \
 --reset-network=0 \
 --metric=kl_div""".split("\\\n")]) # so easy to copy and paste into terminal!!!
@@ -267,6 +269,7 @@ for layer_i in range(model.cfg.n_layers): # This includes word embeddings and po
 nodes_names_indices.sort(key=lambda x: prune_scores[x[1]][x[2]].item(), reverse=True)
 
 # %%
+
 serializable_nodes_names_indices = [(list(map(str, nodes)), name, repr(idx), prune_scores[name][idx].item()) for nodes, name, idx in nodes_names_indices]
 wandb.log({"nodes_names_indices": serializable_nodes_names_indices})
 
