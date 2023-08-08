@@ -561,6 +561,7 @@ if not SKIP_SP: # this is slow, so run once
         run_filter = SP_RUN_FILTER,
         clip = 1 if TESTING else None,
         use_pos_embed=USE_POS_EMBED,
+        things = things,
     ) # clip for testing
     assert len(sp_corrs) > 1
     print("sp_corrs", len(sp_corrs))
