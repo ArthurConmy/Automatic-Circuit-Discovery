@@ -21,7 +21,7 @@ transformer_lens/scratch.py
 
 .vscode/
 .idea/
-wandb*
+wandb/*
 transformer_lens\.egg*
 MANIFEST.in
 settings.ini
