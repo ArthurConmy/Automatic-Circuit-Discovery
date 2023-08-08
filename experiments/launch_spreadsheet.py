@@ -7,7 +7,7 @@ METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
     "tracr-reverse": ["l2"],
     "tracr-proportion": ["l2"],
-    "induction": ["kl_div", "nll"],
+    "induction": ["kl_div"], # TODO remove
     "docstring": ["kl_div", "docstring_metric"],
     "greaterthan": ["kl_div", "greaterthan"],
 }
@@ -28,7 +28,7 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
 
     commands: List[List[str]] = []
     for reset_network in [int(reset_networks)]:
-        for zero_ablation in [0]:
+        for zero_ablation in [1]:
             for task in TASKS:
                 for metric in METRICS_FOR_TASK[task]:
 
@@ -93,7 +93,7 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
                     else:
                         raise ValueError("Unknown task")
 
-                    for threshold in [1.0] if testing else thresholds:
+                    for threshold in [1.0] if testing else thresholds:  
                         command = [
                             "python",
                             "acdc/main.py",
@@ -111,6 +111,7 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
                             "--wandb-dir=/root/.cache/huggingface/tracr-training/acdc",  # If it doesn't exist wandb will use /tmp
                             f"--wandb-mode=online",
                             f"--max-num-epochs={1 if testing else 40_000}",
+                            f"--dont-save-images", # TODO remove
                         ]
                         if zero_ablation:
                             command.append("--zero-ablation")
@@ -118,6 +119,7 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
                             command.append("--abs-value-threshold")
                         commands.append(command)
 
+    print(" ".join(commands[0]))
     return commands
 
     # launch(
@@ -139,15 +141,4 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
 # if __name__ == "__main__":
 
 def get_all_commands():
-
-    big_command_list = []
-    for reset_networks in [False, True]:
-        big_command_list.extend(main(
-            ["tracr-reverse", "tracr-proportion"],
-            group_name="reset-networks-neurips-6",
-            run_name="aconmy-tracr3-{i:05d}",
-            testing=False,
-            use_kubernetes=True,
-            reset_networks=reset_networks,
-        ))
-    return big_command_list
+    return main(TASKS = ["induction"], group_name="sixteen-heads-reverse", run_name="induction_sweep", testing=False, use_kubernetes=False, reset_networks=False, abs_value_threshold=False, use_gpu=True)

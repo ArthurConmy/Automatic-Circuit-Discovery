@@ -166,18 +166,18 @@ parser.add_argument('--seed', type=int, default=1234)
 parser.add_argument("--max-num-epochs",type=int, default=100_000)
 parser.add_argument('--single-step', action='store_true', help='Use single step, mostly for testing')
 parser.add_argument("--abs-value-threshold", action='store_true', help='Use the absolute value of the result to check threshold')
+parser.add_argument("--dont-save-images", action='store_true', help="Don't save images to ims/")
 
 if ipython is not None:
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
-        [line.strip() for line in r"""--task=induction\
---threshold=0.001\
+        [line.strip() for line in r"""--task=ioi\
+--threshold=0.0075\
 --indices-mode=reverse\
---zero-ablation\
 --first-cache-cpu=False\
 --second-cache-cpu=False\
---device=cpu\
+--device=cuda\
 --seed=4\
 --max-num-epochs=100000""".split("\\\n")]
     )
@@ -208,6 +208,7 @@ elif args.second_cache_cpu.lower() == "true":
     CORRUPTED_CACHE_CPU = True
 else:
     raise ValueError(f"second_cache_cpu must be either True or False, got {args.second_cache_cpu}")
+
 THRESHOLD = args.threshold  # only used if >= 0.0
 ZERO_ABLATION = True if args.zero_ablation else False
 USING_WANDB = True if args.using_wandb else False
@@ -225,11 +226,12 @@ SINGLE_STEP = True if args.single_step else False
 # <h2>Setup Task</h2>
 
 #%%
+
 second_metric = None  # some tasks only have one metric
 use_pos_embed = TASK.startswith("tracr")
 
 if TASK == "ioi":
-    num_examples = 100
+    num_examples = 50
     things = get_all_ioi_things(
         num_examples=num_examples, device=DEVICE, metric_name=args.metric
     )
@@ -340,6 +342,7 @@ exp = TLACDCExperiment(
     add_receiver_hooks=False,
     remove_redundant=False,
     show_full_index=use_pos_embed,
+    save_images=not args.dont_save_images,
 )
 
 # %% [markdown]
