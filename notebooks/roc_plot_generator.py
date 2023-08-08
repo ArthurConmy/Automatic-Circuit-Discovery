@@ -300,12 +300,14 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
         raise NotImplementedError("not a tracr task")
 
     if ZERO_ABLATION:
-        ACDC_PRE_RUN_FILTER = {
-            "$or": [
-                {"group": "acdc-tracr-neurips-5", **ACDC_PRE_RUN_FILTER},
-                {"group": "acdc-tracr-neurips-6", **ACDC_PRE_RUN_FILTER},
-            ]
-        }
+        ACDC_PRE_RUN_FILTER.pop("group") # ?! How to get results here?
+
+        # ACDC_PRE_RUN_FILTER = {
+        #     "$or": [
+        #         {"group": "acdc-tracr-neurips-5", **ACDC_PRE_RUN_FILTER},
+        #         {"group": "acdc-tracr-neurips-6", **ACDC_PRE_RUN_FILTER},
+        #     ]
+        # }
 
     # if not ZERO_ABLATION:
     else:
@@ -563,18 +565,22 @@ def get_acdc_runs(
             continue  # Run has crashed too much
 
         try:
-            score_d["score"] = run.config["threshold"]
-        except KeyError:
             try:
-                score_d["score"] = float(run.name)
-            except ValueError:
+                score_d["score"] = run.config["threshold"]
+            except KeyError:
                 try:
-                    score_d["score"] = float(run.name.split("_")[-1])
-                except ValueError as e:
-                    if args.ignore_missing_score:
-                        continue
-                    else:
-                        raise e
+                    score_d["score"] = float(run.name)
+                except ValueError:
+                    try:
+                        score_d["score"] = float(run.name.split("_")[-1])
+                    except ValueError as e:
+                        if args.ignore_missing_score:
+                            continue
+                        else:
+                            raise e 
+        except Exception as e:
+            print("Could not process", run.id, "at all", e)
+            continue
 
         threshold = score_d["score"]
 

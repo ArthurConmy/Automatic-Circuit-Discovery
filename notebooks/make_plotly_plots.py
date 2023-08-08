@@ -847,10 +847,10 @@ all_dfs = []
 for metric_idx in [0, 1]:
     for ablation_type in ["random_ablation", "zero_ablation"]:
         for weights_type in ["trained", "reset"]:  # Didn't scramble the weights enough it seems
-            for plot_type in ["roc_nodes_neurips_reviewers",
-                              "roc_edges_neurips_reviewers", "kl_edges_induction", "roc_edges", "metric_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "metric_edges"]:
+            for plot_type in ["metric_edges", "roc_nodes_neurips_reviewers",
+                              "roc_edges_neurips_reviewers", "kl_edges_induction", "roc_edges", "metric_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes"]:
 
-                context_manager = swap_ioi_metrics if plot_type == "roc_edges_neurips_reviewers" else nullcontext
+                context_manager = swap_ioi_metrics if plot_type.endswith(( "roc_edges_neurips_reviewers", "roc_nodes_neurips_reviewers")) else nullcontext
 
                 with context_manager():
                     x_key, y_key = plot_type_keys[plot_type]
@@ -872,103 +872,6 @@ for metric_idx in [0, 1]:
                     assert False
 
 pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
-
-# %%
-
-# Stefan
-#   1 hour ago
-# Very nice plots! Small changes
-# 1st title should be IOI, "Cicuit Recovery" should be above or somewhere else
-# [Minor] Unify xlim=ylim=[-0.01, 1.01] or so
-# :raised_hands:
-# 1
-# if len(df
-# x_key, y_key = plot_type_keys["kl_edges"]
-# fig, _ = make_fig(metric_idx=0, weights_type="reset", ablation_type="zero_ablation", plot_type="kl_edges")
-# fig.show()
-# %%
-
-# TODO delete 
-
-s = """experiments/results/plots_data/16h-greaterthan-greaterthan-False-0.json (new) |  4951 ++++++++++++++++++++++
- experiments/results/plots_data/16h-greaterthan-greaterthan-False-1.json (new) |  4951 ++++++++++++++++++++++
- experiments/results/plots_data/16h-greaterthan-greaterthan-True-0.json (new)  |  4951 ++++++++++++++++++++++
- experiments/results/plots_data/16h-greaterthan-greaterthan-True-1.json (new)  |  4951 ++++++++++++++++++++++
- experiments/results/plots_data/16h-greaterthan-kl_div-False-0.json            |  7718 +++++++++++++++++------------------
- experiments/results/plots_data/16h-greaterthan-kl_div-False-1.json (new)      |  4951 ++++++++++++++++++++++
- experiments/results/plots_data/16h-greaterthan-kl_div-True-0.json (new)       |  4951 ++++++++++++++++++++++
- experiments/results/plots_data/16h-greaterthan-kl_div-True-1.json (new)       |  4951 ++++++++++++++++++++++
- experiments/results/plots_data/16h-ioi-kl_div-False-0.json                    |  9592 +++++++++++++++++++++----------------------
- experiments/results/plots_data/16h-ioi-kl_div-False-1.json (new)              |  6298 ++++++++++++++++++++++++++++
- experiments/results/plots_data/16h-ioi-kl_div-True-0.json (new)               |  6298 ++++++++++++++++++++++++++++
- experiments/results/plots_data/16h-ioi-kl_div-True-1.json (new)               |  6298 ++++++++++++++++++++++++++++
- experiments/results/plots_data/16h-ioi-logit_diff-False-0.json (new)          |  6298 ++++++++++++++++++++++++++++
- experiments/results/plots_data/16h-ioi-logit_diff-False-1.json (new)          |  6298 ++++++++++++++++++++++++++++
-:...skipping...
- acdc/TLACDCExperiment.py                                                      |     2 +-
- acdc/TLACDCInterpNode.py                                                      |     4 -
- acdc/acdc_utils.py                                                            |    19 +-
- acdc_with_remove_redundant.json (gone)                                        |   537 ---
- experiments/results/plots_data/16h-greaterthan-greaterthan-False-0.json (new) |  4951 ++++++++++++++++++++++
- experiments/results/plots_data/16h-greaterthan-greaterthan-False-1.json (new) |  4951 ++++++++++++++++++++++
- experiments/results/plots_data/16h-greaterthan-greaterthan-True-0.json (new)  |  4951 ++++++++++++++++++++++
- experiments/results/plots_data/16h-greaterthan-greaterthan-True-1.json (new)  |  4951 ++++++++++++++++++++++
- experiments/results/plots_data/16h-greaterthan-kl_div-False-0.json            |  7718 +++++++++++++++++------------------
- experiments/results/plots_data/16h-greaterthan-kl_div-False-1.json (new)      |  4951 ++++++++++++++++++++++
- experiments/results/plots_data/16h-greaterthan-kl_div-True-0.json (new)       |  4951 ++++++++++++++++++++++
- experiments/results/plots_data/16h-greaterthan-kl_div-True-1.json (new)       |  4951 ++++++++++++++++++++++
- experiments/results/plots_data/16h-ioi-kl_div-False-0.json                    |  9592 +++++++++++++++++++++----------------------
- experiments/results/plots_data/16h-ioi-kl_div-False-1.json (new)              |  6298 ++++++++++++++++++++++++++++
- experiments/results/plots_data/16h-ioi-kl_div-True-0.json (new)               |  6298 ++++++++++++++++++++++++++++
- experiments/results/plots_data/16h-ioi-kl_div-True-1.json (new)               |  6298 ++++++++++++++++++++++++++++
- experiments/results/plots_data/16h-ioi-logit_diff-False-0.json (new)          |  6298 ++++++++++++++++++++++++++++
- experiments/results/plots_data/16h-ioi-logit_diff-False-1.json (new)          |  6298 ++++++++++++++++++++++++++++
- experiments/results/plots_data/16h-ioi-logit_diff-True-0.json (new)           |  6298 ++++++++++++++++++++++++++++
- experiments/results/plots_data/16h-ioi-logit_diff-True-1.json (new)           |  6298 ++++++++++++++++++++++++++++
- experiments/results/plots_data/16h-tracr-proportion-l2-False-0.json           |    94 +-
- experiments/results/plots_data/16h-tracr-proportion-l2-False-1.json (new)     |   155 +
- experiments/results/plots_data/16h-tracr-proportion-l2-True-0.json (new)      |   155 +
- experiments/results/plots_data/16h-tracr-proportion-l2-True-1.json (new)      |   155 +
- experiments/results/plots_data/16h-tracr-reverse-l2-False-0.json              |   134 +-
- experiments/results/plots_data/16h-tracr-reverse-l2-False-1.json (new)        |   243 ++
- experiments/results/plots_data/16h-tracr-reverse-l2-True-0.json (new)         |   243 ++
- experiments/results/plots_data/16h-tracr-reverse-l2-True-1.json (new)         |   243 ++
- experiments/results/plots_data/Makefile                                       |     2 -
- experiments/results/plots_data/generate_makefile.py                           |    15 +-
- experiments/results/plots_data/sp-greaterthan-greaterthan-False-0.json        |   168 +-
- experiments/results/plots_data/sp-greaterthan-greaterthan-False-1.json (new)  |   120 +
- experiments/results/plots_data/sp-greaterthan-greaterthan-True-0.json (new)   |   312 ++
- experiments/results/plots_data/sp-greaterthan-greaterthan-True-1.json (new)   |   120 +
- experiments/results/plots_data/sp-greaterthan-kl_div-False-0.json             |   340 +-
- experiments/results/plots_data/sp-greaterthan-kl_div-False-1.json (new)       |   120 +
- experiments/results/plots_data/sp-greaterthan-kl_div-True-0.json (new)        |    96 +
- experiments/results/plots_data/sp-greaterthan-kl_div-True-1.json (new)        |   120 +
- experiments/results/plots_data/sp-ioi-kl_div-False-0.json                     |   536 +--
- experiments/results/plots_data/sp-ioi-kl_div-False-1.json (new)               |   147 +
- experiments/results/plots_data/sp-ioi-kl_div-True-0.json (new)                |   582 +++
- experiments/results/plots_data/sp-ioi-kl_div-True-1.json (new)                |   147 +
- experiments/results/plots_data/sp-ioi-logit_diff-False-0.json                 |   330 +-
- experiments/results/plots_data/sp-ioi-logit_diff-False-1.json (new)           |   147 +
- experiments/results/plots_data/sp-ioi-logit_diff-True-0.json (new)            |   387 ++
- experiments/results/plots_data/sp-ioi-logit_diff-True-1.json (new)            |   147 +
- experiments/results/plots_data/sp-tracr-proportion-l2-False-0.json            |   120 +-
- experiments/results/plots_data/sp-tracr-proportion-l2-False-1.json (new)      |   324 ++
- experiments/results/plots_data/sp-tracr-proportion-l2-True-0.json (new)       |   192 +
- experiments/results/plots_data/sp-tracr-proportion-l2-True-1.json (new)       |   324 ++
- experiments/results/plots_data/sp-tracr-reverse-l2-False-0.json               |   148 +-
- experiments/results/plots_data/sp-tracr-reverse-l2-False-1.json (new)         |   192 +
- experiments/results/plots_data/sp-tracr-reverse-l2-True-0.json (new)          |   192 +
- experiments/results/plots_data/sp-tracr-reverse-l2-True-1.json (new)          |   192 +
- notebooks/make_plotly_plots.py                                                |    64 +-
- notebooks/my_file.json (gone)                                                 |   552 ---
- notebooks/my_json.json (gone)                                                 | 33902 -------------------------------------------------------------------------------------------------------------------------------------------------------
- notebooks/roc_plot_generator.py                                               |   243 +-
- subnetwork_probing/train.py                                                   |    51 +-
- 59 files changed, 93486 insertions(+), 44883 deletions(-)""".split(" ")
-
-for i in range(len(s)-1):
-    if s[i].endswith("0.json") and s[i+1] == "(new)":
-        print(s[i])
 
 # %%
 

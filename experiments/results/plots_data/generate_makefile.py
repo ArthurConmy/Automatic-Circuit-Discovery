@@ -122,7 +122,7 @@ def main():
             print(missing_file)
 
         # warnings.warn("Filtering the missing files here...")
-        filtered_missing_files = [missing_file for missing_file in missing_files if missing_file.startswith("acdc") and missing_file.endswith(("0.json",))]
+        filtered_missing_files = [missing_file for missing_file in missing_files if missing_file.endswith(("0.json",))]
         
         f.write("missing: " + " ".join(sorted(filtered_missing_files)) + "\n\n")
 
