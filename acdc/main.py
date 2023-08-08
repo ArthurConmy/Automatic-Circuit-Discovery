@@ -169,9 +169,9 @@ if ipython is not None:
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
-        [line.strip() for line in r"""--task=induction\
---zero-ablation\
---threshold=0.71\
+        [line.strip() for line in r"""--task=tracr-reverse\
+--metric=l2\
+--threshold=0.0001\
 --indices-mode=reverse\
 --first-cache-cpu=False\
 --second-cache-cpu=False\
@@ -352,9 +352,9 @@ for i in range(args.max_num_epochs):
         show_full_index=use_pos_embed,
     )
 
-    if IN_COLAB or ipython is not None:
-        # so long as we're not running this as a script, show the image!
-        display(Image(f"ims/img_new_{i+1}.png"))
+    # if IN_COLAB or ipython is not None:
+    #     # so long as we're not running this as a script, show the image!
+    #     display(Image(f"ims/img_new_{i+1}.png"))
 
     print(i, "-" * 50)
     print(exp.count_no_edges())
@@ -383,6 +383,9 @@ if USING_WANDB:
 # <p>We recover minimal induction machinery! `embed -> a0.0_v -> a1.6k`</p>
 
 #%%
-exp.save_subgraph(
+
+g = exp.save_subgraph(
     return_it=True,
 ) 
+
+# %%

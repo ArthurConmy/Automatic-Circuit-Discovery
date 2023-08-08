@@ -409,32 +409,34 @@ def get_tracr_proportion_edges():
 
 
 def get_tracr_reverse_edges():
-    """Set of edges generated from ACDC run with threshold epsilon, metric l2 and zero ablation (commit e612e50)"""
+    """Set of edges generated from ACDC run with threshold epsilon, metric l2 and zero ablation (commit e612e50)
+    
+    [edited down a tad as I think that some of these are not necessary...]"""
     
     return OrderedDict(
         [
             (("blocks.3.hook_resid_post", (None,), "blocks.3.attn.hook_result", (None, None, 0)), True),
-            (("blocks.3.attn.hook_result", (None, None, 0), "blocks.3.attn.hook_q", (None, None, 0)), True),
-            (("blocks.3.attn.hook_result", (None, None, 0), "blocks.3.attn.hook_k", (None, None, 0)), True),
-            (("blocks.3.attn.hook_result", (None, None, 0), "blocks.3.attn.hook_v", (None, None, 0)), True),
+            # (("blocks.3.attn.hook_result", (None, None, 0), "blocks.3.attn.hook_q", (None, None, 0)), True),
+            # (("blocks.3.attn.hook_result", (None, None, 0), "blocks.3.attn.hook_k", (None, None, 0)), True),
+            # (("blocks.3.attn.hook_result", (None, None, 0), "blocks.3.attn.hook_v", (None, None, 0)), True),
             (("blocks.3.attn.hook_q", (None, None, 0), "blocks.3.hook_q_input", (None, None, 0)), True),
             (("blocks.3.attn.hook_k", (None, None, 0), "blocks.3.hook_k_input", (None, None, 0)), True),
             (("blocks.3.attn.hook_v", (None, None, 0), "blocks.3.hook_v_input", (None, None, 0)), True),
             (("blocks.3.hook_q_input", (None, None, 0), "blocks.2.hook_mlp_out", (None,)), True),
             (("blocks.3.hook_k_input", (None, None, 0), "hook_pos_embed", (None,)), True),
             (("blocks.3.hook_v_input", (None, None, 0), "hook_embed", (None,)), True),
-            (("blocks.2.hook_mlp_out", (None,), "blocks.2.hook_mlp_in", (None,)), True),
+            # (("blocks.2.hook_mlp_out", (None,), "blocks.2.hook_mlp_in", (None,)), True),
             (("blocks.2.hook_mlp_in", (None,), "blocks.1.hook_mlp_out", (None,)), True),
-            (("blocks.1.hook_mlp_out", (None,), "blocks.1.hook_mlp_in", (None,)), True),
+            # (("blocks.1.hook_mlp_out", (None,), "blocks.1.hook_mlp_in", (None,)), True),
             (("blocks.1.hook_mlp_in", (None,), "blocks.0.hook_mlp_out", (None,)), True),
             (("blocks.1.hook_mlp_in", (None,), "hook_embed", (None,)), True),
             (("blocks.1.hook_mlp_in", (None,), "hook_pos_embed", (None,)), True),
-            (("blocks.0.hook_mlp_out", (None,), "blocks.0.hook_mlp_in", (None,)), True),
+            # (("blocks.0.hook_mlp_out", (None,), "blocks.0.hook_mlp_in", (None,)), True),
             (("blocks.0.hook_mlp_in", (None,), "blocks.0.attn.hook_result", (None, None, 0)), True),
             (("blocks.0.hook_mlp_in", (None,), "hook_embed", (None,)), True),
-            (("blocks.0.attn.hook_result", (None, None, 0), "blocks.0.attn.hook_q", (None, None, 0)), True),
-            (("blocks.0.attn.hook_result", (None, None, 0), "blocks.0.attn.hook_k", (None, None, 0)), True),
-            (("blocks.0.attn.hook_result", (None, None, 0), "blocks.0.attn.hook_v", (None, None, 0)), True),
+            # (("blocks.0.attn.hook_result", (None, None, 0), "blocks.0.attn.hook_q", (None, None, 0)), True),
+            # (("blocks.0.attn.hook_result", (None, None, 0), "blocks.0.attn.hook_k", (None, None, 0)), True),
+            # (("blocks.0.attn.hook_result", (None, None, 0), "blocks.0.attn.hook_v", (None, None, 0)), True),
             (("blocks.0.attn.hook_v", (None, None, 0), "blocks.0.hook_v_input", (None, None, 0)), True),
             (("blocks.0.hook_v_input", (None, None, 0), "hook_embed", (None,)), True),
         ]
