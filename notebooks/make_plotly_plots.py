@@ -52,7 +52,7 @@ parser.add_argument('--write-json', action='store_true', help='write json')
 
 # Some ACDC tracr runs have its threshold go down to 1e-9 but that doesn't change results at all, we don't want to plot
 # them.
-parser.add_argument("--min-score", type=float, default=1e-6, help="minimum score cutoff for ACDC runs")
+parser.add_argument("--min-score", type=float, default=1e-10, help="minimum score cutoff for ACDC runs")
 
 if get_ipython() is not None:
     args = parser.parse_args([])
@@ -425,6 +425,10 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     print(f"{task_idx=} {metric_name=} {alg_idx=} {y_key=}")
                     raise e
 
+                # if task_idx == "tracr-reverse" and alg_idx.lower() == "acdc":                 
+                #     print(f"{task_idx=} {metric_name=} {alg_idx=} {y_key=}")
+                #     return x_data, y_data
+
                 if methodof == "HISP":
                     scores = np.array(this_data[task_idx][metric_name][alg_idx]["n_nodes"])
                     nanmax_scores = np.max(np.nan_to_num(scores, nan=-np.inf, neginf=-np.inf, posinf=-np.inf))
@@ -464,6 +468,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     pareto_log_scores = []
                     pareto_scores = []
                 else:
+                    # ?!
                     pareto_optimal_aux = discard_non_pareto_optimal(points, zip(log_scores, scores))
                     pareto_optimal, aux = zip(*pareto_optimal_aux)
                     pareto_log_scores, pareto_scores = zip(*aux)
@@ -878,7 +883,6 @@ pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
 # x_key, y_key = plot_type_keys["kl_edges"]
 # fig, _ = make_fig(metric_idx=0, weights_type="reset", ablation_type="zero_ablation", plot_type="kl_edges")
 # fig.show()
-
 # %%
 
 # TODO delete 
