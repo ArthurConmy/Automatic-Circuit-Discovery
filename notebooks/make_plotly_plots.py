@@ -55,7 +55,7 @@ parser.add_argument('--write-json', action='store_true', help='write json')
 parser.add_argument("--min-score", type=float, default=1e-10, help="minimum score cutoff for ACDC runs")
 
 if get_ipython() is not None:
-    args = parser.parse_args([])
+    args = parser.parse_args(["--hisp-yellow"])
 else:
     args = parser.parse_args()
 

@@ -136,6 +136,9 @@ import argparse
 from acdc.greaterthan.utils import get_all_greaterthan_things, get_greaterthan_true_edges, greaterthan_group_colorscheme
 from pathlib import Path
 
+if "__file__" not in locals():
+    __file__ = str(os.getcwd())
+
 IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root") and not "aconmy" in __file__
 
 if IS_ADRIA: 
@@ -169,7 +172,7 @@ parser.add_argument("--only-save-canonical", action="store_true", help="Only sav
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task tracr-reverse --mode edges --metric l2 --alg acdc --device cuda:0".split())
+    args = parser.parse_args("--task=tracr-proportion --reset-network=0 --metric=l2 --alg=acdc".split())
 
     if "arthur" not in __file__ and "arthur" not in str(os.environ.get("CONDA_DEFAULT_ENV")):
         __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
@@ -544,9 +547,11 @@ def get_acdc_runs(
     def add_run_for_processing(candidate: AcdcRunCandidate):
         if candidate.threshold not in threshold_to_run_map:
             threshold_to_run_map[candidate.threshold] = candidate
+            print(candidate.run.id, "added")
         else:
             if candidate.steps > threshold_to_run_map[candidate.threshold].steps:
                 threshold_to_run_map[candidate.threshold] = candidate
+                print(candidate.run.id, "added")
 
     for run in filtered_runs:
         score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
@@ -572,7 +577,8 @@ def get_acdc_runs(
         threshold = score_d["score"]
 
         if "num_edges" in run.summary:
-            print("This run n edges:", run.summary["num_edges"])
+            print("This run n edges:", run.summary["num_edges"], f"({run.id})")
+
         # Try to find `edges.pth`
         edges_artifact = None
         for art in run.logged_artifacts():
@@ -663,31 +669,36 @@ def get_acdc_runs(
                     continue
 
         else:
-            corr = deepcopy(exp.corr)
-            all_edges = corr.all_edges()
-            for edge in all_edges.values():
-                edge.present = False
+            try:
+                corr = deepcopy(exp.corr)
+                all_edges = corr.all_edges()
+                for edge in all_edges.values():
+                    edge.present = False
 
-            this_root = ROOT / edges_artifact.name
-            # Load the edges
-            for f in edges_artifact.files():
-                with f.download(root=this_root, replace=True, exist_ok=True) as fopen:
-                    # Sadly f.download opens in text mode
-                    with open(fopen.name, "rb") as fopenb:
-                        edges_pth = pickle.load(fopenb)
+                this_root = ROOT / edges_artifact.name
+                # Load the edges
+                for f in edges_artifact.files():
+                    with f.download(root=this_root, replace=True, exist_ok=True) as fopen:
+                        # Sadly f.download opens in text mode
+                        with open(fopen.name, "rb") as fopenb:
+                            edges_pth = pickle.load(fopenb)
 
-            for (n_to, idx_to, n_from, idx_from), _effect_size in edges_pth:
-                n_to = n_to.replace("hook_resid_mid", "hook_mlp_in")
-                n_from = n_from.replace("hook_resid_mid", "hook_mlp_in")
-                all_edges[(n_to, idx_to, n_from, idx_from)].present = True
+                for (n_to, idx_to, n_from, idx_from), _effect_size in edges_pth:
+                    n_to = n_to.replace("hook_resid_mid", "hook_mlp_in")
+                    n_from = n_from.replace("hook_resid_mid", "hook_mlp_in")
+                    all_edges[(n_to, idx_to, n_from, idx_from)].present = True
 
-            add_run_for_processing(AcdcRunCandidate(
-                threshold=threshold,
-                steps=score_d["steps"],
-                run=run,
-                score_d=score_d,
-                corr=corr,
-            ))
+                add_run_for_processing(AcdcRunCandidate(
+                    threshold=threshold,
+                    steps=score_d["steps"],
+                    run=run,
+                    score_d=score_d,
+                    corr=corr,
+                ))
+
+            except Exception as e:
+                print(f"Loading run {run.name} with state={run.state} config={run.config} totally failed; {e}")
+                continue
 
     # Now add the test_fns to the score_d of the remaining runs
     def all_test_fns(data: torch.Tensor) -> dict[str, float]:
@@ -723,7 +734,7 @@ def get_canonical_corrs(exp):
     for e in none_present_corr.all_edges().values():
         e.present = False
 
-    output = [
+    output = [ 
         (none_present_corr, {"score": 0.0}),
         (all_present_corr, {"score": 1.0}),
     ]
