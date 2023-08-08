@@ -61,7 +61,10 @@ from transformer_lens.HookedTransformer import HookedTransformer
 from acdc.TLACDCExperiment import TLACDCExperiment
 from acdc.induction.utils import get_all_induction_things
 from acdc.acdc_utils import TorchIndex
+from acdc.wandb_utils import get_sp_corrs, get_sixteen_heads_corrs
+from acdc.acdc_graphics import show
 import torch
+from IPython.display import Image, display
 import gc
 
 # %% [markdown]
@@ -224,3 +227,39 @@ print(
 #%% [markdown]
 # <p>That's much larger!</p>
 # <p>See acdc/main.py for how to run ACDC experiments; try `python acdc/main.py --help` or check the README for the links to this file</p>
+
+#%% [markdown]
+# Let's also show how to get a 16H run from wandb and vizualize it
+
+#%%
+
+corrs_and_scores = get_sp_corrs( # Takes a moment
+    model = tl_model,
+    project_name = "remix_school-of-rock/induction-sp-replicate",
+    things = all_induction_things,
+    pre_run_filter = { # This is wandb syntax; see here https://docs.wandb.ai/ref/python/public-api/api#examples-2 ; can set to empty dict to get all runs
+        "state": "finished",
+        "config.task": "induction",
+        "config.loss_type": "kl_div",
+        "config.zero_ablation": 1,
+        "config.reset_subject": 0,
+    },
+    run_filter = lambda run: run.id == "ffapqtee", # This is a function on retrieved runs; can set to lambda run: True to get all runs
+    use_pos_embed=False,
+)
+assert len(corrs_and_scores) == 1
+
+# %%
+
+image_name = "editing_edges.png"
+
+show(
+    corrs_and_scores[0][0],
+    show_full_index=False, # Also worth messing with other show parameters to get better vizualizations
+    fname = image_name,
+    show_effect_size_none=True,
+)
+
+display(Image(image_name))
+
+# %%

@@ -101,6 +101,7 @@ def show(
     remove_qkv: bool = False,
     layout: str="dot",
     show_placeholders: bool = False,
+    show_effect_size_none: bool = False,
 ) -> pgv.AGraph:
     """
     Colorscheme: a color for each node name, or a string corresponding to a cmapy color scheme
@@ -151,7 +152,7 @@ def show(
                         # Important this go after the qkv removal
                         continue
 
-                    if edge.present and edge.effect_size is not None and (edge.edge_type != EdgeType.PLACEHOLDER or show_placeholders):
+                    if edge.present and (edge.effect_size is not None or show_effect_size_none) and (edge.edge_type != EdgeType.PLACEHOLDER or show_placeholders):
                         for node_name in [parent_name, child_name]:
                             maybe_pos = {}
                             if node_name in node_pos:
@@ -169,7 +170,7 @@ def show(
                         g.add_edge(
                             parent_name,
                             child_name,
-                            penwidth=str(max(minimum_penwidth, edge.effect_size) * 2),
+                            penwidth=str(max(minimum_penwidth, minimum_penwidth or edge.effect_size) * 2),
                             color=colors[parent_name],
                         )
 
