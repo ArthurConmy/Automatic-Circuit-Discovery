@@ -143,7 +143,7 @@ torch.autograd.set_grad_enabled(False)
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
 
 
-task_choices = ['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan', 'or_gate']
+task_choices = ['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan']
 parser.add_argument('--task', type=str, required=True, choices=task_choices, help=f'Choose a task from the available options: {task_choices}')
 parser.add_argument('--threshold', type=float, required=True, help='Value for THRESHOLD')
 parser.add_argument('--first-cache-cpu', type=str, required=False, default="True", help='Value for FIRST_CACHE_CPU (the old name for the `online_cache`)')
@@ -171,7 +171,7 @@ if ipython is not None:
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
-        [line.strip() for line in r"""--task=or_gate\
+        [line.strip() for line in r"""--task=induction\
 --threshold=0.001\
 --indices-mode=reverse\
 --zero-ablation\
@@ -357,9 +357,9 @@ for i in range(args.max_num_epochs):
         show_full_index=use_pos_embed,
     )
 
-    # if IN_COLAB or ipython is not None:
-    #     # so long as we're not running this as a script, show the image!
-    #     display(Image(f"ims/img_new_{i+1}.png"))
+    if IN_COLAB or ipython is not None:
+        # so long as we're not running this as a script, show the image!
+        display(Image(f"ims/img_new_{i+1}.png"))
 
     print(i, "-" * 50)
     print(exp.count_no_edges())
