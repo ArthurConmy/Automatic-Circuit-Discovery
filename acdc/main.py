@@ -173,12 +173,12 @@ if ipython is not None or True: # TODO fix
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
         [line.strip() for line in r"""--task=induction\
---threshold=0.001\
+--threshold=0.075\
 --indices-mode=reverse\
 --zero-ablation\
 --first-cache-cpu=False\
 --second-cache-cpu=False\
---device=cpu\
+--device=cuda\
 --seed=4\
 --max-num-epochs=100000""".split("\\\n")]
     )
