@@ -582,7 +582,7 @@ class TLACDCExperiment:
                 if self.second_metric is not None:
                     old_second_metric = self.cur_second_metric
 
-                self.update_cur_metric(recalc_edges=False, recalc_metric=False) # warning: gives fast evaluation, though edge count is wrong
+                self.update_cur_metric(recalc_edges=False, recalc_metric=True) # warning: gives fast evaluation, though edge count is wrong
                 evaluated_metric = self.cur_metric # self.metric(self.model(self.ds)) # OK, don't calculate second metric?
 
                 if early_stop: # for debugging the effects of one and only one forward pass WITH a corrupted edge

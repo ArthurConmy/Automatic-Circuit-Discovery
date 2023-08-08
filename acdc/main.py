@@ -172,10 +172,9 @@ if ipython is not None or True: # TODO fix
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
-        [line.strip() for line in r"""--task=induction\
---threshold=0.075\
+        [line.strip() for line in r"""--task=ioi\
+--threshold=0.0075\
 --indices-mode=reverse\
---zero-ablation\
 --first-cache-cpu=False\
 --second-cache-cpu=False\
 --device=cuda\
@@ -227,11 +226,12 @@ SINGLE_STEP = True if args.single_step else False
 # <h2>Setup Task</h2>
 
 #%%
+
 second_metric = None  # some tasks only have one metric
 use_pos_embed = TASK.startswith("tracr")
 
 if TASK == "ioi":
-    num_examples = 100
+    num_examples = 50
     things = get_all_ioi_things(
         num_examples=num_examples, device=DEVICE, metric_name=args.metric
     )
