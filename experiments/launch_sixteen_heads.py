@@ -76,15 +76,16 @@ parser.add_argument('--torch-num-threads', type=int, default=0, help="How many t
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if get_ipython() is not None: # heheh get around this failing in notebooks
     args = parser.parse_args([line.strip() for line in r"""--task=tracr-proportion \
---wandb-mode=offline \
+--wandb-mode=online \
 --wandb-dir=/tmp/wandb \
+--zero-ablation \
 --wandb-entity=remix_school-of-rock \
---wandb-group=default \
+--wandb-group=sixteen-heads-reverse \
 --wandb-project=acdc \
---wandb-run-name=notebook-testing-2 \
+--wandb-run-name=reverse-hisp-run \
 --device=cpu \
 --reset-network=0 \
---metric=kl_div""".split("\\\n")]) # so easy to copy and paste into terminal!!!
+--metric=l2""".split("\\\n")]) # so easy to copy and paste into terminal!!!
 
 else:
     args = parser.parse_args()
@@ -264,7 +265,7 @@ for layer_i in range(model.cfg.n_layers): # This includes word embeddings and po
 
 
 # sort by scores
-nodes_names_indices.sort(key=lambda x: prune_scores[x[1]][x[2]].item(), reverse=True)
+nodes_names_indices.sort(key=lambda x: prune_scores[x[1]][x[2]].item(), reverse=False)
 
 # %%
 

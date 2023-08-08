@@ -175,7 +175,7 @@ parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore 
 # --task=tracr-proportion --wandb-run-name=16h-tracr-00001 --wandb-project=acdc --device=cpu --reset-network=0 --seed=3964471176 --metric=kl_div --wandb-dir=/root/.cache/huggingface/tracr-training/16heads --wandb-mode=online
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task=tracr-reverse --metric=l2 --alg=16h".split())
+    args = parser.parse_args("--task=tracr-proportion --zero-ablation --metric=l2 --alg=16h".split())
     
     # Check whether this is Adria using machine
     IS_ADRIA = not str(os.environ.get("CONDA_DEFAULT_ENV")).lower().startswith("arthur")
@@ -258,7 +258,7 @@ SP_RUN_FILTER = None
 SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
 SIXTEEN_HEADS_PRE_RUN_FILTER = {
     "state": "finished",
-    "group": "sixteen-heads",
+    "group": "sixteen-heads-reverse", # TODO reverse; this is the test pilot of reversing
     "config.task": TASK,
     "config.metric": METRIC,
     "config.zero_ablation": ZERO_ABLATION,
@@ -688,6 +688,9 @@ def get_points(corrs_and_scores, decreasing=True):
                 )
 
         points.append(score)
+
+        print(n_edges, score)
+
     assert n_skipped <= 2
 
     points.append(end_point)
