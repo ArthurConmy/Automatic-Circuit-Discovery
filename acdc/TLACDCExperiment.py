@@ -242,7 +242,11 @@ class TLACDCExperiment:
         
         And cache="online" to save activations 'online' throughout a forward pass"""
 
-        if device is not None:
+        start_time = time.time()
+
+        if device is not None and not str(z.device).startswith(device):
+            print(str(z.device), device, z.device)
+            assert False
             tens = z.clone().to(device)
         else:
             tens = z
@@ -256,6 +260,9 @@ class TLACDCExperiment:
 
         if verbose:
             print(f"Saved {hook.name} with norm {z.norm().item()}")
+
+        if time.time() - start_time > 2:
+            print(hook.name, "was the super slow hook")
 
         return z
 
@@ -580,7 +587,7 @@ class TLACDCExperiment:
                 if self.second_metric is not None:
                     old_second_metric = self.cur_second_metric
 
-                self.update_cur_metric(recalc_edges=False, recalc_metric=False) # warning: gives fast evaluation, though edge count is wrong
+                self.update_cur_metric(recalc_edges=False, recalc_metric=True) # warning: gives fast evaluation, though edge count is wrong
                 evaluated_metric = self.cur_metric # self.metric(self.model(self.ds)) # OK, don't calculate second metric?
 
                 if early_stop: # for debugging the effects of one and only one forward pass WITH a corrupted edge
