@@ -165,7 +165,7 @@ parser.add_argument("--only-save-canonical", action="store_true", help="Only sav
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task=tracr-reverse --metric=l2 --alg=acdc".split())
+    args = parser.parse_args("--task=tracr-reverse --metric=l2 --alg=sp".split())
     
     # Check whether this is Adria using machine
     IS_ADRIA = not str(os.environ.get("CONDA_DEFAULT_ENV")).lower().startswith("arthur")
@@ -568,49 +568,14 @@ if not SKIP_SP: # this is slow, so run once
 
 #%%
 
-def get_sixteen_heads_corrs(
-    project_name = SIXTEEN_HEADS_PROJECT_NAME,
-    pre_run_filter = SIXTEEN_HEADS_PRE_RUN_FILTER,
-    run_filter = SIXTEEN_HEADS_RUN_FILTER,
-    model= None if things is None else things.tl_model,
-):
-    api = wandb.Api()
-    runs = api.runs(project_name, filters=pre_run_filter)
-    if run_filter is None:
-        run = runs[0]
-    else:
-        run = None
-        for r in runs:
-            if run_filter(r):
-                run = r
-                break
-        assert run is not None
-
-    nodes_names_indices = run.summary["nodes_names_indices"]
-
-    nodes_to_mask = []
-    cum_score = 0.0
-    test_keys = [k for k in run.summary.keys() if k.startswith("test")]
-    score_d_list = list(run.scan_history(keys=test_keys, page_size=100000))
-    assert len(score_d_list) == len(nodes_names_indices) + 1
-
-    corr, head_parents = iterative_correspondence_from_mask(model=model, nodes_to_mask=[], use_pos_embed=exp.use_pos_embed)
-    corrs = [(corr, {"score": 0.0, **score_d_list[0]})]
-    for (nodes, hook_name, idx, score), score_d in tqdm(zip(nodes_names_indices, score_d_list[1:])):
-        if score == "NaN":
-            score = 0.0
-        if things is None:
-            corr = None
-        else:
-            nodes_to_mask += list(map(parse_interpnode, nodes))
-            corr, head_parents = iterative_correspondence_from_mask(model=model, nodes_to_mask=nodes_to_mask, use_pos_embed=exp.use_pos_embed, corr=corr, head_parents=head_parents)
-        cum_score += score
-        score_d = {"score": cum_score, **score_d}
-        corrs.append((deepcopy(corr), score_d))
-    return corrs
-
 if "sixteen_heads_corrs" not in locals() and not SKIP_SIXTEEN_HEADS: # this is slow, so run once
-    sixteen_heads_corrs = get_sixteen_heads_corrs()
+    sixteen_heads_corrs = get_sixteen_heads_corrs(
+        project_name = SIXTEEN_HEADS_PROJECT_NAME,
+        pre_run_filter = SIXTEEN_HEADS_PRE_RUN_FILTER,
+        run_filter = SIXTEEN_HEADS_RUN_FILTER,
+        model = None if things is None else things.tl_model,
+        things = things,
+    )
     assert len(sixteen_heads_corrs) > 1
     print("sixteen_heads_corrs", len(sixteen_heads_corrs))
 
