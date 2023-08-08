@@ -296,8 +296,13 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     else:
         raise NotImplementedError("not a tracr task")
 
-    ACDC_PRE_RUN_FILTER["group"] = "acdc-tracr-neurips-5"
-    
+    # ACDC_PRE_RUN_FILTER = {
+    #     "$or": [
+    #         {"group": "acdc-tracr-neurips-5", **ACDC_PRE_RUN_FILTER},
+    #         {"group": "acdc-tracr-neurips-6", **ACDC_PRE_RUN_FILTER},
+    #     ]
+    # }
+
     if not ZERO_ABLATION:
         ACDC_PRE_RUN_FILTER.pop("group")
         ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_tracr_fix"
@@ -1011,135 +1016,130 @@ if OUT_FILE is not None:
 
 # %%
 
-all_figs = []
+if False:
+    all_figs = []
 
-for method_name, method_corrs_and_scores in zip(
-    ["ACDC", "SP", "16H"],
-    [acdc_corrs, sp_corrs, sixteen_heads_corrs],
-    strict=True,
-):
-    corrs, scores = zip(*method_corrs_and_scores)
+    for method_name, method_corrs_and_scores in zip(
+        ["ACDC", "SP", "16H"],
+        [acdc_corrs, sp_corrs, sixteen_heads_corrs],
+        strict=True,
+    ):
+        corrs, scores = zip(*method_corrs_and_scores)
 
-    sorted_corrs = sorted(
-        corrs, 
-        key = lambda corr: corr.count_no_edges(),
-    )
+        sorted_corrs = sorted(
+            corrs, 
+            key = lambda corr: corr.count_no_edges(),
+        )
 
-    nodes = []
+        nodes = []
 
-    for node_str in sorted_corrs[0].graph:
-        for node_index in sorted_corrs[0].graph[node_str]:
-            node = sorted_corrs[0].graph[node_str][node_index]
-            nodes.append((node.name, node.index.hashable_tuple))
+        for node_str in sorted_corrs[0].graph:
+            for node_index in sorted_corrs[0].graph[node_str]:
+                node = sorted_corrs[0].graph[node_str][node_index]
+                nodes.append((node.name, node.index.hashable_tuple))
 
-    node_present_counts = []
-    is_node_present_lists = []
+        node_present_counts = []
+        is_node_present_lists = []
 
-    for corr in tqdm(corrs):
-        is_node_present = [0 for _ in range(len(nodes))]
+        for corr in tqdm(corrs):
+            is_node_present = [0 for _ in range(len(nodes))]
 
-        for (receiver_str, receiver_index, sender_str, sender_node_index), edge in corr.all_edges().items():
-            if edge.present:
-                is_node_present[nodes.index((receiver_str, receiver_index.hashable_tuple))] = 1
-                is_node_present[nodes.index((sender_str, sender_node_index.hashable_tuple))] = 1
+            for (receiver_str, receiver_index, sender_str, sender_node_index), edge in corr.all_edges().items():
+                if edge.present:
+                    is_node_present[nodes.index((receiver_str, receiver_index.hashable_tuple))] = 1
+                    is_node_present[nodes.index((sender_str, sender_node_index.hashable_tuple))] = 1
 
-        node_present_counts.append(is_node_present.count(1))
-        is_node_present_lists.append(is_node_present)
+            node_present_counts.append(is_node_present.count(1))
+            is_node_present_lists.append(is_node_present)
 
-    corrs_and_node_present_counts = list(zip(corrs, node_present_counts, is_node_present_lists, scores, strict=True))
+        corrs_and_node_present_counts = list(zip(corrs, node_present_counts, is_node_present_lists, scores, strict=True))
 
-    corrs_and_node_present_counts = sorted(
-        corrs_and_node_present_counts,
-        key = lambda x: x[1],
-    )
+        corrs_and_node_present_counts = sorted(
+            corrs_and_node_present_counts,
+            key = lambda x: x[1],
+        )
 
-    corrs, node_present_counts, is_node_present_lists, scores = zip(*corrs_and_node_present_counts)
+        corrs, node_present_counts, is_node_present_lists, scores = zip(*corrs_and_node_present_counts)
 
-    # make the x axis nodes, for all the is_node_present_lists
-    # Create a consolidated DataFrame
-    df_list = []
-    for i, node_presence in enumerate(is_node_present_lists):
-        df_list.append(pd.DataFrame({
-            'Nodes': [str(node) for node in nodes],
-            'Presence': node_presence,
-            'corr': i
-        }))
-    df = pd.concat(df_list)
+        # make the x axis nodes, for all the is_node_present_lists
+        # Create a consolidated DataFrame
+        df_list = []
+        for i, node_presence in enumerate(is_node_present_lists):
+            df_list.append(pd.DataFrame({
+                'Nodes': [str(node) for node in nodes],
+                'Presence': node_presence,
+                'corr': i
+            }))
+        df = pd.concat(df_list)
 
-    # Create the animated bar chart
-    fig = px.bar(
-        df,
-        x='Nodes',
-        y='Presence',
-        animation_frame='corr',
-        range_y=[0, 1],  # Since presence is either 0 or 1
-        title='Node Presence for Each Corr with' + method_name,
-    )
-    fig.show()
-    all_figs.append(fig)
+        # Create the animated bar chart
+        fig = px.bar(
+            df,
+            x='Nodes',
+            y='Presence',
+            animation_frame='corr',
+            range_y=[0, 1],  # Since presence is either 0 or 1
+            title='Node Presence for Each Corr with' + method_name,
+        )
+        fig.show()
+        all_figs.append(fig)
 
-    if method_name == "ACDC": 
-        saved_acdc_corrs = corrs
+        if method_name == "ACDC": 
+            saved_acdc_corrs = corrs
 
-    # Do some remove redundant to see if we do any better by the metrics???
+        # Do some remove redundant to see if we do any better by the metrics???
 
-#%%
+    acdc_corr_zero = deepcopy(saved_acdc_corrs[0])
+    sender_to_receiver_edges: MutableMapping[str, MutableMapping[TorchIndex, MutableMapping[str, MutableMapping[TorchIndex, Edge]]]] = make_nd_dict(end_type=None, n=4)
 
-acdc_corr_zero = deepcopy(saved_acdc_corrs[0])
-sender_to_receiver_edges: MutableMapping[str, MutableMapping[TorchIndex, MutableMapping[str, MutableMapping[TorchIndex, Edge]]]] = make_nd_dict(end_type=None, n=4)
+    for (receiver_str, receiver_index, sender_str, sender_node_index), edge in tqdm(acdc_corr_zero.all_edges().items()):
+        new_edge = deepcopy(edge)
+        new_edge.present = False
+        sender_to_receiver_edges[sender_str][sender_node_index][receiver_str][receiver_index] = new_edge # presences... shaky
 
-for (receiver_str, receiver_index, sender_str, sender_node_index), edge in tqdm(acdc_corr_zero.all_edges().items()):
-    new_edge = deepcopy(edge)
-    new_edge.present = False
-    sender_to_receiver_edges[sender_str][sender_node_index][receiver_str][receiver_index] = new_edge # presences... shaky
 
-#%%
+    new_acdc_corrs = []
 
-new_acdc_corrs = []
+    for corr_idx, corr in enumerate(saved_acdc_corrs):
 
-for corr_idx, corr in enumerate(saved_acdc_corrs):
+        new_corr = deepcopy(corr)
+        for _, e in new_corr.all_edges().items():
+            e.present = False
 
-    new_corr = deepcopy(corr)
-    for _, e in new_corr.all_edges().items():
-        e.present = False
+        used_nodes = set()
+        cur_BFS = [corr.graph["blocks.0.hook_resid_pre"][TorchIndex([None])]]
+        used_nodes.add(cur_BFS[0].to_tuple())
+        
+        while len(cur_BFS) > 0:
 
-    used_nodes = set()
-    cur_BFS = [corr.graph["blocks.0.hook_resid_pre"][TorchIndex([None])]]
-    used_nodes.add(cur_BFS[0].to_tuple())
-    
-    while len(cur_BFS) > 0:
+            new_BFS = []
 
-        new_BFS = []
+            for cur_node in cur_BFS:
+                potential_receiver_dict = sender_to_receiver_edges[cur_node.name][cur_node.index]
 
-        for cur_node in cur_BFS:
-            potential_receiver_dict = sender_to_receiver_edges[cur_node.name][cur_node.index]
+                for receiver_node_string in potential_receiver_dict:
+                    for receiver_node_index in potential_receiver_dict[receiver_node_string]:
+                        edge = corr.edges[receiver_node_string][receiver_node_index][cur_node.name][cur_node.index]
+                        if edge.present or edge.edge_type == EdgeType.PLACEHOLDER:
+                            if (receiver_node_string, receiver_node_index.hashable_tuple) not in used_nodes:
+                                new_corr.edges[receiver_node_string][receiver_node_index][cur_node.name][cur_node.index].present = True
+                                new_BFS.append(corr.graph[receiver_node_string][receiver_node_index])
+                                used_nodes.add((receiver_node_string, receiver_node_index.hashable_tuple))
 
-            for receiver_node_string in potential_receiver_dict:
-                for receiver_node_index in potential_receiver_dict[receiver_node_string]:
-                    edge = corr.edges[receiver_node_string][receiver_node_index][cur_node.name][cur_node.index]
-                    if edge.present or edge.edge_type == EdgeType.PLACEHOLDER:
-                        if (receiver_node_string, receiver_node_index.hashable_tuple) not in used_nodes:
-                            new_corr.edges[receiver_node_string][receiver_node_index][cur_node.name][cur_node.index].present = True
-                            new_BFS.append(corr.graph[receiver_node_string][receiver_node_index])
-                            used_nodes.add((receiver_node_string, receiver_node_index.hashable_tuple))
+            cur_BFS = new_BFS
 
-        cur_BFS = new_BFS
+        print(corr.count_no_edges(), new_corr.count_no_edges())
+        new_acdc_corrs.append(new_corr)
 
-    print(corr.count_no_edges(), new_corr.count_no_edges())
-    new_acdc_corrs.append(new_corr)
+        # for (receiver_str, receiver_index, sender_str, sender_node_index), edge in corr.all_edges().items():
+        #     if edge.present:
+        #         is_node_present[nodes.index((receiver_str, receiver_index.hashable_tuple))] = 1
+        #         is_node_present[nodes.index((sender_str, sender_node_index.hashable_tuple))] = 1
 
-    # for (receiver_str, receiver_index, sender_str, sender_node_index), edge in corr.all_edges().items():
-    #     if edge.present:
-    #         is_node_present[nodes.index((receiver_str, receiver_index.hashable_tuple))] = 1
-    #         is_node_present[nodes.index((sender_str, sender_node_index.hashable_tuple))] = 1
+        # node_present_counts.append(is_node_present.count(1))
+        # is_node_present_lists.append(is_node_present)
 
-    # node_present_counts.append(is_node_present.count(1))
-    # is_node_present_lists.append(is_node_present)
 
-# %%
+    acdc_corrs = [(new_acdc_corrs[i], acdc_corrs[i][1]) for i in range(len(acdc_corrs))]
 
-acdc_corrs = [(new_acdc_corrs[i], acdc_corrs[i][1]) for i in range(len(acdc_corrs))]
-
-# After this I remade the ACDC ROC figure; it was far worse, sad
-
-# %%
+    # After this I remade the ACDC ROC figure; it was far worse, sad

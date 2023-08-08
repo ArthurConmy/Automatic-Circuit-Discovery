@@ -118,6 +118,8 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
                             command.append("--abs-value-threshold")
                         commands.append(command)
 
+    return commands
+
     # launch(
     #     commands,
     #     name="acdc-spreadsheet",
@@ -131,17 +133,21 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
     # str_commands = [" ".join(command) for command in commands]
     # print("\n\n\n".join(str_commands), "arthurs commands")
     # print(len(str_commands))
-    print(commands)
+    # print(commands)
 
 # WARNING: edited from main
+# if __name__ == "__main__":
 
-if __name__ == "__main__":
+def get_all_commands():
+
+    big_command_list = []
     for reset_networks in [False, True]:
-        main(
+        big_command_list.extend(main(
             ["tracr-reverse", "tracr-proportion"],
             group_name="reset-networks-neurips-6",
             run_name="aconmy-tracr3-{i:05d}",
             testing=False,
             use_kubernetes=True,
             reset_networks=reset_networks,
-        )
+        ))
+    return big_command_list
