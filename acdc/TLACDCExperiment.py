@@ -83,6 +83,7 @@ class TLACDCExperiment:
         names_mode: Literal["normal", "reverse", "shuffle"] = "normal",
         wandb_config: Optional[Namespace] = None,
         early_exit: bool = False,
+        save_images: bool = True,
     ):
         """Initialize the ACDC experiment"""
 
@@ -91,6 +92,7 @@ class TLACDCExperiment:
 
         model.reset_hooks()
 
+        self.save_images = save_images
         self.remove_redundant = remove_redundant
         self.indices_mode = indices_mode
         self.names_mode = names_mode
@@ -644,17 +646,17 @@ class TLACDCExperiment:
                 print("Removing redundant node", self.current_node)
             self.remove_redundant_node(self.current_node)
 
-        if is_this_node_used and self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value:
+        if is_this_node_used and self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value and self.save_images:
             fname = f"ims/img_new_{self.step_idx}.png"
             show(
                 self.corr,
                 fname=fname,
                 show_full_index=self.show_full_index,
             )
-            # if self.using_wandb:
-            #     wandb.log(
-            #         {"acdc_graph": wandb.Image(fname),}
-            #     )
+            if self.using_wandb:
+                wandb.log(
+                    {"acdc_graph": wandb.Image(fname),}
+                )
 
         # increment the current node
         self.increment_current_node()

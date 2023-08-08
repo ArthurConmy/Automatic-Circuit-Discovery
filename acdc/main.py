@@ -166,6 +166,7 @@ parser.add_argument('--seed', type=int, default=1234)
 parser.add_argument("--max-num-epochs",type=int, default=100_000)
 parser.add_argument('--single-step', action='store_true', help='Use single step, mostly for testing')
 parser.add_argument("--abs-value-threshold", action='store_true', help='Use the absolute value of the result to check threshold')
+parser.add_argument("--dont-save-images", action='store_true', help="Don't save images to ims/")
 
 if ipython is not None:
     # we are in a notebook
@@ -340,6 +341,7 @@ exp = TLACDCExperiment(
     add_receiver_hooks=False,
     remove_redundant=False,
     show_full_index=use_pos_embed,
+    save_images=not args.dont_save_images,
 )
 
 # %% [markdown]
