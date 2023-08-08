@@ -245,7 +245,7 @@ class TLACDCExperiment:
         if device is not None and not str(z.device).startswith(str(device)):
             tens = z.clone().to(device)
         else:
-            tens = z.clone() # TODO check rigorously (e.g with MLPs, too!) that this doesn't ever change when downstream is modified
+            tens = z # TODO check rigorously (e.g with MLPs, too!) that this doesn't ever change when downstream is modified
 
         if cache == "corrupted":
             self.global_cache.corrupted_cache[hook.name] = tens
