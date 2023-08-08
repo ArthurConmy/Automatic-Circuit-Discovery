@@ -175,7 +175,7 @@ parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore 
 # --task=tracr-proportion --wandb-run-name=16h-tracr-00001 --wandb-project=acdc --device=cpu --reset-network=0 --seed=3964471176 --metric=kl_div --wandb-dir=/root/.cache/huggingface/tracr-training/16heads --wandb-mode=online
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task=tracr-proportion --metric=l2 --alg=16h".split())
+    args = parser.parse_args("--task=ioi --metric=kl_div --alg=16h".split())
     
     # Check whether this is Adria using machine
     IS_ADRIA = not str(os.environ.get("CONDA_DEFAULT_ENV")).lower().startswith("arthur")
@@ -254,20 +254,21 @@ SP_PRE_RUN_FILTER = {
 }
 SP_RUN_FILTER = None
 
+
+warnings.warn("Changed the default 16H group to sixteen-heads-reverse because of the incorrect ordering previously implemented")
 # # for 16 heads it's just one run but this way we just use the same code
 SIXTEEN_HEADS_PROJECT_NAME = "remix_school-of-rock/acdc"
 SIXTEEN_HEADS_PRE_RUN_FILTER = {
     "state": "finished",
-    "group": "sixteen-heads-reverse", # TODO reverse; this is the test pilot of reversing
+    "group": "sixteen-heads-reverse",
     "config.task": TASK,
     "config.metric": METRIC,
     "config.zero_ablation": ZERO_ABLATION,
     "config.reset_network": RESET_NETWORK,
 }
-SIXTEEN_HEADS_RUN_FILTER = None
 
+SIXTEEN_HEADS_RUN_FILTER = None # lambda run: run.id == "h94m8mcs" 
 USE_POS_EMBED = False
-
 
 ROOT = Path(os.environ["HOME"]) / ".cache" / "artifacts_for_plot"
 ROOT.mkdir(exist_ok=True)
@@ -293,7 +294,7 @@ if TASK == "docstring":
 elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     USE_POS_EMBED = True
 
-    tracr_task = TASK.split("-")[-1] # "reverse"/"proportion"
+    tracr_task = TASK.split("-")[-1]
     if tracr_task == "proportion":
         get_true_edges = get_tracr_proportion_edges
         num_examples = 50
@@ -305,20 +306,15 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     else:
         raise NotImplementedError("not a tracr task")
 
-    if ZERO_ABLATION:
-        ACDC_PRE_RUN_FILTER.pop("group") # ?! How to get results here?
+    if not SKIP_ACDC:
+        if ZERO_ABLATION:
+            warnings.warn("Looking for tracr runs across all remix_school-of-rock/acdc. This may be expensive")
+            ACDC_PRE_RUN_FILTER.pop("group")
 
-        # ACDC_PRE_RUN_FILTER = {
-        #     "$or": [
-        #         {"group": "acdc-tracr-neurips-5", **ACDC_PRE_RUN_FILTER},
-        #         {"group": "acdc-tracr-neurips-6", **ACDC_PRE_RUN_FILTER},
-        #     ]
-        # }
-
-    # if not ZERO_ABLATION:
-    else:
-        ACDC_PRE_RUN_FILTER.pop("group")
-        ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_tracr_fix"
+        else:
+            warnings.warn("Looking for tracr runs in arthur_tracr_fix only. Ensure this is what you want")
+            ACDC_PRE_RUN_FILTER.pop("group")
+            ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_tracr_fix"
 
     things = get_all_tracr_things(task=tracr_task, metric_name=METRIC, num_examples=num_examples, device=DEVICE)
 
@@ -756,134 +752,4 @@ if OUT_FILE is not None:
     with open(OUT_FILE, "w") as f:
         json.dump(out_dict, f, indent=2)
 
-# %%
-
-if False:
-    all_figs = []
-
-    for method_name, method_corrs_and_scores in zip(
-        ["ACDC", "SP", "16H"],
-        [acdc_corrs, sp_corrs, sixteen_heads_corrs],
-        strict=True,
-    ):
-        corrs, scores = zip(*method_corrs_and_scores)
-
-        sorted_corrs = sorted(
-            corrs, 
-            key = lambda corr: corr.count_no_edges(),
-        )
-
-        nodes = []
-
-        for node_str in sorted_corrs[0].graph:
-            for node_index in sorted_corrs[0].graph[node_str]:
-                node = sorted_corrs[0].graph[node_str][node_index]
-                nodes.append((node.name, node.index.hashable_tuple))
-
-        node_present_counts = []
-        is_node_present_lists = []
-
-        for corr in tqdm(corrs):
-            is_node_present = [0 for _ in range(len(nodes))]
-
-            for (receiver_str, receiver_index, sender_str, sender_node_index), edge in corr.all_edges().items():
-                if edge.present:
-                    is_node_present[nodes.index((receiver_str, receiver_index.hashable_tuple))] = 1
-                    is_node_present[nodes.index((sender_str, sender_node_index.hashable_tuple))] = 1
-
-            node_present_counts.append(is_node_present.count(1))
-            is_node_present_lists.append(is_node_present)
-
-        corrs_and_node_present_counts = list(zip(corrs, node_present_counts, is_node_present_lists, scores, strict=True))
-
-        corrs_and_node_present_counts = sorted(
-            corrs_and_node_present_counts,
-            key = lambda x: x[1],
-        )
-
-        corrs, node_present_counts, is_node_present_lists, scores = zip(*corrs_and_node_present_counts)
-
-        # make the x axis nodes, for all the is_node_present_lists
-        # Create a consolidated DataFrame
-        df_list = []
-        for i, node_presence in enumerate(is_node_present_lists):
-            df_list.append(pd.DataFrame({
-                'Nodes': [str(node) for node in nodes],
-                'Presence': node_presence,
-                'corr': i
-            }))
-        df = pd.concat(df_list)
-
-        # Create the animated bar chart
-        fig = px.bar(
-            df,
-            x='Nodes',
-            y='Presence',
-            animation_frame='corr',
-            range_y=[0, 1],  # Since presence is either 0 or 1
-            title='Node Presence for Each Corr with' + method_name,
-        )
-        fig.show()
-        all_figs.append(fig)
-
-        if method_name == "ACDC": 
-            saved_acdc_corrs = corrs
-
-        # Do some remove redundant to see if we do any better by the metrics???
-
-    acdc_corr_zero = deepcopy(saved_acdc_corrs[0])
-    sender_to_receiver_edges: MutableMapping[str, MutableMapping[TorchIndex, MutableMapping[str, MutableMapping[TorchIndex, Edge]]]] = make_nd_dict(end_type=None, n=4)
-
-    for (receiver_str, receiver_index, sender_str, sender_node_index), edge in tqdm(acdc_corr_zero.all_edges().items()):
-        new_edge = deepcopy(edge)
-        new_edge.present = False
-        sender_to_receiver_edges[sender_str][sender_node_index][receiver_str][receiver_index] = new_edge # presences... shaky
-
-
-    new_acdc_corrs = []
-
-    for corr_idx, corr in enumerate(saved_acdc_corrs):
-
-        new_corr = deepcopy(corr)
-        for _, e in new_corr.all_edges().items():
-            e.present = False
-
-        used_nodes = set()
-        cur_BFS = [corr.graph["blocks.0.hook_resid_pre"][TorchIndex([None])]]
-        used_nodes.add(cur_BFS[0].to_tuple())
-        
-        while len(cur_BFS) > 0:
-
-            new_BFS = []
-
-            for cur_node in cur_BFS:
-                potential_receiver_dict = sender_to_receiver_edges[cur_node.name][cur_node.index]
-
-                for receiver_node_string in potential_receiver_dict:
-                    for receiver_node_index in potential_receiver_dict[receiver_node_string]:
-                        edge = corr.edges[receiver_node_string][receiver_node_index][cur_node.name][cur_node.index]
-                        if edge.present or edge.edge_type == EdgeType.PLACEHOLDER:
-                            if (receiver_node_string, receiver_node_index.hashable_tuple) not in used_nodes:
-                                new_corr.edges[receiver_node_string][receiver_node_index][cur_node.name][cur_node.index].present = True
-                                new_BFS.append(corr.graph[receiver_node_string][receiver_node_index])
-                                used_nodes.add((receiver_node_string, receiver_node_index.hashable_tuple))
-
-            cur_BFS = new_BFS
-
-        print(corr.count_no_edges(), new_corr.count_no_edges())
-        new_acdc_corrs.append(new_corr)
-
-        # for (receiver_str, receiver_index, sender_str, sender_node_index), edge in corr.all_edges().items():
-        #     if edge.present:
-        #         is_node_present[nodes.index((receiver_str, receiver_index.hashable_tuple))] = 1
-        #         is_node_present[nodes.index((sender_str, sender_node_index.hashable_tuple))] = 1
-
-        # node_present_counts.append(is_node_present.count(1))
-        # is_node_present_lists.append(is_node_present)
-
-
-    acdc_corrs = [(new_acdc_corrs[i], acdc_corrs[i][1]) for i in range(len(acdc_corrs))]
-
-    # After this I remade the ACDC ROC figure; it was far worse, sad
-
-# %%
+#%%

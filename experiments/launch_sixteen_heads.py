@@ -75,16 +75,16 @@ parser.add_argument('--torch-num-threads', type=int, default=0, help="How many t
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args([line.strip() for line in r"""--task=tracr-proportion \
+    args = parser.parse_args([line.strip() for line in r"""--task=ioi \
 --wandb-mode=online \
 --wandb-dir=/tmp/wandb \
 --wandb-entity=remix_school-of-rock \
 --wandb-group=sixteen-heads-reverse \
+--metric=kl_div \
 --wandb-project=acdc \
 --wandb-run-name=reverse-hisp-run \
---device=cpu \
---reset-network=0 \
---metric=l2""".split("\\\n")]) # so easy to copy and paste into terminal!!!
+--device=cuda:0 \
+--reset-network=0""".split("\\\n")]) # so easy to copy and paste into terminal!!!
 
 else:
     args = parser.parse_args()
