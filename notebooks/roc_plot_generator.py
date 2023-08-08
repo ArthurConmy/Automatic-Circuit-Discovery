@@ -299,14 +299,16 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     else:
         raise NotImplementedError("not a tracr task")
 
-    # ACDC_PRE_RUN_FILTER = {
-    #     "$or": [
-    #         {"group": "acdc-tracr-neurips-5", **ACDC_PRE_RUN_FILTER},
-    #         {"group": "acdc-tracr-neurips-6", **ACDC_PRE_RUN_FILTER},
-    #     ]
-    # }
+    if ZERO_ABLATION:
+        ACDC_PRE_RUN_FILTER = {
+            "$or": [
+                {"group": "acdc-tracr-neurips-5", **ACDC_PRE_RUN_FILTER},
+                {"group": "acdc-tracr-neurips-6", **ACDC_PRE_RUN_FILTER},
+            ]
+        }
 
-    if not ZERO_ABLATION:
+    # if not ZERO_ABLATION:
+    else:
         ACDC_PRE_RUN_FILTER.pop("group")
         ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_tracr_fix"
 
@@ -720,7 +722,9 @@ def get_acdc_runs(
 if not SKIP_ACDC: # this is slow, so run once
     print(ACDC_PROJECT_NAME, ACDC_PRE_RUN_FILTER)
     acdc_corrs, ids = get_acdc_runs(None if things is None else exp, clip = 1 if TESTING else None, return_ids = True)
-    assert len(acdc_corrs) > 1
+    assert len(acdc_corrs) > 0
+    if len(acdc_corrs) == 1:
+        warnings.warn("Hmm, we only found one run...")
     print("acdc_corrs", len(acdc_corrs))
 
 # %%
@@ -968,7 +972,9 @@ def get_points(corrs_and_scores, decreasing=True):
 
     points.append(end_point)
     assert all(("n_edges" in p) for p in points)
-    assert len(points) > 3
+    assert len(points) >= 3
+    if len(points) == 3:
+        warnings.warn("Only 3 points in this curve")
     return points
 
 points = {}
@@ -1008,7 +1014,9 @@ if OUT_FILE is not None:
     ablation = "zero_ablation" if ZERO_ABLATION else "random_ablation"
     weights = "reset" if RESET_NETWORK else "trained"
 
-    assert len(points[ALG]) > 3
+    assert len(points[ALG]) >= 3
+    if len(points[ALG]) == 3:
+        warnings.warn("Only 3 points in this curve")
 
     out_dict = {
         weights: {

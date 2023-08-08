@@ -124,7 +124,8 @@ def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACD
             for rest2 in rest1.values():
                 try:
                     rest2[node.name][node.index].present = False
-                except KeyError:
+                except KeyError as e:
+                    print("Warning: key error in correspondence_from_mask", e)
                     pass
     return corr
 

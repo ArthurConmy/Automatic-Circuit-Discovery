@@ -816,6 +816,7 @@ plot_type_keys = {
     "roc_nodes": ("node_fpr", "node_tpr"),
     "roc_edges": ("edge_fpr", "edge_tpr"),
     "roc_edges_neurips_reviewers": ("edge_fpr", "edge_tpr"),
+    "roc_nodes_neurips_reviewers": ("node_fpr", "node_tpr"),
     "kl_edges": ("n_edges", "test_kl_div"),
     "metric_edges": ("n_edges", "test_loss"),
     "kl_edges_4": ("n_edges", "test_kl_div"),
@@ -844,9 +845,10 @@ first = True
 
 all_dfs = []
 for metric_idx in [0, 1]:
-    for ablation_type in ["zero_ablation", "random_ablation"]:
+    for ablation_type in ["random_ablation", "zero_ablation"]:
         for weights_type in ["trained", "reset"]:  # Didn't scramble the weights enough it seems
-            for plot_type in ["roc_edges", "kl_edges_induction", "roc_edges_neurips_reviewers", "metric_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "metric_edges"]:
+            for plot_type in ["roc_nodes_neurips_reviewers",
+                              "roc_edges_neurips_reviewers", "kl_edges_induction", "roc_edges", "metric_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "metric_edges"]:
 
                 context_manager = swap_ioi_metrics if plot_type == "roc_edges_neurips_reviewers" else nullcontext
 
