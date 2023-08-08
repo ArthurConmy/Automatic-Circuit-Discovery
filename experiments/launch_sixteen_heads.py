@@ -78,7 +78,6 @@ if get_ipython() is not None: # heheh get around this failing in notebooks
     args = parser.parse_args([line.strip() for line in r"""--task=tracr-proportion \
 --wandb-mode=online \
 --wandb-dir=/tmp/wandb \
---zero-ablation \
 --wandb-entity=remix_school-of-rock \
 --wandb-group=sixteen-heads-reverse \
 --wandb-project=acdc \

@@ -175,7 +175,7 @@ parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore 
 # --task=tracr-proportion --wandb-run-name=16h-tracr-00001 --wandb-project=acdc --device=cpu --reset-network=0 --seed=3964471176 --metric=kl_div --wandb-dir=/root/.cache/huggingface/tracr-training/16heads --wandb-mode=online
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task=tracr-proportion --zero-ablation --metric=l2 --alg=16h".split())
+    args = parser.parse_args("--task=tracr-proportion --metric=l2 --alg=16h".split())
     
     # Check whether this is Adria using machine
     IS_ADRIA = not str(os.environ.get("CONDA_DEFAULT_ENV")).lower().startswith("arthur")
