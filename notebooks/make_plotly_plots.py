@@ -844,7 +844,7 @@ PLOT_DIR.mkdir(exist_ok=True)
 first = True
 
 all_dfs = []
-for metric_idx in [1, 0]:
+for metric_idx in [0, 1]:
     for ablation_type in ["random_ablation", "zero_ablation"]:
         for weights_type in ["trained", "reset"]:  # Didn't scramble the weights enough it seems
             for plot_type in ["kl_edges_induction", "roc_nodes_neurips_reviewers", "metric_edges", "roc_nodes_neurips_reviewers",
