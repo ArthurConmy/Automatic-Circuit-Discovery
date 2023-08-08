@@ -2,7 +2,6 @@
 
 """Currently a notebook so that I can develop the 16 Heads tests fast"""
 
-import math
 from IPython import get_ipython
 
 if get_ipython() is not None:
@@ -10,13 +9,12 @@ if get_ipython() is not None:
     get_ipython().run_line_magic('autoreload', '2')
 
 import argparse
+import math
 import gc
 from copy import deepcopy
-
 import torch
 import wandb
 import tqdm
-
 from transformer_lens import HookedTransformer 
 from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from acdc.TLACDCInterpNode import TLACDCInterpNode
@@ -33,7 +31,6 @@ from acdc.TLACDCEdge import (
     EdgeType,
     TorchIndex,
 )
-
 from acdc.acdc_utils import reset_network
 from acdc.docstring.utils import get_all_docstring_things
 from acdc.greaterthan.utils import get_all_greaterthan_things
@@ -295,7 +292,7 @@ nodes_to_mask = []
 corr, head_parents = None, None
 for nodes, hook_name, idx in tqdm.tqdm(nodes_names_indices):
     nodes_to_mask += nodes
-    corr, head_parents = iterative_correspondence_from_mask(model, nodes_to_mask, use_pos_embed=False, newv=False, corr=corr, head_parents=head_parents)
+    corr, head_parents = iterative_correspondence_from_mask(model, nodes_to_mask, use_pos_embed=False, corr=corr, head_parents=head_parents)
     for e in corr.all_edges().values():
         e.effect_size = 1.0
 

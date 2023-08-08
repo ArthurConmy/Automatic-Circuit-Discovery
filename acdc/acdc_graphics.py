@@ -111,7 +111,7 @@ def show(
     layout: str="dot",
     edge_type_colouring: bool = False,
     show_placeholders: bool = False,
-    seed: Optional[int] = None
+    seed: Optional[int] = None,
     show_effect_size_none: bool = False,
 ) -> pgv.AGraph:
     """
