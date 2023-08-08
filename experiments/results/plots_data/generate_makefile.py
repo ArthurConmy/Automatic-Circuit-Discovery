@@ -120,8 +120,10 @@ def main():
         print(f"Missing {len(missing_files)} files:")
         for missing_file in missing_files:
             print(missing_file)
-        filtered_missing_files = [missing_file for missing_file in missing_files if missing_file.startswith("acdc")]
 
+        # warnings.warn("Filtering the missing files here...")
+        filtered_missing_files = [missing_file for missing_file in missing_files if missing_file.startswith("acdc") and missing_file.endswith(("False-1.json", "False-0.json"))]
+        
         f.write("missing: " + " ".join(sorted(filtered_missing_files)) + "\n\n")
 
 if __name__ == "__main__":

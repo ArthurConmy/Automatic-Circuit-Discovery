@@ -4,17 +4,16 @@ import numpy as np
 import multiprocessing
 from math import gcd
 from experiments.launch_spreadsheet import get_all_commands
+from experiments.launch_all_sixteen_heads import get_16h_commands
 
 used = set()
-commands = get_all_commands()
+commands = get_16h_commands()
 
 def run_script(threshold, gpu_id):
     env = os.environ.copy()
     env["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
-
-    subprocess.run(commands[threshold], env=env)
-
-# subprocess.run(["python", "main.py", "--task", "ioi", "--metric", "logit_diff", "--wandb-run-name", str(threshold), "--wandb-project-name", "arthur_ioi_abs", "--abs-value-threshold", "--using-wandb", "--threshold", str(threshold), "--indices-mode", "reverse", "--first-cache-cpu", "False", "--second-cache-cpu", "False"], env=env)
+# subprocess.run(commands[threshold], env=env)
+    subprocess.run(["python", "main.py", "--task", "ioi", "--metric", "kl_div", "--wandb-run-name", str(threshold), "--wandb-project-name", "acdc", "--wandb-group-name", "ioi-zero-redo", "--using-wandb", "--threshold", str(threshold), "--indices-mode", "reverse", "--first-cache-cpu", "False", "--second-cache-cpu", "False"], env=env)
 # subprocess.run(["python", "main.py", "--task", "induction", "--wandb-run-name", str(threshold), "--wandb-project-name", "arthur_ioi_abs", "--abs-value-threshold", "--using-wandb", "--threshold", str(threshold), "--indices-mode", "reverse", "--first-cache-cpu", "False", "--second-cache-cpu", "False"], env=env)
 #     subprocess.run(["python", "subnetwork_probing/train.py", "--task", "docstring", "--lambda-reg", str(threshold)] + """--zero-ablation=0
 # --wandb-name=my_edge_runs
@@ -29,14 +28,33 @@ def run_script(threshold, gpu_id):
 if __name__ == '__main__':
 
     num_gpus = 1 # specify the number of GPUs available
-    num_jobs_per_gpu = 4 # specify the number of jobs per GPU
+    num_jobs_per_gpu = 1 # specify the number of jobs per GPU
 
     pool = multiprocessing.Pool(num_gpus * num_jobs_per_gpu)
     jobs = []
 
     for it in range(3, int(1e6)):
         curspace = np.linspace(0.02, 0.07, it) # for IOI
-        curspace = list(range(len(commands)))
+        curspace = [
+            2.511886431509577,
+            2.154434690031882,
+            1.7782794100389228,
+            1.389495494373136,
+            1,
+            0.46415888336127725,
+            0.31622776601683794,
+            0.2310129700083158,
+            0.19306977288832497,
+            0.15848931924611143,
+            0.06579332246575675,
+            0.05623413251903491,
+            0.021544346900318825,
+            0.01873817422860383,
+            0.005336699231206307,
+            0.003727593720314938,
+            0.0017782794100389228,
+            3.511191734215127e-05,
+        ]
 
         if not isinstance(curspace, list):
             curspace = curspace[1:-1]

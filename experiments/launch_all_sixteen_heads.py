@@ -26,7 +26,7 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, group_name: str):
 
     commands: List[List[str]] = []
     for reset_network in [0, 1]:
-        for zero_ablation in [0, 1]:
+        for zero_ablation in [1]:
             for task in TASKS:
                 for metric in METRICS_FOR_TASK[task]:
                     if "tracr" not in task:
@@ -55,21 +55,33 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, group_name: str):
 
                     commands.append(command)
 
+    return commands
 
-    launch(
-        commands,
-        name=wandb_identifier.run_name,
-        job=job,
-        check_wandb=wandb_identifier,
-        just_print_commands=False,
-        synchronous=True,
+    # print(len(commands), commands)
+    # TODO add back in 
+    # launch(
+    #     commands,
+    #     name=wandb_identifier.run_name,
+    #     job=job,
+    #     check_wandb=wandb_identifier,
+    #     just_print_commands=False,
+    #     synchronous=True,
+    # )
+
+def get_16h_commands():
+    return main(
+        METRICS_FOR_TASK.keys(),
+        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.7.1", cpu=CPU, gpu=1),
+        "16h-redo",
+        group_name="sixteen-heads-zero-redo",
     )
-
 
 if __name__ == "__main__":
     main(
+        METRICS_FOR_TASK.keys(),
+
         # ["ioi", "greaterthan", "induction", "docstring"],
-        ["tracr-reverse"],
+        # ["tracr-reverse"],
         KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.7.1", cpu=CPU, gpu=0),
         "16h-redo",
         group_name="sixteen-heads",

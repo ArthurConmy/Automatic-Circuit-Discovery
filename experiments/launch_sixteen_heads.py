@@ -233,7 +233,7 @@ for i in tqdm.trange(len(per_example_metric)):
 #%%
 
 nodes_names_indices = []
-for layer_i in range(model.cfg.n_layers):
+for layer_i in range(model.cfg.n_layers): # This includes word embeddings and positional embeddings by default, as we can only include all the outputs from these components or none of them
     keys = [
         f"blocks.{layer_i}.attn.hook_{qkv}" for qkv in ["q", "k", "v"]
     ] + [f"blocks.{layer_i}.hook_mlp_out"]

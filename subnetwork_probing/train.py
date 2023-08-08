@@ -204,6 +204,8 @@ def regularizer(
 
 
 def do_random_resample_caching(model: HookedTransformer, train_data: torch.Tensor) -> torch.Tensor:
+    """Note that we do not include hook_resid_pre (or hook_embed and hook_pos_embed) because if we ablate these we ablate all their downstream effects (since SP is node based not edge based) which is likely not desirable"""
+
     for layer in model.blocks:
         layer.attn.hook_q.is_caching = True
         layer.attn.hook_k.is_caching = True
@@ -235,6 +237,8 @@ def train_induction(
     induction_model: HookedTransformer,
     all_task_things: AllDataThings,
 ):
+    """Refers generally to doing Subnetwork Probing on some task, not specifically induction (old name)"""
+
     epochs = args.epochs
     lambda_reg = args.lambda_reg
 
