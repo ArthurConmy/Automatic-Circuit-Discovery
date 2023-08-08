@@ -95,7 +95,6 @@ try:
 except Exception as e:
     print(f"Could not import `tracr` because {e}; the rest of the file should work but you cannot use the tracr tasks")
 from acdc.docstring.utils import get_all_docstring_things
-from acdc.logic_gates.utils import get_all_logic_gate_things
 from acdc.acdc_utils import (
     make_nd_dict,
     reset_network,
@@ -233,16 +232,6 @@ if TASK == "ioi":
     num_examples = 100
     things = get_all_ioi_things(
         num_examples=num_examples, device=DEVICE, metric_name=args.metric
-    )
-elif TASK == "or_gate":
-    num_examples = 1
-    seq_len = 1
-
-    things = get_all_logic_gate_things(
-        mode="OR",
-        num_examples=num_examples,
-        seq_len=seq_len,
-        device=DEVICE,
     )
 elif TASK == "tracr-reverse":
     num_examples = 6
