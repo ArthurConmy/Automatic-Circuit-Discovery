@@ -1,13 +1,9 @@
-# import os
-
-# os.chdir("/home/ubuntu/mlab2_https/mlab2/")
-
 import argparse
 import random
 from copy import deepcopy
 from functools import partial
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 import collections
 from acdc.greaterthan.utils import get_all_greaterthan_things
 from acdc.ioi.utils import get_all_ioi_things
@@ -40,8 +36,8 @@ import wandb
 
 
 def iterative_correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACDCInterpNode],
-                                       use_pos_embed: bool = False,newv = False, corr: TLACDCCorrespondence = None,
-                                       head_parents = None) -> TLACDCCorrespondence:
+                                       use_pos_embed: bool = False,newv = False, corr: Optional[TLACDCCorrespondence] = None,
+                                       head_parents: Optional[List] = None) -> TLACDCCorrespondence:
     if corr is None:
         corr = TLACDCCorrespondence.setup_from_model(model, use_pos_embed=use_pos_embed)
     if head_parents is None:
