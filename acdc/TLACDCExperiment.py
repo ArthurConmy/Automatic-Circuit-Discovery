@@ -638,7 +638,6 @@ class TLACDCExperiment:
                 break
 
         # TODO find an efficient way to do remove hooks sensibly
-
         if not is_this_node_used and self.remove_redundant:
             if self.verbose:
                 print("Removing redundant node", self.current_node)

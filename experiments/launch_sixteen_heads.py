@@ -73,9 +73,16 @@ parser.add_argument('--torch-num-threads', type=int, default=0, help="How many t
 
 # --task=tracr-proportion --wandb-run-name=16h-tracr-00001 --wandb-project=acdc --device=cpu --reset-network=0 --seed=3964471176 --metric=kl_div --wandb-dir=/root/.cache/huggingface/tracr-training/16heads --wandb-mode=online
 
-# for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
-if get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args([line.strip() for line in r"""--task=ioi \
+args = None
+
+if get_ipython() is None: # heheh get around this failing in notebooks
+    try:
+        args = parser.parse_args()
+    except:
+        print("Failed to parse args, using notebook-set values!!!")
+
+if args is None:
+    args = parser.parse_args([line.strip() for line in r"""--task=induction \
 --wandb-mode=online \
 --wandb-dir=/tmp/wandb \
 --wandb-entity=remix_school-of-rock \
@@ -86,14 +93,15 @@ if get_ipython() is not None: # heheh get around this failing in notebooks
 --device=cuda:0 \
 --reset-network=0""".split("\\\n")]) # so easy to copy and paste into terminal!!!
 
-else:
-    args = parser.parse_args()
-
 torch.manual_seed(args.seed)
 
 if args.torch_num_threads > 0:
     torch.set_num_threads(args.torch_num_threads)
 torch.manual_seed(args.seed)
+
+notes = ""
+with open(__file__, "r") as f:
+    notes += f.read()
 
 wandb.init(
     name=args.wandb_run_name,
@@ -103,6 +111,7 @@ wandb.init(
     config=args,
     dir=args.wandb_dir,
     mode=args.wandb_mode,
+    notes=notes,
 )
 
 #%%
