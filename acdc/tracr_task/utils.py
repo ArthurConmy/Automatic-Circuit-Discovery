@@ -411,7 +411,7 @@ def get_tracr_proportion_edges():
 def get_tracr_reverse_edges():
     """Set of edges generated from ACDC run with threshold epsilon, metric l2 and zero ablation (commit e612e50)
     
-    [edited down a tad as I think that some of these are not necessary...]"""
+    [Unnecessary PLACEHOLDER edges commented out]"""
     
     return OrderedDict(
         [

@@ -328,7 +328,7 @@ def get_edge_stats(ground_truth, recovered):
 
     true_positive_false_positive_tuples = set()
     for tupl, edge in ground_truth_all_edges.items():
-        if edge.edge_type == EdgeType.PLACEHOLDER:
+        if edge.edge_type == EdgeType.PLACEHOLDER or tupl[0].endswith("mlp_out"): # This need be here because MLPIN -> MLPOUT is a direct computation edge and we shouldn't count this as we collapse MLPIN and MLPOUT visually
             continue
         if recovered_all_edges[tupl].present:
             if edge.present:
@@ -348,19 +348,18 @@ def get_edge_stats(ground_truth, recovered):
     counts["ground truth"] = len([e for e in ground_truth_all_edges.values() if e.edge_type != EdgeType.PLACEHOLDER and e.present])
     counts["recovered"] = len([e for e in recovered_all_edges.values() if e.edge_type != EdgeType.PLACEHOLDER and e.present])
 
-    # TODO turn these back into assertions...
-
+    # TODO turn these back into assertions... (for now made the warnings stick out more)
     if not counts["all"] == counts["true positive"] + counts["false positive"] + counts["true negative"] + counts["false negative"]:
-        print(counts["all"], counts["true positive"], counts["false positive"], counts["true negative"], counts["false negative"])
+        print("WARNING: counting mismatch 1", counts["all"], counts["true positive"], counts["false positive"], counts["true negative"], counts["false negative"])
 
     if not counts["ground truth"] == counts["true positive"] + counts["false negative"]:
-        print(counts["ground truth"], counts["true positive"], counts["false negative"])
+        print("WARNING: counting mismatch 2", counts["ground truth"], counts["true positive"], counts["false negative"])
 
     if not counts["recovered"] == counts["true positive"] + counts["false positive"]:
-        print("Bad1", counts["recovered"], counts["true positive"], counts["false positive"])
+        print("WARNING: counting mismatch 3", counts["recovered"], counts["true positive"], counts["false positive"])
 
     if not counts["all"] == counts["ground truth"] + counts["recovered"] - counts["true positive"] + counts["true negative"]:
-        print("Bad2", counts["all"], counts["ground truth"], counts["recovered"], counts["true positive"], counts["true negative"])
+        print("WARNING: counting mismatch 4", counts["all"], counts["ground truth"], counts["recovered"], counts["true positive"], counts["true negative"])
 
     return counts
             
