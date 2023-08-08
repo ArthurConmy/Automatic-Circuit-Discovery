@@ -638,7 +638,6 @@ class TLACDCExperiment:
                 break
 
         # TODO find an efficient way to do remove hooks sensibly
-
         if not is_this_node_used and self.remove_redundant:
             if self.verbose:
                 print("Removing redundant node", self.current_node)
@@ -651,10 +650,11 @@ class TLACDCExperiment:
                 fname=fname,
                 show_full_index=self.show_full_index,
             )
-            # if self.using_wandb:
-            #     wandb.log(
-            #         {"acdc_graph": wandb.Image(fname),}
-            #     )
+
+            if self.using_wandb: # TODO setup a way to disable this. It's sometimes weirdly buggy, and we don't always need images
+                wandb.log(
+                    {"acdc_graph": wandb.Image(fname),}
+                )
 
         # increment the current node
         self.increment_current_node()
