@@ -168,17 +168,17 @@ parser.add_argument('--single-step', action='store_true', help='Use single step,
 parser.add_argument("--abs-value-threshold", action='store_true', help='Use the absolute value of the result to check threshold')
 parser.add_argument("--dont-save-images", action='store_true', help="Don't save images to ims/")
 
-if ipython is not None:
+if ipython is not None or True:
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
         [line.strip() for line in r"""--task=induction\
---threshold=0.001\
+--threshold=0.075\
 --indices-mode=reverse\
 --zero-ablation\
 --first-cache-cpu=False\
 --second-cache-cpu=False\
---device=cpu\
+--device=cuda\
 --seed=4\
 --max-num-epochs=100000""".split("\\\n")]
     )
@@ -251,7 +251,7 @@ elif TASK == "tracr-proportion":
         device=DEVICE,
     )
 elif TASK == "induction":
-    num_examples = 10 if IN_COLAB else 50
+    num_examples = 10 # TODO add back if IN_COLAB else 50
     seq_len = 300
     things = get_all_induction_things(
         num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric=args.metric

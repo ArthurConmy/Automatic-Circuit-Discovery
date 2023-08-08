@@ -245,9 +245,9 @@ class TLACDCExperiment:
         if device == "cpu":
             tens = z.cpu()
         else:
-            tens = z.clone()
-            if device is not None:
-                tens = tens.to(device)
+            tens = z.clone() # TODO check that this doesn't ever change when downstream is modified
+            if device is not None and not str(z.device).startswith(str(device)):
+                tens = tens.clone().to(device)
 
         if cache == "corrupted":
             self.global_cache.corrupted_cache[hook.name] = tens
