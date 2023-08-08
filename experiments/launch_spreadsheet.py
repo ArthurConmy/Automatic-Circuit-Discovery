@@ -106,6 +106,8 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
                             f"--device={'cuda' if not testing else 'cpu'}" if "tracr" not in task else "--device=cpu",
                             f"--reset-network={reset_network}",
                             f"--seed={random.randint(0, 2**32 - 1)}",
+                            f"--first-cache-cpu=False",
+                            f"--second-cache-cpu=False",
                             f"--metric={metric}",
                             f"--torch-num-threads={CPU}",
                             "--wandb-dir=/root/.cache/huggingface/tracr-training/acdc",  # If it doesn't exist wandb will use /tmp
@@ -141,4 +143,4 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
 # if __name__ == "__main__":
 
 def get_all_commands():
-    return main(TASKS = ["induction"], group_name="sixteen-heads-reverse", run_name="induction_sweep", testing=False, use_kubernetes=False, reset_networks=False, abs_value_threshold=False, use_gpu=True)
+    return main(TASKS = ["induction"], group_name="acdc-induction-zero-thinking", run_name="induction_sweep", testing=False, use_kubernetes=False, reset_networks=False, abs_value_threshold=False, use_gpu=True)

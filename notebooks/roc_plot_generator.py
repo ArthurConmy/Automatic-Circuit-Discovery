@@ -175,7 +175,7 @@ parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore 
 # --task=tracr-proportion --wandb-run-name=16h-tracr-00001 --wandb-project=acdc --device=cpu --reset-network=0 --seed=3964471176 --metric=kl_div --wandb-dir=/root/.cache/huggingface/tracr-training/16heads --wandb-mode=online
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task=ioi --metric=kl_div --alg=16h".split())
+    args = parser.parse_args("--task=induction --metric=kl_div --alg=acdc".split())
     
     # Check whether this is Adria using machine
     IS_ADRIA = not str(os.environ.get("CONDA_DEFAULT_ENV")).lower().startswith("arthur")
@@ -389,8 +389,13 @@ elif TASK == "induction":
     if RESET_NETWORK:
         ACDC_PRE_RUN_FILTER["group"] = "reset-networks-neurips"
     else:
-        # ACDC_PRE_RUN_FILTER["group"] = "adria-induction-2"
-        ACDC_PRE_RUN_FILTER["group"] = "adria-induction-3"
+        if ZERO_ABLATION:
+            ACDC_PROJECT_NAME = "remix_school-of-rock/acdc"
+            ACDC_PRE_RUN_FILTER["group"] = "acdc-induction-zero-thinking"
+
+        else:
+            # ACDC_PRE_RUN_FILTER["group"] = "adria-induction-2"
+            ACDC_PRE_RUN_FILTER["group"] = "adria-induction-3"
 else:
     raise NotImplementedError("TODO " + TASK)
 
