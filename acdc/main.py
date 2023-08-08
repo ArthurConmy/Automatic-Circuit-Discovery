@@ -168,7 +168,7 @@ parser.add_argument('--single-step', action='store_true', help='Use single step,
 parser.add_argument("--abs-value-threshold", action='store_true', help='Use the absolute value of the result to check threshold')
 parser.add_argument("--dont-save-images", action='store_true', help="Don't save images to ims/")
 
-if ipython is not None:
+if ipython is not None or True: # TODO fix
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
@@ -209,6 +209,7 @@ elif args.second_cache_cpu.lower() == "true":
     CORRUPTED_CACHE_CPU = True
 else:
     raise ValueError(f"second_cache_cpu must be either True or False, got {args.second_cache_cpu}")
+
 THRESHOLD = args.threshold  # only used if >= 0.0
 ZERO_ABLATION = True if args.zero_ablation else False
 USING_WANDB = True if args.using_wandb else False
