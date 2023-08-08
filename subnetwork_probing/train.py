@@ -35,9 +35,9 @@ from subnetwork_probing.transformer_lens.transformer_lens.ioi_dataset import IOI
 import wandb
 
 
-def iterative_correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACDCInterpNode],
+def iterative_correspondence_from_mask(model: HookedTransformer, nodes_to_mask: List[TLACDCInterpNode],
                                        use_pos_embed: bool = False, corr: Optional[TLACDCCorrespondence] = None,
-                                       head_parents: Optional[List] = None) -> TLACDCCorrespondence:
+                                       head_parents: Optional[List] = None) -> Tuple[TLACDCCorrespondence, List]:
     if corr is None:
         corr = TLACDCCorrespondence.setup_from_model(model, use_pos_embed=use_pos_embed)
     if head_parents is None:

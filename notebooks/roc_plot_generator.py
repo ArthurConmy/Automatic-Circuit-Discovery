@@ -165,7 +165,7 @@ parser.add_argument("--only-save-canonical", action="store_true", help="Only sav
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task=tracr-reverse --metric=l2 --alg=sp".split())
+    args = parser.parse_args("--task=tracr-reverse --metric=l2 --alg=16h".split())
     
     # Check whether this is Adria using machine
     IS_ADRIA = not str(os.environ.get("CONDA_DEFAULT_ENV")).lower().startswith("arthur")
@@ -500,7 +500,7 @@ if ONLY_SAVE_CANONICAL:
 if not SKIP_ACDC: # this is slow, so run once
     print(ACDC_PROJECT_NAME, ACDC_PRE_RUN_FILTER)
     acdc_corrs, ids = get_acdc_runs(
-        exp = None if things is None else exp, 
+        exp = exp, 
         clip = 1 if TESTING else None, 
         return_ids = True,
         things=things,
@@ -555,7 +555,7 @@ if not SKIP_CANONICAL:
 
 if not SKIP_SP: # this is slow, so run once
     sp_corrs = get_sp_corrs(
-        model = None if things is None else things.tl_model,
+        model = things.tl_model,
         project_name = SP_PROJECT_NAME,
         pre_run_filter = SP_PRE_RUN_FILTER,
         run_filter = SP_RUN_FILTER,
@@ -570,10 +570,11 @@ if not SKIP_SP: # this is slow, so run once
 
 if "sixteen_heads_corrs" not in locals() and not SKIP_SIXTEEN_HEADS: # this is slow, so run once
     sixteen_heads_corrs = get_sixteen_heads_corrs(
+        exp = exp,
         project_name = SIXTEEN_HEADS_PROJECT_NAME,
         pre_run_filter = SIXTEEN_HEADS_PRE_RUN_FILTER,
         run_filter = SIXTEEN_HEADS_RUN_FILTER,
-        model = None if things is None else things.tl_model,
+        model = things.tl_model,
         things = things,
     )
     assert len(sixteen_heads_corrs) > 1
