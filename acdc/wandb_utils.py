@@ -147,6 +147,7 @@ def get_acdc_runs( # TODO ensure this is super similar to the changes from tracr
                 threshold_to_run_map[candidate.threshold] = candidate
 
     for run in filtered_runs:
+        print(run.id, "from this many mins ago:", (time.time() - run.summary["_timestamp"])/60)
         score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
         try:
             score_d["steps"] = run.summary["_step"]
