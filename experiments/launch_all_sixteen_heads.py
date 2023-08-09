@@ -77,7 +77,7 @@ def get_16h_commands():
         group_name="sixteen-heads-reverse",
     )
 
-print(len(get_16h_commands()))
+print((get_16h_commands()))
 
 if __name__ == "__main__":
     main(

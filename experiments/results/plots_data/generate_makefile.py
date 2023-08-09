@@ -56,6 +56,7 @@ def main():
                                 "python",
                                 "../../../notebooks/roc_plot_generator.py",
                                 f"--task={task}",
+                                f"--device=cuda",
                                 f"--reset-network={reset_network}",
                                 f"--metric={metric}",
                                 f"--alg={alg}",
@@ -122,7 +123,7 @@ def main():
             print(missing_file)
 
         # warnings.warn("Filtering the missing files here...")
-        filtered_missing_files = [missing_file for missing_file in missing_files if missing_file.endswith(("0.json",))]
+        filtered_missing_files = [missing_file for missing_file in missing_files if missing_file.startswith(("16h",)) and not missing_file.endswith("1.json")]
         
         f.write("missing: " + " ".join(sorted(filtered_missing_files)) + "\n\n")
 

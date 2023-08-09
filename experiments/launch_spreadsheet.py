@@ -28,7 +28,7 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
 
     commands: List[List[str]] = []
     for reset_network in [int(reset_networks)]:
-        for zero_ablation in [0]:
+        for zero_ablation in [1]:
             for task in TASKS:
                 for metric in METRICS_FOR_TASK[task]:
 
@@ -48,11 +48,11 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
                     elif task == "greaterthan":
                         if metric == "kl_div":
                             # Typical metric value range: 0.0-20
-                            # thresholds = 10 ** np.linspace(-4, 0, NUM_SPACINGS)
-                            thresholds = 10 ** np.linspace(-6, -4, 11)
+                            thresholds = 10 ** np.linspace(-6, 0, NUM_SPACINGS)
+                            # thresholds = 10 ** np.linspace(-6, -4, 11) # ?!
                         elif metric == "greaterthan":
                             # Typical metric value range: -1.0 - 0.0
-                            thresholds = 10 ** np.linspace(-3, -1, NUM_SPACINGS)
+                            thresholds = 10 ** np.linspace(-4, 0, NUM_SPACINGS)
                         else:
                             raise ValueError("Unknown metric")
                         num_examples = 100
@@ -140,7 +140,10 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
     # print(commands)
 
 # WARNING: edited from main
-# if __name__ == "__main__":
 
 def get_all_commands():
-    return main(TASKS = ["induction"], group_name="acdc-induction-zero-thinking", run_name="induction_sweep", testing=False, use_kubernetes=False, reset_networks=False, abs_value_threshold=False, use_gpu=True)
+    return main(TASKS = METRICS_FOR_TASK.keys(), group_name="zero-ablation-fix-further-bug", run_name="aconmy-run", testing=False, use_kubernetes=False, reset_networks=False, abs_value_threshold=False, use_gpu=True)
+
+
+if __name__ == "__main__":
+    print(len(get_all_commands()))
