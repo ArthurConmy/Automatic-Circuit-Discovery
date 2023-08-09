@@ -404,6 +404,7 @@ if ZERO_ABLATION:
     warnings.warn("Overriding ACDC")
     ACDC_PROJECT_NAME = "remix_school-of-rock/acdc"
     ACDC_PRE_RUN_FILTER = deepcopy(ACDC_PRE_RUN_FILTER)
+    ACDC_PRE_RUN_FILTER["state"] = "finished"
     ACDC_PRE_RUN_FILTER["group"] = "zero-ablation-fix-further-bug" 
 
 if RESET_NETWORK:
