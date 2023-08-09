@@ -1,3 +1,4 @@
+import warnings
 import os
 from pathlib import Path
 from experiments.launcher import KubernetesJob, launch
@@ -56,7 +57,7 @@ def main():
                                 "python",
                                 "../../../notebooks/roc_plot_generator.py",
                                 f"--task={task}",
-                                f"--device=cpu",
+                                f"--device=cuda",
                                 f"--reset-network={reset_network}",
                                 f"--metric={metric}",
                                 f"--alg={alg}",
@@ -115,7 +116,7 @@ def main():
         f.write("induction: " + " ".join(sorted(induction_files)) + "\n\n")
             
         print(actual_files - possible_files)
-        assert len(actual_files - possible_files) == 0, f"There are files that shouldn't be there; {actual_files - possible_files}"
+        if len(actual_files - possible_files) != 0: warnings.warn(f"There are files that shouldn't be there; {actual_files - possible_files}")
 
         missing_files = possible_files - actual_files
         print(f"Missing {len(missing_files)} files:")
@@ -126,7 +127,8 @@ def main():
         f.write("missing: " + " ".join(sorted(missing_files)) + "\n\n")
 
         # warnings.warn("Filtering the missing files here...")
-        filtered_missing_files = [missing_file for missing_file in missing_files if missing_file.startswith(("acdc",)) and not missing_file.endswith("1.json") and "True" in missing_file]
+        # filtered_missing_files = [missing_file for missing_file in missing_files if missing_file.startswith(("acdc",)) and not missing_file.endswith("1.json") and "True" in missing_file]
+        filtered_missing_files = [missing_file for missing_file in missing_files if "0.json" in missing_file and "kl_div" in missing_file]
         print(
             ["make " + miss for miss in filtered_missing_files]
         )
