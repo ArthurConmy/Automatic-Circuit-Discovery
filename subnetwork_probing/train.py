@@ -64,9 +64,6 @@ def iterative_correspondence_from_mask(model: HookedTransformer, nodes_to_mask: 
         if node.name.endswith(("mlp_in", "resid_mid")):
             additional_nodes_to_mask.append(TLACDCInterpNode(node.name.replace("resid_mid", "mlp_out").replace("mlp_in", "mlp_out"), node.index, EdgeType.DIRECT_COMPUTATION))
 
-        if node.name.endswith(("mlp_in", "resid_mid")):
-            additional_nodes_to_mask.append(TLACDCInterpNode(node.name.replace("resid_mid", "mlp_out").replace("mlp_in", "mlp_out"), node.index, EdgeType.DIRECT_COMPUTATION))
-
     for node in nodes_to_mask + additional_nodes_to_mask:
         # Mark edges where this is child as not present
         rest2 = corr.edges[node.name][node.index]
@@ -98,17 +95,17 @@ def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACD
             child_name = node.name.replace("_q", "_result").replace("_k", "_result").replace("_v", "_result")
             head_parents[(child_name, node.index)] += 1
 
+            if head_parents[(child_name, node.index)] == 3:
+                additional_nodes_to_mask.append(TLACDCInterpNode(child_name, node.index, EdgeType.PLACEHOLDER))
+                print(child_name, node.index)
+
             # Forgot to add these in earlier versions of Subnetwork Probing, and so the edge counts were inflated
             additional_nodes_to_mask.append(TLACDCInterpNode(child_name + "_input", node.index, EdgeType.ADDITION))
         
-        if node.name.endswith(("mlp_in", "resid_mid")):
+        if node.name.endswith(("mlp_in", "resid_mid")): # TODO test
             additional_nodes_to_mask.append(TLACDCInterpNode(node.name.replace("resid_mid", "mlp_out").replace("mlp_in", "mlp_out"), node.index, EdgeType.DIRECT_COMPUTATION))
 
-    # assert all([v <= 3 for v in head_parents.values()])
-
-    for (child_name, child_index), count in head_parents.items():
-        if count == 3:
-            nodes_to_mask.append(TLACDCInterpNode(child_name, child_index, EdgeType.ADDITION))
+    assert all([v <= 3 for v in head_parents.values()])
 
     for node in nodes_to_mask + additional_nodes_to_mask:
         # Mark edges where this is child as not present
@@ -120,7 +117,7 @@ def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACD
         # Mark edges where this is parent as not present
         for rest1 in corr.edges.values():
             for rest2 in rest1.values():
-                if node.name in rest2 and node.index in rest2[node.index]:
+                if node.name in rest2 and node.index in rest2[node.name]:
                     rest2[node.name][node.index].present = False
 
     return corr

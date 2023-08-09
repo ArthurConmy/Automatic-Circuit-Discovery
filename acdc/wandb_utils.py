@@ -384,20 +384,27 @@ def get_sixteen_heads_corrs(
 
     corrs = [(corr, {"score": 0.0, **score_d_list[0]})]
 
-    for (nodes, hook_name, idx, score), score_d in tqdm(zip(nodes_names_indices, score_d_list[1:])):
+    zipped_list = list(zip(nodes_names_indices, score_d_list[1:], strict=True))
+
+    for loop_idx, ((nodes, hook_name, idx, score), score_d) in tqdm(enumerate(zipped_list)):
         if score == "NaN":
             score = 0.0
         if things is None:
             corr = None
         else:
             nodes_to_mask += list(map(parse_interpnode, nodes))
-            corr, head_parents = iterative_correspondence_from_mask(
+            corr = correspondence_from_mask(
                 model=model, 
                 nodes_to_mask=nodes_to_mask, 
                 use_pos_embed=exp.use_pos_embed, 
-                corr=corr, 
-                head_parents=head_parents
+                # corr=corr, 
+                # head_parents=head_parents
             )
+        if loop_idx + 4 > len(zipped_list):
+            print(loop_idx, nodes)
+            print(corr.count_no_edges(verbose=True))
+            print("\n"*3)
+
         cum_score += score
         score_d = {"score": cum_score, **score_d}
         print(corr.count_no_edges(), score_d)
