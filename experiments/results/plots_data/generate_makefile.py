@@ -56,7 +56,7 @@ def main():
                                 "python",
                                 "../../../notebooks/roc_plot_generator.py",
                                 f"--task={task}",
-                                f"--device=cpu",
+                                f"--device=cuda",
                                 f"--reset-network={reset_network}",
                                 f"--metric={metric}",
                                 f"--alg={alg}",
