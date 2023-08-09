@@ -163,10 +163,8 @@ def get_acdc_runs( # TODO ensure this is super similar to the changes from tracr
                 try:
                     score_d["score"] = float(run.name.split("_")[-1])
                 except ValueError as e:
-                    if args.ignore_missing_score:
-                        continue
-                    else:
-                        raise e
+                    print(run.id, "errorring")
+                    raise e
 
         threshold = score_d["score"]
 
