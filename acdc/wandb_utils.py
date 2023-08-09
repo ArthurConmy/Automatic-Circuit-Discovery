@@ -369,6 +369,7 @@ def get_sixteen_heads_corrs(
         assert run is not None
 
     nodes_names_indices = run.summary["nodes_names_indices"]
+    print(run.id, "created", time.time()-run.summary["_timestamp"], "ago")
 
     nodes_to_mask = []
     cum_score = 0.0
@@ -376,10 +377,10 @@ def get_sixteen_heads_corrs(
     score_d_list = list(run.scan_history(keys=test_keys, page_size=100000))
     assert len(score_d_list) == len(nodes_names_indices) + 1
 
-    corr, head_parents = iterative_correspondence_from_mask( # I don't understand this error
+    corr = correspondence_from_mask( # I don't understand this error
         model=model, 
         nodes_to_mask=[], 
-        use_pos_embed=exp.use_pos_embed
+        use_pos_embed=exp.use_pos_embed,
     )
 
     corrs = [(corr, {"score": 0.0, **score_d_list[0]})]
