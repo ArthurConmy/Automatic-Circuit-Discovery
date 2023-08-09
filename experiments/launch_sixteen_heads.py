@@ -86,7 +86,7 @@ if args is None:
 --wandb-mode=online \
 --wandb-dir=/tmp/wandb \
 --wandb-entity=remix_school-of-rock \
---wandb-group=sixteen-heads-reverse \
+--wandb-group=sixteen-heads-reverse \ # TODO: fix sixteen heads 1 edge perfect loss problem
 --metric=kl_div \
 --wandb-project=acdc \
 --wandb-run-name=reverse-hisp-run \
