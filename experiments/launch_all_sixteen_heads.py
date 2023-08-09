@@ -25,16 +25,16 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, group_name: str):
         project="acdc")
 
     commands: List[List[str]] = []
-    for reset_network in [0, 1]:
-        for zero_ablation in [1]:
+    for reset_network in [0]:
+        for zero_ablation in [0, 1]:
             for task in TASKS:
                 for metric in METRICS_FOR_TASK[task]:
+                    spec = False
                     if "tracr" not in task:
                         if reset_network==0 and zero_ablation==0:
-                            continue
+                            spec=True
                         if task in ["ioi", "induction"] and reset_network==0 and zero_ablation==1:
-                            continue
-
+                            spec=True
                     command = [
                         "python",
                         "experiments/launch_sixteen_heads.py",
@@ -53,7 +53,8 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, group_name: str):
                     if zero_ablation:
                         command.append("--zero-ablation")
 
-                    commands.append(command)
+                    if spec:
+                        commands.append(command)
 
     return commands
 
@@ -73,18 +74,17 @@ def get_16h_commands():
         METRICS_FOR_TASK.keys(),
         KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.7.1", cpu=CPU, gpu=1),
         "16h-redo",
-        group_name="sixteen-heads-zero-redo",
+        group_name="sixteen-heads-reverse",
     )
+
+print(len(get_16h_commands()))
 
 if __name__ == "__main__":
     main(
         METRICS_FOR_TASK.keys(),
-
-        # ["ioi", "greaterthan", "induction", "docstring"],
-        # ["tracr-reverse"],
-        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.7.1", cpu=CPU, gpu=0),
+        KubernetesJob(container="ghcr.io/rhaps0dy/automatic-circuit-discovery:1.7.1", cpu=CPU, gpu=1),
         "16h-redo",
-        group_name="sixteen-heads",
+        group_name="sixteen-heads-reverse",
     )
     # main(
     #     ["tracr-reverse", "tracr-proportion"],
