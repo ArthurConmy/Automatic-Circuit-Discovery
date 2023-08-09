@@ -261,7 +261,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         ]
         specs = [[{}, {}, {"t": 0.0, "l": -0.04, "r": RIGHT_MARGIN + 0.16}]]
         column_widths = [0.40, 0.40, 0.20]
-        subplot_titles = (TASK_NAMES["induction"] + " (corrupted)", TASK_NAMES["induction"] + " (zero)", THRESHOLD_ANNOTATION)
+        subplot_titles = ("a) " + TASK_NAMES["induction"] + " (zero)", "b) " + TASK_NAMES["induction"] + " (corrupted)", THRESHOLD_ANNOTATION)
     else:
         rows_cols_task_idx = [
             ((1, 1), "ioi"),
@@ -310,7 +310,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     else:
                         ablation_type = "random_ablation"
                 elif plot_type in ["metric_edges_induction", "kl_edges_induction"]:
-                    if col == 2:
+                    if col == 1:
                         ablation_type = "zero_ablation"
                     else:
                         ablation_type = "random_ablation"
@@ -398,7 +398,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     else:
                         ablation_type = "random_ablation"
                 elif plot_type in ["metric_edges_induction", "kl_edges_induction"]:
-                    if col == 2:
+                    if col == 1:
                         ablation_type = "zero_ablation"
                     else:
                         ablation_type = "random_ablation"
@@ -733,7 +733,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                 ("trained", "Clean", 1.0, "solid", "rgb(0, 0, 0)"),
                 ("trained", "Canonical", 0.5, "dashdot", "rgb(0, 0, 0)"),
                 # ("random", "Random", 0.5, "dashed", "rgb(0, 0, 0)"),
-                ("reset", "Reset", 1.0, "dot", "rgb(0, 0, 0)"),
+                ("reset", "Baseline", 1.0, "dot", "rgb(0, 0, 0)"),
             ]:
                 this_data = all_data[weights_type][ablation_type][task_idx][metric_name]["CANONICAL"]
 
@@ -844,10 +844,10 @@ PLOT_DIR.mkdir(exist_ok=True)
 first = True
 
 all_dfs = []
-for metric_idx in [1, 0]:
+for metric_idx in [0, 1]:
     for ablation_type in ["random_ablation", "zero_ablation"]:
         for weights_type in ["trained", "reset"]:  # Didn't scramble the weights enough it seems
-            for plot_type in ["roc_edges", "kl_edges_induction", "metric_edges", "roc_nodes_neurips_reviewers", "roc_edges", "metric_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes"]:
+            for plot_type in ["kl_edges_induction", "roc_edges_neurips_reviewers", "metric_edges", "roc_nodes", "roc_edges", "metric_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes"]:
 
                 context_manager = swap_ioi_metrics if plot_type.endswith(( "roc_edges_neurips_reviewers", "roc_nodes_neurips_reviewers")) else nullcontext
 
