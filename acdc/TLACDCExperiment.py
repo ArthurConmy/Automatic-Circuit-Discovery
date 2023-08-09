@@ -245,7 +245,7 @@ class TLACDCExperiment:
         if device is not None and not str(z.device).startswith(str(device)):
             tens = z.clone().to(device)
         else:
-            tens = z # TODO check rigorously (e.g with MLPs, too!) that this doesn't ever change when downstream is modified
+            tens = z # TODO check rigorously (e.g with MLPs, too! Especially if you use TL old hook_mlp_in that uses same underlying storage!) that this doesn't ever change when downstream is modified
 
         if cache == "corrupted":
             self.global_cache.corrupted_cache[hook.name] = tens
@@ -282,6 +282,7 @@ class TLACDCExperiment:
             assert incoming_edge_types == [EdgeType.DIRECT_COMPUTATION for _ in incoming_edge_types], f"All incoming edges should be the same type not {incoming_edge_types}"
 
             for receiver_index in self.corr.edges[hook.name]:
+
                 list_of_senders = list(self.corr.edges[hook.name][receiver_index].keys())
                 assert len(list_of_senders) <= 1, "This is a direct computation, so there should only be one sender node" # TODO maybe implement expect-to-be-1 ???
                 if len(list_of_senders) == 0:
@@ -491,7 +492,7 @@ class TLACDCExperiment:
 
         self.model.add_hook(
             name=node.name, 
-            hook=partial(self.sender_hook, verbose=self.hook_verbose, cache="corrupted", device="cpu" if self.online_cache_cpu else None),
+            hook=partial(self.sender_hook, verbose=self.hook_verbose, cache="online", device="cpu" if self.online_cache_cpu else None),
         )
 
         return True

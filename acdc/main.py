@@ -168,18 +168,22 @@ parser.add_argument('--single-step', action='store_true', help='Use single step,
 parser.add_argument("--abs-value-threshold", action='store_true', help='Use the absolute value of the result to check threshold')
 parser.add_argument("--dont-save-images", action='store_true', help="Don't save images to ims/")
 
-if ipython is not None:
+import warnings
+warnings.warn("remive...")
+if ipython is not None or True:
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
-        [line.strip() for line in r"""--task=ioi\
---threshold=0.0075\
+        [line.strip() for line in r"""--task=induction\
+--threshold=0.75\
 --indices-mode=reverse\
 --first-cache-cpu=False\
 --second-cache-cpu=False\
 --device=cuda\
---seed=4\
---max-num-epochs=100000""".split("\\\n")]
+--seed=2794979691\
+--zero-ablation\
+--max-num-epochs=100000\
+--dont-save-images""".split("\\\n")]
     )
 else:
     # read from command line
