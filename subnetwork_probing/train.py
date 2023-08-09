@@ -199,7 +199,7 @@ def train_induction(
 ):
     epochs = args.epochs
     lambda_reg = args.lambda_reg
-    lambda_reg = 0.0000001
+
 
     print('lambda reg', lambda_reg)
 
@@ -301,7 +301,7 @@ def train_induction(
                 test_specific_metrics[f"test_{k}"] = test_specific_metric_term
 
             print(f"Final test metric: {test_specific_metrics}")
-
+            number_of_nodes, nodes_to_mask = visualize_mask(induction_model)
             to_log_dict = dict(
                 number_of_nodes=number_of_nodes,
                 specific_metric=specific_metric_term,
@@ -406,14 +406,14 @@ parser.add_argument("--lr", type=float, default=0.001)
 parser.add_argument("--loss-type", type=str,  default='kl_div')
 parser.add_argument("--epochs", type=int, default=3000)
 parser.add_argument("--verbose", type=int, default=1)
-parser.add_argument("--lambda-reg", type=float, default=1)
+parser.add_argument("--lambda_reg", type=float, default=50)
 parser.add_argument("--zero-ablation", type=int, default=True)
 parser.add_argument("--reset-subject", type=int, default=0)
 parser.add_argument("--seed", type=int, default=random.randint(0, 2 ** 31 - 1), help="Random seed (default: random)")
 parser.add_argument("--num-examples", type=int, default=50)
 parser.add_argument("--seq-len", type=int, default=300)
 parser.add_argument("--n-loss-average-runs", type=int, default=20)
-parser.add_argument("--task", type=str, )
+parser.add_argument("--task", type=str, default='or_gate')
 parser.add_argument('--torch-num-threads', type=int, default=0, help="How many threads to use for torch (0=all)")
 
 def get_transformer_config():
@@ -549,7 +549,24 @@ if __name__ == "__main__":
     )
 
     corr, _ = iterative_correspondence_from_mask(model, to_log_dict["nodes_to_mask"])
+    from acdc.acdc_graphics import (
+        build_colorscheme,
+        show,
+    )
+
+    import datetime
+    import os
+    exp_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    path = os.path.join('/home/aengusl/Desktop/Projects/OOD_workshop/Automatic-Circuit-Discovery/ims', f'SubPro_repeats_{exp_time}')
+    os.makedirs(path, exist_ok=True)
+    show(
+        corr,
+        path + '.png',
+
+    )
     mask_val_dict = get_nodes_mask_dict(model)
+    nodes_to_mask = to_log_dict["nodes_to_mask"]
+    
     percentage_binary = log_percentage_binary(mask_val_dict)
 
     # Update dict with some different things
@@ -563,18 +580,3 @@ if __name__ == "__main__":
 
 
 
-    from acdc.acdc_graphics import (
-        build_colorscheme,
-        show,
-    )
-
-    import datetime
-    import os
-    exp_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    path = os.path.join('/home/aengusl/Desktop/Projects/OOD_workshop/Automatic-Circuit-Discovery/ims', f'SubPro_img_{exp_time}')
-    os.makedirs(path, exist_ok=True)
-    show(
-        corr,
-        path + '.png',
-
-    )
