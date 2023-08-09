@@ -141,8 +141,8 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
 
 # WARNING: edited from main
 
-def get_all_commands():
-    return main(TASKS = METRICS_FOR_TASK.keys(), group_name="zero-ablation-fix-further-bug", run_name="aconmy-run", testing=False, use_kubernetes=False, reset_networks=False, abs_value_threshold=False, use_gpu=True)
+def get_all_commands(task):
+    return main(TASKS = [task], group_name="zero-ablation-fix-further-bug", run_name="aconmy-run", testing=False, use_kubernetes=False, reset_networks=False, abs_value_threshold=False, use_gpu=True)
 
 
 if __name__ == "__main__":
