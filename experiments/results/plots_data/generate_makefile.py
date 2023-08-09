@@ -128,7 +128,7 @@ def main():
 
         # warnings.warn("Filtering the missing files here...")
         # filtered_missing_files = [missing_file for missing_file in missing_files if missing_file.startswith(("acdc",)) and not missing_file.endswith("1.json") and "True" in missing_file]
-        filtered_missing_files = [missing_file for missing_file in missing_files if "0.json" in missing_file and "logit_diff" not in missing_file and "kl_div" not in missing_file and "canonical" not in missing_file]
+        filtered_missing_files = [missing_file for missing_file in missing_files if missing_file.startswith(("sp-induction",))]
         print(
             ["make " + miss for miss in filtered_missing_files]
         )
