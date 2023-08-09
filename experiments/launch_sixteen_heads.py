@@ -69,7 +69,7 @@ parser.add_argument('--wandb-project', type=str, required=False, default="acdc",
 parser.add_argument('--wandb-run-name', type=str, required=False, default=None, help='Value for WANDB_RUN_NAME')
 parser.add_argument("--wandb-dir", type=str, default="/tmp/wandb")
 parser.add_argument("--wandb-mode", type=str, default="online")
-parser.add_argument('--device', type=str, default="cuda")
+parser.add_argument('--device', type=str, default="cpu")
 parser.add_argument('--reset-network', type=int, default=0, help="Whether to reset the network we're operating on before running interp on it")
 parser.add_argument('--metric', type=str, default="kl_div", help="Which metric to use for the experiment")
 parser.add_argument('--seed', type=int, default=1234)
@@ -302,14 +302,19 @@ if args.zero_ablation:
     do_zero_caching(model)
 
 nodes_to_mask = []
+count = 0
 corr, head_parents = None, None
 for nodes, hook_name, idx in tqdm.tqdm(nodes_names_indices):
+    count += 1
     nodes_to_mask += nodes
     corr, head_parents = iterative_correspondence_from_mask(model, nodes_to_mask, use_pos_embed=False, newv=False, corr=corr, head_parents=head_parents)
     for e in corr.all_edges().values():
         e.effect_size = 1.0
 
     score = prune_scores[hook_name][idx].item()
+
+    # if count > 3:
+    #     break
 
     # Delete this module
     done = False
@@ -333,4 +338,20 @@ for nodes, hook_name, idx in tqdm.tqdm(nodes_names_indices):
 wandb.finish()
 
 #%%
+from acdc.acdc_graphics import (
+    build_colorscheme,
+    show,
+)
 
+import datetime
+import os
+exp_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+path = os.path.join('/home/aengusl/Desktop/Projects/OOD_workshop/Automatic-Circuit-Discovery/ims', f'HISP_img_{exp_time}')
+os.makedirs(path, exist_ok=True)
+show(
+    corr,
+    path + '.png',
+
+)
+
+# %%

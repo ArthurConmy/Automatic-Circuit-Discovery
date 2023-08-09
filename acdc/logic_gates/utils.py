@@ -7,6 +7,8 @@ from typing import Literal, Optional
 from transformer_lens.HookedTransformer import HookedTransformer, HookedTransformerConfig
 from acdc.docstring.utils import AllDataThings
 from acdc.tracr_task.utils import get_perm
+from acdc.acdc_utils import kl_divergence
+import torch.nn.functional as F
 
 MAX_LOGIC_GATE_SEQ_LEN = 100_000 # Can be increased further provided numerics and memory do not explode
 
@@ -128,7 +130,7 @@ def test_logical_models():
 
 #%%
 
-def get_all_logic_gate_things(mode: str = "AND", device=None, seq_len: Optional[int] = 5, num_examples: Optional[int] = 10, return_one_example: bool = False) -> AllDataThings:
+def get_all_logic_gate_things(mode: str = "AND", device=None, seq_len: Optional[int] = 5, num_examples: Optional[int] = 10, return_one_element: bool = False) -> AllDataThings:
 
     assert mode == "OR" 
 
@@ -141,10 +143,21 @@ def get_all_logic_gate_things(mode: str = "AND", device=None, seq_len: Optional[
         output = output[:, -1, :]
 
         assert output.shape == correct.shape
-        if not return_one_example:
+        if not return_one_element:
             return torch.mean((output - correct)**2, dim=0)
         else:
             return ((output - correct)**2).squeeze(1)
+        
+    base_validation_logprobs = F.log_softmax(model(data)[:, -1], dim=-1)
+        
+    test_metrics = {
+        "kl_div": partial(
+            kl_divergence,
+            base_model_logprobs=base_validation_logprobs,
+            last_seq_element_only=True,
+            base_model_probs_last_seq_element_only=False,
+            return_one_element=return_one_element,
+        ),}
 
     return AllDataThings(
         tl_model=model,
@@ -153,11 +166,11 @@ def get_all_logic_gate_things(mode: str = "AND", device=None, seq_len: Optional[
         validation_labels=None,
         validation_mask=None,
         validation_patch_data=data.clone(), # We're doing zero ablation so irrelevant
-        test_metrics=None,
-        test_data=None,
+        test_metrics=test_metrics,
+        test_data=data,
         test_labels=None,
         test_mask=None,
-        test_patch_data=None,
+        test_patch_data=data.clone(),
     )
 
 

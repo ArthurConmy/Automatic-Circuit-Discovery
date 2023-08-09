@@ -129,7 +129,7 @@ from acdc.greaterthan.utils import get_all_greaterthan_things
 
 from acdc.acdc_graphics import (
     build_colorscheme,
-    show,
+    show
 )
 import argparse
 
@@ -160,7 +160,7 @@ parser.add_argument("--wandb-dir", type=str, default="/tmp/wandb")
 parser.add_argument("--wandb-mode", type=str, default="online")
 parser.add_argument('--indices-mode', type=str, default="normal")
 parser.add_argument('--names-mode', type=str, default="normal")
-parser.add_argument('--device', type=str, default="cuda")
+parser.add_argument('--device', type=str, default="cpu")
 parser.add_argument('--reset-network', type=int, default=0, help="Whether to reset the network we're operating on before running interp on it")
 parser.add_argument('--metric', type=str, default="kl_div", help="Which metric to use for the experiment")
 parser.add_argument('--torch-num-threads', type=int, default=0, help="How many threads to use for torch (0=all)")
@@ -362,6 +362,9 @@ exp = TLACDCExperiment(
 
 #%%
 
+import datetime
+exp_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
 for i in range(args.max_num_epochs):
     exp.step(testing=False)
 
@@ -382,6 +385,11 @@ for i in range(args.max_num_epochs):
         exp.save_edges("edges.pkl")
 
     if exp.current_node is None or SINGLE_STEP:
+        show(
+            exp.corr,
+            f"ims/ACDC_img_{exp_time}.png",
+
+        )
         break
 
 exp.save_edges("another_final_edges.pkl")

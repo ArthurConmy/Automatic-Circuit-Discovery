@@ -199,6 +199,9 @@ def train_induction(
 ):
     epochs = args.epochs
     lambda_reg = args.lambda_reg
+    lambda_reg = 0.0000001
+
+    print('lambda reg', lambda_reg)
 
     torch.manual_seed(args.seed)
 
@@ -307,6 +310,7 @@ def train_induction(
             )
             print('type(test_metric_fns)', type(test_metric_fns))
         except Exception as e:
+            print(e)
             breakpoint()
     return induction_model, to_log_dict
 
@@ -402,8 +406,8 @@ parser.add_argument("--lr", type=float, default=0.001)
 parser.add_argument("--loss-type", type=str,  default='kl_div')
 parser.add_argument("--epochs", type=int, default=3000)
 parser.add_argument("--verbose", type=int, default=1)
-parser.add_argument("--lambda-reg", type=float, default=100)
-parser.add_argument("--zero-ablation", type=int, default=False)
+parser.add_argument("--lambda-reg", type=float, default=1)
+parser.add_argument("--zero-ablation", type=int, default=True)
 parser.add_argument("--reset-subject", type=int, default=0)
 parser.add_argument("--seed", type=int, default=random.randint(0, 2 ** 31 - 1), help="Random seed (default: random)")
 parser.add_argument("--num-examples", type=int, default=50)
@@ -506,7 +510,6 @@ if __name__ == "__main__":
             seq_len=seq_len,
             device=args.device,
         )
-        all_task_things.test_metrics = all_task_things.validation_metric
     else:
         raise ValueError(f"Unknown task {args.task}")
 
@@ -557,3 +560,21 @@ if __name__ == "__main__":
     wandb.log(to_log_dict)
     # sanity_check_with_transformer_lens(mask_val_dict)
     wandb.finish()
+
+
+
+    from acdc.acdc_graphics import (
+        build_colorscheme,
+        show,
+    )
+
+    import datetime
+    import os
+    exp_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    path = os.path.join('/home/aengusl/Desktop/Projects/OOD_workshop/Automatic-Circuit-Discovery/ims', f'SubPro_img_{exp_time}')
+    os.makedirs(path, exist_ok=True)
+    show(
+        corr,
+        path + '.png',
+
+    )
