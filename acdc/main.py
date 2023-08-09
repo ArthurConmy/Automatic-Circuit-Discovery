@@ -107,9 +107,10 @@ from acdc.acdc_utils import (
 )  # these introduce several important classes !!!
 
 from acdc.TLACDCCorrespondence import TLACDCCorrespondence
+import time
 from acdc.TLACDCInterpNode import TLACDCInterpNode
 from acdc.TLACDCExperiment import TLACDCExperiment
-
+import  contextlib
 from acdc.acdc_utils import (
     kl_divergence,
 )
@@ -384,7 +385,8 @@ if USING_WANDB:
     artifact = wandb.Artifact(edges_fname, type="dataset")
     artifact.add_file(edges_fname)
     wandb.log_artifact(artifact)
-    os.remove(edges_fname)
+    with contextlib.suppress(FileNotFoundError):
+        os.remove(edges_fname)
     wandb.finish()
 
 # %% [markdown]

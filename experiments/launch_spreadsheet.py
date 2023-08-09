@@ -16,7 +16,7 @@ CPU = 4
 
 def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_kubernetes: bool, reset_networks: bool, abs_value_threshold: bool = False, use_gpu: bool=True):
     NUM_SPACINGS = 5 if reset_networks else 21
-    base_thresholds = np.linspace(3.6, 1.1, 4)
+    base_thresholds = 10 ** np.linspace(-4, 3 * 4/20, 21 + 3)
 
     seed = 486887094
     random.seed(seed)
@@ -28,7 +28,7 @@ def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_ku
 
     commands: List[List[str]] = []
     for reset_network in [int(reset_networks)]:
-        for zero_ablation in [1]:
+        for zero_ablation in [0]:
             for task in TASKS:
                 for metric in METRICS_FOR_TASK[task]:
 

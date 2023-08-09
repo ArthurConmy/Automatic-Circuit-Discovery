@@ -388,14 +388,11 @@ elif TASK == "induction":
 
     if RESET_NETWORK:
         ACDC_PRE_RUN_FILTER["group"] = "reset-networks-neurips"
+        # Still have to implement the zero ablation reset network here
     else:
-        if ZERO_ABLATION:
-            ACDC_PROJECT_NAME = "remix_school-of-rock/acdc"
-            ACDC_PRE_RUN_FILTER["group"] = "acdc-induction-zero-thinking"
+        ACDC_PROJECT_NAME = "remix_school-of-rock/acdc"
+        ACDC_PRE_RUN_FILTER["group"] = "acdc-induction-zero-thinking"
 
-        else:
-            # ACDC_PRE_RUN_FILTER["group"] = "adria-induction-2"
-            ACDC_PRE_RUN_FILTER["group"] = "adria-induction-3"
 else:
     raise NotImplementedError("TODO " + TASK)
 
