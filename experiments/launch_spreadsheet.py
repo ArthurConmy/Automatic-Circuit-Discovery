@@ -16,7 +16,7 @@ CPU = 4
 
 def main(TASKS: list[str], group_name: str, run_name: str, testing: bool, use_kubernetes: bool, reset_networks: bool, abs_value_threshold: bool = False, use_gpu: bool=True):
     NUM_SPACINGS = 5 if reset_networks else 21
-    base_thresholds = 10 ** np.linspace(-4, 0, 21)
+    base_thresholds = np.linspace(3.6, 1.1, 4)
 
     seed = 486887094
     random.seed(seed)

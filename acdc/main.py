@@ -379,6 +379,7 @@ exp.save_edges("another_final_edges.pkl")
 
 if USING_WANDB:
     edges_fname = f"edges.pth"
+    time.sleep(0.5)
     exp.save_edges(edges_fname)
     artifact = wandb.Artifact(edges_fname, type="dataset")
     artifact.add_file(edges_fname)
