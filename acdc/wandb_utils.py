@@ -397,13 +397,7 @@ def get_sixteen_heads_corrs(
                 model=model, 
                 nodes_to_mask=nodes_to_mask, 
                 use_pos_embed=exp.use_pos_embed, 
-                # corr=corr, 
-                # head_parents=head_parents
             )
-        if loop_idx + 4 > len(zipped_list):
-            print(loop_idx, nodes)
-            print(corr.count_no_edges(verbose=True))
-            print("\n"*3)
 
         cum_score += score
         score_d = {"score": cum_score, **score_d}
