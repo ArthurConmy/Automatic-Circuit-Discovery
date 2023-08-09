@@ -120,11 +120,9 @@ def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACD
         # Mark edges where this is parent as not present
         for rest1 in corr.edges.values():
             for rest2 in rest1.values():
-                try:
+                if node.name in rest2 and node.index in rest2[node.index]:
                     rest2[node.name][node.index].present = False
-                except KeyError as e:
-                    print("Warning: key error in correspondence_from_mask", e)
-                    pass
+
     return corr
 
 
