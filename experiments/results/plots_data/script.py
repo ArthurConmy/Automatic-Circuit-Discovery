@@ -7,7 +7,7 @@ from math import gcd
 # from experiments.launch_all_sixteen_heads import get_16h_commands
 
 used = set()
-commands = ['make acdc-greaterthan-kl_div-False-0.json', 'make sp-greaterthan-kl_div-False-0.json', 'make acdc-greaterthan-kl_div-True-0.json', 'make acdc-ioi-kl_div-False-0.json']
+commands = ['make acdc-tracr-proportion-l2-False-0.json', 'make acdc-greaterthan-greaterthan-False-0.json', 'make sp-greaterthan-greaterthan-True-0.json', 'make acdc-tracr-reverse-l2-False-0.json', 'make acdc-induction-nll-True-0.json', 'make sp-greaterthan-greaterthan-False-0.json']
 # np.random.shuffle(commands)
 
 def run_script(threshold, gpu_id):
