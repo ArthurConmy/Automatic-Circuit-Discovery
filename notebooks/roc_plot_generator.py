@@ -175,7 +175,7 @@ parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore 
 # --task=tracr-proportion --wandb-run-name=16h-tracr-00001 --wandb-project=acdc --device=cpu --reset-network=0 --seed=3964471176 --metric=kl_div --wandb-dir=/root/.cache/huggingface/tracr-training/16heads --wandb-mode=online
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task=induction --metric=kl_div --alg=acdc --device=cpu".split())
+    args = parser.parse_args("--task=tracr-reverse --device=cpu --reset-network=0 --metric=l2 --alg=acdc --zero-ablation".split())
     
     # Check whether this is Adria using machine
     IS_ADRIA = not str(os.environ.get("CONDA_DEFAULT_ENV")).lower().startswith("arthur")
@@ -233,7 +233,7 @@ else:
 
 # defaults
 ACDC_PROJECT_NAME = "remix_school-of-rock/acdc"
-ACDC_PRE_RUN_FILTER = {
+BASE_ACDC_PRE_RUN_FILTER = {
     # Purposefully omit ``"state": "finished"``
     "group": "acdc-spreadsheet2",
     "config.task": TASK,
@@ -241,6 +241,7 @@ ACDC_PRE_RUN_FILTER = {
     "config.zero_ablation": ZERO_ABLATION,
     "config.reset_network": RESET_NETWORK,
 }
+ACDC_PRE_RUN_FILTER = deepcopy(BASE_ACDC_PRE_RUN_FILTER)
 ACDC_RUN_FILTER = None
 
 # # for SP # filters are more annoying since some things are nested in groups
@@ -398,6 +399,12 @@ else:
 
 if RESET_NETWORK and TASK != "greaterthan" and not TASK.startswith("tracr"):
     SP_PRE_RUN_FILTER["group"] = "tracr-shuffled-redo"
+
+if ZERO_ABLATION:
+    warnings.warn("Overriding ACDC")
+    ACDC_PROJECT_NAME = "remix_school-of-rock/acdc"
+    ACDC_PRE_RUN_FILTER = deepcopy(ACDC_PRE_RUN_FILTER)
+    ACDC_PRE_RUN_FILTER["group"] = "zero-ablation-fix-further-bug" 
 
 if RESET_NETWORK:
     reset_network(TASK, DEVICE, things.tl_model)
