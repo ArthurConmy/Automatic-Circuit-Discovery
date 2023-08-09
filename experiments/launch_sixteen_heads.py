@@ -273,7 +273,7 @@ for layer_i in range(model.cfg.n_layers): # This includes word embeddings and po
 
 
 # sort by scores
-nodes_names_indices.sort(key=lambda x: prune_scores[x[1]][x[2]].item(), reverse=False)
+nodes_names_indices.sort(key=lambda x: prune_scores[x[1]][x[2]].item(), reverse=False) # reverse=False is the correct way round here
 
 # %%
 

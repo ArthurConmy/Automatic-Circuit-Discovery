@@ -168,9 +168,7 @@ parser.add_argument('--single-step', action='store_true', help='Use single step,
 parser.add_argument("--abs-value-threshold", action='store_true', help='Use the absolute value of the result to check threshold')
 parser.add_argument("--dont-save-images", action='store_true', help="Don't save images to ims/")
 
-import warnings
-warnings.warn("remive...")
-if ipython is not None or True:
+if ipython is not None:
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
