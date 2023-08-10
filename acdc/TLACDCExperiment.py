@@ -491,7 +491,7 @@ class TLACDCExperiment:
 
         self.model.add_hook(
             name=node.name, 
-            hook=partial(self.sender_hook, verbose=self.hook_verbose, cache="corrupted", device="cpu" if self.online_cache_cpu else None),
+            hook=partial(self.sender_hook, verbose=self.hook_verbose, cache="online", device="cpu" if self.online_cache_cpu else None),
         )
 
         return True
