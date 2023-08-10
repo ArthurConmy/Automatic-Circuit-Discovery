@@ -126,7 +126,7 @@ def correspondence_from_mask(
                 )
             )
 
-    assert all([v <= 3 for v in head_parents.values()])
+    assert all([v <= 3 for v in head_parents.values()]), "We should have at most three parents (Q, K and V, connected via placeholders)"
 
     for node in nodes_to_mask + additional_nodes_to_mask:
         # Mark edges where this is child as not present
