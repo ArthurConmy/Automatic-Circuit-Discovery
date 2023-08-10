@@ -263,8 +263,8 @@ for layer_i in range(model.cfg.n_layers):
         nodes_names_indices.append((mlp_nodes, name, slice(None)))
 
 
-# sort by scores
-nodes_names_indices.sort(key=lambda x: prune_scores[x[1]][x[2]].item(), reverse=True)
+# Sort by scores, with least important nodes first
+nodes_names_indices.sort(key=lambda x: prune_scores[x[1]][x[2]].item(), reverse=False)
 
 # %%
 serializable_nodes_names_indices = [(list(map(str, nodes)), name, repr(idx), prune_scores[name][idx].item()) for nodes, name, idx in nodes_names_indices]

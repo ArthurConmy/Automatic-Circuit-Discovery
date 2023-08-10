@@ -168,8 +168,14 @@ parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore 
 parser.add_argument("--set-missing-score", action="store_true", help="Missing scores set to -1")
 
 if IPython.get_ipython() is not None:
+<<<<<<< HEAD
     args = parser.parse_args("--task induction --mode edges --metric kl_div --alg edgesp --device cuda:0 --set-missing-score".split())
 
+=======
+    args = parser.parse_args("--task=ioi --metric=kl_div --alg=sp".split())
+    if "arthur" not in __file__:
+        __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
+>>>>>>> main
 else:
     args = parser.parse_args()
 
@@ -929,8 +935,8 @@ def get_sp_corrs(
             model = model,
             nodes_to_mask=nodes_to_mask,
             use_pos_embed = USE_POS_EMBED,
-            corr=corr,
-            head_parents=head_parents
+            corr=None,
+            head_parents=None
         )
         score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
         score_d["steps"] = run.summary["_step"]

@@ -13,6 +13,7 @@ else:
 #%%
 
 import argparse
+from typing import List, Optional
 import random
 from collections import defaultdict
 from copy import deepcopy
@@ -74,11 +75,7 @@ def regularizer(
     def regularization_term(mask: torch.nn.Parameter) -> torch.Tensor:
         return torch.sigmoid(mask - beta * np.log(-gamma / zeta)).mean()
 
-    mask_scores = [
-        regularization_term(p)
-        for (n, p) in model.named_parameters()
-        if "mask_scores" in n
-    ]
+    mask_scores = [regularization_term(p) for (n, p) in model.named_parameters() if "mask_scores" in n]
     return torch.mean(torch.stack(mask_scores))
 
 
@@ -157,17 +154,9 @@ def train_induction(
         print("Reset test metric: ", {k: v(reset_logits).item() for k, v in all_task_things.test_metrics.items()})
 
     # one parameter per thing that is masked
-    mask_params = [
-        p
-        for n, p in induction_model.named_parameters()
-        if "mask_scores" in n and p.requires_grad
-    ]
+    mask_params = [p for n, p in induction_model.named_parameters() if "mask_scores" in n and p.requires_grad]
     # parameters for the probe (we don't use a probe)
-    model_params = [
-        p
-        for n, p in induction_model.named_parameters()
-        if "mask_scores" not in n and p.requires_grad
-    ]
+    model_params = [p for n, p in induction_model.named_parameters() if "mask_scores" not in n and p.requires_grad]
     assert len(model_params) == 0, ("MODEL should be empty", model_params)
     trainer = torch.optim.Adam(mask_params, lr=args.lr)
 
@@ -195,7 +184,6 @@ def train_induction(
         }
     )
 
-
     with torch.no_grad():
         # The loss has a lot of variance so let's just average over a few runs with the same seed
         rng_state = torch.random.get_rng_state()
@@ -222,9 +210,7 @@ def train_induction(
                     do_zero_caching(induction_model)
                 else:
                     do_random_resample_caching(induction_model, all_task_things.test_patch_data)
-                test_specific_metric_term += fn(
-                    induction_model(all_task_things.test_data)
-                ).item()
+                test_specific_metric_term += fn(induction_model(all_task_things.test_data)).item()
             test_specific_metrics[f"test_{k}"] = test_specific_metric_term
 
         print(f"Final test metric: {test_specific_metrics}")
@@ -263,9 +249,7 @@ def make_forward_hooks(mask_dict):
             for qkv in ["q", "k", "v"]:
                 mask_value = mask_dict[f"{layer}.{head}.{qkv}"]
 
-                def head_ablation_hook(
-                    value, hook, head_idx, layer_idx, qkv_val, mask_value
-                ):
+                def head_ablation_hook(value, hook, head_idx, layer_idx, qkv_val, mask_value):
                     value[:, :, head_idx, :] *= mask_value
                     return value
 
@@ -319,6 +303,7 @@ parser.add_argument('--sp', type=str)
 
 #%%
 
+
 if __name__ == "__main__":
     if ipython is not None:
         # we are in a notebook
@@ -364,7 +349,10 @@ if __name__ == "__main__":
         )
     elif args.task == "tracr-proportion":
         all_task_things = get_all_tracr_things(
-            task="proportion", metric_name=args.loss_type, num_examples=args.num_examples, device=torch.device(args.device)
+            task="proportion",
+            metric_name=args.loss_type,
+            num_examples=args.num_examples,
+            device=torch.device(args.device),
         )
     elif args.task == "docstring":
         all_task_things = get_all_docstring_things(
@@ -546,4 +534,5 @@ artifact.add_file(edges_fname)
 wandb.log_artifact(artifact)
 os.remove(edges_fname)
 wandb.finish()
+
 # %%

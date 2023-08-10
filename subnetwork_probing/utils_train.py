@@ -6,7 +6,7 @@ import warnings
 from functools import partial
 import sys
 from pathlib import Path
-from typing import Union, Dict, List, Tuple
+from typing import Union, Dict, List, Tuple, Optional
 import collections
 from acdc.greaterthan.utils import get_all_greaterthan_things
 from acdc.ioi.utils import get_all_ioi_things
@@ -189,9 +189,17 @@ def get_nodes_mask_dict(model: SPHookedTransformer):
                 mask_value_dict[f"{layer_index}.{head_index}.{q_k_v}"] = mask_value
     return mask_value_dict
 
-def iterative_correspondence_from_mask(model: Union[HookedTransformer, SPHookedTransformer], nodes_to_mask: list[TLACDCInterpNode],
-                                       use_pos_embed: bool = False,newv = False, corr: TLACDCCorrespondence = None,
-                                       head_parents = None) -> TLACDCCorrespondence:
+def iterative_correspondence_from_mask(
+    model: HookedTransformer,
+    nodes_to_mask: List[TLACDCInterpNode], # Can be empty
+    use_pos_embed: bool = False,
+    corr: Optional[TLACDCCorrespondence] = None,
+    head_parents: Optional[List] = None,
+) -> Tuple[TLACDCCorrespondence, List]:
+    """Given corr has some nodes masked, also mask the nodes_to_mask"""
+
+    assert (corr is None) == (head_parents is None), "Ensure we're either masking from scratch or we provide details on `head_parents`"
+
     if corr is None:
         corr = TLACDCCorrespondence.setup_from_model(model, use_pos_embed=use_pos_embed)
     if head_parents is None:
@@ -200,22 +208,30 @@ def iterative_correspondence_from_mask(model: Union[HookedTransformer, SPHookedT
     additional_nodes_to_mask = []
 
     for node in nodes_to_mask:
-        additional_nodes_to_mask.append(TLACDCInterpNode(node.name.replace(".attn.", ".") + "_input", node.index, EdgeType.ADDITION))
+        additional_nodes_to_mask.append(
+            TLACDCInterpNode(node.name.replace(".attn.", ".") + "_input", node.index, EdgeType.ADDITION)
+        )
 
         if node.name.endswith("_q") or node.name.endswith("_k") or node.name.endswith("_v"):
             child_name = node.name.replace("_q", "_result").replace("_k", "_result").replace("_v", "_result")
             head_parents[(child_name, node.index)] += 1
 
+            if head_parents[(child_name, node.index)] == 3:
+                additional_nodes_to_mask.append(TLACDCInterpNode(child_name, node.index, EdgeType.PLACEHOLDER))
+
             # Forgot to add these in earlier versions of Subnetwork Probing, and so the edge counts were inflated
             additional_nodes_to_mask.append(TLACDCInterpNode(child_name + "_input", node.index, EdgeType.ADDITION))
 
-            if head_parents[child_name, node.index] == 3:
-                additional_nodes_to_mask.append(TLACDCInterpNode(child_name, node.index, EdgeType.ADDITION))
+        if node.name.endswith(("mlp_in", "resid_mid")):
+            additional_nodes_to_mask.append(
+                TLACDCInterpNode(
+                    node.name.replace("resid_mid", "mlp_out").replace("mlp_in", "mlp_out"),
+                    node.index,
+                    EdgeType.DIRECT_COMPUTATION,
+                )
+            )
 
-        if node.name.endswith(("resid_mid", "mlp_in")):
-            child_name = node.name.replace("resid_mid", "mlp_out").replace("mlp_in", "mlp_out")
-            head_parents[(child_name, node.index)] += 1
-            additional_nodes_to_mask.append(TLACDCInterpNode(child_name, node.index, EdgeType.ADDITION))
+    assert all([v <= 3 for v in head_parents.values()]), "We should have at most three parents (Q, K and V, connected via placeholders)"
 
     for node in nodes_to_mask + additional_nodes_to_mask:
         # Mark edges where this is child as not present
@@ -227,8 +243,7 @@ def iterative_correspondence_from_mask(model: Union[HookedTransformer, SPHookedT
         # Mark edges where this is parent as not present
         for rest1 in corr.edges.values():
             for rest2 in rest1.values():
-                try:
+                if node.name in rest2 and node.index in rest2[node.name]:
                     rest2[node.name][node.index].present = False
-                except KeyError:
-                    pass
+
     return corr, head_parents
