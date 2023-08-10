@@ -166,7 +166,7 @@ def show(
                         # Important this go after the qkv removal
                         continue
 
-                    if (edge.present and edge.effect_size is not None) and (edge.edge_type != EdgeType.PLACEHOLDER or show_placeholders):
+                    if edge.present and (edge.effect_size is not None or show_effect_size_none) and (edge.edge_type != EdgeType.PLACEHOLDER or show_placeholders):
                         for node_name in [parent_name, child_name]:
                             maybe_pos = {}
                             if node_name in node_pos:
@@ -185,7 +185,7 @@ def show(
                         g.add_edge(
                             parent_name,
                             child_name,
-                            penwidth=str(max(minimum_penwidth, edge.effect_size) * 2),
+                            penwidth=str(max(minimum_penwidth, edge.effect_size or minimum_penwidth) * 2),
                             color=colors[parent_name] if not edge_type_colouring else EDGE_TYPE_COLORS[edge.edge_type.value],
                         )
 

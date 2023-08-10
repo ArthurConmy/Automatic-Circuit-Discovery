@@ -36,6 +36,7 @@ import pandas as pd
 import torch
 import torch.nn.functional as F
 import subnetwork_probing.transformer_lens.transformer_lens.utils as utils
+from acdc.acdc_graphics import show
 from acdc.tracr_task.utils import get_all_tracr_things
 from acdc.acdc_utils import reset_network
 from acdc.TLACDCEdge import (
@@ -309,9 +310,9 @@ if __name__ == "__main__":
         # we are in a notebook
         # you can put the command you would like to run as the ... in r"""..."""
         args = parser.parse_args(
-            [line.strip() for line in r"""--task=docstring\
+            [line.strip() for line in r"""--task=induction\
     --lambda-reg=250.0\
-    --epochs=2\
+    --epochs=300\
     --zero-ablation=0\
     --wandb-name=my_edge_runs\
     --wandb-project=edgesp\
@@ -525,6 +526,7 @@ for epoch in tqdm(epoch_range):
 
 all_edges = experiment.corr.all_edges()
 for _, edge in all_edges.items():
+    print(edge)
     edge.present = (edge.mask_score.item() > 0.0)
 
 edges_fname = f"edges.pth"
@@ -534,5 +536,21 @@ artifact.add_file(edges_fname)
 wandb.log_artifact(artifact)
 os.remove(edges_fname)
 wandb.finish()
+
+# %%
+
+from IPython.display import Image, display
+
+fname =  "hello.png"
+
+show(
+    experiment.corr,
+    fname = fname,
+    show_full_index = True,
+    show_effect_size_none = True,
+    show_placeholders = True,
+)
+
+display(Image(fname))
 
 # %%
