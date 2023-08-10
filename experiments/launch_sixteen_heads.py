@@ -3,6 +3,7 @@
 """Currently a notebook so that I can develop the 16 Heads tests fast"""
 
 import math
+from IPython.display import display, Image
 from IPython import get_ipython
 
 if get_ipython() is not None:
@@ -281,6 +282,7 @@ for layer_i in range(model.cfg.n_layers):
 nodes_names_indices.sort(key=lambda x: prune_scores[x[1]][x[2]].item(), reverse=True)
 
 # %%
+
 serializable_nodes_names_indices = [(list(map(str, nodes)), name, repr(idx), prune_scores[name][idx].item()) for nodes, name, idx in nodes_names_indices]
 wandb.log({"nodes_names_indices": serializable_nodes_names_indices})
 
@@ -310,12 +312,10 @@ for nodes, hook_name, idx in tqdm.tqdm(nodes_names_indices):
     corr, head_parents = iterative_correspondence_from_mask(model, nodes_to_mask, use_pos_embed=False, newv=False, corr=corr, head_parents=head_parents)
     for e in corr.all_edges().values():
         e.effect_size = 1.0
-
     score = prune_scores[hook_name][idx].item()
 
     # if count > 3:
     #     break
-
     # Delete this module
     done = False
     for n, c in model.named_modules():
@@ -325,6 +325,15 @@ for nodes, hook_name, idx in tqdm.tqdm(nodes_names_indices):
                 c.mask_scores[idx] = 0
             done = True
     assert done, f"Could not find {hook_name}[{idx}]"
+
+    path = "im.png"
+    os.makedirs(path, exist_ok=True)
+    show(
+        corr,
+        path + '.png',
+        show_full_index = False,
+    )
+    display(Image(path + '.png'))
 
     # to_log_dict = test_metrics(model(things.test_data), score)
     to_log_dict = test_metrics(model(things.validation_data), score)
@@ -347,11 +356,5 @@ import datetime
 import os
 exp_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 path = os.path.join('/home/aengusl/Desktop/Projects/OOD_workshop/Automatic-Circuit-Discovery/ims', f'HISP_img_{exp_time}')
-os.makedirs(path, exist_ok=True)
-show(
-    corr,
-    path + '.png',
-
-)
 
 # %%
