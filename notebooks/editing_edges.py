@@ -61,7 +61,9 @@ from transformer_lens.HookedTransformer import HookedTransformer
 from acdc.TLACDCExperiment import TLACDCExperiment
 from acdc.induction.utils import get_all_induction_things
 from acdc.acdc_utils import TorchIndex
+from acdc.acdc_graphics import show
 import torch
+from IPython.display import Image, display
 import gc
 
 # %% [markdown]
@@ -166,6 +168,7 @@ experiment.setup_model_hooks(
 # Let's take a look at the edges
 
 #%%
+
 for edge_indices, edge in experiment.corr.all_edges().items():
     # here's what's inside the edge
     receiver_name, receiver_index, sender_name, sender_index = edge_indices
@@ -178,6 +181,7 @@ for edge_indices, edge in experiment.corr.all_edges().items():
 # <p>(we'll later turn ON all connections EXCEPT the induction heads)</p>
 
 #%%
+
 def change_direct_output_connections(exp, invert=False):
     residual_stream_end_name = "blocks.1.hook_resid_post"
     residual_stream_end_index = TorchIndex([None])
@@ -225,4 +229,65 @@ print(
 # <p>That's much larger!</p>
 # <p>See acdc/main.py for how to run ACDC experiments; try `python acdc/main.py --help` or check the README for the links to this file</p>
 
+#%% [markdown]
+# Let's also show how to get a 16H run from wandb and vizualize it
+
 #%%
+
+import wandb
+api = wandb.Api()
+run = api.run("remix_school-of-rock/subnetwork-probing/mvuydwbx")
+
+#%%
+
+from acdc.logic_gates.utils import get_all_logic_gate_things
+num_examples = 1
+seq_len = 1
+
+all_task_things = get_all_logic_gate_things(
+    mode="OR",
+    num_examples=num_examples,
+    seq_len=seq_len,
+    device="cpu",
+)
+
+model = all_task_things.tl_model
+
+#%%
+
+from acdc.TLACDCInterpNode import parse_interpnode
+from subnetwork_probing.train import correspondence_from_mask
+
+nodes_to_mask_strings = run.summary["nodes_to_mask"]
+nodes_to_mask = [parse_interpnode(s) for s in nodes_to_mask_strings]
+tl_model.reset_hooks()
+corr = correspondence_from_mask( # Note that we can't use iterative correspondence since we don't know that smaller subgraphs SP recovers will always be subsets of bigger subgraphs SP recovers 
+    model = model,
+    nodes_to_mask=nodes_to_mask,
+    use_pos_embed = False,
+)
+
+score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
+score_d["steps"] = run.summary["_step"]
+score_d["score"] = run.config["lambda_reg"]
+
+# from acdc.TLACDCEdge import EdgeType
+# for _, e in corr.all_edges().items():
+#     if e.edge_type == EdgeType.PLACEHOLDER:
+#         e.present = True
+
+#%%
+
+image_name = "editing_edges.png"
+
+show(
+    corr,
+    show_full_index = False, # Also worth messing with other show parameters to get better vizualizations
+    fname = image_name,
+    show_effect_size_none = True,
+    show_placeholders = True,
+)
+
+display(Image(image_name))
+
+# %%

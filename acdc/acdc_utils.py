@@ -507,3 +507,4 @@ if __name__ == "__main__":
     parent_name, parent_list, current_name, current_list = extract_info(string)
 
     print(f"Parent Name: {parent_name}\nParent List: {parent_list}\nCurrent Name: {current_name}\nCurrent List: {current_list}")
+

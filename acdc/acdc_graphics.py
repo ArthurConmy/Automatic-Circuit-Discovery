@@ -21,12 +21,13 @@ from acdc.TLACDCInterpNode import TLACDCInterpNode
 from acdc.acdc_utils import EdgeType
 import pygraphviz as pgv
 from pathlib import Path
+import torch
+import cmapy
 
 def generate_random_color(colorscheme: str) -> str:
     """
     https://stackoverflow.com/questions/28999287/generate-random-colors-rgb
     """
-    import cmapy
 
     def rgb2hex(rgb):
         """
@@ -34,7 +35,7 @@ def generate_random_color(colorscheme: str) -> str:
         """
         return "#{:02x}{:02x}{:02x}".format(rgb[0], rgb[1], rgb[2])
 
-    return rgb2hex(cmapy.color("Pastel2", random.randrange(0, 256), rgb_order=True))
+    return rgb2hex(cmapy.color("Pastel2", torch.randint(0, 256, (1,)).item(), rgb_order=True))
 
 def get_node_name(node: TLACDCInterpNode, show_full_index=True):
     """Node name for use in pretty graphs"""
@@ -85,6 +86,7 @@ def get_node_name(node: TLACDCInterpNode, show_full_index=True):
     return "<" + name + ">"
 
 def build_colorscheme(correspondence, colorscheme: str = "Pastel2", show_full_index=True) -> Dict[str, str]:
+    torch.manual_seed(0)
     colors = {}
     for node in correspondence.nodes():
         colors[get_node_name(node, show_full_index=show_full_index)] = generate_random_color(colorscheme)
@@ -101,6 +103,7 @@ def show(
     remove_qkv: bool = False,
     layout: str="dot",
     show_placeholders: bool = False,
+    show_effect_size_none: bool = False,
 ) -> pgv.AGraph:
     """
     Colorscheme: a color for each node name, or a string corresponding to a cmapy color scheme
@@ -151,7 +154,7 @@ def show(
                         # Important this go after the qkv removal
                         continue
 
-                    if edge.present and edge.effect_size is not None and (edge.edge_type != EdgeType.PLACEHOLDER or show_placeholders):
+                    if edge.present and (edge.effect_size is not None or show_effect_size_none) and (edge.edge_type != EdgeType.PLACEHOLDER or show_placeholders):
                         for node_name in [parent_name, child_name]:
                             maybe_pos = {}
                             if node_name in node_pos:
@@ -169,7 +172,7 @@ def show(
                         g.add_edge(
                             parent_name,
                             child_name,
-                            penwidth=str(max(minimum_penwidth, edge.effect_size) * 2),
+                            penwidth=str(max(minimum_penwidth, minimum_penwidth or edge.effect_size) * 2),
                             color=colors[parent_name],
                         )
 

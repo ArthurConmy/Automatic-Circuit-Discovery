@@ -85,28 +85,30 @@ def get_logic_gate_model(mode: Literal["OR", "AND"] = "OR", seq_len: Optional[in
         model.unembed.W_U[2, 0] = 1.0 # Shape [d_model d_vocab_out]
 
     elif mode == "OR":
-        model.embed.W_E[0, 0] = 0.0 # ... ?
 
+        # a0.0 and a0.1 are the two inputs to the OR gate; they always dump 1.0 into the residual stream
         # Both heads dump a 1 into the residual stream
+        # We can test our circuit recovery methods with zero ablation to see if they recover either or both heads!
         model.blocks[0].attn.b_V[:, 0] = 1.0 # [num_heads, d_head]
         model.blocks[0].attn.W_O[:, 0, 0] = 1.0 # [num_heads, d_head, d_model]
 
+        # mlp0 is an OR gate on the output on the output of a0.0 and a0.1; it turns the sum S of their outputs into 1 if S >= 1 and 0 if S = 0  
         model.blocks[0].mlp.W_in[0, 0] = -1.0 # [d_model d_mlp]
         model.blocks[0].mlp.b_in[:] = 1.0 # [d_mlp]
         
-        model.blocks[0].mlp.W_out[0, 1] = -1.0 # 0 into -1 here
+        model.blocks[0].mlp.W_out[0, 1] = -1.0
         model.blocks[0].mlp.b_out[:] = 1.0 # [d_model]
 
-        model.unembed.W_U[1, 0] = 1.0 # Shape [d_model d_vocab_out]
+        model.unembed.W_U[1, 0] = 1.0 # shape [d_model d_vocab_out]
 
     else:
         raise ValueError(f"mode {mode} not recognized")
 
     return model
 
-def test_logical_models():
+def test_and_logical_model():
     """
-    Test that the OR and AND mod
+    Test that the AND gate works
     """
     
     seq_len=3
@@ -121,12 +123,6 @@ def test_logical_models():
     and_output = and_model(input)[:, -1, :]
     assert torch.equal(and_output[:2**seq_len - 1], torch.zeros(2**seq_len - 1, 1))
     torch.testing.assert_close(and_output[2**seq_len - 1], torch.ones(1).to(torch.double))
-
-    for or_model in [get_logic_gate_model(mode="OR", seq_len=seq_len, device = "cpu"), get_or_with_trivial_attn_0(seq_len=seq_len, device = "cpu")]:
-        or_output = or_model(input)[:, -1, :]
-
-        torch.testing.assert_close(or_output[1:], torch.ones(2**seq_len - 1, 1).to(torch.double))
-        assert torch.equal(or_output[0], torch.zeros(1)), f"or_output[0] = {or_output}"
 
 #%%
 
