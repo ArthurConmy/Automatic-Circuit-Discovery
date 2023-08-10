@@ -1,5 +1,5 @@
 import argparse
-from typing import List
+from typing import List, Optional
 import random
 from copy import deepcopy
 from functools import partial
@@ -36,9 +36,13 @@ from subnetwork_probing.transformer_lens.transformer_lens.ioi_dataset import IOI
 import wandb
 
 
-def iterative_correspondence_from_mask(model: HookedTransformer, nodes_to_mask: List[TLACDCInterpNode],
-                                       use_pos_embed: bool = False, corr: Optional[TLACDCCorrespondence] = None,
-                                       head_parents: Optional[List] = None) -> Tuple[TLACDCCorrespondence, List]:
+def iterative_correspondence_from_mask(
+    model: HookedTransformer,
+    nodes_to_mask: List[TLACDCInterpNode],
+    use_pos_embed: bool = False,
+    corr: Optional[TLACDCCorrespondence] = None,
+    head_parents: Optional[List] = None,
+) -> Tuple[TLACDCCorrespondence, List]:
     if corr is None:
         corr = TLACDCCorrespondence.setup_from_model(model, use_pos_embed=use_pos_embed)
     if head_parents is None:
@@ -62,7 +66,13 @@ def iterative_correspondence_from_mask(model: HookedTransformer, nodes_to_mask: 
                 additional_nodes_to_mask.append(TLACDCInterpNode(child_name, node.index, EdgeType.PLACEHOLDER))
 
         if node.name.endswith(("mlp_in", "resid_mid")):
-            additional_nodes_to_mask.append(TLACDCInterpNode(node.name.replace("resid_mid", "mlp_out").replace("mlp_in", "mlp_out"), node.index, EdgeType.DIRECT_COMPUTATION))
+            additional_nodes_to_mask.append(
+                TLACDCInterpNode(
+                    node.name.replace("resid_mid", "mlp_out").replace("mlp_in", "mlp_out"),
+                    node.index,
+                    EdgeType.DIRECT_COMPUTATION,
+                )
+            )
 
     for node in nodes_to_mask + additional_nodes_to_mask:
         # Mark edges where this is child as not present
@@ -73,14 +83,17 @@ def iterative_correspondence_from_mask(model: HookedTransformer, nodes_to_mask: 
 
         # Mark edges where this is parent as not present
         for rest1 in corr.edges.values():
-            for rest2 in rest1.values():    
+            for rest2 in rest1.values():
                 try:
                     rest2[node.name][node.index].present = False
                 except KeyError:
                     pass
     return corr, head_parents
 
-def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACDCInterpNode], use_pos_embed: bool = False) -> TLACDCCorrespondence:
+
+def correspondence_from_mask(
+    model: HookedTransformer, nodes_to_mask: list[TLACDCInterpNode], use_pos_embed: bool = False
+) -> TLACDCCorrespondence:
     corr = TLACDCCorrespondence.setup_from_model(model, use_pos_embed=use_pos_embed)
 
     additional_nodes_to_mask = []
@@ -89,7 +102,9 @@ def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACD
     # to the list of nodes to mask
     head_parents = collections.defaultdict(lambda: 0)
     for node in nodes_to_mask:
-        additional_nodes_to_mask.append(TLACDCInterpNode(node.name.replace(".attn.", ".") + "_input", node.index, EdgeType.ADDITION))
+        additional_nodes_to_mask.append(
+            TLACDCInterpNode(node.name.replace(".attn.", ".") + "_input", node.index, EdgeType.ADDITION)
+        )
 
         if node.name.endswith("_q") or node.name.endswith("_k") or node.name.endswith("_v"):
             child_name = node.name.replace("_q", "_result").replace("_k", "_result").replace("_v", "_result")
@@ -101,9 +116,15 @@ def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACD
 
             # Forgot to add these in earlier versions of Subnetwork Probing, and so the edge counts were inflated
             additional_nodes_to_mask.append(TLACDCInterpNode(child_name + "_input", node.index, EdgeType.ADDITION))
-        
-        if node.name.endswith(("mlp_in", "resid_mid")): # TODO test
-            additional_nodes_to_mask.append(TLACDCInterpNode(node.name.replace("resid_mid", "mlp_out").replace("mlp_in", "mlp_out"), node.index, EdgeType.DIRECT_COMPUTATION))
+
+        if node.name.endswith(("mlp_in", "resid_mid")):  # TODO test
+            additional_nodes_to_mask.append(
+                TLACDCInterpNode(
+                    node.name.replace("resid_mid", "mlp_out").replace("mlp_in", "mlp_out"),
+                    node.index,
+                    EdgeType.DIRECT_COMPUTATION,
+                )
+            )
 
     assert all([v <= 3 for v in head_parents.values()])
 
