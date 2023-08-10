@@ -1,5 +1,5 @@
 import argparse
-from typing import List
+from typing import List, Optional
 import random
 from copy import deepcopy
 from functools import partial
@@ -32,18 +32,20 @@ from tqdm import tqdm
 from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformer import HookedTransformer
 from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformerConfig import HookedTransformerConfig
 from subnetwork_probing.transformer_lens.transformer_lens.ioi_dataset import IOIDataset
-
 import wandb
 
 
 def iterative_correspondence_from_mask(
     model: HookedTransformer,
-    nodes_to_mask: list[TLACDCInterpNode],
+    nodes_to_mask: List[TLACDCInterpNode], # Can be empty
     use_pos_embed: bool = False,
-    newv=False,
     corr: Optional[TLACDCCorrespondence] = None,
     head_parents: Optional[List] = None,
-) -> TLACDCCorrespondence:
+) -> Tuple[TLACDCCorrespondence, List]:
+    """Given corr has some nodes masked, also mask the nodes_to_mask"""
+
+    assert (corr is None) == (head_parents is None), "Ensure we're either masking from scratch or we provide details on `head_parents`"
+
     if corr is None:
         corr = TLACDCCorrespondence.setup_from_model(model, use_pos_embed=use_pos_embed)
     if head_parents is None:
@@ -60,11 +62,22 @@ def iterative_correspondence_from_mask(
             child_name = node.name.replace("_q", "_result").replace("_k", "_result").replace("_v", "_result")
             head_parents[(child_name, node.index)] += 1
 
+            if head_parents[(child_name, node.index)] == 3:
+                additional_nodes_to_mask.append(TLACDCInterpNode(child_name, node.index, EdgeType.PLACEHOLDER))
+
             # Forgot to add these in earlier versions of Subnetwork Probing, and so the edge counts were inflated
             additional_nodes_to_mask.append(TLACDCInterpNode(child_name + "_input", node.index, EdgeType.ADDITION))
 
-            if head_parents[child_name, node.index] == 3:
-                additional_nodes_to_mask.append(TLACDCInterpNode(child_name, node.index, EdgeType.ADDITION))
+        if node.name.endswith(("mlp_in", "resid_mid")):
+            additional_nodes_to_mask.append(
+                TLACDCInterpNode(
+                    node.name.replace("resid_mid", "mlp_out").replace("mlp_in", "mlp_out"),
+                    node.index,
+                    EdgeType.DIRECT_COMPUTATION,
+                )
+            )
+
+    assert all([v <= 3 for v in head_parents.values()]), "We should have at most three parents (Q, K and V, connected via placeholders)"
 
     for node in nodes_to_mask + additional_nodes_to_mask:
         # Mark edges where this is child as not present
@@ -76,10 +89,9 @@ def iterative_correspondence_from_mask(
         # Mark edges where this is parent as not present
         for rest1 in corr.edges.values():
             for rest2 in rest1.values():
-                try:
+                if node.name in rest2 and node.index in rest2[node.name]:
                     rest2[node.name][node.index].present = False
-                except KeyError:
-                    pass
+
     return corr, head_parents
 
 
