@@ -384,7 +384,7 @@ elif TASK == "greaterthan":
 
 
 elif TASK == "induction":
-    num_examples=50
+    num_examples=30
     things = get_all_induction_things(num_examples=num_examples, seq_len=300, device=DEVICE, metric=METRIC)
 
     if RESET_NETWORK:
