@@ -175,7 +175,7 @@ if ipython is not None:
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
         [line.strip() for line in r"""--task=induction\
---threshold=0.630957344\
+--threshold=0.57\
 --indices-mode=reverse\
 --first-cache-cpu=False\
 --wandb-group-name=acdc-induction-zero-thinking\ 
