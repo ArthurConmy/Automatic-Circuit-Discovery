@@ -168,22 +168,24 @@ parser.add_argument("--max-num-epochs",type=int, default=100_000)
 parser.add_argument('--single-step', action='store_true', help='Use single step, mostly for testing')
 parser.add_argument("--abs-value-threshold", action='store_true', help='Use the absolute value of the result to check threshold')
 parser.add_argument("--dont-save-images", action='store_true', help="Don't save images to ims/")
+parser.add_argument("--use-pos-embed", action='store_true', help="Use positional embeddings in the transformer")
 
 if ipython is not None:
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
         [line.strip() for line in r"""--task=induction\
---threshold=0.75\
+--threshold=0.630957344\
 --indices-mode=reverse\
 --first-cache-cpu=False\
+--wandb-group-name=acdc-induction-zero-thinking\ 
 --second-cache-cpu=False\
+--using-wandb\
 --device=cuda\
 --seed=2794979691\
---zero-ablation\
 --max-num-epochs=100000\
 --dont-save-images""".split("\\\n")]
-    )
+    ) #  # consider 10 ** np.linspace(-4, 0 + 4/20, 21 + 1)
 else:
     # read from command line
     args = parser.parse_args()
@@ -224,6 +226,7 @@ NAMES_MODE = args.names_mode
 DEVICE = args.device
 RESET_NETWORK = args.reset_network
 SINGLE_STEP = True if args.single_step else False
+USE_POS_EMBED = True if args.use_pos_embed else False
 
 #%% [markdown] 
 # <h2>Setup Task</h2>
@@ -231,7 +234,7 @@ SINGLE_STEP = True if args.single_step else False
 #%%
 
 second_metric = None  # some tasks only have one metric
-use_pos_embed = TASK.startswith("tracr")
+use_pos_embed = TASK.startswith("tracr") or USE_POS_EMBED
 
 if TASK == "ioi":
     num_examples = 50
@@ -255,7 +258,7 @@ elif TASK == "tracr-proportion":
         device=DEVICE,
     )
 elif TASK == "induction":
-    num_examples = 10 if IN_COLAB else 50
+    num_examples = 10
     seq_len = 300
     things = get_all_induction_things(
         num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric=args.metric
