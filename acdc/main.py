@@ -169,22 +169,23 @@ parser.add_argument('--single-step', action='store_true', help='Use single step,
 parser.add_argument("--abs-value-threshold", action='store_true', help='Use the absolute value of the result to check threshold')
 parser.add_argument("--dont-save-images", action='store_true', help="Don't save images to ims/")
 parser.add_argument("--use-pos-embed", action='store_true', help="Use positional embeddings in the transformer")
+parser.add_argument("--remove-redundant", action='store_true', help="Remove redundant edges from the graph")
 
 if ipython is not None:
     # we are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
-        [line.strip() for line in r"""--task=induction\
---threshold=0.57\
+        [line.strip() for line in r"""--task=ioi\
+--threshold=0.0575\
+--remove-redundant\
 --indices-mode=reverse\
 --first-cache-cpu=False\
---wandb-group-name=acdc-induction-zero-thinking\ 
+--wandb-group-name=arthur_ioi_no_split\
 --second-cache-cpu=False\
 --using-wandb\
 --device=cuda\
 --seed=2794979691\
---max-num-epochs=100000\
---dont-save-images""".split("\\\n")]
+--max-num-epochs=100000""".split("\\\n")]
     ) #  # consider 10 ** np.linspace(-4, 0 + 4/20, 21 + 1)
 else:
     # read from command line
@@ -227,6 +228,7 @@ DEVICE = args.device
 RESET_NETWORK = args.reset_network
 SINGLE_STEP = True if args.single_step else False
 USE_POS_EMBED = True if args.use_pos_embed else False
+REMOVE_REDUNDANT = True if args.remove_redundant else False
 
 #%% [markdown] 
 # <h2>Setup Task</h2>
@@ -346,7 +348,7 @@ exp = TLACDCExperiment(
     add_sender_hooks=True,
     use_pos_embed=use_pos_embed,
     add_receiver_hooks=False,
-    remove_redundant=False,
+    remove_redundant=REMOVE_REDUNDANT,
     show_full_index=use_pos_embed,
     save_images=not args.dont_save_images,
 )

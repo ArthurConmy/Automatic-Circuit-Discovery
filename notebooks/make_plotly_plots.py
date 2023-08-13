@@ -868,7 +868,7 @@ for metric_idx in [0, 1]:
                     # if first:
                     fig.show()
                     # first = False
-                    # assert False
+                    assert False
 
 pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
 
