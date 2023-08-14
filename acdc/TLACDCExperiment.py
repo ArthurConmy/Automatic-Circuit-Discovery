@@ -429,7 +429,7 @@ class TLACDCExperiment:
 
         if self.use_pos_embed and not self.zero_ablation:    
             def scramble_positions(z, hook):
-                return shuffle_tensor(z, seed=49)
+                z[:] = shuffle_tensor(z[0], seed=49)
             self.model.add_hook(
                 "hook_pos_embed",
                 scramble_positions,
