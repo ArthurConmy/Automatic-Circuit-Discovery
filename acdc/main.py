@@ -28,12 +28,12 @@ try:
 
     ipython.run_line_magic( # install ACDC
         "pip",
-        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@2cc2d6d71416bddd3a88f287ffccfc0863ac8ddc",
+        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@d89f7fa9cbd095202f3940c889cb7c6bf5a9b516",
     )
 
 except Exception as e:
     IN_COLAB = False
-    print("Running as a outside of colab")
+    print("Running outside of colab")
 
     import numpy # crucial to not get cursed error
     import plotly
@@ -169,8 +169,8 @@ parser.add_argument('--single-step', action='store_true', help='Use single step,
 parser.add_argument("--dont-split-qkv", action="store_true", help="Dont splits qkv")
 parser.add_argument("--abs-value-threshold", action='store_true', help='Use the absolute value of the result to check threshold')
 
-if ipython is not None:# or True: # TODO remove this!!!
-    # we are in a notebook
+if ipython is not None:
+    # We are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
     ["--task", "induction", "--wandb-run-name", "reproduce_induction_" + str(0.001), "--wandb-project-name", "acdc", "--using-wandb", "--threshold", str(0.001), "--indices-mode", "reverse", "--first-cache-cpu", "False", "--second-cache-cpu", "False"])
@@ -189,7 +189,7 @@ else:
     # read from command line
     args = parser.parse_args()
 
-# process args
+# Process args
 
 if args.torch_num_threads > 0:
     torch.set_num_threads(args.torch_num_threads)
@@ -361,7 +361,7 @@ for i in range(args.max_num_epochs):
     show(
         exp.corr,
         f"ims/img_new_{i+1}.png",
-        show_full_index=use_pos_embed,
+        show_full_index=False,
     )
     if IN_COLAB or ipython is not None:
         # so long as we're not running this as a script, show the image!
@@ -396,6 +396,5 @@ if USING_WANDB:
 #%%
 exp.save_subgraph(
     return_it=True,
-) 
-
-#%% HELLO
+)
+# %%

@@ -72,12 +72,12 @@ pytest -s -m slow
 
 We welcome issues where the code is unclear!
 
-If you make a PR, make sure you run 
+If your PR affects the main demo, rerun 
 ```bash
 chmod +x experiments/make_notebooks.sh
 ./experiments/make_notebooks.sh
 ```
-And check that no errors arise. It is essential that the notebooks converted here consist only of `#%% [markdown]` markdown-only cells, and `#%%` cells with code.
+to automatically turn the `main.py` into a working demo and check that no errors arise. It is essential that the notebooks converted here consist only of `#%% [markdown]` markdown-only cells, and `#%%` cells with code.
 
 ## Citing ACDC
 
