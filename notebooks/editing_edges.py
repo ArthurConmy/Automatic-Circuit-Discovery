@@ -28,7 +28,7 @@ try:
 
     ipython.run_line_magic( # install ACDC
         "pip",
-        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@2cc2d6d71416bddd3a88f287ffccfc0863ac8ddc",
+        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@3a34f19cc3cb1f198483d02097fd7a1b6e61b946",
     )
 
 except Exception as e:

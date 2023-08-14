@@ -166,7 +166,7 @@ parser.add_argument('--single-step', action='store_true', help='Use single step,
 parser.add_argument("--abs-value-threshold", action='store_true', help='Use the absolute value of the result to check threshold')
 
 if ipython is not None:
-    # we are in a notebook
+    # We are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
         [line.strip() for line in r"""--task=induction\
@@ -181,7 +181,7 @@ else:
     # read from command line
     args = parser.parse_args()
 
-# process args
+# Process args
 
 if args.torch_num_threads > 0:
     torch.set_num_threads(args.torch_num_threads)
@@ -221,6 +221,7 @@ SINGLE_STEP = True if args.single_step else False
 # <h2>Setup Task</h2>
 
 #%%
+
 second_metric = None  # some tasks only have one metric
 use_pos_embed = TASK.startswith("tracr")
 
@@ -385,4 +386,4 @@ if USING_WANDB:
 #%%
 exp.save_subgraph(
     return_it=True,
-) 
+)
