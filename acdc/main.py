@@ -247,7 +247,7 @@ elif TASK == "tracr-proportion":
         device=DEVICE,
     )
 elif TASK == "induction":
-    num_examples = 10
+    num_examples = 10 if IN_COLAB else 50
     seq_len = 300
     things = get_all_induction_things(
         num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric=args.metric
