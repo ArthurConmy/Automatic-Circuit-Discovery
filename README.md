@@ -21,11 +21,10 @@ Then, you need Python 3.8+ and [Poetry](https://python-poetry.org/docs/) to inst
 ```bash
 git clone git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git
 cd Automatic-Circuit-Discovery
-poetry env use 3.10 # Python 3.10 is recommended but use any Python version >= 3.8
+poetry env use 3.10      # Or be inside a conda or venv environment
+                         # Python 3.10 is recommended but use any Python version >= 3.8
 poetry install
 ```
-
-On vast.ai machines (and perhaps other machines using Docker containers) you can get setup fast by running `poetry config virtualenvs.create false` instead of the `poetry env use 3.10` line.
 
 ### System Dependencies
 
