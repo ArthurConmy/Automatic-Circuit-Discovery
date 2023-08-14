@@ -9,7 +9,17 @@ used = set()
 def run_script(threshold, gpu_id):
     env = os.environ.copy()
     env["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
-    subprocess.run(["python", "main.py", "--task", "induction", "--wandb-run-name", "reproduce_induction_" + str(threshold), "--wandb-project-name", "acdc", "--using-wandb", "--threshold", str(threshold), "--indices-mode", "reverse", "--first-cache-cpu", "False", "--second-cache-cpu", "False"], env=env)
+    subprocess.run(["python", "../subnetwork_probing/train.py"] + [line.strip() for line in r"""--task=induction\
+    --epochs=300\
+    --zero-ablation=0\
+    --wandb-name=my_edge_runs\
+    --wandb-project=edgesp\
+    --lr=0.005\
+    --wandb-entity=remix_school-of-rock\
+    --wandb-mode=online\
+    --loss-type=kl_div\
+    --sp=edge""".split("\\\n")] + [f"--lambda-reg={threshold}"], env=env)
+ 
     # subprocess.run(["python", "main.py", "--task", "ioi", "--metric", "logit_diff", "--wandb-run-name", str(threshold), "--wandb-project-name", "arthur_ioi_abs", "--abs-value-threshold", "--using-wandb", "--threshold", str(threshold), "--indices-mode", "reverse", "--first-cache-cpu", "False", "--second-cache-cpu", "False"], env=env)
     # subprocess.run(["python", "main.py", "--task", "induction", "--wandb-run-name", str(threshold), "--wandb-project-name", "arthur_ioi_abs", "--abs-value-threshold", "--using-wandb", "--threshold", str(threshold), "--indices-mode", "reverse", "--first-cache-cpu", "False", "--second-cache-cpu", "False"], env=env)
 #     subprocess.run(["python", "subnetwork_probing/train.py", "--task", "docstring", "--lambda-reg", str(threshold)] + """--zero-ablation=0

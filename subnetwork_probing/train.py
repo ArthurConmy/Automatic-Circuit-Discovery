@@ -310,8 +310,8 @@ if __name__ == "__main__":
         # we are in a notebook
         # you can put the command you would like to run as the ... in r"""..."""
         args = parser.parse_args(
-            [line.strip() for line in r"""--task=induction\
-    --lambda-reg=250.0\
+            [line.strip() for line in r"""--task=ioi\
+    --lambda-reg=2500.0\
     --epochs=300\
     --zero-ablation=0\
     --wandb-name=my_edge_runs\
@@ -524,10 +524,23 @@ for epoch in tqdm(epoch_range):
 
 #%%
 
+# TODO REMOVE; but for now we're not recovering the circuit...
+# wandb.finish()
+# assert False
+
 all_edges = experiment.corr.all_edges()
+total_edges = len(all_edges)
+cur_edges = 0
 for _, edge in all_edges.items():
-    print(edge)
-    edge.present = (edge.mask_score.item() > 0.0)
+    edge_mask_score = edge.mask_score.item()
+    edge.present = (edge_mask_score > 1.64)
+    # print(edge_mask_score)
+    if edge.present:
+        print(_)
+        cur_edges += 1
+print(cur_edges, total_edges, cur_edges / total_edges)
+
+#%%
 
 edges_fname = f"edges.pth"
 experiment.save_edges(edges_fname)
