@@ -32,7 +32,7 @@ try:
 
 except Exception as e:
     IN_COLAB = False
-    print("Running as a outside of colab")
+    print("Running outside of colab")
 
     import numpy # crucial to not get cursed error
     import plotly
