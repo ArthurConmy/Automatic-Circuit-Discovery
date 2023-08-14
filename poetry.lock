@@ -344,6 +344,24 @@ files = [
 ]
 
 [[package]]
+name = "beartype"
+version = "0.14.1"
+description = "Unbearably fast runtime type checking in pure Python."
+optional = false
+python-versions = ">=3.7.0"
+files = [
+    {file = "beartype-0.14.1-py3-none-any.whl", hash = "sha256:0f70fccdb8eb6d7ddfaa3ffe3a0b66cf2edeb13452bd71ad46615775c2fa34f6"},
+    {file = "beartype-0.14.1.tar.gz", hash = "sha256:23df4715d19cebb2ce60e53c3cf44cd925843f00c71938222d777ea6332de3cb"},
+]
+
+[package.extras]
+all = ["typing-extensions (>=3.10.0.0)"]
+dev = ["autoapi (>=0.9.0)", "coverage (>=5.5)", "mypy (>=0.800)", "numpy", "pandera", "pydata-sphinx-theme (<=0.7.2)", "pytest (>=4.0.0)", "sphinx", "sphinx (>=4.2.0,<6.0.0)", "sphinxext-opengraph (>=0.7.5)", "tox (>=3.20.1)", "typing-extensions (>=3.10.0.0)"]
+doc-rtd = ["autoapi (>=0.9.0)", "pydata-sphinx-theme (<=0.7.2)", "sphinx (>=4.2.0,<6.0.0)", "sphinxext-opengraph (>=0.7.5)"]
+test-tox = ["mypy (>=0.800)", "numpy", "pandera", "pytest (>=4.0.0)", "sphinx", "typing-extensions (>=3.10.0.0)"]
+test-tox-coverage = ["coverage (>=5.5)"]
+
+[[package]]
 name = "beautifulsoup4"
 version = "4.12.2"
 description = "Screen-scraping library"
@@ -4251,14 +4269,17 @@ test = ["argcomplete (>=2.0)", "pre-commit", "pytest", "pytest-mock"]
 
 [[package]]
 name = "transformer-lens"
-version = "0.0.0"
+version = "1.5.0"
 description = "An implementation of transformers tailored for mechanistic interpretability."
 optional = false
 python-versions = ">=3.7.4,<4.0"
-files = []
-develop = false
+files = [
+    {file = "transformer_lens-1.5.0-py3-none-any.whl", hash = "sha256:1ca6f7c9037e11e1e7abb889f463dedcdd97def5707b8146ac58eee94ba6af82"},
+    {file = "transformer_lens-1.5.0.tar.gz", hash = "sha256:52d479dcdf63d35147379d2579de5a65260ce3fbe6462f91af01bbbf3448bee7"},
+]
 
 [package.dependencies]
+beartype = ">=0.14.1,<0.15.0"
 datasets = ">=2.7.1"
 einops = ">=0.6.0"
 fancy-einsum = ">=0.0.3"
@@ -4272,17 +4293,10 @@ rich = ">=12.6.0"
 torch = ">=1.10"
 tqdm = ">=4.64.1"
 transformers = ">=4.25.1"
-typeguard = "^3.0.2"
 wandb = ">=0.13.5"
 
 [package.extras]
 docs = ["furo (>=2022.12.7)", "myst-parser (>=0.18.1)", "sphinx (==5.2.3)", "sphinx-autobuild (>=2021.3.14)", "sphinxcontrib-napoleon (>=0.7)", "tabulate (>=0.9.0)"]
-
-[package.source]
-type = "git"
-url = "https://github.com/neelnanda-io/TransformerLens.git"
-reference = "6983358"
-resolved_reference = "6983358b24c933e8787be8ffd3f518d0374fdd09"
 
 [[package]]
 name = "transformers"
@@ -4839,4 +4853,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "5e1bd0ee5a1af28a5bec0377d4484252cfa2242294ebf5c587cda906ce9220ec"
+content-hash = "aa0fffb169e03a15291bbcffbdef82da130540b1bff3b4b72b6d51d23a480db5"

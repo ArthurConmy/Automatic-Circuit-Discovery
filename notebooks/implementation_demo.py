@@ -26,7 +26,7 @@ try:
 
     ipython.run_line_magic( # install ACDC
         "pip",
-        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@2cc2d6d71416bddd3a88f287ffccfc0863ac8ddc", 
+        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@d89f7fa9cbd095202f3940c889cb7c6bf5a9b516", 
     )
 
 except Exception as e:
@@ -150,7 +150,7 @@ for letter in "qkv":
 
 show_corr(correspondence)
 
-# %%
+# %% [markdown]
 #
 # <p>These edges have to be different from the two addition edges, because an attention head is NOT the sum of its computed queries, keys and values (these tensors aren't even the correct shape!) </p>
 # 

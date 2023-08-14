@@ -27,7 +27,7 @@ try:
 
     ipython.run_line_magic( # install ACDC
         "pip",
-        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@2cc2d6d71416bddd3a88f287ffccfc0863ac8ddc",
+        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@d89f7fa9cbd095202f3940c889cb7c6bf5a9b516",
     )
 
 except Exception as e:
@@ -166,7 +166,7 @@ parser.add_argument('--single-step', action='store_true', help='Use single step,
 parser.add_argument("--abs-value-threshold", action='store_true', help='Use the absolute value of the result to check threshold')
 
 if ipython is not None:
-    # we are in a notebook
+    # We are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
         [line.strip() for line in r"""--task=induction\
@@ -181,7 +181,7 @@ else:
     # read from command line
     args = parser.parse_args()
 
-# process args
+# Process args
 
 if args.torch_num_threads > 0:
     torch.set_num_threads(args.torch_num_threads)
@@ -221,6 +221,7 @@ SINGLE_STEP = True if args.single_step else False
 # <h2>Setup Task</h2>
 
 #%%
+
 second_metric = None  # some tasks only have one metric
 use_pos_embed = TASK.startswith("tracr")
 
@@ -246,7 +247,7 @@ elif TASK == "tracr-proportion":
         device=DEVICE,
     )
 elif TASK == "induction":
-    num_examples = 10 if IN_COLAB else 50
+    num_examples = 10
     seq_len = 300
     things = get_all_induction_things(
         num_examples=num_examples, seq_len=seq_len, device=DEVICE, metric=args.metric
@@ -349,7 +350,7 @@ for i in range(args.max_num_epochs):
     show(
         exp.corr,
         f"ims/img_new_{i+1}.png",
-        show_full_index=use_pos_embed,
+        show_full_index=False,
     )
 
     if IN_COLAB or ipython is not None:
@@ -385,4 +386,5 @@ if USING_WANDB:
 #%%
 exp.save_subgraph(
     return_it=True,
-) 
+)
+# %%
