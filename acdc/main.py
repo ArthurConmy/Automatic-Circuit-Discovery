@@ -350,7 +350,7 @@ for i in range(args.max_num_epochs):
     show(
         exp.corr,
         f"ims/img_new_{i+1}.png",
-        show_full_index=use_pos_embed,
+        show_full_index=False,
     )
 
     if IN_COLAB or ipython is not None:
@@ -387,3 +387,4 @@ if USING_WANDB:
 exp.save_subgraph(
     return_it=True,
 )
+# %%
