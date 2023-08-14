@@ -150,7 +150,7 @@ for letter in "qkv":
 
 show_corr(correspondence)
 
-# %%
+# %% [markdown]
 #
 # <p>These edges have to be different from the two addition edges, because an attention head is NOT the sum of its computed queries, keys and values (these tensors aren't even the correct shape!) </p>
 # 
