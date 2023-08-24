@@ -705,7 +705,7 @@ class TLACDCExperiment:
                     bfs.append(child_node)
 
     def current_node_connected(self):
-        for child_name, rest1 in self.corr.edges.items(): # rest1 just meaning "rest of dictionary.. I'm tired"
+        for child_name, rest1 in self.corr.edges.items(): # TODO: use parent and children abstractions
             for child_index, rest2 in rest1.items():
                 if self.current_node.name in rest2 and self.current_node.index in rest2[self.current_node.name]:
                     if rest2[self.current_node.name][self.current_node.index].present:
