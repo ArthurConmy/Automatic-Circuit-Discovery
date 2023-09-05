@@ -37,7 +37,9 @@ T = TypeVar("T")
 class TLACDCExperiment:
     """Manages an ACDC experiment, including the computational graph, the model, the data etc.
 
-    The *key method* is the .step() method which processes one node (and all the connections into that node)
+    Note: we always minimize a metric! Pass the negative version of your metric if you wish to maximize a metric.
+
+    The *important method* is the .step() method which processes one node (and all the connections into that node)
     It's also helpful to understand what's going on in the def sender_hook(...) and def receiver_hook(...) methods - these are attached to the model to do path patching
     (see https://github.com/redwoodresearch/Easy-Transformer for a gentler introduction to path patching)
 
@@ -59,9 +61,6 @@ class TLACDCExperiment:
         hook_verbose: bool = False,
         parallel_hypotheses: int = 1, # lol
         remove_redundant: bool = False, 
-        monotone_metric: Literal[
-            "off", "maximize", "minimize"
-        ] = "minimize",  # if this is set to "maximize" or "minimize", then the metric will be maximized or minimized, respectively instead of us trying to keep the metric roughly the same. We do KL divergence by default
         online_cache_cpu: bool = True,
         corrupted_cache_cpu: bool = True,
         zero_ablation: bool = False, # use zero rather than
