@@ -87,7 +87,10 @@ class TLACDCExperiment:
         """Initialize the ACDC experiment"""
 
         if zero_ablation and remove_redundant:
-            raise ValueError("It's not possible to do zero ablation with remove redundant, talk to Arthur about this bizarre special case if curious!")
+            raise ValueError("It's not possible to do zero ablation and remove redundant paths.\
+            remove_redundant removes `dead` paths that don't go all the way back to the input.\
+            When we do corrupted ablation, removing the dead paths has no effect on forward passes.\
+            However, a dead edge in the zero ablation cases outputs a non-zero output! (That is usually computed from zero inputs)")
 
         model.reset_hooks()
 
