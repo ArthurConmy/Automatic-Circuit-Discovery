@@ -417,9 +417,11 @@ class TLACDCExperiment:
             # we need zero out all the outputs into the residual stream
 
             # all hooknames that output into the residual stream
-            hook_name_substrings = ["hook_result", "mlp_out", "hook_embed"]
+            hook_name_substrings = ["hook_result", "mlp_out"]
             if self.use_pos_embed:
-                hook_name_substrings.append("hook_pos_embed")
+                hook_name_substrings.extend(["hook_pos_embed", "hook_embed"])
+            else:
+                hook_name_substrings.append("blocks.0.hook_resid_pre")
 
             # add hooks to zero out all these hook points
             hook_name_bool_function = lambda hook_name: any([hook_name_substring in hook_name for hook_name_substring in hook_name_substrings])
