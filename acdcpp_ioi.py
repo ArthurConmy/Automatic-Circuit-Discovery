@@ -26,6 +26,7 @@ import torch as t
 from torch import Tensor
 import einops
 import itertools
+from acdc.ioi_dataset import IOIDataset, format_prompt, make_table
 import gc
 from transformer_lens import HookedTransformer, ActivationCache
 import tqdm.notebook as tqdm
@@ -33,6 +34,7 @@ import plotly
 from rich import print as rprint
 from rich.table import Table
 from jaxtyping import Float, Bool, Int
+import cProfile
 from typing import Callable, Tuple, Union, Dict, Optional, Literal
 device = t.device('cuda') if t.cuda.is_available() else t.device('cpu')
 print(f'Device: {device}')
@@ -54,13 +56,23 @@ if MODE == "ioi":
 
 elif MODE == "factual_recall":
     warnings.warn("Loading GPT-J takes some time. 5.75 minutes on a runpod A100. And why? On colab this takes 3 minutes, including the downloading part!")
-    model = HookedTransformer.from_pretrained_no_processing( # Maybe this can speedup things more?
-        "gpt-j-6b", # Can smaller models be used so there is less waiting?
-        # center_writing_weights=False,
-        # center_unembed=False,
-        # fold_ln=False, # This is used as doing this processing is really slow
-        # device=device, # Maybe speedup
-    )
+
+    def load_model():
+        model = HookedTransformer.from_pretrained_no_processing( # Maybe this can speedup things more?
+            "gpt-j-6b", # Can smaller models be used so there is less waiting?
+            # center_writing_weights=False,
+            # center_unembed=False,
+            # fold_ln=False, # This is used as doing this processing is really slow
+            device="cpu", # Maybe speedup
+        )
+        return model
+
+    cProfile.runctx('model = load_model()', globals(), locals(), 'my_profile_output.pstats')
+
+    print("Moving to CUDA...")
+    model = model.to("cuda:0")
+    print("... done!")
+
     model.set_use_hook_mlp_in(True)
     model.set_use_split_qkv_input(True)
     model.set_use_attn_result(True)
@@ -68,7 +80,6 @@ elif MODE == "factual_recall":
 # In[4]:
 
 if MODE == "ioi":
-    from acdc.ioi_dataset import IOIDataset, format_prompt, make_table
     N = 25
     clean_dataset = IOIDataset(
         prompt_type='mixed',
@@ -259,7 +270,7 @@ elif MODE == "factual_recall":
         end_logits = logits[range(logits.size(0)), end_positions]
         logprobs = t.log_softmax(end_logits, dim=-1)
         loss = - logprobs[range(logits.size(0)), correct_tokens]
-        return loss
+        return loss.mean()
 
     factual_recall_metric = partial(ave_loss, end_positions=clean_end_positions, correct_tokens=clean_completions)
 
@@ -362,35 +373,40 @@ def split_layers_and_heads(act: Tensor, model: HookedTransformer) -> Tensor:
 
 hook_filter = lambda name: name.endswith("ln1.hook_normalized") or name.endswith("attn.hook_result")
 
-def get_3_caches(model, clean_input, corrupted_input, metric):
+def get_3_caches(model, clean_input, corrupted_input, metric, device=None):
     # cache the activations and gradients of the clean inputs
     model.reset_hooks()
     clean_cache = {}
 
     def forward_cache_hook(act, hook):
-        clean_cache[hook.name] = act.detach()
+        clean_cache[hook.name] = act.detach().to(device) # .to(None) is a no op
 
     model.add_hook(hook_filter, forward_cache_hook, "fwd")
 
     clean_grad_cache = {}
 
     def backward_cache_hook(act, hook):
-        clean_grad_cache[hook.name] = act.detach()
+        clean_grad_cache[hook.name] = act.detach().to(device)
 
     model.add_hook(hook_filter, backward_cache_hook, "bwd")
 
     value = metric(model(clean_input))
     value.backward()
 
+    model.zero_grad()
+    gc.collect()
+    t.cuda.empty_cache()
+
     # cache the activations of the corrupted inputs
     model.reset_hooks()
     corrupted_cache = {}
 
     def forward_cache_hook(act, hook):
-        corrupted_cache[hook.name] = act.detach()
+        corrupted_cache[hook.name] = act.detach().to(device)
 
     model.add_hook(hook_filter, forward_cache_hook, "fwd")
-    model(corrupted_input)
+    with torch.no_grad():
+        model(corrupted_input)
     model.reset_hooks()
 
     clean_cache = ActivationCache(clean_cache, model)
@@ -398,14 +414,16 @@ def get_3_caches(model, clean_input, corrupted_input, metric):
     clean_grad_cache = ActivationCache(clean_grad_cache, model)
     return clean_cache, corrupted_cache, clean_grad_cache
 
-def acdc_nodes(model: HookedTransformer,
-              clean_input: Tensor,
-              corrupted_input: Tensor,
-              metric: Callable[[Tensor], Tensor],
-              threshold: float,
-              exp: TLACDCExperiment,
-              attr_absolute_val: bool = False) -> Tuple[
-                  HookedTransformer, Bool[Tensor, 'n_layer n_heads']]:
+def acdc_nodes(
+    model: HookedTransformer,
+    clean_input: Tensor,
+    corrupted_input: Tensor,
+    metric: Callable[[Tensor], Tensor],
+    threshold: float,
+    exp: TLACDCExperiment,
+    attr_absolute_val: bool = False,
+    device = None, # TODO add types...
+) -> Tuple[HookedTransformer, Bool[Tensor, 'n_layer n_heads']]:
     '''
     Runs attribution-patching-based ACDC on the model, using the given metric and data.
     Returns the pruned model, and which heads were pruned.
@@ -420,7 +438,7 @@ def acdc_nodes(model: HookedTransformer,
         attr_absolute_val: whether to take the absolute value of the attribution before thresholding
     '''
     # get the 2 fwd and 1 bwd caches; cache "normalized" and "result" of attn layers
-    clean_cache, corrupted_cache, clean_grad_cache = get_3_caches(model, clean_input, corrupted_input, metric)
+    clean_cache, corrupted_cache, clean_grad_cache = get_3_caches(model, clean_input, corrupted_input, metric, device=device)
 
     # compute first-order Taylor approximation for each node to get the attribution
     clean_head_act = clean_cache.stack_head_results()
@@ -462,11 +480,9 @@ def acdc_nodes(model: HookedTransformer,
                 remove_node(exp, node)
     return pruned_nodes_attr
 
-
-# # Show resulting graph
+# Show resulting graph
 
 # In[7]:
-
 
 from acdc.TLACDCInterpNode import TLACDCInterpNode
 import pygraphviz as pgv
@@ -692,26 +708,31 @@ pruned_nodes_per_thresh = {}
 num_forward_passes_per_thresh = {}
 heads_per_thresh = {}
 os.makedirs(f'ims/{run_name}', exist_ok=True)
-
 threshold = 0.1
-
 start_thresh_time = time()
-# Set up model
+
 # Set up experiment
-exp = TLACDCExperiment(
+# For GPT-J this takes >3 minutes if caches are on CPU. 30 seconds if not.
+
+cout = cProfile.runctx("""exp = TLACDCExperiment(
     model=model,
     threshold=threshold,
     # run_name=run_name, # TODO add this feature to main branch acdc
     ds=clean_toks,
     ref_ds=corr_toks,
-    metric=negative_ioi_metric,
+    metric=negative_ioi_metric if MODE == "ioi" else factual_recall_metric,
     zero_ablation=False,
     hook_verbose=False, 
-    online_cache_cpu=False,
+    online_cache_cpu=False, # Trialling this being bigger...
     corrupted_cache_cpu=False,
     verbose=True,
-)
+    add_sender_hooks=False,
+)""", locals(), globals(), sort='cumtime', filename=f'setup.prof') # Test that .prof stuff works
+
 print('Setting up graph')
+
+#%%
+
 # Set up computational graph
 exp.model.reset_hooks()
 exp.setup_model_hooks(
@@ -721,12 +742,15 @@ exp.setup_model_hooks(
 )
 exp_time = time()
 print(f'Time to set up exp: {exp_time - start_thresh_time}')
-for _ in range(10):
+
+N_TIMES = 1 # Number of times such that this does not OOM GPT-J...
+
+for _ in range(N_TIMES):
     pruned_nodes_attr = acdc_nodes(
         model=exp.model,
         clean_input=clean_toks,
         corrupted_input=corr_toks,
-        metric=ioi_metric,
+        metric=ioi_metric if MODE == "ioi" else factual_recall_metric,
         threshold=threshold,
         exp=exp,
         attr_absolute_val=True,
@@ -734,27 +758,32 @@ for _ in range(10):
     t.cuda.empty_cache()
 acdcpp_time = time()
 print(f'ACDC++ time: {acdcpp_time - exp_time}')
-heads_per_thresh[threshold] = [get_nodes(exp.corr)]
-pruned_nodes_per_thresh[threshold] = pruned_nodes_attr
-show(exp.corr, fname=f'ims/{run_name}/thresh{threshold}_before_acdc.png')
+gc.collect()
+t.cuda.empty_cache()
+
+# # TODO -- why is this broken? What's up with hook_mlp_in key errors ?
+# heads_per_thresh[threshold] = [get_nodes(exp.corr)]
+# pruned_nodes_per_thresh[threshold] = pruned_nodes_attr
+# show(exp.corr, fname=f'ims/{run_name}/thresh{threshold}_before_acdc.png')
     
 #%%
 
-if True:
-    start_acdc_time = time()
-    # while "blocks.9" not in str(exp.current_node.name): # I used this while condition for profiling
-    while exp.current_node:
-        exp.step(testing=False)
+start_acdc_time = time()
+# while "blocks.9" not in str(exp.current_node.name): # I used this while condition for profiling
+# while exp.current_node:
+if True: # Can we at least do one step?
+    exp.step(testing=False)
 
-    # # We do not have Aaquib's changes yet
-    # print(f'ACDC Time: {time() - start_acdc_time}, with steps {exp.num_steps}')
-    # num_forward_passes_per_thresh[threshold] = exp.num_passes
+# # TODO We do not have Aaquib's changes yet so cannot run this
+# print(f'ACDC Time: {time() - start_acdc_time}, with steps {exp.num_steps}')
+# num_forward_passes_per_thresh[threshold] = exp.num_passes
 
-    heads_per_thresh[threshold].append(get_nodes(exp.corr))
-    show(exp.corr, fname=f'ims/{run_name}/thresh{threshold}_after_acdc.png')
+heads_per_thresh[threshold].append(get_nodes(exp.corr))
+# # TODO add this back in 
+# show(exp.corr, fname=f'ims/{run_name}/thresh{threshold}_after_acdc.png')
 
-    del exp
-    t.cuda.empty_cache()
+del exp
+t.cuda.empty_cache()
 
-    break
 
+# %%

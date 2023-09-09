@@ -384,6 +384,8 @@ class TLACDCExperiment:
             elif edge.edge_type == EdgeType.ADDITION:
                 nodes.append(self.corr.graph[big_tuple[2]][big_tuple[3]])
                 if add_all_hooks:
+                    if big_tuple[0] not in self.corr.graph or big_tuple[1] not in self.corr.graph[big_tuple[0]]:
+                        continue
                     nodes.append(self.corr.graph[big_tuple[0]][big_tuple[1]])
             elif edge.edge_type != EdgeType.PLACEHOLDER:
                 print(edge.edge_type.value, EdgeType.ADDITION.value, edge.edge_type.value == EdgeType.ADDITION.value, type(edge.edge_type.value), type(EdgeType.ADDITION.value))
@@ -467,7 +469,7 @@ class TLACDCExperiment:
                 )
 
         if add_sender_hooks: # bug fixed; crucial to add sender hooks AFTER the receivers
-            self.add_all_sender_hooks(cache="online", skip_direct_computation=False, add_all_hooks=True, reset=False, sender_and_receiver_both_ok=True)
+            self.add_all_sender_hooks(cache="online", skip_direct_computation=False, add_all_hooks=False, reset=False, sender_and_receiver_both_ok=True) # TODO do we need add_all_hooks
 
 
     def save_edges(self, fname):
