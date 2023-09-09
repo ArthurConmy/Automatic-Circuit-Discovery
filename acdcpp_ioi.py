@@ -1,7 +1,7 @@
 # In[1]:
 
 """
-Arthur's .py version of acdcpp_ioi.ipynb for iteration 
+Arthur's .py version of acdcpp_ioi.ipynb to try and SCALE
 """
 
 from IPython import get_ipython
@@ -9,131 +9,261 @@ ipython = get_ipython()
 if ipython is not None:
     ipython.run_line_magic('load_ext', 'autoreload')
     ipython.run_line_magic('autoreload', '2')
-
 import os
 import sys
+import json
+import warnings
 import re
-
 import acdc
+import plotly.express as px
 from acdc.TLACDCExperiment import TLACDCExperiment
+import torch
 from acdc.acdc_utils import TorchIndex, EdgeType
 import numpy as np
 import torch as t
 from torch import Tensor
 import einops
 import itertools
-
+import gc
 from transformer_lens import HookedTransformer, ActivationCache
-
 import tqdm.notebook as tqdm
 import plotly
 from rich import print as rprint
 from rich.table import Table
-
 from jaxtyping import Float, Bool
-from typing import Callable, Tuple, Union, Dict, Optional
-
+from typing import Callable, Tuple, Union, Dict, Optional, Literal
 device = t.device('cuda') if t.cuda.is_available() else t.device('cpu')
 print(f'Device: {device}')
-
-
-# # Model Setup
+MODE: Literal["ioi", "factual_recall"] = "factual_recall"
 
 # In[2]:
 
+if MODE == "ioi":
+    model = HookedTransformer.from_pretrained(
+        'gpt2-small',
+        center_writing_weights=False,
+        center_unembed=False,
+        fold_ln=False,
+        device=device,
+    )
+    model.set_use_hook_mlp_in(True)
+    model.set_use_split_qkv_input(True)
+    model.set_use_attn_result(True)
 
-model = HookedTransformer.from_pretrained(
-    'gpt2-small',
-    center_writing_weights=False,
-    center_unembed=False,
-    fold_ln=False,
-    device=device,
-)
-model.set_use_hook_mlp_in(True)
-model.set_use_split_qkv_input(True)
-model.set_use_attn_result(True)
+elif MODE == "factual_recall":
+    warnings.warn("Loading this beast takes some time. 5.75 minutes on a runpod A100.")
+    model = HookedTransformer.from_pretrained(
+        "gpt-j-6b",
+        center_writing_weights=True,
+        center_unembed=True,
+        fold_ln=False, # This is used as doing this processing is really slow
+        device=device,
+    )
+    model.set_use_hook_mlp_in(True)
+    model.set_use_split_qkv_input(True)
+    model.set_use_attn_result(True)
 
-
-# # Dataset Setup
 
 # In[4]:
 
+if MODE == "ioi":
+    from acdc.ioi_dataset import IOIDataset, format_prompt, make_table
+    N = 25
+    clean_dataset = IOIDataset(
+        prompt_type='mixed',
+        N=N,
+        tokenizer=model.tokenizer,
+        prepend_bos=False,
+        seed=1,
+        device=device,
+    )
+    clean_toks = clean_dataset.toks
+    corr_dataset = clean_dataset.gen_flipped_prompts('ABC->XYZ, BAB->XYZ')
+    corr_toks = corr_dataset.toks
 
-from acdc.ioi_dataset import IOIDataset, format_prompt, make_table
-N = 25
-clean_dataset = IOIDataset(
-    prompt_type='mixed',
-    N=N,
-    tokenizer=model.tokenizer,
-    prepend_bos=False,
-    seed=1,
-    device=device
-)
-corr_dataset = clean_dataset.gen_flipped_prompts('ABC->XYZ, BAB->XYZ')
+    make_table(
+    colnames = ["IOI prompt", "IOI subj", "IOI indirect obj", "ABC prompt"],
+    cols = [
+        map(format_prompt, clean_dataset.sentences),
+        model.to_string(clean_dataset.s_tokenIDs).split(),
+        model.to_string(clean_dataset.io_tokenIDs).split(),
+        map(format_prompt, clean_dataset.sentences),
+    ],
+    title = "Sentences from IOI vs ABC distribution",
+    )
 
-make_table(
-  colnames = ["IOI prompt", "IOI subj", "IOI indirect obj", "ABC prompt"],
-  cols = [
-    map(format_prompt, clean_dataset.sentences),
-    model.to_string(clean_dataset.s_tokenIDs).split(),
-    model.to_string(clean_dataset.io_tokenIDs).split(),
-    map(format_prompt, clean_dataset.sentences),
-  ],
-  title = "Sentences from IOI vs ABC distribution",
-)
+elif MODE == "factual_recall":
+    # Munge the data to find some cities that we can track...
 
+    with open(os.path.expanduser("~/Automatic-Circuit-Discovery/acdc/factual_recall/city_data.json")) as f:
+        raw_data = json.load(f) # Adjust fpath to yours...
 
-# # Metric Setup
+    prompt_templates = raw_data["prompt_templates"] + raw_data["prompt_templates_zs"]
+
+    filtered_data = []
+
+    for sample in raw_data["samples"]:
+        completion = model.to_tokens(" " + sample["object"], prepend_bos=False)
+        subject = model.to_tokens(" " + sample["subject"], prepend_bos=False)
+        if [completion.shape[-1], subject.shape[-1]] != [1, 1]:
+            print(sample, "bad")
+            continue
+        else:
+            print("Good")
+            filtered_data.append(sample)
+
+    losses = []
+    stds = []
+
+    for sample in filtered_data:
+        prompts = [
+            template.format(sample["subject"]) for template in prompt_templates
+        ]
+        batched_tokens = model.to_tokens(prompts)
+        completion = model.to_tokens(" " + sample["object"], prepend_bos=False).item()
+        end_pos = [model.to_tokens(prompt).shape[-1]-1 for prompt in prompts]
+        assert batched_tokens.shape[1] == max(end_pos) + 1
+        logits = model(batched_tokens)[torch.arange(batched_tokens.shape[0]), end_pos]
+        log_probs = t.log_softmax(logits, dim=-1)
+        loss = - log_probs[torch.arange(batched_tokens.shape[0]), completion]
+        losses.append(loss.mean().item())
+        stds.append(loss.std().item())
+
+        print(
+            sample,
+            "has loss",
+            round(losses[-1], 4), 
+            "+-",
+            round(stds[-1], 4),
+        )
+        print(loss.tolist())
+
+    # Q: What are the losses here?
+    fig = px.bar(
+        x=[sample["subject"] for sample in filtered_data],
+        y=losses,
+        # error_y=dict(
+        #     type="data",
+        #     array=stds,
+        # ),
+    ).update_layout(
+        title="Average losses for factual recall",
+    )
+    fig.show()
+    # A: they are quite small
+
+    # Make the data
+
+    gc.collect()
+    t.cuda.empty_cache()
+
+    BATCH_SIZE = 10 # Make this small so no OOM...
+
+    assert len(filtered_data) >= BATCH_SIZE
+    all_subjects = [sample["subject"] for sample in filtered_data]
+
+    torch.manual_seed(0)
+    prompt_template_indices = torch.randint(len(prompt_templates), (BATCH_SIZE,))
+
+    clean_sentences = [prompt_templates[prompt_idx].format(all_subjects[subject_idx]) for subject_idx, prompt_idx in enumerate(prompt_template_indices)]
+    clean_toks = model.to_tokens([sentence for sentence in clean_sentences])
+    clean_end_positions = [model.to_tokens(sentence).shape[-1]-1 for sentence in clean_sentences]
+    clean_completions = [model.to_tokens(" " + filtered_data[i]["object"], prepend_bos=False).item() for i in range(BATCH_SIZE)]
+    clean_completions = t.tensor(clean_completions, device=device)
+
+    different_subjects = list(set(all_subjects) - set(all_subjects[:BATCH_SIZE]))
+
+    # This city data was too small... sigh
+    different_subjects = different_subjects + different_subjects
+    assert len(different_subjects) >= BATCH_SIZE
+    corr_subjects = different_subjects[:BATCH_SIZE]
+
+    corr_sentences = [sentence.replace(all_subjects[i], corr_subjects[i]) for i, sentence in enumerate(clean_sentences)]
+    corr_toks = model.to_tokens(corr_sentences)
+
+    # Check that indeed losses are low
+    logits = model(clean_toks).cpu()[torch.arange(clean_toks.shape[0]), clean_end_positions]
+    logprobs = t.log_softmax(logits, dim=-1)
+    loss = - log_probs[torch.arange(clean_toks.shape[0]), clean_completions]
+
+#%%
+
+print(loss, "are the losses")
 
 # In[5]:
 
+if MODE == "ioi":
+    def ave_logit_diff(
+        logits: Float[Tensor, 'batch seq d_vocab'],
+        ioi_dataset: IOIDataset,
+        per_prompt: bool = False
+    ):
+        '''
+            Return average logit difference between correct and incorrect answers
+        '''
+        # Get logits for indirect objects
+        io_logits = logits[range(logits.size(0)), ioi_dataset.word_idx['end'], ioi_dataset.io_tokenIDs]
+        s_logits = logits[range(logits.size(0)), ioi_dataset.word_idx['end'], ioi_dataset.s_tokenIDs]
+        # Get logits for subject
+        logit_diff = io_logits - s_logits
+        return logit_diff if per_prompt else logit_diff.mean()
 
-def ave_logit_diff(
-    logits: Float[Tensor, 'batch seq d_vocab'],
-    ioi_dataset: IOIDataset,
-    per_prompt: bool = False
-):
-    '''
-        Return average logit difference between correct and incorrect answers
-    '''
-    # Get logits for indirect objects
-    io_logits = logits[range(logits.size(0)), ioi_dataset.word_idx['end'], ioi_dataset.io_tokenIDs]
-    s_logits = logits[range(logits.size(0)), ioi_dataset.word_idx['end'], ioi_dataset.s_tokenIDs]
-    # Get logits for subject
-    logit_diff = io_logits - s_logits
-    return logit_diff if per_prompt else logit_diff.mean()
+    with t.no_grad():
+        clean_logits = model(clean_dataset.toks)
+        corrupt_logits = model(corr_dataset.toks)
+        clean_logit_diff = ave_logit_diff(clean_logits, clean_dataset).item()
+        corrupt_logit_diff = ave_logit_diff(corrupt_logits, corr_dataset).item()
 
-with t.no_grad():
-    clean_logits = model(clean_dataset.toks)
-    corrupt_logits = model(corr_dataset.toks)
-    clean_logit_diff = ave_logit_diff(clean_logits, clean_dataset).item()
-    corrupt_logit_diff = ave_logit_diff(corrupt_logits, corr_dataset).item()
+    def ioi_metric(
+        logits: Float[Tensor, "batch seq_len d_vocab"],
+        corrupted_logit_diff: float = corrupt_logit_diff,
+        clean_logit_diff: float = clean_logit_diff,
+        ioi_dataset: IOIDataset = clean_dataset, 
+    ):
+        patched_logit_diff = ave_logit_diff(logits, ioi_dataset)
+        return (patched_logit_diff - corrupted_logit_diff) / (clean_logit_diff - corrupted_logit_diff)
 
-def ioi_metric(
-    logits: Float[Tensor, "batch seq_len d_vocab"],
-    corrupted_logit_diff: float = corrupt_logit_diff,
-    clean_logit_diff: float = clean_logit_diff,
-    ioi_dataset: IOIDataset = clean_dataset
- ):
-    patched_logit_diff = ave_logit_diff(logits, ioi_dataset)
-    return (patched_logit_diff - corrupted_logit_diff) / (clean_logit_diff - corrupted_logit_diff)
+    def negative_ioi_metric(logits: Float[Tensor, "batch seq_len d_vocab"]):
+        return -ioi_metric(logits)
+        
+    # Get clean and corrupt logit differences
+    with t.no_grad():
+        clean_metric = ioi_metric(clean_logits, corrupt_logit_diff, clean_logit_diff, clean_dataset)
+        corrupt_metric = ioi_metric(corrupt_logits, corrupt_logit_diff, clean_logit_diff, corr_dataset)
 
-def negative_ioi_metric(logits: Float[Tensor, "batch seq_len d_vocab"]):
-    return -ioi_metric(logits)
-    
-# Get clean and corrupt logit differences
-with t.no_grad():
-    clean_metric = ioi_metric(clean_logits, corrupt_logit_diff, clean_logit_diff, clean_dataset)
-    corrupt_metric = ioi_metric(corrupt_logits, corrupt_logit_diff, clean_logit_diff, corr_dataset)
+    print(f'Clean direction: {clean_logit_diff}, Corrupt direction: {corrupt_logit_diff}')
+    print(f'Clean metric: {clean_metric}, Corrupt metric: {corrupt_metric}')
 
-print(f'Clean direction: {clean_logit_diff}, Corrupt direction: {corrupt_logit_diff}')
-print(f'Clean metric: {clean_metric}, Corrupt metric: {corrupt_metric}')
+elif MODE == "factual_recall":
 
+    def ave_loss(
+        logits: Float[Tensor, 'batch seq d_vocab'],
+        end_positions: Int[Tensor, 'batch'],
+        correct_tokens: Int[Tensor, 'batch'],
+    ):
+        '''
+        Return average neglogprobs of correct tokens
+        '''
 
-# # Helper Methods
+        end_logits = logits[range(logits.size(0)), end_positions]
+        logprobs = t.log_softmax(end_logits, dim=-1)
+        loss = - logprobs[range(logits.size(0)), correct_tokens]
+        return loss
+
+    factual_recall_metric = partial(ave_loss, end_positions=end_positions, correct_tokens=completions)
+
+    with t.no_grad():
+        clean_logits = model(clean_dataset)
+        corrupt_logits = model(corr_dataset)
+
+    # Get clean and corrupt logit differences
+    with t.no_grad():
+        clean_metric = factual_recall_metric(clean_logits)
+        corrupt_metric = factual_recall_metric(corrupt_logits)
 
 # In[6]:
 
+# # Helper Methods
 
 def remove_redundant_node(exp, node, safe=True, allow_fails=True):
         if safe:
@@ -220,6 +350,7 @@ def split_layers_and_heads(act: Tensor, model: HookedTransformer) -> Tensor:
                             head=model.cfg.n_heads)
 
 hook_filter = lambda name: name.endswith("ln1.hook_normalized") or name.endswith("attn.hook_result")
+
 def get_3_caches(model, clean_input, corrupted_input, metric):
     # cache the activations and gradients of the clean inputs
     model.reset_hooks()
@@ -562,9 +693,9 @@ for threshold in THRESHOLDS:
     exp = TLACDCExperiment(
         model=model,
         threshold=threshold,
-        # run_name=run_name,
-        ds=clean_dataset.toks,
-        ref_ds=corr_dataset.toks,
+        # run_name=run_name, # TODO add this feature to main branch acdc
+        ds=clean_toks,
+        ref_ds=corr_toks,
         metric=negative_ioi_metric,
         zero_ablation=False,
         hook_verbose=False, 
@@ -585,8 +716,8 @@ for threshold in THRESHOLDS:
     for _ in range(10):
         pruned_nodes_attr = acdc_nodes(
             model=exp.model,
-            clean_input=clean_dataset.toks,
-            corrupted_input=corr_dataset.toks,
+            clean_input=clean_toks,
+            corrupted_input=corr_toks,
             metric=ioi_metric,
             threshold=threshold,
             exp=exp,

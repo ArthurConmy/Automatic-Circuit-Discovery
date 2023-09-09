@@ -1,0 +1,115 @@
+{
+    "name":"country largest city",
+    "prompt_templates":[
+       "The largest city in {} is",
+       "The biggest city in {} is"
+    ],
+    "prompt_templates_zs":[
+      "What is the largest city in {}? It is the city of",
+      "The largest city in {} is the city of"
+   ],
+    "properties":{
+       "relation_type":"factual",
+       "domain_name":"country",
+       "range_name":"city",
+       "symmetric":false
+    },
+    "samples":[
+       {
+          "subject":"United States",
+          "object":"New York City"
+       },
+       {
+          "subject":"China",
+          "object":"Shanghai"
+       },
+       {
+          "subject":"Japan",
+          "object":"Tokyo"
+       },
+       {
+          "subject":"Russia",
+          "object":"Moscow"
+       },
+       {
+          "subject":"India",
+          "object":"Mumbai"
+       },
+       {
+          "subject":"Brazil",
+          "object":"São Paulo"
+       },
+       {
+          "subject":"Australia",
+          "object":"Sydney"
+       },
+       {
+          "subject":"Canada",
+          "object":"Toronto"
+       },
+       {
+          "subject":"United Kingdom",
+          "object":"London"
+       },
+       {
+          "subject":"France",
+          "object":"Paris"
+       },
+       {
+          "subject":"Germany",
+          "object":"Berlin"
+       },
+       {
+          "subject":"Italy",
+          "object":"Rome"
+       },
+       {
+          "subject":"Mexico",
+          "object":"Mexico City"
+       },
+       {
+          "subject":"South Korea",
+          "object":"Seoul"
+       },
+       {
+          "subject":"Turkey",
+          "object":"Istanbul"
+       },
+       {
+          "subject":"Spain",
+          "object":"Madrid"
+       },
+       {
+          "subject":"Argentina",
+          "object":"Buenos Aires"
+       },
+       {
+          "subject":"South Africa",
+          "object":"Johannesburg"
+       },
+       {
+          "subject":"Poland",
+          "object":"Warsaw"
+       },
+       {
+          "subject":"Nigeria",
+          "object":"Lagos"
+       },
+       {
+          "subject":"New Zealand",
+          "object":"Auckland"
+       },
+       {
+          "subject":"Switzerland",
+          "object":"Zurich"
+       },
+       {
+          "subject":"Netherlands",
+          "object":"Amsterdam"
+       },
+       {
+          "subject":"Pakistan",
+          "object":"Karachi"
+       }
+    ]
+ }
