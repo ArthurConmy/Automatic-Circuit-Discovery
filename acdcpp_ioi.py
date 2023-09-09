@@ -14,6 +14,8 @@ import sys
 import json
 import warnings
 import re
+from time import time
+from functools import partial
 import acdc
 import plotly.express as px
 from acdc.TLACDCExperiment import TLACDCExperiment
@@ -30,7 +32,7 @@ import tqdm.notebook as tqdm
 import plotly
 from rich import print as rprint
 from rich.table import Table
-from jaxtyping import Float, Bool
+from jaxtyping import Float, Bool, Int
 from typing import Callable, Tuple, Union, Dict, Optional, Literal
 device = t.device('cuda') if t.cuda.is_available() else t.device('cpu')
 print(f'Device: {device}')
@@ -51,18 +53,17 @@ if MODE == "ioi":
     model.set_use_attn_result(True)
 
 elif MODE == "factual_recall":
-    warnings.warn("Loading this beast takes some time. 5.75 minutes on a runpod A100.")
-    model = HookedTransformer.from_pretrained(
-        "gpt-j-6b",
-        center_writing_weights=True,
-        center_unembed=True,
-        fold_ln=False, # This is used as doing this processing is really slow
-        device=device,
+    warnings.warn("Loading GPT-J takes some time. 5.75 minutes on a runpod A100. And why? On colab this takes 3 minutes, including the downloading part!")
+    model = HookedTransformer.from_pretrained_no_processing( # Maybe this can speedup things more?
+        "gpt-j-6b", # Can smaller models be used so there is less waiting?
+        # center_writing_weights=False,
+        # center_unembed=False,
+        # fold_ln=False, # This is used as doing this processing is really slow
+        # device=device, # Maybe speedup
     )
     model.set_use_hook_mlp_in(True)
     model.set_use_split_qkv_input(True)
     model.set_use_attn_result(True)
-
 
 # In[4]:
 
@@ -112,10 +113,12 @@ elif MODE == "factual_recall":
             print("Good")
             filtered_data.append(sample)
 
+    filtered_data = list(reversed(filtered_data))
+
     losses = []
     stds = []
 
-    for sample in filtered_data:
+    for sample in filtered_data: # This helps as the model is confused by China->Shanghai!
         prompts = [
             template.format(sample["subject"]) for template in prompt_templates
         ]
@@ -158,6 +161,7 @@ elif MODE == "factual_recall":
     t.cuda.empty_cache()
 
     BATCH_SIZE = 10 # Make this small so no OOM...
+    CORR_MODE: Literal["here", "other_city"] = "here" # replace $city_name with $other_city_name or $here
 
     assert len(filtered_data) >= BATCH_SIZE
     all_subjects = [sample["subject"] for sample in filtered_data]
@@ -171,10 +175,15 @@ elif MODE == "factual_recall":
     clean_completions = [model.to_tokens(" " + filtered_data[i]["object"], prepend_bos=False).item() for i in range(BATCH_SIZE)]
     clean_completions = t.tensor(clean_completions, device=device)
 
-    different_subjects = list(set(all_subjects) - set(all_subjects[:BATCH_SIZE]))
+    if CORR_MODE == "here":
+        different_subjects = ["here" for _ in range(BATCH_SIZE)]
 
-    # This city data was too small... sigh
-    different_subjects = different_subjects + different_subjects
+    elif CORR_MODE == "other_city":
+        different_subjects = list(set(all_subjects) - set(all_subjects[:BATCH_SIZE]))
+
+        # This city data was too small... sigh
+        different_subjects = different_subjects + different_subjects
+
     assert len(different_subjects) >= BATCH_SIZE
     corr_subjects = different_subjects[:BATCH_SIZE]
 
@@ -183,12 +192,14 @@ elif MODE == "factual_recall":
 
     # Check that indeed losses are low
     logits = model(clean_toks).cpu()[torch.arange(clean_toks.shape[0]), clean_end_positions]
-    logprobs = t.log_softmax(logits, dim=-1)
-    loss = - log_probs[torch.arange(clean_toks.shape[0]), clean_completions]
+    logprobs = t.log_softmax(logits.cpu(), dim=-1)
+    loss = - logprobs.cpu()[torch.arange(clean_toks.shape[0]), clean_completions.cpu()]
 
 #%%
 
-print(loss, "are the losses")
+print(loss, "are the losses") # Most look reasonable. But 4???s
+gc.collect()
+t.cuda.empty_cache()
 
 # In[5]:
 
@@ -199,7 +210,7 @@ if MODE == "ioi":
         per_prompt: bool = False
     ):
         '''
-            Return average logit difference between correct and incorrect answers
+        Return average logit difference between correct and incorrect answers
         '''
         # Get logits for indirect objects
         io_logits = logits[range(logits.size(0)), ioi_dataset.word_idx['end'], ioi_dataset.io_tokenIDs]
@@ -250,11 +261,11 @@ elif MODE == "factual_recall":
         loss = - logprobs[range(logits.size(0)), correct_tokens]
         return loss
 
-    factual_recall_metric = partial(ave_loss, end_positions=end_positions, correct_tokens=completions)
+    factual_recall_metric = partial(ave_loss, end_positions=clean_end_positions, correct_tokens=clean_completions)
 
     with t.no_grad():
-        clean_logits = model(clean_dataset)
-        corrupt_logits = model(corr_dataset)
+        clean_logits = model(clean_toks)
+        corrupt_logits = model(corr_toks)
 
     # Get clean and corrupt logit differences
     with t.no_grad():
@@ -640,11 +651,9 @@ def show(
 
     return g
 
-
-# # Run Experiment
-
 # In[8]:
 
+# # Run Experiment
 
 def get_nodes(correspondence):
     nodes = set()
@@ -678,60 +687,63 @@ def get_nodes(correspondence):
 
 # In[10]:
 
-
-from time import time
-THRESHOLDS = [0.1, 0.2, 0.3, 0.4, 0.5]
 run_name = 'ioi_thresh_run'
 pruned_nodes_per_thresh = {}
 num_forward_passes_per_thresh = {}
 heads_per_thresh = {}
 os.makedirs(f'ims/{run_name}', exist_ok=True)
-for threshold in THRESHOLDS:
-    start_thresh_time = time()
-    # Set up model
-    # Set up experiment
-    exp = TLACDCExperiment(
-        model=model,
+
+threshold = 0.1
+
+start_thresh_time = time()
+# Set up model
+# Set up experiment
+exp = TLACDCExperiment(
+    model=model,
+    threshold=threshold,
+    # run_name=run_name, # TODO add this feature to main branch acdc
+    ds=clean_toks,
+    ref_ds=corr_toks,
+    metric=negative_ioi_metric,
+    zero_ablation=False,
+    hook_verbose=False, 
+    online_cache_cpu=False,
+    corrupted_cache_cpu=False,
+    verbose=True,
+)
+print('Setting up graph')
+# Set up computational graph
+exp.model.reset_hooks()
+exp.setup_model_hooks(
+    add_sender_hooks=True,
+    add_receiver_hooks=True,
+    doing_acdc_runs=False,
+)
+exp_time = time()
+print(f'Time to set up exp: {exp_time - start_thresh_time}')
+for _ in range(10):
+    pruned_nodes_attr = acdc_nodes(
+        model=exp.model,
+        clean_input=clean_toks,
+        corrupted_input=corr_toks,
+        metric=ioi_metric,
         threshold=threshold,
-        # run_name=run_name, # TODO add this feature to main branch acdc
-        ds=clean_toks,
-        ref_ds=corr_toks,
-        metric=negative_ioi_metric,
-        zero_ablation=False,
-        hook_verbose=False, 
-        online_cache_cpu=False,
-        corrupted_cache_cpu=False,
-        verbose=True,
-    )
-    print('Setting up graph')
-    # Set up computational graph
-    exp.model.reset_hooks()
-    exp.setup_model_hooks(
-        add_sender_hooks=True,
-        add_receiver_hooks=True,
-        doing_acdc_runs=False,
-    )
-    exp_time = time()
-    print(f'Time to set up exp: {exp_time - start_thresh_time}')
-    for _ in range(10):
-        pruned_nodes_attr = acdc_nodes(
-            model=exp.model,
-            clean_input=clean_toks,
-            corrupted_input=corr_toks,
-            metric=ioi_metric,
-            threshold=threshold,
-            exp=exp,
-            attr_absolute_val=True,
-        ) 
-        t.cuda.empty_cache()
-    acdcpp_time = time()
-    print(f'ACDC++ time: {acdcpp_time - exp_time}')
-    heads_per_thresh[threshold] = [get_nodes(exp.corr)]
-    pruned_nodes_per_thresh[threshold] = pruned_nodes_attr
-    show(exp.corr, fname=f'ims/{run_name}/thresh{threshold}_before_acdc.png')
+        exp=exp,
+        attr_absolute_val=True,
+    ) 
+    t.cuda.empty_cache()
+acdcpp_time = time()
+print(f'ACDC++ time: {acdcpp_time - exp_time}')
+heads_per_thresh[threshold] = [get_nodes(exp.corr)]
+pruned_nodes_per_thresh[threshold] = pruned_nodes_attr
+show(exp.corr, fname=f'ims/{run_name}/thresh{threshold}_before_acdc.png')
     
+#%%
+
+if True:
     start_acdc_time = time()
-    while "blocks.9" not in str(exp.current_node.name):
+    # while "blocks.9" not in str(exp.current_node.name): # I used this while condition for profiling
+    while exp.current_node:
         exp.step(testing=False)
 
     # # We do not have Aaquib's changes yet
