@@ -13,8 +13,8 @@ def main(
     seed = 424671755
 
     commands: list[list[str]] = []
-    for reset_network in [0, 1]:
-        for zero_ablation in [0, 1]:
+    for reset_network in [0, 1] if is_adria else [0]:
+        for zero_ablation in [0, 1] if is_adria else [1]: 
             for loss_type in ["kl_div"]:
                 for threshold in [1.0] if testing else thresholds:
                     command = [
@@ -24,15 +24,20 @@ def main(
                         f"--threshold={threshold:.5f}",
                         "--using-wandb",
                         f"--wandb-run-name=agarriga-acdc-{len(commands):03d}",
-                        "--wandb-group-name=adria-induction-3",
-                        f"--device=cpu",
+                        f"--wandb-group-name={'adria-induction-3' if is_adria else 'arthur-zero-ablation-corrupted-cache-fix'}",
+                        f"--device={'cpu' if is_adria else 'cuda:0'}",
                         f"--reset-network={reset_network}",
                         f"--seed={seed}",
                         f"--metric={loss_type}",
-                        f"--torch-num-threads={CPU}",
                         "--wandb-dir=/training/acdc",
                         f"--wandb-mode={'offline' if testing else 'online'}",
                     ]
+                    if is_adria:
+                        command.append(f"--torch-num-threads={CPU}")
+                    else:
+                        command.append("--first-cache-cpu=False")
+                        command.append("--second-cache-cpu=False")
+
                     if zero_ablation:
                         command.append("--zero-ablation")
 
@@ -60,3 +65,4 @@ if __name__ == "__main__":
         testing=parser.parse_args().testing,
         is_adria=parser.parse_args().is_adria,
     )
+1
