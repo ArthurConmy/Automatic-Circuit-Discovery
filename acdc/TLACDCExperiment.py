@@ -765,7 +765,7 @@ class TLACDCExperiment:
     def increment_current_node(self) -> None:
         while True:
             self.current_node = self.find_next_node()
-            print("We moved to ", self.current_node)
+            print("We moved to", self.current_node)
 
             if self.current_node is None or self.current_node_connected() or self.current_node.name in ["blocks.0.hook_resid_pre", "hook_pos_embed", "hook_embed"]:
                 break
