@@ -373,9 +373,8 @@ class TLACDCExperiment:
             "corrupted": "cpu" if self.corrupted_cache_cpu else None,
         }[cache]
 
+        nodes = []
         for big_tuple, edge in self.corr.all_edges().items():
-            nodes = []
-
             if edge.edge_type == EdgeType.DIRECT_COMPUTATION:
                 if not skip_direct_computation:
                     nodes.append(self.corr.graph[big_tuple[2]][big_tuple[3]])
@@ -390,23 +389,25 @@ class TLACDCExperiment:
             elif edge.edge_type != EdgeType.PLACEHOLDER:
                 print(edge.edge_type.value, EdgeType.ADDITION.value, edge.edge_type.value == EdgeType.ADDITION.value, type(edge.edge_type.value), type(EdgeType.ADDITION.value))
                 raise ValueError(f"{str(big_tuple)} {str(edge)} failed")
+            else:
+                assert edge.edge_type == EdgeType.PLACEHOLDER
 
-            for node in nodes:
-                fwd_hooks = self.model.hook_dict[node.name].fwd_hooks
-                if len(fwd_hooks) > 0 and not sender_and_receiver_both_ok:
-                    resolved_hooks_dicts = [fwd_hook.hook.hooks_dict_ref() for fwd_hook in fwd_hooks]
-                    assert all([resolved_hooks_dict == resolved_hooks_dicts[0] for resolved_hooks_dict in resolved_hooks_dicts]), f"{resolved_hooks_dicts}\nUnexpected behavior: different hook dict for different hooks on the same HookPoint?! https://github.com/neelnanda-io/TransformerLens/issues/297"
-                    for fwd_hook in resolved_hooks_dicts[0].values():
-                        if isinstance(fwd_hook, partial):
-                            print("Hello!") # TODO remove
-                        hook_func_name = fwd_hook.__wrapped__.__name__ if isinstance(fwd_hook, partial) else fwd_hook.__name__
-                        assert "sender_hook" in hook_func_name, f"You should only add sender hooks to {node.name}, and this: {hook_func_name} doesn't look like a sender hook"
-                    continue
+        for node in set(nodes):
+            fwd_hooks = self.model.hook_dict[node.name].fwd_hooks
+            if len(fwd_hooks) > 0 and not sender_and_receiver_both_ok:
+                resolved_hooks_dicts = [fwd_hook.hook.hooks_dict_ref() for fwd_hook in fwd_hooks]
+                assert all([resolved_hooks_dict == resolved_hooks_dicts[0] for resolved_hooks_dict in resolved_hooks_dicts]), f"{resolved_hooks_dicts}\nUnexpected behavior: different hook dict for different hooks on the same HookPoint?! https://github.com/neelnanda-io/TransformerLens/issues/297"
+                for fwd_hook in resolved_hooks_dicts[0].values():
+                    if isinstance(fwd_hook, partial):
+                        print("Hello!") # TODO remove
+                    hook_func_name = fwd_hook.__wrapped__.__name__ if isinstance(fwd_hook, partial) else fwd_hook.__name__
+                    assert "sender_hook" in hook_func_name, f"You should only add sender hooks to {node.name}, and this: {hook_func_name} doesn't look like a sender hook"
+                continue
 
-                self.model.add_hook( # TODO is this slow part??? Speed up???
-                    name=node.name, 
-                    hook=partial(self.sender_hook, verbose=self.hook_verbose, cache=cache, device=device),
-                )
+            self.model.add_hook( # TODO is this slow part??? Speed up???
+                name=node.name, 
+                hook=partial(self.sender_hook, verbose=self.hook_verbose, cache=cache, device=device),
+            )
 
     def setup_corrupted_cache(self):
         if self.verbose:

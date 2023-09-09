@@ -59,19 +59,15 @@ elif MODE == "factual_recall":
 
     def load_model():
         model = HookedTransformer.from_pretrained_no_processing( # Maybe this can speedup things more?
-            "gpt-j-6b", # Can smaller models be used so there is less waiting?
-            # center_writing_weights=False,
-            # center_unembed=False,
-            # fold_ln=False, # This is used as doing this processing is really slow
-            device="cpu", # Maybe speedup
+            "gpt2", #  "gpt-j-6b", # Can smaller models be used so there is less waiting?
+            center_writing_weights=False,
+            center_unembed=False,
+            fold_ln=False, # This is used as doing this processing is really slow
+            # device=device, # CPU here makes things slower
         )
         return model
 
     cProfile.runctx('model = load_model()', globals(), locals(), 'my_profile_output.pstats')
-
-    print("Moving to CUDA...")
-    model = model.to("cuda:0")
-    print("... done!")
 
     model.set_use_hook_mlp_in(True)
     model.set_use_split_qkv_input(True)
@@ -171,7 +167,7 @@ elif MODE == "factual_recall":
     gc.collect()
     t.cuda.empty_cache()
 
-    BATCH_SIZE = 10 # Make this small so no OOM...
+    BATCH_SIZE = 5 # Make this small so no OOM...
     CORR_MODE: Literal["here", "other_city"] = "here" # replace $city_name with $other_city_name or $here
 
     assert len(filtered_data) >= BATCH_SIZE
@@ -723,8 +719,8 @@ cout = cProfile.runctx("""exp = TLACDCExperiment(
     metric=negative_ioi_metric if MODE == "ioi" else factual_recall_metric,
     zero_ablation=False,
     hook_verbose=False, 
-    online_cache_cpu=False, # Trialling this being bigger...
-    corrupted_cache_cpu=False,
+    online_cache_cpu=True, # Trialling this being bigger...
+    corrupted_cache_cpu=True,
     verbose=True,
     add_sender_hooks=False,
 )""", locals(), globals(), sort='cumtime', filename=f'setup.prof') # Test that .prof stuff works
@@ -769,6 +765,13 @@ t.cuda.empty_cache()
 #%%
 
 start_acdc_time = time()
+# Set up computational graph again
+exp.model.reset_hooks()
+exp.setup_model_hooks(
+    add_sender_hooks=True,
+    add_receiver_hooks=True,
+    doing_acdc_runs=False,
+)
 # while "blocks.9" not in str(exp.current_node.name): # I used this while condition for profiling
 # while exp.current_node:
 if True: # Can we at least do one step?
@@ -782,8 +785,9 @@ heads_per_thresh[threshold].append(get_nodes(exp.corr))
 # # TODO add this back in 
 # show(exp.corr, fname=f'ims/{run_name}/thresh{threshold}_after_acdc.png')
 
+#%%
+
 del exp
 t.cuda.empty_cache()
-
 
 # %%
