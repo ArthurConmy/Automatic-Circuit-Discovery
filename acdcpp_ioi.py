@@ -40,8 +40,12 @@ from rich.table import Table
 from jaxtyping import Float, Bool, Int
 import cProfile
 from typing import Callable, Tuple, Union, Dict, Optional, Literal
+
+warnings.warn("Running on CPU for testing")
 device = t.device('cuda') if t.cuda.is_available() else t.device('cpu')
+# device = "cpu"
 print(f'Device: {device}')
+
 MODE: Literal["ioi", "factual_recall"] = "factual_recall"
 
 # In[2]:
@@ -63,6 +67,7 @@ elif MODE == "factual_recall":
 
     def load_model():
         model = HookedTransformer.from_pretrained_no_processing( # Maybe this can speedup things more?
+            # "gpt2",
             "gpt-j-6b", #  "gpt-j-6b", # Can smaller models be used so there is less waiting?
             center_writing_weights=False,
             center_unembed=False,
@@ -527,7 +532,7 @@ pruned_nodes_per_thresh = {}
 num_forward_passes_per_thresh = {}
 heads_per_thresh = {}
 os.makedirs(f'ims/{run_name}', exist_ok=True)
-threshold = 0.1
+threshold = 0.01
 start_thresh_time = time()
 
 # Set up experiment
@@ -569,7 +574,7 @@ for _ in range(N_TIMES):
         clean_input=clean_toks,
         corrupted_input=corr_toks,
         metric=ioi_metric if MODE == "ioi" else factual_recall_metric,
-        threshold=0.1 * threshold,
+        threshold=threshold,
         exp=exp,
         attr_absolute_val=True,
     ) 
@@ -581,7 +586,9 @@ t.cuda.empty_cache()
 
 heads_per_thresh[threshold] = [get_nodes(exp.corr)]
 pruned_nodes_per_thresh[threshold] = pruned_nodes_attr
-show(exp.corr, fname=f'ims/{run_name}/thresh{threshold}_before_acdc.png', show_full_index=False)
+
+# # I think that this is too slow in general...
+# show(exp.corr, fname=f'ims/{run_name}/thresh{threshold}_before_acdc.png', show_full_index=False)
     
 #%%
 
@@ -599,12 +606,12 @@ used_layers = set()
 
 while exp.current_node:
 # if True: # Can we at least do one step?
-    exp.step(testing=False)
-
     current_layer = exp.current_node.name.split(".")[1]
     if current_layer not in used_layers:
         show(exp.corr, fname=f'{current_layer}_thresh_{threshold}_in_acdc.png', show_full_index=False)
         used_layers.add(current_layer)
+
+    exp.step(testing=False)
 
 # # TODO We do not have Aaquib's changes yet so cannot run this
 print(f'ACDC Time: {time() - start_acdc_time}, with steps {exp.num_steps}')
