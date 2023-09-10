@@ -565,6 +565,11 @@ class TLACDCExperiment:
 
             for sender_index in sender_indices_list:
                 edge = self.corr.edges[self.current_node.name][self.current_node.index][sender_name][sender_index]
+
+                if not edge.present:
+                    print("Skipped an edge due to ACDC++!")
+                    continue
+
                 cur_parent = self.corr.graph[sender_name][sender_index]
 
                 if edge.edge_type == EdgeType.PLACEHOLDER:
