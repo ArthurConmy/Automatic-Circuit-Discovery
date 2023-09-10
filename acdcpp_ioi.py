@@ -59,7 +59,7 @@ elif MODE == "factual_recall":
 
     def load_model():
         model = HookedTransformer.from_pretrained_no_processing( # Maybe this can speedup things more?
-            "gpt2", #  "gpt-j-6b", # Can smaller models be used so there is less waiting?
+            "gpt-j-6b", #  "gpt-j-6b", # Can smaller models be used so there is less waiting?
             center_writing_weights=False,
             center_unembed=False,
             fold_ln=False, # This is used as doing this processing is really slow
@@ -710,7 +710,7 @@ start_thresh_time = time()
 # Set up experiment
 # For GPT-J this takes >3 minutes if caches are on CPU. 30 seconds if not.
 
-cout = cProfile.runctx("""exp = TLACDCExperiment(
+exp = TLACDCExperiment(
     model=model,
     threshold=threshold,
     # run_name=run_name, # TODO add this feature to main branch acdc
@@ -719,12 +719,11 @@ cout = cProfile.runctx("""exp = TLACDCExperiment(
     metric=negative_ioi_metric if MODE == "ioi" else factual_recall_metric,
     zero_ablation=False,
     hook_verbose=False, 
-    online_cache_cpu=True, # Trialling this being bigger...
-    corrupted_cache_cpu=True,
+    online_cache_cpu=False, # Trialling this being bigger...
+    corrupted_cache_cpu=False,
     verbose=True,
     add_sender_hooks=False,
-)""", locals(), globals(), sort='cumtime', filename=f'setup.prof') # Test that .prof stuff works
-
+)
 print('Setting up graph')
 
 #%%
@@ -788,6 +787,7 @@ heads_per_thresh[threshold].append(get_nodes(exp.corr))
 #%%
 
 del exp
+gc.collect()
 t.cuda.empty_cache()
 
 # %%
