@@ -160,7 +160,8 @@ elif MODE == "factual_recall":
     ).update_layout(
         title="Average losses for factual recall",
     )
-    fig.show()
+    if ipython is not None:
+        fig.show()
     # A: they are quite small
 
     # Make the data
@@ -747,7 +748,7 @@ for _ in range(N_TIMES):
         clean_input=clean_toks,
         corrupted_input=corr_toks,
         metric=ioi_metric if MODE == "ioi" else factual_recall_metric,
-        threshold=threshold,
+        threshold=0.1 * threshold,
         exp=exp,
         attr_absolute_val=True,
     ) 
@@ -759,7 +760,7 @@ t.cuda.empty_cache()
 
 heads_per_thresh[threshold] = [get_nodes(exp.corr)]
 pruned_nodes_per_thresh[threshold] = pruned_nodes_attr
-show(exp.corr, fname=f'ims/{run_name}/thresh{threshold}_before_acdc.png')
+show(exp.corr, fname=f'ims/{run_name}/thresh{threshold}_before_acdc.png', show_full_index=False)
     
 #%%
 
@@ -781,7 +782,7 @@ while exp.current_node:
 
     current_layer = exp.current_node.name.split(".")[1]
     if current_layer not in used_layers:
-        show(exp.corr, fname=f'{current_layer}_thresh_{threshold}_in_acdc.png')
+        show(exp.corr, fname=f'{current_layer}_thresh_{threshold}_in_acdc.png', show_full_index=False)
         used_layers.add(current_layer)
 
 # # TODO We do not have Aaquib's changes yet so cannot run this
