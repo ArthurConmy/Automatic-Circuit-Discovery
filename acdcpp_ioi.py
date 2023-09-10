@@ -67,7 +67,8 @@ elif MODE == "factual_recall":
         )
         return model
 
-    cProfile.runctx('model = load_model()', globals(), locals(), 'my_profile_output.pstats')
+    cProfile.runctx('model = load_model()', globals(), locals())
+    warnings.warn("If using GPT-J, ensure that you have this PR merged: https://github.com/neelnanda-io/TransformerLens/pull/380")
 
     model.set_use_hook_mlp_in(True)
     model.set_use_split_qkv_input(True)
@@ -756,10 +757,9 @@ print(f'ACDC++ time: {acdcpp_time - exp_time}')
 gc.collect()
 t.cuda.empty_cache()
 
-# # TODO -- why is this broken? What's up with hook_mlp_in key errors ?
-# heads_per_thresh[threshold] = [get_nodes(exp.corr)]
-# pruned_nodes_per_thresh[threshold] = pruned_nodes_attr
-# show(exp.corr, fname=f'ims/{run_name}/thresh{threshold}_before_acdc.png')
+heads_per_thresh[threshold] = [get_nodes(exp.corr)]
+pruned_nodes_per_thresh[threshold] = pruned_nodes_attr
+show(exp.corr, fname=f'ims/{run_name}/thresh{threshold}_before_acdc.png')
     
 #%%
 
@@ -772,17 +772,26 @@ exp.setup_model_hooks(
     doing_acdc_runs=False,
 )
 # while "blocks.9" not in str(exp.current_node.name): # I used this while condition for profiling
-# while exp.current_node:
-if True: # Can we at least do one step?
+
+used_layers = set()
+
+while exp.current_node:
+# if True: # Can we at least do one step?
     exp.step(testing=False)
 
+    current_layer = exp.current_node.name.split(".")[1]
+    if current_layer not in used_layers:
+        show(exp.corr, fname=f'{current_layer}_thresh_{threshold}_in_acdc.png')
+        used_layers.add(current_layer)
+
 # # TODO We do not have Aaquib's changes yet so cannot run this
-# print(f'ACDC Time: {time() - start_acdc_time}, with steps {exp.num_steps}')
+print(f'ACDC Time: {time() - start_acdc_time}, with steps {exp.num_steps}')
+
 # num_forward_passes_per_thresh[threshold] = exp.num_passes
 
 heads_per_thresh[threshold].append(get_nodes(exp.corr))
 # # TODO add this back in 
-# show(exp.corr, fname=f'ims/{run_name}/thresh{threshold}_after_acdc.png')
+show(exp.corr, fname=f'ims/{run_name}/thresh{threshold}_after_acdc.png')
 
 #%%
 
