@@ -532,7 +532,7 @@ pruned_nodes_per_thresh = {}
 num_forward_passes_per_thresh = {}
 heads_per_thresh = {}
 os.makedirs(f'ims/{run_name}', exist_ok=True)
-threshold = 0.01
+threshold = 0.1
 start_thresh_time = time()
 
 # Set up experiment
