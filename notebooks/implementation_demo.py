@@ -158,9 +158,9 @@ show_corr(correspondence)
 #
 #%% [markdown]
 #
-# <p> <span style="color:blue"> Blue </span> edges are addition edges. </p>
-# <p> <span style="color:green"> Green </span> edges are placeholder edges. </p>
-# <p> <span style="color:red"> Red </span> edges are direct computation edges. </p>
+# <p> <span style="color:red"> Red </span> edges are addition edges. </p>
+# <p> <span style="color:blue"> Blue </span> edges are placeholder edges. </p>
+# <p> <span style="color:green"> Green </span> edges are direct computation edges. </p>
 #
 # %%
 
