@@ -56,6 +56,7 @@ class TLACDCExperiment:
         ref_ds: Optional[torch.Tensor],
         threshold: float,
         metric: Callable[[torch.Tensor], torch.Tensor],
+        save_graphs_after: float = 0.,
         run_name: str = '',
         second_metric: Optional[Callable[[torch.Tensor], float]] = None,
         verbose: bool = False,
@@ -166,6 +167,8 @@ class TLACDCExperiment:
         self.threshold = threshold
         self.num_passes = 0
         self.run_name = run_name
+        self.save_graphs_after = save_graphs_after
+        
         assert self.ref_ds is not None or self.zero_ablation, "If you're doing random ablation, you need a ref ds"
 
         self.parallel_hypotheses = parallel_hypotheses
