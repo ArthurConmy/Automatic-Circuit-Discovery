@@ -178,7 +178,7 @@ if ipython is not None:
     # We are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
-    ["--task", "induction", "--wandb-run-name", "ioi_pos" + str(0.04), "--wandb-project-name", "acdc", "--using-wandb", "--threshold", str(0.04), "--indices-mode", "reverse", "--first-cache-cpu", "False", "--second-cache-cpu", "False", "--use-positions"])
+    ["--task", "ioi", "--wandb-run-name", "ioi_pos" + str(0.04), "--wandb-project-name", "acdc", "--using-wandb", "--threshold", str(0.04), "--indices-mode", "reverse", "--first-cache-cpu", "False", "--second-cache-cpu", "False", "--use-positions"])
 #         [line.strip() for line in r"""--task=tracr-reverse\
 # --threshold=1.0\
 # --metric=l2\
@@ -301,7 +301,7 @@ tl_model = things.tl_model # transformerlens model
 if RESET_NETWORK:
     reset_network(TASK, DEVICE, tl_model)
 
-#%%markdow # TODO fix
+#%% [markdown]
 # <h2>Setup ACDC Experiment</h2>
 
 #%%
@@ -309,8 +309,8 @@ if RESET_NETWORK:
 try:
     with open(__file__, "r") as f:
         notes = f.read()
-except:
-    notes = "No notes generated, expected when running in an .ipynb file"
+except Exception as e:
+    notes = "No notes generated, expected when running in an .ipynb file. Error is " + str(e)
 
 tl_model.reset_hooks()
 
