@@ -358,9 +358,10 @@ exp = TLACDCExperiment(
     positions=list(range(toks_int_values.shape[-1])) if USE_POSITIONS else [None],
 )
 
-# %%markdown] # TODO revert
+#%% [markdown]
 # <h2>Run steps of ACDC: iterate over a NODE in the model's computational graph</h2>
 # <p>WARNING! This will take a few minutes to run, but there should be rolling nice pictures too : )</p>
+
 #%%
 
 for i in range(args.max_num_epochs):
