@@ -37,7 +37,9 @@ T = TypeVar("T")
 class TLACDCExperiment:
     """Manages an ACDC experiment, including the computational graph, the model, the data etc.
 
-    The *key method* is the .step() method which processes one node (and all the connections into that node)
+    Note: we always minimize a metric! Pass the negative version of your metric if you wish to maximize a metric.
+
+    The *important method* is the .step() method which processes one node (and all the connections into that node)
     It's also helpful to understand what's going on in the def sender_hook(...) and def receiver_hook(...) methods - these are attached to the model to do path patching
     (see https://github.com/redwoodresearch/Easy-Transformer for a gentler introduction to path patching)
 
@@ -59,9 +61,6 @@ class TLACDCExperiment:
         hook_verbose: bool = False,
         parallel_hypotheses: int = 1, # lol
         remove_redundant: bool = False, 
-        monotone_metric: Literal[
-            "off", "maximize", "minimize"
-        ] = "minimize",  # if this is set to "maximize" or "minimize", then the metric will be maximized or minimized, respectively instead of us trying to keep the metric roughly the same. We do KL divergence by default
         online_cache_cpu: bool = True,
         corrupted_cache_cpu: bool = True,
         zero_ablation: bool = False, # use zero rather than
@@ -97,7 +96,10 @@ class TLACDCExperiment:
                 warnings.warn("Node SP in the TLACDCExperiment is not very well supported, mostly used to test that we e.g recover Node SP results in subnetwork_probing/train.py ...")
 
         if zero_ablation and remove_redundant:
-            raise ValueError("It's not possible to do zero ablation with remove redundant, talk to Arthur about this bizarre special case if curious!")
+            raise ValueError("It's not possible to do zero ablation and remove redundant paths.\
+            remove_redundant removes `dead` paths that don't go all the way back to the input.\
+            When we do corrupted ablation, removing the dead paths has no effect on forward passes.\
+            However, a dead edge in the zero ablation cases outputs a non-zero output! (That is usually computed from zero inputs)")
 
         model.reset_hooks()
 
@@ -256,7 +258,7 @@ class TLACDCExperiment:
         new_graph = OrderedDict()
         cache=OrderedDict()
         self.model.cache_all(cache)
-        self.model(torch.arange(5)) # some random forward pass so that we can see all the hook names
+        self.model(torch.arange(min(10, self.model.cfg.d_vocab)).unsqueeze(0)) # Some random forward pass so that we can see all the hook names
         self.model.reset_hooks()
 
         if self.verbose:
@@ -500,9 +502,11 @@ class TLACDCExperiment:
             # we need zero out all the outputs into the residual stream
 
             # all hooknames that output into the residual stream
-            hook_name_substrings = ["attn_result", "mlp_out", "hook_embed"]
+            hook_name_substrings = ["hook_result", "mlp_out"]
             if self.use_pos_embed:
-                hook_name_substrings.append("hook_pos_embed")
+                hook_name_substrings.extend(["hook_pos_embed", "hook_embed"])
+            else:
+                hook_name_substrings.append("blocks.0.hook_resid_pre")
 
             # add hooks to zero out all these hook points
             hook_name_bool_function = lambda hook_name: any([hook_name_substring in hook_name for hook_name_substring in hook_name_substrings])
@@ -514,7 +518,7 @@ class TLACDCExperiment:
 
         if self.use_pos_embed and not self.zero_ablation:    
             def scramble_positions(z, hook):
-                return shuffle_tensor(z, seed=49)
+                z[:] = shuffle_tensor(z[0], seed=49)
             self.model.add_hook(
                 "hook_pos_embed",
                 scramble_positions,
@@ -576,7 +580,7 @@ class TLACDCExperiment:
 
         self.model.add_hook(
             name=node.name, 
-            hook=partial(self.sender_hook, verbose=self.hook_verbose, cache="corrupted", device="cpu" if self.online_cache_cpu else None),
+            hook=partial(self.sender_hook, verbose=self.hook_verbose, cache="online", device="cpu" if self.online_cache_cpu else None),
         )
 
         return True
@@ -795,7 +799,7 @@ class TLACDCExperiment:
                     bfs.append(child_node)
 
     def current_node_connected(self):
-        for child_name, rest1 in self.corr.edges.items(): # rest1 just meaning "rest of dictionary.. I'm tired"
+        for child_name, rest1 in self.corr.edges.items(): # TODO: use parent and children abstractions
             for child_index, rest2 in rest1.items():
                 if self.current_node.name in rest2 and self.current_node.index in rest2[self.current_node.name]:
                     if rest2[self.current_node.name][self.current_node.index].present:
