@@ -88,8 +88,11 @@ def get_node_name(node: TLACDCInterpNode, show_full_index=True):
             raise ValueError(f"Unrecognized node name {node.name}")
 
     else:
-        
-        name = node.name + str(node.index.graphviz_index(use_actual_colon=True))
+        # TODO add a warning here? Names may be cursed
+        name = node.name
+
+    if show_full_index:
+        name += f"_{str(node.index.graphviz_index())}"
 
     return "<" + name + ">"
 
@@ -108,6 +111,7 @@ def show(
     show_full_index: bool = True,
     remove_self_loops: bool = True,
     remove_qkv: bool = False,
+    show_effect_size_none: bool = False,
     layout: str="dot",
     edge_type_colouring: bool = False,
     show_placeholders: bool = False,
@@ -165,7 +169,8 @@ def show(
                         # Important this go after the qkv removal
                         continue
 
-                    if (edge.present and edge.effect_size is not None) and (edge.edge_type != EdgeType.PLACEHOLDER or show_placeholders):
+                    if edge.present and (show_effect_size_none or edge.effect_size is not None) and edge.edge_type != EdgeType.PLACEHOLDER:
+
                         for node_name in [parent_name, child_name]:
                             maybe_pos = {}
                             if node_name in node_pos:
@@ -180,6 +185,7 @@ def show(
                                 **maybe_pos,
                             )
                         
+                        cur_effect_size = edge.effect_size if edge.effect_size is not None else 0
                         g.add_edge(
                             parent_name,
                             child_name,

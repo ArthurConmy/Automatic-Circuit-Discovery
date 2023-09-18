@@ -9,6 +9,7 @@
 # <p>Janky code to do different setup when run in a Colab notebook vs VSCode (adapted from e.g <a href="https://github.com/neelnanda-io/TransformerLens/blob/5c89b7583e73ce96db5e46ef86a14b15f303dde6/demos/Activation_Patching_in_TL_Demo.ipynb">this notebook</a>)</p>
 
 #%%
+
 try:
     import google.colab
 
@@ -58,6 +59,7 @@ except Exception as e:
 # <h2>Imports etc</h2>
 
 #%%
+
 import wandb
 import IPython
 from IPython.display import Image, display
@@ -123,7 +125,11 @@ from acdc.induction.utils import (
     get_good_induction_candidates,
     get_mask_repeat_candidates,
 )
-from acdc.greaterthan.utils import get_all_greaterthan_things
+try:
+    from acdc.greaterthan.utils import get_all_greaterthan_things
+    from acdc.gendered_pronouns.utils import get_all_gendered_pronouns_things
+except:
+    print("No gendered prouns utis found")
 from acdc.acdc_graphics import (
     build_colorscheme,
     show,
@@ -139,11 +145,12 @@ torch.autograd.set_grad_enabled(False)
 # We'll reproduce </p>
 
 #%%
+
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
 
-task_choices = ['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan']
+task_choices = ['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan', 'gendered-pronouns']
 parser.add_argument('--task', type=str, required=True, choices=task_choices, help=f'Choose a task from the available options: {task_choices}')
-parser.add_argument('--threshold', type=float, required=True, help='Value for THRESHOLD')
+parser.add_argument('--threshold', type=float, required=True, help='Value for THRESHOLD') # also use this for the regularization parameter in SP???
 parser.add_argument('--first-cache-cpu', type=str, required=False, default="True", help='Value for FIRST_CACHE_CPU (the old name for the `online_cache`)')
 parser.add_argument('--second-cache-cpu', type=str, required=False, default="True", help='Value for SECOND_CACHE_CPU (the old name for the `corrupted_cache`)')
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
@@ -163,20 +170,26 @@ parser.add_argument('--torch-num-threads', type=int, default=0, help="How many t
 parser.add_argument('--seed', type=int, default=1234)
 parser.add_argument("--max-num-epochs",type=int, default=100_000)
 parser.add_argument('--single-step', action='store_true', help='Use single step, mostly for testing')
+parser.add_argument("--dont-split-qkv", action="store_true", help="Dont splits qkv")
 parser.add_argument("--abs-value-threshold", action='store_true', help='Use the absolute value of the result to check threshold')
+parser.add_argument('--use-positions', action='store_true', help='Use positions in the transformer')
 
 if ipython is not None:
     # We are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
-        [line.strip() for line in r"""--task=induction\
---zero-ablation\
---threshold=0.71\
---indices-mode=reverse\
---first-cache-cpu=False\
---second-cache-cpu=False\
---max-num-epochs=100000""".split("\\\n")]
-    )
+    ["--task", "ioi", "--wandb-run-name", "ioi_pos" + str(0.04), "--wandb-project-name", "acdc", "--using-wandb", "--threshold", str(0.04), "--indices-mode", "reverse", "--first-cache-cpu", "False", "--second-cache-cpu", "False", "--use-positions"])
+#         [line.strip() for line in r"""--task=tracr-reverse\
+# --threshold=1.0\
+# --metric=l2\
+# --indices-mode=reverse\
+# --using-wandb\
+# --first-cache-cpu=False\
+# --second-cache-cpu=False\
+# --max-num-epochs=100000\
+# --using-wandb""".split("\\\n")]
+    # ) # also 0.39811 # also on the main machine you just added two lines here.
+
 else:
     # read from command line
     args = parser.parse_args()
@@ -216,6 +229,8 @@ NAMES_MODE = args.names_mode
 DEVICE = args.device
 RESET_NETWORK = args.reset_network
 SINGLE_STEP = True if args.single_step else False
+SPLIT_QKV = False if args.dont_split_qkv else True
+USE_POSITIONS = True if args.use_positions else False
 
 #%% [markdown] 
 # <h2>Setup Task</h2>
@@ -228,7 +243,7 @@ use_pos_embed = TASK.startswith("tracr")
 if TASK == "ioi":
     num_examples = 100
     things = get_all_ioi_things(
-        num_examples=num_examples, device=DEVICE, metric_name=args.metric
+        num_examples=num_examples, device=DEVICE, metric_name=args.metric, split_qkv=SPLIT_QKV,
     )
 elif TASK == "tracr-reverse":
     num_examples = 6
@@ -267,6 +282,8 @@ elif TASK == "greaterthan":
     things = get_all_greaterthan_things(
         num_examples=num_examples, metric_name=args.metric, device=DEVICE
     )
+elif TASK == 'gendered-pronouns':
+    pass
 else:
     raise ValueError(f"Unknown task {TASK}")
 
@@ -292,8 +309,8 @@ if RESET_NETWORK:
 try:
     with open(__file__, "r") as f:
         notes = f.read()
-except:
-    notes = "No notes generated, expected when running in an .ipynb file"
+except Exception as e:
+    notes = "No notes generated, expected when running in an .ipynb file. Error is " + str(e)
 
 tl_model.reset_hooks()
 
@@ -337,22 +354,25 @@ exp = TLACDCExperiment(
     add_receiver_hooks=False,
     remove_redundant=False,
     show_full_index=use_pos_embed,
+    use_split_qkv=SPLIT_QKV,
+    positions=list(range(toks_int_values.shape[-1])) if USE_POSITIONS else [None],
 )
 
-# %% [markdown]
+#%% [markdown]
 # <h2>Run steps of ACDC: iterate over a NODE in the model's computational graph</h2>
 # <p>WARNING! This will take a few minutes to run, but there should be rolling nice pictures too : )</p>
 
 #%%
+
 for i in range(args.max_num_epochs):
     exp.step(testing=False)
 
+    # TODO add back
     show(
         exp.corr,
         f"ims/img_new_{i+1}.png",
         show_full_index=False,
     )
-
     if IN_COLAB or ipython is not None:
         # so long as we're not running this as a script, show the image!
         display(Image(f"ims/img_new_{i+1}.png"))

@@ -60,8 +60,6 @@ def get_docstring_model(device="cuda"):
     )
     tl_model.set_use_attn_result(True)
     tl_model.set_use_split_qkv_input(True)
-    if "use_hook_mlp_in" in tl_model.cfg.to_dict(): # not strictly necessary, but good practice to keep compatibility with new *optional* transformerlens feature
-        tl_model.set_use_hook_mlp_in(True)
     tl_model.to(device)
     return tl_model
 

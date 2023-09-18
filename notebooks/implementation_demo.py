@@ -103,7 +103,6 @@ transformer = HookedTransformer(cfg)
 
 # Add some extra HookPoints that ACDC needs
 transformer.set_use_attn_result(True)
-transformer.set_use_hook_mlp_in(True)
 transformer.set_use_split_qkv_input(True)
 
 # Load the correspondence; this represents the graph-like object in ACDC
@@ -158,9 +157,9 @@ show_corr(correspondence)
 #
 #%% [markdown]
 #
-# <p> <span style="color:blue"> Blue </span> edges are addition edges. </p>
-# <p> <span style="color:green"> Green </span> edges are placeholder edges. </p>
-# <p> <span style="color:red"> Red </span> edges are direct computation edges. </p>
+# <p> <span style="color:red"> Red </span> edges are addition edges. </p>
+# <p> <span style="color:blue"> Blue </span> edges are placeholder edges. </p>
+# <p> <span style="color:green"> Green </span> edges are direct computation edges. </p>
 #
 # %%
 

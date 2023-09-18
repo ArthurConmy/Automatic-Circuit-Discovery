@@ -82,8 +82,18 @@ class TLACDCExperiment:
         names_mode: Literal["normal", "reverse", "shuffle"] = "normal",
         wandb_config: Optional[Namespace] = None,
         early_exit: bool = False,
+        sp: Optional[Literal["edge", "node"]] = None, # new functionality for doing SP. At node level and edge level
+        use_split_qkv: bool = True,
+        positions: Union[List[int], List[None]] = [None], # if [None], do not split by position
     ):
         """Initialize the ACDC experiment"""
+
+        self.sp = sp
+        if sp is not None:
+            assert not corrupted_cache_cpu
+            assert not online_cache_cpu
+            if sp == "node":
+                warnings.warn("Node SP in the TLACDCExperiment is not very well supported, mostly used to test that we e.g recover Node SP results in subnetwork_probing/train.py ...")
 
         if zero_ablation and remove_redundant:
             raise ValueError("It's not possible to do zero ablation and remove redundant paths.\
@@ -92,6 +102,16 @@ class TLACDCExperiment:
             However, a dead edge in the zero ablation cases outputs a non-zero output! (That is usually computed from zero inputs)")
 
         model.reset_hooks()
+
+        self.use_split_qkv = use_split_qkv
+        seq_len = ds.shape[-1]
+        if ref_ds is not None:
+            assert ref_ds.shape==ds.shape, (ref_ds.shape, ds.shape)
+
+        self.positions = positions
+        if self.positions != [None]: 
+            assert self.positions == list(range(seq_len)), (self.positions, list(range(seq_len)), "for now, we only support either no positional splitting or splitting by every position")
+            # TODO enforce that positions is strictly increasing when we get round to this
 
         self.remove_redundant = remove_redundant
         self.indices_mode = indices_mode
@@ -112,7 +132,10 @@ class TLACDCExperiment:
             warnings.warn("Never skipping edges, for now")
             skip_edges = "no"
 
-        self.corr = TLACDCCorrespondence.setup_from_model(self.model, use_pos_embed=use_pos_embed)
+        self.corr = TLACDCCorrespondence.setup_from_model(self.model, use_pos_embed=use_pos_embed, use_split_qkv=self.use_split_qkv, device=None if self.sp is None else self.model.cfg.device, sp=self.sp, positions=self.positions)
+
+        self.online_cache_cpu = online_cache_cpu
+        self.corrupted_cache_cpu = corrupted_cache_cpu
 
         if early_exit: 
             return
@@ -124,8 +147,6 @@ class TLACDCExperiment:
 
         self.ds = ds
         self.ref_ds = ref_ds
-        self.online_cache_cpu = online_cache_cpu
-        self.corrupted_cache_cpu = corrupted_cache_cpu
 
         if zero_ablation:
             if self.ref_ds is None:
@@ -184,11 +205,28 @@ class TLACDCExperiment:
             self.metrics_to_plot["times"] = []
             self.metrics_to_plot["times_diff"] = []
 
+    def get_mask_parameters(self) -> List[torch.nn.Parameter]:
+        assert self.sp is not None, "Doesn't make sense if we're not doing Edge SP"
+        mask_params = list(set([
+            edge.mask_score for _, edge in self.corr.all_edges().items()
+        ]))
+        return mask_params
+
+
     def verify_model_setup(self):
         if not self.model.cfg.attn_only and "use_hook_mlp_in" in self.model.cfg.to_dict():
             assert self.model.cfg.use_hook_mlp_in, "Need to be able to see hook MLP inputs"
         assert self.model.cfg.use_attn_result, "Need to be able to see split by head outputs"
-        assert self.model.cfg.use_split_qkv_input, "Need to be able to see split by head QKV inputs"
+        
+        if self.use_split_qkv:
+            assert self.model.cfg.use_split_qkv_input, "Need to be able to see split by head QKV inputs"
+        else:
+            try:
+                assert self.model.cfg.use_attn_in
+            except AttributeError:
+                raise Exception("You need to be using the attention in version of the TransformerLens library, available here: https://github.com/ArthurConmy/TransformerLens/tree/arthur-add-attn-in . Alternatively, hopefully this is merged into Neel's main branch by the time you read this!")
+            except Exception as e:
+                raise e
 
     def update_cur_metric(self, recalc_metric=True, recalc_edges=True, initial=False):
         if recalc_metric:
@@ -256,7 +294,7 @@ class TLACDCExperiment:
         else:
             raise ValueError(f"Unknown cache type {cache}")
 
-        if verbose:
+        if self.verbose and verbose:
             print(f"Saved {hook.name} with norm {z.norm().item()}")
 
         return z
@@ -270,7 +308,7 @@ class TLACDCExperiment:
         
         incoming_edge_types = [self.corr.graph[hook.name][receiver_index].incoming_edge_type for receiver_index in list(self.corr.edges[hook.name].keys())]
 
-        if verbose:
+        if verbose and self.verbose:
             print("In receiver hook", hook.name)
 
         if EdgeType.DIRECT_COMPUTATION in incoming_edge_types:
@@ -278,7 +316,7 @@ class TLACDCExperiment:
             old_z = hook_point_input.clone()
             hook_point_input[:] = self.global_cache.corrupted_cache[hook.name].to(hook_point_input.device)
 
-            if verbose:
+            if verbose and self.verbose:
                 print("Overwrote to sec cache")
 
             assert incoming_edge_types == [EdgeType.DIRECT_COMPUTATION for _ in incoming_edge_types], f"All incoming edges should be the same type not {incoming_edge_types}"
@@ -298,11 +336,32 @@ class TLACDCExperiment:
 
                 edge = self.corr.edges[hook.name][receiver_index][sender_node][sender_index]
 
-                if edge.present:
-                    if verbose:
+                if not edge.present and self.sp is not None:
+                    continue
+                
+                if self.sp is None:
+                    if verbose and self.verbose:
                         print(f"Overwrote {receiver_index} with norm {old_z[receiver_index.as_index].norm().item()}")
-
                     hook_point_input[receiver_index.as_index] = old_z[receiver_index.as_index].to(hook_point_input.device)
+
+                else: # SP !
+                    if not edge.sampled: # TODO remove lots of copy and pasting here
+                        edge.sample_mask()
+                        if verbose:
+                            print(f"Sampling {sender_node=} {sender_index=} {edge.mask_score=} {edge.mask=}")
+
+                        if self.sp == "node": # also rewrite all other edges that have this sender node as a parent to have the same mask!                        
+                            for edge_tuple, other_edge in self.corr.all_edges().items():
+                                child_name, child_index, parent_name, parent_index = edge_tuple
+                                if parent_name == sender_node and parent_index == sender_index: # initially as a test we are going to reproduce the normal SP (node SP) results
+                                    if verbose:
+                                        print("Also masked", edge_tuple)
+                                    other_edge.sampled = True
+                                    other_edge.mask = edge.mask
+
+                    hook_point_input[receiver_index.as_index] += edge.mask * (
+                        old_z[receiver_index.as_index] - self.global_cache.corrupted_cache[hook.name][receiver_index.as_index]
+                    )
     
             return hook_point_input
 
@@ -310,7 +369,7 @@ class TLACDCExperiment:
 
         # corrupted_cache (and thus z) contains the residual stream for the corrupted data
         # That is, the sum of all heads and MLPs and biases from previous layers
-        hook_point_input[:] = self.global_cache.corrupted_cache[hook.name].to(hook_point_input.device)
+        hook_point_input[:] = self.global_cache.corrupted_cache[hook.name].to(hook_point_input.device if self.sp is None else None)
 
         # We will now edit the input activations to this component 
         # This is one of the key reasons ACDC is slow, so the implementation is for performance
@@ -321,15 +380,19 @@ class TLACDCExperiment:
         # ii) add back to residual_stream_in the (hopefully small number of) clean activations, by firstly subtracting their corrupted activation, and then adding back the clean activations
         
         for receiver_node_index in self.corr.edges[hook.name]:
+
+            incoming_edge_type = self.corr.graph[hook.name][receiver_node_index].incoming_edge_type
+
             for sender_node_name in self.corr.edges[hook.name][receiver_node_index]:
                 for sender_node_index in self.corr.edges[hook.name][receiver_node_index][sender_node_name]:
 
                     edge = self.corr.edges[hook.name][receiver_node_index][sender_node_name][sender_node_index] # TODO maybe less crazy nested indexes ... just make local variables each time?
+                    assert edge.edge_type == incoming_edge_type, f"Edge type {edge.edge_type} should be the same as {incoming_edge_type}"
 
-                    if not edge.present:
+                    if not edge.present and self.sp is None:
                         continue # don't do patching stuff, if it wastes time
 
-                    if verbose:
+                    if verbose and self.verbose:
                         print(
                             hook.name, receiver_node_index, sender_node_name, sender_node_index,
                         )
@@ -341,14 +404,36 @@ class TLACDCExperiment:
                             )
                     
                     if edge.edge_type == EdgeType.ADDITION:
-                        # Add the effect of the new head (from the current forward pass)
-                        hook_point_input[receiver_node_index.as_index] += self.global_cache.online_cache[
-                            sender_node_name
-                        ][sender_node_index.as_index].to(hook_point_input.device)
                         # Remove the effect of this head (from the corrupted data)
                         hook_point_input[receiver_node_index.as_index] -= self.global_cache.corrupted_cache[
                             sender_node_name
-                        ][sender_node_index.as_index].to(hook_point_input.device)
+                        ][sender_node_index.as_index].to(hook_point_input.device if self.sp is None else None)
+
+                        if self.sp is None:
+                            # Add the effect of the new head (from the current forward pass)
+                            hook_point_input[receiver_node_index.as_index] += self.global_cache.online_cache[
+                                sender_node_name
+                            ][sender_node_index.as_index].to(hook_point_input.device if self.sp is None else None)
+
+                        else:
+                            if not edge.sampled:
+                                edge.sample_mask()
+                                if verbose:
+                                    print(f"Sampling {sender_node_name=} {sender_node_index=} {edge.mask_score=} {edge.mask=}")
+
+                                if self.sp == "node": # also rewrite all other edges that have this sender node as a parent to have the same mask!
+                                    for edge_tuple, other_edge in self.corr.all_edges().items():
+                                        child_name, child_index, parent_name, parent_index = edge_tuple
+                                        if parent_name == sender_node_name and parent_index == sender_node_index: # initially as a test we are going to reproduce the normal SP (node SP) results
+                                            if verbose:
+                                                print("Also masked", edge_tuple)
+                                            other_edge.sampled = True
+                                            other_edge.mask = edge.mask
+
+                            # Add some effect of the new head (from the current forward pass) mediated by the mask
+                            hook_point_input[receiver_node_index.as_index] += edge.mask_score * self.global_cache.online_cache[
+                                sender_node_name
+                            ][sender_node_index.as_index].to(hook_point_input.device)
 
                     else: 
                         raise ValueError(f"Unknown edge type {edge.edge_type} ... {edge}")
@@ -573,6 +658,10 @@ class TLACDCExperiment:
                 cur_parent = self.corr.graph[sender_name][sender_index]
 
                 if edge.edge_type == EdgeType.PLACEHOLDER:
+
+                    if self.positions != [None]:
+                        edge.effect_size = 0.42 # show is currently broken, currently a dumb fix of that
+
                     is_this_node_used = True
                     continue # include by default
 
@@ -656,6 +745,7 @@ class TLACDCExperiment:
                 print("Removing redundant node", self.current_node)
             self.remove_redundant_node(self.current_node)
 
+        # TODO add back
         if is_this_node_used and self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value:
             fname = f"ims/img_new_{self.step_idx}.png"
             show(
@@ -788,10 +878,6 @@ class TLACDCExperiment:
             print("No edge", cnt)
         return cnt
 
-    def reload_hooks(self):
-        old_corr = self.corr
-        self.corr = TLACDCCorrespondence.setup_from_model(self.model)
-
     def save_subgraph(self, fpath: Optional[str]=None, return_it=False) -> None:
         """Saves the subgraph as a Dictionary of all the edges, so it can be reloaded (or return that)"""
 
@@ -818,7 +904,11 @@ class TLACDCExperiment:
             receiver_name, receiver_torch_index, sender_name, sender_torch_index = tupl
             receiver_index, sender_index = receiver_torch_index.hashable_tuple, sender_torch_index.hashable_tuple
             set_of_edges.add((receiver_name, receiver_index, sender_name, sender_index))
-        assert set(subgraph.keys()) == set_of_edges, f"Ensure that the dictionary includes exactly the correct keys... e.g missing {list( set(set_of_edges) - set(subgraph.keys()) )[:1]} and has excess stuff { list(set(subgraph.keys()) - set_of_edges)[:1] }"
+
+        assert len(set(subgraph.keys()) - set_of_edges) == 0 or set(subgraph.keys()) == set_of_edges, f"Ensure that the dictionary includes exactly the correct keys... e.g missing {list( set(set_of_edges) - set(subgraph.keys()) )[:1]} and has excess stuff { list(set(subgraph.keys()) - set_of_edges)[:1] }"
+        if set(subgraph.keys()) != set_of_edges:
+            for edge in set_of_edges - set(subgraph.keys()):
+                subgraph[edge] = False
 
         print("Editing all edges...")
         for (receiver_name, receiver_index, sender_name, sender_index), is_present in subgraph.items():

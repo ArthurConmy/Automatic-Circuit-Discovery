@@ -94,7 +94,7 @@ def get_tracr_model_input_and_tl_model(task: Literal["reverse", "proportion"], d
         device=device,
     )
     tl_model = HookedTransformer(cfg)
-    if "use_hook_mlp_in" in tl_model.cfg.to_dict():
+    if "use_hook_mlp_in" in tl_model.cfg.to_dict(): # both tracr models include MLPs
         tl_model.set_use_hook_mlp_in(True)
 
     # Extract the state dict, and do some reshaping so that everything has a n_heads dimension
@@ -254,7 +254,7 @@ def l2_metric(  # this is for proportion... it's unclear how to format this tbh 
     else:
         return ((proc - model_out) ** 2).flatten()
 
-def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: str, num_examples: int, device):
+def get_all_tracr_things(task: Literal["reverse", "proportion"], metric_name: Literal["kl_div", "l2"], num_examples: int, device):
     _, tl_model = get_tracr_model_input_and_tl_model(task=task, device=device)
 
     if task == "reverse":

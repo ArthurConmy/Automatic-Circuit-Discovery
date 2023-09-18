@@ -22,21 +22,27 @@ from tqdm import tqdm
 import wandb
 from transformer_lens.HookedTransformer import HookedTransformer
 
-def get_gpt2_small(device="cuda") -> HookedTransformer:
+def get_gpt2_small(device="cuda", split_qkv: bool = True) -> HookedTransformer:
     tl_model = HookedTransformer.from_pretrained("gpt2")
     tl_model = tl_model.to(device)
     tl_model.set_use_attn_result(True)
-    tl_model.set_use_split_qkv_input(True)
+    if split_qkv:
+        tl_model.set_use_split_qkv_input(True)
+    else:
+        try:
+            tl_model.set_use_attn_in(True) # TODO add this to all get_all_things
+        except AttributeError as e:
+            raise Exception("You need to be using the `use_attn_in` version of the TransformerLens library, available here: https://github.com/ArthurConmy/TransformerLens/tree/arthur-add-attn-in . Alternatively, hopefully this is merged into Neel's main branch by the time you read this!")
     if "use_hook_mlp_in" in tl_model.cfg.to_dict():
         tl_model.set_use_hook_mlp_in(True)
     return tl_model
 
-def get_ioi_gpt2_small(device="cuda"):
+def get_ioi_gpt2_small(device="cuda", split_qkv: bool = True):
     """For backwards compat"""
-    return get_gpt2_small(device=device)
+    return get_gpt2_small(device=device, split_qkv=split_qkv)
 
-def get_all_ioi_things(num_examples, device, metric_name, kl_return_one_element=True):
-    tl_model = get_gpt2_small(device=device)
+def get_all_ioi_things(num_examples, device, metric_name, kl_return_one_element=True, split_qkv: bool = True):
+    tl_model = get_gpt2_small(device=device, split_qkv=split_qkv)
     ioi_dataset = IOIDataset(
         prompt_type="ABBA",
         N=num_examples*2,
@@ -220,7 +226,7 @@ def get_ioi_true_edges(model):
                     )
 
 
-    from subnetwork_probing.train import iterative_correspondence_from_mask
+    from subnetwork_probing.utils_train import iterative_correspondence_from_mask
     corr, _ = iterative_correspondence_from_mask(
         nodes_to_mask = nodes_to_mask,
         model = model,

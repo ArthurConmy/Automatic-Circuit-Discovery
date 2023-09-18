@@ -1,5 +1,6 @@
 # %% [markdown]
 # Script of ROC Plots!!!
+# This scrapes things from wandb...
 
 # You need to define
 
@@ -30,12 +31,13 @@ if IPython.get_ipython() is not None:
     IPython.get_ipython().run_line_magic("autoreload", "2")  # type: ignore
 
 from copy import deepcopy
-from subnetwork_probing.train import iterative_correspondence_from_mask
+from subnetwork_probing.utils_train import iterative_correspondence_from_mask
 from acdc.acdc_utils import filter_nodes, get_edge_stats, get_node_stats, get_present_nodes, reset_network
 import pandas as pd
 import gc
 import math
 import sys
+from datetime import datetime
 import re
 from typing import (
     List,
@@ -152,7 +154,7 @@ parser.add_argument("--mode", type=str, required=False, choices=["edges", "nodes
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
 parser.add_argument('--metric', type=str, default="kl_div", help="Which metric to use for the experiment")
 parser.add_argument('--reset-network', type=int, default=0, help="Whether to reset the network we're operating on before running interp on it")
-parser.add_argument("--alg", type=str, default="none", choices=["none", "acdc", "sp", "16h", "canonical"])
+parser.add_argument("--alg", type=str, default="none", choices=["none", "acdc", "sp", "16h", "canonical", "edgesp"])
 parser.add_argument("--skip-sixteen-heads", action="store_true", help="Skip the 16 heads stuff")
 parser.add_argument("--skip-sp", action="store_true", help="Skip the SP stuff")
 parser.add_argument("--testing", action="store_true", help="Use testing data instead of validation data")
@@ -163,6 +165,7 @@ parser.add_argument('--seed', type=int, default=42, help="Random seed")
 parser.add_argument("--canonical-graph-save-dir", type=str, default="DEFAULT")
 parser.add_argument("--only-save-canonical", action="store_true", help="Only save the canonical graph")
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
+parser.add_argument("--set-missing-score", action="store_true", help="Missing scores set to -1")
 
 if IPython.get_ipython() is not None:
     args = parser.parse_args("--task=ioi --metric=kl_div --alg=sp".split())
@@ -174,12 +177,11 @@ else:
 if not args.mode == "edges":
     raise NotImplementedError("Only edges mode is implemented for now")
 
-
 if args.torch_num_threads > 0:
     torch.set_num_threads(args.torch_num_threads)
 torch.manual_seed(args.seed)
 
-
+assert not (args.set_missing_score and args.ignore_missing_score), "Only one of these"
 TASK = args.task
 METRIC = args.metric
 DEVICE = args.device
@@ -205,13 +207,19 @@ if args.alg != "none":
     SKIP_SP = False if args.alg == "sp" else True
     SKIP_SIXTEEN_HEADS = False if args.alg == "16h" else True
     SKIP_CANONICAL = False if args.alg == "canonical" else True
+    SKIP_EDGESP = False if args.alg == "edgesp" else True
+
     OUT_FILE = OUT_DIR / f"{args.alg}-{args.task}-{args.metric}-{args.zero_ablation}-{args.reset_network}.json"
 
     if OUT_FILE.exists():
-        print("File already exists, skipping")
-        sys.exit(0)
+        print(f"File {str(OUT_FILE)} already exists, skipping")
+        # sys.exit(0)
+        # assert False
+
 else:
     OUT_FILE = None
+
+#%%
 
 # defaults
 ACDC_PROJECT_NAME = "remix_school-of-rock/acdc"
@@ -248,13 +256,35 @@ SIXTEEN_HEADS_PRE_RUN_FILTER = {
 }
 SIXTEEN_HEADS_RUN_FILTER = None
 
+EDGESP_PROJECT_NAME = "remix_school-of-rock/edgesp"
+
+all_edge_sp_run_filters = [
+    { # mainline status
+        "state": "finished",
+        "config.task": TASK,
+        "config.metric": METRIC,
+        "config.zero_ablation": ZERO_ABLATION,
+        "config.reset_network": RESET_NETWORK,
+    },
+]
+
+# we did some runs of edge sp with cursed configs : ( so let's single these out
+if (
+    ((TASK, METRIC) in [("ioi", "kl_div"), ("docstring", "docstring_metric"), ("induction", "kl_div")]) and not ZERO_ABLATION and not RESET_NETWORK
+):
+    all_edge_sp_run_filters.append({
+        "summary_metrics.num_edges": {"ioi": 32923, "induction": 305, "docstring": 1377}[TASK],
+    })
+
+EDGESP_PRE_RUN_FILTER = {
+    "$or": all_edge_sp_run_filters,
+}
+
 USE_POS_EMBED = False
-
-
 ROOT = Path(os.environ["HOME"]) / ".cache" / "artifacts_for_plot"
 ROOT.mkdir(exist_ok=True)
 
-#%% [markdown]
+3#%% [markdown]
 # Setup
 # substantial copy paste from main.py, with some new configs, directories...
 
@@ -316,11 +346,12 @@ elif TASK == "ioi":
         except KeyError:
             pass
         ACDC_PRE_RUN_FILTER = {
-            "$or": [
-                {"group": "reset-networks-neurips", **ACDC_PRE_RUN_FILTER},
-                {"group": "acdc-gt-ioi-redo", **ACDC_PRE_RUN_FILTER},
-                {"group": "acdc-spreadsheet2", **ACDC_PRE_RUN_FILTER},
-            ]
+            "id": "0wfrojop",
+            # "$or": [
+            #     {"group": "reset-networks-neurips", **ACDC_PRE_RUN_FILTER},
+            #     {"group": "acdc-gt-ioi-redo", **ACDC_PRE_RUN_FILTER},
+            #     {"group": "acdc-spreadsheet2", **ACDC_PRE_RUN_FILTER},
+            # ]
         }
 
     get_true_edges = partial(get_ioi_true_edges, model=things.tl_model)
@@ -390,7 +421,7 @@ things.tl_model.reset_hooks()
 exp = TLACDCExperiment(
     model=things.tl_model,
     threshold=100_000,
-    early_exit=SKIP_ACDC and SKIP_CANONICAL,
+    early_exit=SKIP_ACDC and SKIP_CANONICAL and SKIP_EDGESP,
     using_wandb=False,
     zero_ablation=bool(ZERO_ABLATION),
     # Process very little data if just building the canonical graph
@@ -498,6 +529,23 @@ class AcdcRunCandidate:
     score_d: dict
     corr: TLACDCCorrespondence
 
+class ThresholdToRunMapManager(dict):
+    def __init__(self):
+        super().__init__()
+
+    def add_run_for_processing(self, candidate: AcdcRunCandidate):
+        if candidate.threshold not in self:
+            self[candidate.threshold] = candidate
+
+        else:
+            if candidate.steps > self[candidate.threshold].steps:
+                self[candidate.threshold] = candidate
+
+threshold_to_run_map = ThresholdToRunMapManager()
+
+def all_test_fns(data: torch.Tensor) -> dict[str, float]:
+    return {f"test_{name}": fn(data).item() for name, fn in things.test_metrics.items()}
+
 def get_acdc_runs(
     exp,
     project_name: str = ACDC_PROJECT_NAME,
@@ -506,13 +554,6 @@ def get_acdc_runs(
     clip: Optional[int] = None,
     return_ids: bool = False,
 ):
-# experiment = exp
-# project_name = ACDC_PROJECT_NAME
-# pre_run_filter = ACDC_PRE_RUN_FILTER
-# run_filter = ACDC_RUN_FILTER
-# clip = None
-# return_ids = False
-# if True:
     if clip is None:
         clip = 100_000 # so we don't clip anything
 
@@ -524,14 +565,7 @@ def get_acdc_runs(
         filtered_runs = list(filter(run_filter, tqdm(list(runs)[:clip])))
     print(f"loading {len(filtered_runs)} runs with filter {pre_run_filter} and {run_filter}")
 
-    threshold_to_run_map: dict[float, AcdcRunCandidate] = {}
-
-    def add_run_for_processing(candidate: AcdcRunCandidate):
-        if candidate.threshold not in threshold_to_run_map:
-            threshold_to_run_map[candidate.threshold] = candidate
-        else:
-            if candidate.steps > threshold_to_run_map[candidate.threshold].steps:
-                threshold_to_run_map[candidate.threshold] = candidate
+    threshold_to_run_map = ThresholdToRunMapManager()
 
     for run in filtered_runs:
         score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
@@ -622,7 +656,7 @@ def get_acdc_runs(
 
                 # Correct score_d to reflect the actual number of steps that we are collecting
                 score_d["steps"] = latest_fname_step
-                add_run_for_processing(AcdcRunCandidate(
+                threshold_to_run_map.add_run_for_processing(AcdcRunCandidate(
                     threshold=threshold,
                     steps=score_d["steps"],
                     run=run,
@@ -636,7 +670,7 @@ def get_acdc_runs(
                     with run.file("output.log").download(root=ROOT / run.id, replace=False, exist_ok=True) as f:
                         log_text = f.read()
                     exp.load_from_wandb_run(log_text)
-                    add_run_for_processing(AcdcRunCandidate(
+                    threshold_to_run_map.add_run_for_processing(AcdcRunCandidate(
                         threshold=threshold,
                         steps=score_d["steps"],
                         run=run,
@@ -666,7 +700,7 @@ def get_acdc_runs(
                 n_from = n_from.replace("hook_resid_mid", "hook_mlp_in")
                 all_edges[(n_to, idx_to, n_from, idx_from)].present = True
 
-            add_run_for_processing(AcdcRunCandidate(
+            threshold_to_run_map.add_run_for_processing(AcdcRunCandidate(
                 threshold=threshold,
                 steps=score_d["steps"],
                 run=run,
@@ -675,8 +709,6 @@ def get_acdc_runs(
             ))
 
     # Now add the test_fns to the score_d of the remaining runs
-    def all_test_fns(data: torch.Tensor) -> dict[str, float]:
-        return {f"test_{name}": fn(data).item() for name, fn in things.test_metrics.items()}
 
     all_candidates = list(threshold_to_run_map.values())
     for candidate in all_candidates:
@@ -698,6 +730,129 @@ if not SKIP_ACDC: # this is slow, so run once
     print("acdc_corrs", len(acdc_corrs))
 
 # %%
+
+def get_edgesp_corrs(
+    model = None if things is None else things.tl_model,
+    project_name = EDGESP_PROJECT_NAME,
+    pre_run_filter = EDGESP_PRE_RUN_FILTER,
+    run_filter = None,
+    clip = None,
+    return_ids = False,
+    return_filtered_runs = False, # for debugging
+):
+
+# model = things.tl_model
+# project_name = EDGESP_PROJECT_NAME
+# pre_run_filter = EDGESP_PRE_RUN_FILTER
+# run_filter = None
+# clip = None
+# return_ids = False
+# return_filtered_runs = False
+
+    np.random.seed(42)
+
+    """A lot of copy + paste from get_acdc_runs"""
+
+    if clip is None: 
+        clip = 100_000
+    
+    api = wandb.Api()
+    runs = api.runs(project_name, filters=pre_run_filter)
+    if run_filter is None:
+        filtered_runs = runs[:clip]
+    else:
+        filtered_runs = list(filter(run_filter, tqdm(runs[:clip])))
+    print(f"Loading {len(filtered_runs)} runs")
+
+    threshold_to_run_map = ThresholdToRunMapManager()
+
+    if return_filtered_runs:
+        return filtered_runs
+
+    for run in filtered_runs: 
+        score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
+        try:
+            score_d["steps"] = run.summary["_step"]
+        except KeyError:
+            print("Sketchy error re steps; maybe this should not be skipped")
+            continue  # Run has crashed too much
+
+        try:
+            score_d["score"] = run.config["threshold"]
+        except KeyError:
+            try:
+                score_d["score"] = float(run.name)
+            except ValueError:
+                try:
+                    score_d["score"] = float(run.name.split("_")[-1])
+                except ValueError as e:
+                    if args.ignore_missing_score:
+                        print("Ignoring missing score")
+                        continue
+                    if args.set_missing_score:
+                        score_d["score"] = int(run.summary["_timestamp"]) * 100000 + np.random.randint(1000) # somewhat cursed, so that all these are counted as unique
+                    else:
+                        raise e
+
+        threshold = score_d["score"]
+        edges_artifact = None
+
+        for art in run.logged_artifacts():
+            if "edges.pth" in art.name:
+                assert edges_artifact is None, "Multiple edges artifacts found"
+                edges_artifact = art
+
+        if edges_artifact is None:
+            print(run.id, "did not have edges file :-(")
+            continue
+
+        corr = deepcopy(exp.corr)
+        all_edges = corr.all_edges()
+        for edge in all_edges.values():
+            edge.present = False
+
+        this_root = ROOT / edges_artifact.name
+        # Load the edges
+        for f in edges_artifact.files():
+            with f.download(root=this_root, replace=True, exist_ok=True) as fopen:
+                # Sadly f.download opens in text mode
+                with open(fopen.name, "rb") as fopenb:
+                    edges_pth = pickle.load(fopenb)
+
+        for (n_to, idx_to, n_from, idx_from), _effect_size in edges_pth:
+            n_to = n_to.replace("hook_resid_mid", "hook_mlp_in")
+            n_from = n_from.replace("hook_resid_mid", "hook_mlp_in")
+            all_edges[(n_to, idx_to, n_from, idx_from)].present = True
+
+        threshold_to_run_map.add_run_for_processing(AcdcRunCandidate(
+            threshold=threshold,
+            steps=score_d["steps"],
+            run=run,
+            score_d=score_d,
+            corr=corr,
+        ))
+
+    all_candidates = list(threshold_to_run_map.values())
+    for candidate in all_candidates:
+        test_metrics = exp.call_metric_with_corr(candidate.corr, all_test_fns, things.test_data)
+        candidate.score_d.update(test_metrics)
+        print(f"Added run with threshold={candidate.threshold}, n_edges={candidate.corr.count_no_edges()}; Run: {candidate.run.id}")
+
+    corrs = [(candidate.corr, candidate.score_d) for candidate in all_candidates]
+
+    if return_ids:
+        return corrs, [candidate.run.id for candidate in all_candidates]
+    return corrs
+
+
+#%%
+
+if not SKIP_EDGESP:
+    edge_sp_corrs = get_edgesp_corrs(None if things is None else exp, clip = 1 if TESTING else None, return_filtered_runs=False)
+    assert len(edge_sp_corrs) > 1
+    print("number of edge sp corrs", len(edge_sp_corrs))
+
+#%%
 
 def get_canonical_corrs(exp):
     all_present_corr = deepcopy(exp.corr)
@@ -846,6 +1001,7 @@ if not SKIP_CANONICAL: methods.append("CANONICAL")
 if not SKIP_ACDC: methods.append("ACDC") 
 if not SKIP_SP: methods.append("SP")
 if not SKIP_SIXTEEN_HEADS: methods.append("16H")
+if not SKIP_EDGESP: methods.append("EDGESP")
 
 #%%
 
@@ -942,7 +1098,6 @@ if "CANONICAL" in methods:
     if "CANONICAL" not in points: points["CANONICAL"] = []
     points["CANONICAL"].extend(get_points(canonical_corrs))
 
-
 #%%
 
 if "SP" in methods:
@@ -954,6 +1109,12 @@ if "SP" in methods:
 if "16H" in methods:
     if "16H" not in points: points["16H"] = []
     points["16H"].extend(get_points(sixteen_heads_corrs, decreasing=False))
+
+#%%
+
+if "EDGESP" in methods:
+    if "EDGESP" not in points: points["EDGESP"] = []
+    points["EDGESP"].extend(get_points(edge_sp_corrs))
 
 #%%
 

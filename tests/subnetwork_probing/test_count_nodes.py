@@ -9,15 +9,59 @@ import tempfile
 import os
 
 from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformer import HookedTransformer
+from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformerConfig import HookedTransformerConfig
 import pytest
 from pathlib import Path
 import sys
 
 sys.path.append(str(Path(__file__).parent.parent / "code"))
 
-from subnetwork_probing.train import iterative_correspondence_from_mask, get_transformer_config
+from subnetwork_probing.utils_train import iterative_correspondence_from_mask
 import networkx as nx
 from acdc.TLACDCInterpNode import parse_interpnode
+
+
+def get_transformer_config():
+    cfg = HookedTransformerConfig(
+        n_layers=2,
+        d_model=256,
+        n_ctx=2048,  # chekc pos embed size
+        n_heads=8,
+        d_head=32,
+        # model_name : str = "custom"
+        # d_mlp: Optional[int] = None
+        # act_fn: Optional[str] = None
+        d_vocab=50259,
+        # eps: float = 1e-5
+        use_attn_result=True,
+        use_attn_scale=True,  # divide by sqrt(d_head)
+        # use_local_attn: bool = False
+        # original_architecture: Optional[str] = None
+        # from_checkpoint: bool = False
+        # checkpoint_index: Optional[int] = None
+        # checkpoint_label_type: Optional[str] = None
+        # checkpoint_value: Optional[int] = None
+        # tokenizer_name: Optional[str] = None
+        # window_size: Optional[int] = None
+        # attn_types: Optional[List] = None
+        # init_mode: str = "gpt2"
+        # normalization_type: Optional[str] = "LN"
+        # device: Optional[str] = None
+        # attention_dir: str = "causal"
+        attn_only=True,
+        # seed: Optional[int] = None
+        # initializer_range: float = -1.0
+        # init_weights: bool = True
+        # scale_attn_by_inverse_layer_idx: bool = False
+        positional_embedding_type="shortformer",
+        # final_rms: bool = False
+        # d_vocab_out: int = -1
+        # parallel_attn_mlp: bool = False
+        # rotary_dim: Optional[int] = None
+        # n_params: Optional[int] = None
+        # use_hook_tokens: bool = False
+    )
+    return cfg
 
 def delete_nested_dict(d: dict, keys: list):
     inner_dicts = [d]

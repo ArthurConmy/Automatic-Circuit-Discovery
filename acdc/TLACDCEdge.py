@@ -1,7 +1,8 @@
-import sys
+import numpy as np
+import torch
 from collections import defaultdict
 from enum import Enum
-from typing import Optional, List
+from typing import Optional, Literal, List
 
 
 class EdgeType(Enum):
@@ -42,10 +43,50 @@ class Edge:
         edge_type: EdgeType,
         present: bool = True,
         effect_size: Optional[float] = None,
+        device: Optional[str] = None,
+        sp: Optional[Literal["edge", "node"]] = None,
     ):
         self.edge_type = edge_type
         self.present = present
         self.effect_size = effect_size
+
+        self.sp = sp
+
+        if self.sp is not None:
+            """Ripped from subnetwork_probing/transformer_lens/transformer_lens/hook_points.py"""
+            # With edit as no requires_grad set...?
+            self.mask_score = torch.nn.Parameter(torch.tensor([1.0], requires_grad=True, device=device).clone())
+            self.beta = (
+                2 / 3
+            )  # TODO: make this hyperaparams globally set and synced somehow
+            self.gamma = -0.1
+            self.zeta = 1.1
+            self.mask_p = 0.9
+            self.init_weights()
+            self.sampled = False
+
+    def init_weights(self):
+        """Ripped from subnetwork_probing/transformer_lens/transformer_lens/hook_points.py"""
+
+        assert self.sp is not None
+        p = (self.mask_p - self.gamma) / (self.zeta - self.gamma)
+        torch.nn.init.constant_(self.mask_score, val=np.log(p / (1 - p)))
+
+    def sample_mask(self) -> None:
+        """Ripped from subnetwork_probing/transformer_lens/transformer_lens/hook_points.py"""
+
+        assert self.sp is not None
+        assert not self.sampled
+        uniform_sample = (
+            torch.zeros_like(self.mask_score).uniform_().clamp(0.0001, 0.9999)
+        )
+        s = torch.sigmoid(
+            (uniform_sample.log() - (1 - uniform_sample).log() + self.mask_score)
+            / self.beta
+        )
+        s_bar = s * (self.zeta - self.gamma) + self.gamma
+        mask = s_bar.clamp(min=0.0, max=1.0)
+        self.mask = mask
 
     def __repr__(self) -> str:
         return f"Edge({self.edge_type}, {self.present})"
