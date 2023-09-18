@@ -292,8 +292,8 @@ if RESET_NETWORK:
 try:
     with open(__file__, "r") as f:
         notes = f.read()
-except:
-    notes = "No notes generated, expected when running in an .ipynb file"
+except Exception as e:
+    notes = "No notes generated, expected when running in an .ipynb file. Error is " + str(e)
 
 tl_model.reset_hooks()
 
