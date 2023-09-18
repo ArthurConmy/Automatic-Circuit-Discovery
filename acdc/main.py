@@ -129,7 +129,7 @@ try:
     from acdc.greaterthan.utils import get_all_greaterthan_things
     from acdc.gendered_pronouns.utils import get_all_gendered_pronouns_things
 except:
-    print("No genedrerd p")
+    print("No gendered prouns utis found")
 from acdc.acdc_graphics import (
     build_colorscheme,
     show,
