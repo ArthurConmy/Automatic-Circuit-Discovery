@@ -103,7 +103,6 @@ transformer = HookedTransformer(cfg)
 
 # Add some extra HookPoints that ACDC needs
 transformer.set_use_attn_result(True)
-transformer.set_use_hook_mlp_in(True)
 transformer.set_use_split_qkv_input(True)
 
 # Load the correspondence; this represents the graph-like object in ACDC
