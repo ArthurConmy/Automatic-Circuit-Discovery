@@ -1,4 +1,5 @@
 from acdc.TLACDCInterpNode import TLACDCInterpNode
+from tqdm import tqdm
 from collections import OrderedDict
 from acdc.TLACDCEdge import (
     TorchIndex,
@@ -106,7 +107,7 @@ class TLACDCCorrespondence:
 
         downstream_residual_nodes: Dict[Optional[int], List[TLACDCInterpNode]] = OrderedDefaultdict(list) # if we don't use positions we just use None as the only key
         
-        logits_node = TLACDCInterpNode(
+        logits_node = TLACDCInterpNode( # Maybe we don't need this?!
             name=f"blocks.{model.cfg.n_layers-1}.hook_resid_post",
             index=TorchIndex([None]),
             incoming_edge_type = EdgeType.PLACEHOLDER,
@@ -120,7 +121,7 @@ class TLACDCCorrespondence:
                 incoming_edge_type = EdgeType.ADDITION,
             )
             correspondence.add_node(logits_pos_node)
-            correspondence.add_edge(
+            correspondence.add_edge( # TODO sort out this removing logits_node stuff
                 parent_node=logits_pos_node,
                 child_node=logits_node,
                 edge=Edge(edge_type=EdgeType.PLACEHOLDER),
@@ -130,7 +131,7 @@ class TLACDCCorrespondence:
 
         new_downstream_residual_nodes: Dict[Optional[int], TLACDCInterpNode] = OrderedDefaultdict(list)
 
-        for layer_idx in range(model.cfg.n_layers - 1, -1, -1):
+        for layer_idx in tqdm(range(model.cfg.n_layers - 1, -1, -1)):
             # connect MLPs
             if not model.cfg.attn_only: 
                 # this MLP writes to all future residual stream things
@@ -169,7 +170,8 @@ class TLACDCCorrespondence:
 
             # connect attention heads
             for head_idx in range(model.cfg.n_heads - 1, -1, -1):
-                # this head writes to all future residual stream things
+
+                # This head writes to all future residual stream things
                 head_at_current_and_future_positions = []
                 for position in reversed(positions): # positions is in increasing order
                     cur_head_name = f"blocks.{layer_idx}.attn.hook_result"

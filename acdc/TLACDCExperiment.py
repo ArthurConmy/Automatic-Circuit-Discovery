@@ -84,7 +84,7 @@ class TLACDCExperiment:
         early_exit: bool = False,
         sp: Optional[Literal["edge", "node"]] = None, # new functionality for doing SP. At node level and edge level
         use_split_qkv: bool = True,
-        positions: Union[List[int], List[None]] = [None], # if [None], do not split by position
+        positions: Union[List[int], List[None]] = [None], # if [None], do not split by position. TODO change the syntax here...
     ):
         """Initialize the ACDC experiment"""
 
@@ -306,7 +306,7 @@ class TLACDCExperiment:
         So all the computation for a given HookPoint, for example all computations involving query inputs to layer 1 is managed by one receiver_hook 
         (because all layer 1 query inputs are contained in the `blocks.1.hook_q_input` hook)"""
         
-        incoming_edge_types = [self.corr.graph[hook.name][receiver_index].incoming_edge_type for receiver_index in list(self.corr.edges[hook.name].keys())]
+        incoming_edge_types = [self.corr.graph[hook.name][receiver_index].incoming_edge_type for receiver_index in list(self.corr.edges[hook.name].keys())] # Hmm
 
         if verbose and self.verbose:
             print("In receiver hook", hook.name)
@@ -365,7 +365,7 @@ class TLACDCExperiment:
     
             return hook_point_input
 
-        assert incoming_edge_types == [EdgeType.ADDITION for _ in incoming_edge_types], f"All incoming edges should be the same type, not {incoming_edge_types}"
+        assert incoming_edge_types == [EdgeType.ADDITION for _ in incoming_edge_types] or hook.name == f"blocks.{self.model.cfg.n_layers-1}.hook_resid_post", f"All incoming edges should be the same type, not {incoming_edge_types}. The construction was {hook.name=}, {self.corr.graph[hook.name]=}, {self.corr.edges[hook.name]=}"
 
         # corrupted_cache (and thus z) contains the residual stream for the corrupted data
         # That is, the sum of all heads and MLPs and biases from previous layers
@@ -380,6 +380,9 @@ class TLACDCExperiment:
         # ii) add back to residual_stream_in the (hopefully small number of) clean activations, by firstly subtracting their corrupted activation, and then adding back the clean activations
         
         for receiver_node_index in self.corr.edges[hook.name]:
+
+            if hook.name == f"blocks.{self.model.cfg.n_layers-1}.hook_resid_post" and receiver_node_index == TorchIndex([None]):
+                continue # TODO make end node handling better...
 
             incoming_edge_type = self.corr.graph[hook.name][receiver_node_index].incoming_edge_type
 
@@ -625,12 +628,12 @@ class TLACDCExperiment:
         if self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value:
             added_receiver_hook = self.add_receiver_hook(self.current_node, override=True, prepend=True)
 
-        if self.current_node.incoming_edge_type.value == EdgeType.DIRECT_COMPUTATION.value:
+        if self.current_node.incoming_edge_type.value == EdgeType.DIRECT_COMPUTATION.value and "resid_post" not in self.current_node.name:
             # basically, because these nodes are the only ones that act as both receivers and senders
             added_sender_hook = self.add_sender_hook(self.current_node, override=True)
 
         is_this_node_used = False
-        if self.current_node.name in ["blocks.0.hook_resid_pre", "hook_pos_embed", "hook_embed"]:
+        if self.current_node.name in ["blocks.0.hook_resid_pre", "hook_pos_embed", "hook_embed"] or (self.current_node.name == f"blocks.{self.model.cfg.n_layers-1}.hook_resid_post" and self.current_node.index == TorchIndex([None])):
             is_this_node_used = True
 
         sender_names_list = list(self.corr.edges[self.current_node.name][self.current_node.index])

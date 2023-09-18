@@ -23,6 +23,7 @@ class TLACDCInterpNode:
         self.parents: List["TLACDCInterpNode"] = []
         self.children: List["TLACDCInterpNode"] = []
 
+        assert isinstance(incoming_edge_type, EdgeType)
         self.incoming_edge_type = incoming_edge_type
 
     def _add_child(self, child_node: "TLACDCInterpNode"):

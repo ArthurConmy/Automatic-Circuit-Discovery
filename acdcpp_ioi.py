@@ -47,6 +47,7 @@ device = t.device('cuda') if t.cuda.is_available() else t.device('cpu')
 print(f'Device: {device}')
 
 MODE: Literal["ioi", "factual_recall"] = "factual_recall"
+TESTING = True
 
 # In[2]:
 
@@ -67,8 +68,9 @@ elif MODE == "factual_recall":
 
     def load_model():
         model = HookedTransformer.from_pretrained_no_processing( # Maybe this can speedup things more?
-            # "gpt2",
-            "gpt-j-6b", #  "gpt-j-6b", # Can smaller models be used so there is less waiting?
+            "gpt2",
+            # "gpt2-xl",
+            # "gpt-j-6b", # Can smaller models be used so there is less waiting?
             center_writing_weights=False,
             center_unembed=False,
             fold_ln=False, # This is used as doing this processing is really slow
@@ -76,8 +78,7 @@ elif MODE == "factual_recall":
         )
         return model
 
-    cProfile.runctx('model = load_model()', globals(), locals())
-    warnings.warn("If using GPT-J, ensure that you have this PR merged: https://github.com/neelnanda-io/TransformerLens/pull/380")
+    model = load_model()
 
     model.set_use_hook_mlp_in(True)
     model.set_use_split_qkv_input(True)
@@ -117,6 +118,10 @@ elif MODE == "factual_recall":
         raw_data = json.load(f) # Adjust fpath to yours...
 
     prompt_templates = raw_data["prompt_templates"] + raw_data["prompt_templates_zs"]
+    
+    if model.cfg.model_name == "gpt2-xl" or TESTING:
+        warnings.warn("Just using one prompt")
+        prompt_templates = ["In {} the largest city is"]
 
     filtered_data = []
 
@@ -171,8 +176,8 @@ elif MODE == "factual_recall":
     )
     if ipython is not None:
         fig.show()
-    # A: they are quite small
 
+    # A: they are quite small
     # Make the data
 
     gc.collect()
@@ -206,6 +211,11 @@ elif MODE == "factual_recall":
     corr_subjects = different_subjects[:BATCH_SIZE]
 
     corr_sentences = [sentence.replace(all_subjects[i], corr_subjects[i]) for i, sentence in enumerate(clean_sentences)]
+
+    if model.cfg.model_name == "gpt2-xl" or TESTING:
+        warnings.warn("Also corrupting corr_sentences more too")
+        corr_sentences = [s.replace("city", "thing") for s in corr_sentences]
+
     corr_toks = model.to_tokens(corr_sentences)
 
     # Check that indeed losses are low
@@ -363,15 +373,22 @@ def remove_node(exp, node):
     # Removing all outgoing edges from the node using BFS
     remove_redundant_node(exp, node, safe=False)
 
-def find_attn_node(exp, layer, head):
-    return exp.corr.graph[f'blocks.{layer}.attn.hook_result'][TorchIndex([None, None, head])]
+def find_attn_head_nodes(exp, layer, head, hook_suffix="attn.hook_result"):
+    nodes = []
+    for index, node in exp.corr.graph[f'blocks.{layer}.{hook_suffix}'].items():
+        if index.hashable_tuple[2] == head:
+            nodes.append(node)
+    return nodes
 
-def find_attn_node_qkv(exp, layer, head):
+def find_attn_nodes_qkv(exp, layer, head):
     nodes = []
     for qkv in ['q', 'k', 'v']:
-        nodes.append(exp.corr.graph[f'blocks.{layer}.attn.hook_{qkv}'][TorchIndex([None, None, head])])
-        nodes.append(exp.corr.graph[f'blocks.{layer}.hook_{qkv}_input'][TorchIndex([None, None, head])])
+        nodes.extend(find_attn_head_nodes(exp, layer, head, hook_suffix=f'attn.hook_{qkv}'))
+        nodes.extend(find_attn_head_nodes(exp, layer, head, hook_suffix=f'hook_{qkv}_input'))
+        # nodes.append(exp.corr.graph[f'blocks.{layer}.attn.hook_{qkv}'][TorchIndex([None, None, head])])
+        # nodes.append(exp.corr.graph[f'blocks.{layer}.hook_{qkv}_input'][TorchIndex([None, None, head])])
     return nodes
+
     
 def split_layers_and_heads(act: Tensor, model: HookedTransformer) -> Tensor:
     return einops.rearrange(act, '(layer head) batch seq d_model -> layer head batch seq d_model',
@@ -474,22 +491,23 @@ def acdc_nodes(
             # REMOVING NODE
             print(f'PRUNING L{layer}H{head} with attribution {node_attr[layer, head]}')
             # Find the corresponding node in computation graph
-            node = find_attn_node(exp, layer, head)
-            print(f'\tFound node {node.name}')
-            # Prune node
-            remove_node(exp, node)
-            print(f'\tRemoved node {node.name}')
+            nodes = find_attn_head_nodes(exp, layer, head)
+            print(f'\tFound nodes, e.g {nodes[0].name}')
+
+            # Prune nodes
+            for node in nodes:
+                remove_node(exp, node)
+                print(f'\tRemoved node {node.name}')
+
             pruned_nodes_attr[(layer, head)] = node_attr[layer, head]
             
             # REMOVING QKV
-            qkv_nodes = find_attn_node_qkv(exp, layer, head)
+            qkv_nodes = find_attn_nodes_qkv(exp, layer, head)
             for node in qkv_nodes:
                 remove_node(exp, node)
     return pruned_nodes_attr
 
 # Show resulting graph
-
-# In[7]:
 
 # In[8]:
 
@@ -524,10 +542,9 @@ def get_nodes(correspondence):
                             nodes.add(node_name)
     return nodes
 
-
 # In[10]:
 
-run_name = 'ioi_thresh_run'
+run_name = 'ioi_thresh_run' if MODE == "ioi" else "factual_recall_thresh_run"
 pruned_nodes_per_thresh = {}
 num_forward_passes_per_thresh = {}
 heads_per_thresh = {}
@@ -537,6 +554,7 @@ start_thresh_time = time()
 
 # Set up experiment
 # For GPT-J this takes >3 minutes if caches are on CPU. 30 seconds if not.
+# GPT-2 XL with positional splitting seems to take fairly long
 
 exp = TLACDCExperiment(
     model=model,
@@ -551,6 +569,7 @@ exp = TLACDCExperiment(
     corrupted_cache_cpu=False,
     verbose=True,
     add_sender_hooks=False,
+    positions = None if (model.cfg.model_name!="gpt2-xl" and not TESTING) else list(range(clean_toks.shape[-1])), 
 )
 print('Setting up graph')
 
@@ -574,7 +593,7 @@ for _ in range(N_TIMES):
         clean_input=clean_toks,
         corrupted_input=corr_toks,
         metric=ioi_metric if MODE == "ioi" else factual_recall_metric,
-        threshold=threshold,
+        threshold=2*threshold,
         exp=exp,
         attr_absolute_val=True,
     ) 
