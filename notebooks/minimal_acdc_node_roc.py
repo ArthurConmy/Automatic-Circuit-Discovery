@@ -13,7 +13,7 @@ import plotly.express as px
 
 #%%
 
-# Set your root directory
+# Set your root directory here
 ROOT_DIR = Path("/home/arthur/Documents/Automatic-Circuit-Discovery")
 assert ROOT_DIR.exists(), f"I don't think your ROOT_DIR is correct (ROOT_DIR = {ROOT_DIR})"
 
@@ -60,6 +60,7 @@ pareto_node_tpr, pareto_node_fpr = pareto_optimal_sublist(node_tpr, node_fpr)
 
 # %%
 
+# I use plotly but it should be easy to adjust to matplotlib
 fig = go.Figure()
 fig.add_trace(
     go.Scatter(
