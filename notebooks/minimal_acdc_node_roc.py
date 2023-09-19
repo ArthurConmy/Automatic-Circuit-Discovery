@@ -10,6 +10,7 @@ from pathlib import Path
 import json
 import plotly.graph_objects as go
 import plotly.express as px
+import matplotlib.pyplot as plt
 
 #%%
 
@@ -60,6 +61,26 @@ pareto_node_tpr, pareto_node_fpr = pareto_optimal_sublist(node_tpr, node_fpr)
 
 # %%
 
+# Thanks GPT-4 for this code
+
+# Create the plot
+plt.figure()
+
+# Plot the ROC curve
+plt.step(pareto_node_fpr, pareto_node_tpr, where='post')
+
+# Add titles and labels
+plt.title("ROC Curve of number of Nodes recovered by ACDC")
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+
+# Show the plot
+plt.show()
+
+# %%
+
+# Original code from https://plotly.com/python/line-and-scatter/
+
 fig = go.Figure()
 fig.add_trace(
     go.Scatter(
@@ -78,5 +99,3 @@ fig.update_layout(
 )
 
 fig.show()
-
-# %%
