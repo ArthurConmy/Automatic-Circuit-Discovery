@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 #%%
 
-# Set your root directory
+# Set your root directory here
 ROOT_DIR = Path("/home/arthur/Documents/Automatic-Circuit-Discovery")
 assert ROOT_DIR.exists(), f"I don't think your ROOT_DIR is correct (ROOT_DIR = {ROOT_DIR})"
 
@@ -81,6 +81,7 @@ plt.show()
 
 # Original code from https://plotly.com/python/line-and-scatter/
 
+# I use plotly but it should be easy to adjust to matplotlib
 fig = go.Figure()
 fig.add_trace(
     go.Scatter(
