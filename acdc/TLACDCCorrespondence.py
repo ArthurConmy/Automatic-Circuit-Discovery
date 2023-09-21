@@ -147,7 +147,7 @@ class TLACDCCorrespondence:
                 # this MLP writes to all future residual stream things
                 cur_mlp_name = f"blocks.{layer_idx}.hook_mlp_out"
                 for position in positions:
-                    cur_mlp_slice = TorchIndex([None, position])
+                    cur_mlp_slice = TorchIndex([None, position] if positions != [None] else [None])
                     cur_mlp = TLACDCInterpNode(
                         name=cur_mlp_name,
                         index=cur_mlp_slice,
@@ -163,7 +163,7 @@ class TLACDCCorrespondence:
                         )
 
                     cur_mlp_input_name = f"blocks.{layer_idx}.hook_mlp_in"
-                    cur_mlp_input_slice = TorchIndex([None, position])
+                    cur_mlp_input_slice = TorchIndex([None, position] if positions != [None] else [None])
                     cur_mlp_input = TLACDCInterpNode(
                         name=cur_mlp_input_name,
                         index=cur_mlp_input_slice,
