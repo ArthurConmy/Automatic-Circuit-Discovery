@@ -82,6 +82,7 @@ class TLACDCExperiment:
         names_mode: Literal["normal", "reverse", "shuffle"] = "normal",
         wandb_config: Optional[Namespace] = None,
         early_exit: bool = False,
+        positions: Optional[List[int]] = None, # if None, do not split by position. TODO change the syntax here...
     ):
         """Initialize the ACDC experiment"""
 
@@ -98,6 +99,10 @@ class TLACDCExperiment:
         self.names_mode = names_mode
         self.use_pos_embed = use_pos_embed
         self.show_full_index = show_full_index
+        
+        self.positions = positions if positions is not None else [None]
+        if self.positions != [None]:
+            raise NotImplementedError("Splitting by position not implemented yet")
 
         self.model = model
         self.verify_model_setup()
