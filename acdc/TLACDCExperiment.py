@@ -342,7 +342,7 @@ class TLACDCExperiment:
 
                 edge = self.corr.edges[hook.name][receiver_index][sender_node][sender_index]
 
-                if not edge.present and self.sp is not None:
+                if not edge.present and self.sp is None:
                     continue
                 
                 if self.sp is None:
@@ -626,9 +626,13 @@ class TLACDCExperiment:
         initial_metric = self.cur_metric
 
         cur_metric = initial_metric
-        if self.verbose:
 
+        if self.verbose:
             print("New metric:", cur_metric)
+
+        if self.current_node.name == "blocks.11.attn.hook_v" and "2" in str(self.current_node.index):
+            pass
+
         if self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value:
             added_receiver_hook = self.add_receiver_hook(self.current_node, override=True, prepend=True)
 
@@ -685,10 +689,10 @@ class TLACDCExperiment:
                     old_second_metric = self.cur_second_metric
 
                 self.num_passes += 1
-                self.update_cur_metric(recalc_edges=False) # warning: gives fast evaluation, though edge count is wrong
+                self.update_cur_metric(recalc_edges=False) # Warning: gives fast evaluation, though edge count is wrong
                 evaluated_metric = self.cur_metric # self.metric(self.model(self.ds)) # OK, don't calculate second metric?
 
-                if early_stop: # for debugging the effects of one and only one forward pass WITH a corrupted edge
+                if early_stop: # For debugging the effects of one and only one forward pass WITH a corrupted edge
                     return
 
                 if self.verbose:
