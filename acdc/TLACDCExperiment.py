@@ -56,6 +56,8 @@ class TLACDCExperiment:
         ref_ds: Optional[torch.Tensor],
         threshold: float,
         metric: Callable[[torch.Tensor], torch.Tensor],
+        save_graphs_after: float = 0.,
+        run_name: str = '',
         second_metric: Optional[Callable[[torch.Tensor], float]] = None,
         verbose: bool = False,
         hook_verbose: bool = False,
@@ -182,8 +184,12 @@ class TLACDCExperiment:
         self.metric = lambda x: metric(x).item()
         self.second_metric = second_metric
         self.update_cur_metric()
-
+    
         self.threshold = threshold
+        self.num_passes = 0
+        self.run_name = run_name
+        self.save_graphs_after = save_graphs_after
+        
         assert self.ref_ds is not None or self.zero_ablation, "If you're doing random ablation, you need a ref ds"
 
         self.parallel_hypotheses = parallel_hypotheses
@@ -508,11 +514,9 @@ class TLACDCExperiment:
             # we need zero out all the outputs into the residual stream
 
             # all hooknames that output into the residual stream
-            hook_name_substrings = ["hook_result", "mlp_out"]
+            hook_name_substrings = ["hook_result", "mlp_out", "hook_embed"]
             if self.use_pos_embed:
-                hook_name_substrings.extend(["hook_pos_embed", "hook_embed"])
-            else:
-                hook_name_substrings.append("blocks.0.hook_resid_pre")
+                hook_name_substrings.append("hook_pos_embed")
 
             # add hooks to zero out all these hook points
             hook_name_bool_function = lambda hook_name: any([hook_name_substring in hook_name for hook_name_substring in hook_name_substrings])
@@ -684,6 +688,7 @@ class TLACDCExperiment:
                 if self.second_metric is not None:
                     old_second_metric = self.cur_second_metric
 
+                self.num_passes += 1
                 self.update_cur_metric(recalc_edges=False) # warning: gives fast evaluation, though edge count is wrong
                 evaluated_metric = self.cur_metric # self.metric(self.model(self.ds)) # OK, don't calculate second metric?
 
@@ -750,7 +755,7 @@ class TLACDCExperiment:
 
         # TODO add back
         if is_this_node_used and self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value:
-            fname = f"ims/img_new_{self.step_idx}.png"
+            fname = f"ims/{self.run_name}/thresh{self.threshold}_img_{self.step_idx}.png"
             show(
                 self.corr,
                 fname=fname,
@@ -764,7 +769,7 @@ class TLACDCExperiment:
         # increment the current node
         self.increment_current_node()
         self.update_cur_metric(recalc_metric=True, recalc_edges=True) # so we log the correct state...
-
+        
     def remove_redundant_node(self, node, safe=True, allow_fails=True):
         if safe:
             for parent_name in self.corr.edges[node.name][node.index]:
@@ -868,12 +873,13 @@ class TLACDCExperiment:
     def increment_current_node(self) -> None:
         while True:
             self.current_node = self.find_next_node()
-            print("We moved to", self.current_node)
+            if self.verbose:
+                print("We moved to ", self.current_node)
 
             if self.current_node is None or self.current_node_connected() or self.current_node.name in ["blocks.0.hook_resid_pre", "hook_pos_embed", "hook_embed"]:
                 break
-
-            print("But it's bad")
+            if self.verbose:
+                print("But it's bad")
 
     def count_no_edges(self, verbose=False) -> int:
         cnt = self.corr.count_no_edges(verbose=verbose)
