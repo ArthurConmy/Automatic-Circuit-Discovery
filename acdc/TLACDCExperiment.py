@@ -86,7 +86,7 @@ class TLACDCExperiment:
         early_exit: bool = False,
         sp: Optional[Literal["edge", "node"]] = None, # new functionality for doing SP. At node level and edge level
         use_split_qkv: bool = True,
-        positions: Union[List[int], List[None]] = [None], # if [None], do not split by position. TODO change the syntax here...
+        positions: Optional[List[int]] = None, # if None, do not split by position. TODO change the syntax here...
     ):
         """Initialize the ACDC experiment"""
 
@@ -110,7 +110,7 @@ class TLACDCExperiment:
         if ref_ds is not None:
             assert ref_ds.shape==ds.shape, (ref_ds.shape, ds.shape)
 
-        self.positions = positions
+        self.positions = positions if positions is not None else [None]
         if self.positions != [None]: 
             assert self.positions == list(range(seq_len)), (self.positions, list(range(seq_len)), "for now, we only support either no positional splitting or splitting by every position")
             # TODO enforce that positions is strictly increasing when we get round to this
@@ -120,7 +120,7 @@ class TLACDCExperiment:
         self.names_mode = names_mode
         self.use_pos_embed = use_pos_embed
         self.show_full_index = show_full_index
-
+        
         self.model = model
         self.verify_model_setup()
         self.zero_ablation = zero_ablation
