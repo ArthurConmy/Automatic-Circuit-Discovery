@@ -238,12 +238,12 @@ class TLACDCCorrespondence:
             if use_pos_embed:
                 token_embed_node = TLACDCInterpNode(
                     name="hook_embed",
-                    index=TorchIndex([None, position] if positions != [None] else None),
+                    index=TorchIndex([None, position] if positions != [None] else [None]),
                     incoming_edge_type=EdgeType.PLACEHOLDER,
                 )
                 pos_embed_node = TLACDCInterpNode(
                     name="hook_pos_embed",
-                    index=TorchIndex([None, position] if positions != [None] else None),
+                    index=TorchIndex([None, position] if positions != [None] else [None]),
                     incoming_edge_type=EdgeType.PLACEHOLDER,
                 )
                 embed_nodes = [token_embed_node, pos_embed_node]
@@ -252,7 +252,7 @@ class TLACDCCorrespondence:
                 # add the embedding node
                 embedding_node = TLACDCInterpNode(
                     name="blocks.0.hook_resid_pre",
-                    index=TorchIndex([None, position] if positions != [None] else None),
+                    index=TorchIndex([None, position] if positions != [None] else [None]),
                     incoming_edge_type=EdgeType.PLACEHOLDER,
                 )
                 embed_nodes = [embedding_node]
