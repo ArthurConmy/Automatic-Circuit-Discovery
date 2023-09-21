@@ -187,7 +187,7 @@ def show(
                         g.add_edge(
                             parent_name,
                             child_name,
-                            penwidth=str(max(minimum_penwidth, edge.effect_size) * 2),
+                            penwidth=str(max(minimum_penwidth, cur_effect_size) * 2),
                             color=colors[parent_name] if not edge_type_colouring else EDGE_TYPE_COLORS[edge.edge_type.value],
                         )
 

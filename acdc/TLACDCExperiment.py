@@ -387,7 +387,7 @@ class TLACDCExperiment:
         
         for receiver_node_index in self.corr.edges[hook.name]:
 
-            if hook.name == f"blocks.{self.model.cfg.n_layers-1}.hook_resid_post" and receiver_node_index == TorchIndex([None]):
+            if self.positions != [None] and hook.name == f"blocks.{self.model.cfg.n_layers-1}.hook_resid_post" and receiver_node_index == TorchIndex([None]):
                 continue # TODO make end node handling better...
 
             incoming_edge_type = self.corr.graph[hook.name][receiver_node_index].incoming_edge_type
@@ -450,12 +450,12 @@ class TLACDCExperiment:
         return hook_point_input
 
     def add_all_sender_hooks(self, reset=True, cache="online", skip_direct_computation=False, add_all_hooks=False, sender_and_receiver_both_ok=False):
-        """We use add_sender_hook for lazily adding *some* sender hooks
+        """
+        We use add_sender_hook for lazily adding *some* sender hooks
 
         :param sender_and_receiver_both_ok: The sender hooks had some checks that we're not adding both adding sender
         and receiver hooks to the same HookPoint. Usually this is a sign something has gone wrong, but in the case where
         we're adding all the hooks (for test loss calculation) it's not wrong
-
         """
 
         if self.verbose:
@@ -627,13 +627,13 @@ class TLACDCExperiment:
 
         cur_metric = initial_metric
         if self.verbose:
-            print("New metric:", cur_metric)
 
+            print("New metric:", cur_metric)
         if self.current_node.incoming_edge_type.value != EdgeType.PLACEHOLDER.value:
             added_receiver_hook = self.add_receiver_hook(self.current_node, override=True, prepend=True)
 
         if self.current_node.incoming_edge_type.value == EdgeType.DIRECT_COMPUTATION.value and "resid_post" not in self.current_node.name:
-            # basically, because these nodes are the only ones that act as both receivers and senders
+            # Basically, because these nodes are the only ones that act as both receivers and senders
             added_sender_hook = self.add_sender_hook(self.current_node, override=True)
 
         is_this_node_used = False
@@ -665,12 +665,8 @@ class TLACDCExperiment:
                 cur_parent = self.corr.graph[sender_name][sender_index]
 
                 if edge.edge_type == EdgeType.PLACEHOLDER:
-
-                    if self.positions != [None]:
-                        edge.effect_size = 0.42 # show is currently broken, currently a dumb fix of that
-
                     is_this_node_used = True
-                    continue # include by default
+                    continue # Include by default
 
                 if self.verbose:
                     print(f"\nNode: {cur_parent=} ({self.current_node=})\n")

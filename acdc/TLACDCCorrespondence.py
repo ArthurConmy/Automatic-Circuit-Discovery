@@ -102,32 +102,42 @@ class TLACDCCorrespondence:
         child.parents.remove(parent)        
 
     @classmethod
-    def setup_from_model(cls, model, use_pos_embed=False, use_split_qkv=True, device=None, sp: Optional[Literal["edge", "node"]] = None, positions=Union[List[int], List[None]]):
+    def setup_from_model(cls, model, positions: Optional[Union[List[int], List[None]]] = None, use_pos_embed=False, use_split_qkv=True, device=None, sp: Optional[Literal["edge", "node"]] = None):
         correspondence = cls()
-
         downstream_residual_nodes: Dict[Optional[int], List[TLACDCInterpNode]] = OrderedDefaultdict(list) # if we don't use positions we just use None as the only key
-        
-        logits_node = TLACDCInterpNode( # Maybe we don't need this?!
-            name=f"blocks.{model.cfg.n_layers-1}.hook_resid_post",
-            index=TorchIndex([None]),
-            incoming_edge_type = EdgeType.PLACEHOLDER,
-        )
-        correspondence.add_node(logits_node)
+        if positions is None:
+            positions = [None]
 
-        for position in positions:
-            logits_pos_node = TLACDCInterpNode(
+        if positions != [None]:      
+            logits_node = TLACDCInterpNode( # Maybe we don't need this?!
                 name=f"blocks.{model.cfg.n_layers-1}.hook_resid_post",
-                index=TorchIndex([None, position] if positions != [None] else [None]),
+                index=TorchIndex([None]),
+                incoming_edge_type = EdgeType.PLACEHOLDER,
+            )
+            correspondence.add_node(logits_node)
+
+            for position in positions:
+                logits_pos_node = TLACDCInterpNode(
+                    name=f"blocks.{model.cfg.n_layers-1}.hook_resid_post",
+                    index=TorchIndex([None, position] if positions != [None] else [None]),
+                    incoming_edge_type = EdgeType.ADDITION,
+                )
+                correspondence.add_node(logits_pos_node)
+                correspondence.add_edge( # TODO sort out this removing logits_node stuff
+                    parent_node=logits_pos_node,
+                    child_node=logits_node,
+                    edge=Edge(edge_type=EdgeType.PLACEHOLDER),
+                    safe=False,
+                )
+                downstream_residual_nodes[position].append(logits_pos_node)
+        else:
+            logits_node = TLACDCInterpNode( # Maybe we don't need this?!
+                name=f"blocks.{model.cfg.n_layers-1}.hook_resid_post",
+                index=TorchIndex([None]),
                 incoming_edge_type = EdgeType.ADDITION,
             )
-            correspondence.add_node(logits_pos_node)
-            correspondence.add_edge( # TODO sort out this removing logits_node stuff
-                parent_node=logits_pos_node,
-                child_node=logits_node,
-                edge=Edge(edge_type=EdgeType.PLACEHOLDER),
-                safe=False,
-            )
-            downstream_residual_nodes[position].append(logits_pos_node)
+            correspondence.add_node(logits_node)
+            downstream_residual_nodes[None].append(logits_node)
 
         new_downstream_residual_nodes: Dict[Optional[int], TLACDCInterpNode] = OrderedDefaultdict(list)
 
