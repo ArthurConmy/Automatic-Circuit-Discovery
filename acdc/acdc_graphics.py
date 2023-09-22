@@ -89,6 +89,9 @@ def get_node_name(node: TLACDCInterpNode, show_full_index=True):
         # TODO add a warning here? Names may be cursed
         name = node.name
 
+    if len(node.index.as_index) > 1 and node.index.as_index[1] is not None:
+        name += f"_pos_{str(node.index.as_index[1])}"
+
     if show_full_index:
         name += f"_{str(node.index.graphviz_index())}"
 
