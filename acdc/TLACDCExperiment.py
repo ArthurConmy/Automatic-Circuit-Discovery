@@ -236,7 +236,8 @@ class TLACDCExperiment:
         cache_keys.reverse()
 
         for hook_name in cache_keys:
-            print(hook_name)            
+            if self.verbose:
+                print(hook_name)            
             if hook_name in self.corr.graph:
                 new_graph[hook_name] = self.corr.graph[hook_name]
 
