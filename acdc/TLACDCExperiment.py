@@ -309,7 +309,7 @@ class TLACDCExperiment:
                     if verbose:
                         print(f"Overwrote {receiver_index} with norm {old_z[receiver_index.as_index].norm().item()}")
 
-                    hook_point_input[receiver_index.as_index] += (-edge.mask + 1.0) * (old_z[receiver_index.as_index].to(hook_point_input.device) - self.global_cache.corrupted_cache[sender_node][sender_index.as_index].to(hook_point_input.device))
+                    hook_point_input[receiver_index.as_index] += (-edge.mask + 1.0) * (old_z[receiver_index.as_index].to(hook_point_input.device) - self.global_cache.corrupted_cache[hook.name][receiver_index.as_index].to(hook_point_input.device))
     
             return hook_point_input
 
