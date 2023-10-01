@@ -349,11 +349,11 @@ class TLACDCExperiment:
                     
                     if edge.edge_type == EdgeType.ADDITION:
                         # Add the effect of the new head (from the current forward pass)
-                        hook_point_input[receiver_node_index.as_index] += self.global_cache.online_cache[
+                        hook_point_input[receiver_node_index.as_index] += edge.mask * self.global_cache.online_cache[
                             sender_node_name
                         ][sender_node_index.as_index].to(hook_point_input.device)
                         # Remove the effect of this head (from the corrupted data)
-                        hook_point_input[receiver_node_index.as_index] -= self.global_cache.corrupted_cache[
+                        hook_point_input[receiver_node_index.as_index] -= (-edge.mask + 1.0) * self.global_cache.corrupted_cache[
                             sender_node_name
                         ][sender_node_index.as_index].to(hook_point_input.device)
 

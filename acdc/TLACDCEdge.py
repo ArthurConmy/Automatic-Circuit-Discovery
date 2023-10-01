@@ -1,7 +1,9 @@
 import sys
 from collections import defaultdict
 from enum import Enum
-from typing import Optional, List
+from typing import Optional, List, Union, Tuple, Dict, Any
+from jaxtyping import Float
+import torch
 
 
 class EdgeType(Enum):
@@ -42,10 +44,12 @@ class Edge:
         edge_type: EdgeType,
         present: bool = True,
         effect_size: Optional[float] = None,
+        mask: Union[float, Float[torch.Tensor, '']] = 1.0,
     ):
         self.edge_type = edge_type
         self.present = present
         self.effect_size = effect_size
+        self.mask = mask
 
     def __repr__(self) -> str:
         return f"Edge({self.edge_type}, {self.present})"
