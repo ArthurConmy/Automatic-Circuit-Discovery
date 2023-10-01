@@ -31,7 +31,7 @@ if IPython.get_ipython() is not None:
 
 from copy import deepcopy
 from subnetwork_probing.train import iterative_correspondence_from_mask
-from acdc.acdc_utils import filter_nodes, get_edge_stats, get_node_stats, get_present_nodes, reset_network
+from acdc.acdc_utils import filter_nodes, get_edge_stats, get_node_stats, get_present_nodes, reset_network, get_points
 import pandas as pd
 import gc
 import math
@@ -849,111 +849,40 @@ if not SKIP_SIXTEEN_HEADS: methods.append("16H")
 
 #%%
 
-# get points from correspondence
-def get_points(corrs_and_scores, decreasing=True):
-# corrs_and_scores = corrs
-# decreasing = True
-# if True:
-    keys = set()
-    for _, s in corrs_and_scores:
-        keys.update(s.keys())
-
-    init_point = {k: math.inf for k in keys}
-    for prefix in ["edge", "node"]:
-        if TASK != "induction":
-            init_point[f"{prefix}_fpr"] = 0.0
-            init_point[f"{prefix}_tpr"] = 0.0
-            init_point[f"{prefix}_precision"] = 1.0
-        init_point[f"n_{prefix}s"] = math.nan
-
-    end_point = {k: -math.inf for k in keys}
-    for prefix in ["edge", "node"]:
-        if TASK != "induction":
-            end_point[f"{prefix}_fpr"] = 1.0
-            end_point[f"{prefix}_tpr"] = 1.0
-            end_point[f"{prefix}_precision"] = 0.0
-        end_point[f"n_{prefix}s"] = math.nan
-
-    if not decreasing:
-        swap = init_point
-        init_point = end_point
-        end_point = swap
-        del swap
-
-    points = [init_point]
-
-    n_skipped = 0
-
-    for idx, (corr, score) in tqdm(enumerate(sorted(corrs_and_scores, key=lambda x: x[1]["score"], reverse=decreasing))):
-        if set(score.keys()) != keys:
-            a = init_point.copy()
-            a.update(score)
-            score = a
-
-        n_edges = corr.count_no_edges()
-        n_nodes = len(filter_nodes(get_present_nodes(corr)[0]))
-
-        score.update({"n_edges": n_edges, "n_nodes": n_nodes})
-
-        if TASK != "induction":
-            edge_stats = get_edge_stats(ground_truth=canonical_circuit_subgraph, recovered=corr)
-            node_stats = get_node_stats(ground_truth=canonical_circuit_subgraph, recovered=corr)
-
-            assert n_edges == edge_stats["recovered"]
-            assert n_nodes == node_stats["recovered"]
-
-            assert edge_stats["all"] == max_subgraph_size
-            assert edge_stats["ground truth"] == canonical_circuit_subgraph_size
-            assert edge_stats["recovered"] == n_edges
-
-            for prefix, stats in [("edge", edge_stats), ("node", node_stats)]:
-                assert (stats["all"] - stats["ground truth"]) == stats["false positive"] + stats["true negative"]
-                assert stats["ground truth"] == stats["true positive"] + stats["false negative"]
-                assert stats["recovered"] == stats["true positive"] + stats["false positive"]
-
-                score.update(
-                    {
-                        f"{prefix}_tpr": stats["true positive"] / (stats["true positive"] + stats["false negative"]),
-                        f"{prefix}_fpr": stats["false positive"] / (stats["false positive"] + stats["true negative"]),
-                        f"{prefix}_precision": 1
-                        if stats["recovered"] == 0
-                        else stats["true positive"] / (stats["recovered"]),
-                    }
-                )
-
-        points.append(score)
-    assert n_skipped <= 2
-
-    points.append(end_point)
-    assert all(("n_edges" in p) for p in points)
-    assert len(points) > 3
-    return points
-
 points = {}
+
+our_get_points = partial(
+    get_points, 
+    # corrs_and_scores,
+    task=TASK,
+    canonical_circuit_subgraph=canonical_circuit_subgraph,
+    max_subgraph_size=max_subgraph_size,
+    # decreasing=True,
+)
 
 #%%
 
 if "ACDC" in methods:
     if "ACDC" not in points: points["ACDC"] = []
-    points["ACDC"].extend(get_points(acdc_corrs))
+    points["ACDC"].extend(our_get_points(acdc_corrs))
 #%%
 
 if "CANONICAL" in methods:
     if "CANONICAL" not in points: points["CANONICAL"] = []
-    points["CANONICAL"].extend(get_points(canonical_corrs))
+    points["CANONICAL"].extend(our_get_points(canonical_corrs))
 
 
 #%%
 
 if "SP" in methods:
     if "SP" not in points: points["SP"] = []
-    points["SP"].extend(get_points(sp_corrs))
+    points["SP"].extend(our_get_points(sp_corrs))
 
 #%%
 
 if "16H" in methods:
     if "16H" not in points: points["16H"] = []
-    points["16H"].extend(get_points(sixteen_heads_corrs, decreasing=False))
+    points["16H"].extend(our_get_points(sixteen_heads_corrs, decreasing=False))
 
 #%%
 
