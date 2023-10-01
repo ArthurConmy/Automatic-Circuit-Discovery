@@ -44,8 +44,16 @@ class Edge:
         edge_type: EdgeType,
         present: bool = True,
         effect_size: Optional[float] = None,
-        mask: Union[float, Float[torch.Tensor, '']] = 1.0,
+        mask: Union[float, Float[torch.Tensor, '']] = 0.0,
     ):
+        """Mask is used to interpolate between the original value and the corrupted value.
+        
+        If it's 1.0, we just use the corrupted value!
+        
+        We should always have edge.present=True when using mask
+        
+        TODO: implement direct computation version"""
+
         self.edge_type = edge_type
         self.present = present
         self.effect_size = effect_size
