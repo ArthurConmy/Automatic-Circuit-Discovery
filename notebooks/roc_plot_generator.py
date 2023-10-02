@@ -856,6 +856,7 @@ our_get_points = partial(
     # corrs_and_scores,
     task=TASK,
     canonical_circuit_subgraph=canonical_circuit_subgraph,
+    canonical_circuit_subgraph_size=canonical_circuit_subgraph_size,
     max_subgraph_size=max_subgraph_size,
     # decreasing=True,
 )

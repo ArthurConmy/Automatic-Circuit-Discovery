@@ -504,9 +504,10 @@ def process_nan(tens, reverse=False):
     return tens
 
 def get_points(
-    corrs_and_scores,
+    corrs_and_scores, # Can just put empty dicts is we don't care about this
     task,
     canonical_circuit_subgraph,
+    canonical_circuit_subgraph_size,
     max_subgraph_size,
     decreasing=True,
 ):
