@@ -1,6 +1,7 @@
 import ast
 from collections import OrderedDict
 import math
+import plotly.graph_objects as go
 from tqdm import tqdm
 import re
 import sys
@@ -586,6 +587,40 @@ def get_points(
     assert all(("n_edges" in p) for p in points)
     assert len(points) > 3
     return points
+
+def get_roc_figure(all_points, names): # TODO make the plots grey / black / yellow?
+    """Points are (false positive rate, true positive rate)"""
+    roc_figure = go.Figure()
+    for points, name in zip(all_points, names):
+        try: # TODO test this try block
+            points[0].keys()     
+    
+        except:
+            x = [p[0] for p in points]
+            y = [p[1] for p in points]
+
+        else:
+            x=None
+            y=None
+            for key in points[0].keys():
+                if "fpr" in key:
+                    x = [p[key] for p in points]
+                if "tpr" in key:
+                    y = [p[key] for p in points]
+            assert x is not None and y is not None, "Could not process with either indices or keys"
+        
+        roc_figure.add_trace(
+            go.Scatter(
+                x=x,
+                y=y,
+                mode="lines",
+                line=dict(shape='hv'),  # Adding this line will make the curve stepped.
+                name=name,
+            )
+        )
+    roc_figure.update_xaxes(title_text="Precision")
+    roc_figure.update_yaxes(title_text="True positive rate")
+    return roc_figure
 
 if __name__ == "__main__":
     # some quick test
