@@ -250,7 +250,7 @@ class TLACDCExperiment:
         if device == "cpu":
             tens = z.cpu()
         else:
-            tens = z.clone()
+            tens = z
             if device is not None:
                 tens = tens.to(device)
 
@@ -281,7 +281,7 @@ class TLACDCExperiment:
         if EdgeType.DIRECT_COMPUTATION in incoming_edge_types:
 
             old_z = hook_point_input.clone()
-            hook_point_input[:] = self.global_cache.corrupted_cache[hook.name].to(hook_point_input.device)
+            hook_point_input[:] = self.global_cache.corrupted_cache[hook.name].to(hook_point_input.device) # It is crucial to use [:] to not use same tensor
 
             if verbose:
                 print("Overwrote to sec cache")
@@ -315,7 +315,7 @@ class TLACDCExperiment:
 
         # corrupted_cache (and thus z) contains the residual stream for the corrupted data
         # That is, the sum of all heads and MLPs and biases from previous layers
-        hook_point_input[:] = self.global_cache.corrupted_cache[hook.name].to(hook_point_input.device)
+        hook_point_input[:] = self.global_cache.corrupted_cache[hook.name].to(hook_point_input.device) # It is crucial to use [:] to not use same tensor
 
         # We will now edit the input activations to this component 
         # This is one of the key reasons ACDC is slow, so the implementation is for performance
