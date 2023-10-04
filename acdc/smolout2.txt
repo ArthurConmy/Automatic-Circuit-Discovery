@@ -1,0 +1,659 @@
+Using pad_token, but it is not set yet.
+Using pad_token, but it is not set yet.
+Using pad_token, but it is not set yet.
+Using pad_token, but it is not set yet.
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+wandb: Currently logged in as: arthurconmy (remix_school-of-rock). Use `wandb login --relogin` to force relogin
+wandb: Currently logged in as: arthurconmy (remix_school-of-rock). Use `wandb login --relogin` to force relogin
+wandb: wandb version 0.15.12 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.13.11
+wandb: Run data is saved locally in /tmp/wandb/wandb/run-20231004_173531-dw1f80ik
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run 1
+wandb: ⭐️ View project at https://wandb.ai/remix_school-of-rock/rerun_start
+wandb: 🚀 View run at https://wandb.ai/remix_school-of-rock/rerun_start/runs/dw1f80ik
+wandb: wandb version 0.15.12 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.13.11
+wandb: Run data is saved locally in /tmp/wandb/wandb/run-20231004_173531-jj6pf5yl
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run 0.63096
+wandb: ⭐️ View project at https://wandb.ai/remix_school-of-rock/rerun_start
+wandb: 🚀 View run at https://wandb.ai/remix_school-of-rock/rerun_start/runs/jj6pf5yl
+/root/Automatic-Circuit-Discovery/acdc/TLACDCExperiment.py:769: UserWarning:
+
+Finished iterating
+
+wandb: Waiting for W&B process to finish... (success).
+/root/Automatic-Circuit-Discovery/acdc/TLACDCExperiment.py:769: UserWarning:
+
+Finished iterating
+
+wandb: Waiting for W&B process to finish... (success).
+wandb: - 0.117 MB of 0.117 MB uploaded (0.000 MB deduped)wandb: 
+wandb: Run history:
+wandb:            cur_metric ▁▄▆█████████████████████████████████████
+wandb: experiment.cur_metric ▁▁▁▁▂▂▂▅▅▅▆▆▆▇▇▆▇▇▇█████████████████████
+wandb:             num_edges ████████▇▇▇▆▆▆▅▅▄▄▄▃▃▃▃▃▃▂▂▂▂▂▂▁▁▁▁▁▁▁▁▁
+wandb:       num_edges_total ████▇▇▇▇▇▆▆▆▆▆▆▅▅▅▅▅▄▄▄▄▄▄▃▃▃▃▃▂▂▂▂▂▂▁▁▁
+wandb: 
+wandb: Run summary:
+wandb:            cur_metric 2.07444
+wandb: experiment.cur_metric 2.07444
+wandb:             num_edges 0
+wandb:       num_edges_total 32766
+wandb: 
+wandb: 🚀 View run 1 at: https://wandb.ai/remix_school-of-rock/rerun_start/runs/dw1f80ik
+wandb: Synced 6 W&B file(s), 7 media file(s), 1 artifact file(s) and 0 other file(s)
+wandb: Find logs at: /tmp/wandb/wandb/run-20231004_173531-dw1f80ik/logs
+wandb: \ 0.117 MB of 0.117 MB uploaded (0.000 MB deduped)wandb: | 0.117 MB of 0.117 MB uploaded (0.000 MB deduped)wandb: / 0.117 MB of 0.117 MB uploaded (0.000 MB deduped)wandb: 
+wandb: Run history:
+wandb:            cur_metric ▁▄▆█████████████████████████████████████
+wandb: experiment.cur_metric ▁▁▁▁▂▂▂▅▅▅▆▆▆▇▇▆▇▇▇█████████████████████
+wandb:             num_edges ████████▇▇▇▆▆▆▅▅▄▄▄▃▃▃▃▃▃▂▂▂▂▂▂▁▁▁▁▁▁▁▁▁
+wandb:       num_edges_total ████▇▇▇▇▇▆▆▆▆▆▆▅▅▅▅▅▄▄▄▄▄▄▃▃▃▃▃▂▂▂▂▂▂▁▁▁
+wandb: 
+wandb: Run summary:
+wandb:            cur_metric 2.07444
+wandb: experiment.cur_metric 2.07444
+wandb:             num_edges 0
+wandb:       num_edges_total 32766
+wandb: 
+wandb: 🚀 View run 0.63096 at: https://wandb.ai/remix_school-of-rock/rerun_start/runs/jj6pf5yl
+wandb: Synced 6 W&B file(s), 7 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: /tmp/wandb/wandb/run-20231004_173531-jj6pf5yl/logs
+Using pad_token, but it is not set yet.
+Using pad_token, but it is not set yet.
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+Using pad_token, but it is not set yet.
+Using pad_token, but it is not set yet.
+wandb: Currently logged in as: arthurconmy (remix_school-of-rock). Use `wandb login --relogin` to force relogin
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+wandb: Currently logged in as: arthurconmy (remix_school-of-rock). Use `wandb login --relogin` to force relogin
+wandb: wandb version 0.15.12 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.13.11
+wandb: Run data is saved locally in /tmp/wandb/wandb/run-20231004_174008-f5uo7e7c
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run 0.39811
+wandb: ⭐️ View project at https://wandb.ai/remix_school-of-rock/rerun_start
+wandb: 🚀 View run at https://wandb.ai/remix_school-of-rock/rerun_start/runs/f5uo7e7c
+wandb: wandb version 0.15.12 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.13.11
+wandb: Run data is saved locally in /tmp/wandb/wandb/run-20231004_174011-mfcfkrar
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run 0.25119
+wandb: ⭐️ View project at https://wandb.ai/remix_school-of-rock/rerun_start
+wandb: 🚀 View run at https://wandb.ai/remix_school-of-rock/rerun_start/runs/mfcfkrar
+/root/Automatic-Circuit-Discovery/acdc/TLACDCExperiment.py:769: UserWarning:
+
+Finished iterating
+
+wandb: Waiting for W&B process to finish... (success).
+wandb: 
+wandb: Run history:
+wandb:            cur_metric ▁▃▄▄▄▄▄▄▄▄▅█████████████████████████████
+wandb: experiment.cur_metric ▁▁▂▂▃▃▄▄▄▅▅▅▅▅▅▅▅▅▅▅▅▅▆▆▇▇▇█████████████
+wandb:             num_edges ███████▇▇▆▆▆▆▆▆▆▅▅▅▄▄▄▃▃▃▃▂▂▂▂▂▂▁▁▁▁▁▁▁▁
+wandb:       num_edges_total ██████████████████████▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb: 
+wandb: Run summary:
+wandb:            cur_metric 2.07444
+wandb: experiment.cur_metric 2.07444
+wandb:             num_edges 1
+wandb:       num_edges_total 22366
+wandb: 
+wandb: 🚀 View run 0.39811 at: https://wandb.ai/remix_school-of-rock/rerun_start/runs/f5uo7e7c
+wandb: Synced 6 W&B file(s), 15 media file(s), 1 artifact file(s) and 0 other file(s)
+wandb: Find logs at: /tmp/wandb/wandb/run-20231004_174008-f5uo7e7c/logs
+Using pad_token, but it is not set yet.
+Using pad_token, but it is not set yet.
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+wandb: Currently logged in as: arthurconmy (remix_school-of-rock). Use `wandb login --relogin` to force relogin
+wandb: wandb version 0.15.12 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.13.11
+wandb: Run data is saved locally in /tmp/wandb/wandb/run-20231004_174546-5drzez3q
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run 0.15849
+wandb: ⭐️ View project at https://wandb.ai/remix_school-of-rock/rerun_start
+wandb: 🚀 View run at https://wandb.ai/remix_school-of-rock/rerun_start/runs/5drzez3q
+/root/Automatic-Circuit-Discovery/acdc/TLACDCExperiment.py:769: UserWarning:
+
+Finished iterating
+
+wandb: Waiting for W&B process to finish... (success).
+wandb: 
+wandb: Run history:
+wandb:            cur_metric ▁▃▄▄▄▄▄▅▆▆▆▆▆▇██████████████████████████
+wandb: experiment.cur_metric ▁▁▂▃▃▄▄▄▄▄▄▄▄▅▅▆▆▆▆▆▆▆▆▇▇▇██████████████
+wandb:             num_edges ██████▇▇▇▇▇▇▆▆▆▆▆▅▅▅▅▅▅▄▄▃▃▃▃▂▂▂▂▁▁▁▁▁▁▁
+wandb:       num_edges_total ████████████▅▅▅▅▅▅▅▅▅▅▃▃▃▃▃▃▃▃▃▁▁▁▁▁▁▁▁▁
+wandb: 
+wandb: Run summary:
+wandb:            cur_metric 2.07444
+wandb: experiment.cur_metric 2.07444
+wandb:             num_edges 3
+wandb:       num_edges_total 17967
+wandb: 
+wandb: 🚀 View run 0.25119 at: https://wandb.ai/remix_school-of-rock/rerun_start/runs/mfcfkrar
+wandb: Synced 6 W&B file(s), 29 media file(s), 1 artifact file(s) and 0 other file(s)
+wandb: Find logs at: /tmp/wandb/wandb/run-20231004_174011-mfcfkrar/logs
+Using pad_token, but it is not set yet.
+Using pad_token, but it is not set yet.
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+wandb: Currently logged in as: arthurconmy (remix_school-of-rock). Use `wandb login --relogin` to force relogin
+wandb: wandb version 0.15.12 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.13.11
+wandb: Run data is saved locally in /tmp/wandb/wandb/run-20231004_174725-vydmwxja
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run 0.1
+wandb: ⭐️ View project at https://wandb.ai/remix_school-of-rock/rerun_start
+wandb: 🚀 View run at https://wandb.ai/remix_school-of-rock/rerun_start/runs/vydmwxja
+/root/Automatic-Circuit-Discovery/acdc/TLACDCExperiment.py:769: UserWarning:
+
+Finished iterating
+
+wandb: Waiting for W&B process to finish... (success).
+wandb: 
+wandb: Run history:
+wandb:            cur_metric ▁▁▂▂▂▂▃▄▄▄▄▄▅▅▅▅▅▅▆▇█▇▇▇▇███████████████
+wandb: experiment.cur_metric ▁▁▁▂▂▂▂▂▃▃▃▃▄▄▄▄▄▄▅▅▅▅▅▅▅▅▅▅▆▆▇▇█▇▇▇▇███
+wandb:             num_edges █████▇▇▇▇▇▆▆▆▆▆▅▅▅▅▅▅▅▅▄▄▄▄▃▃▃▂▂▂▂▁▁▁▁▁▁
+wandb:       num_edges_total ████████▆▆▆▆▆▆▆▆▄▄▄▄▄▄▄▄▄▄▄▄▄▃▃▃▃▃▃▁▁▁▁▁
+wandb: 
+wandb: Run summary:
+wandb:            cur_metric 2.07444
+wandb: experiment.cur_metric 2.07444
+wandb:             num_edges 9
+wandb:       num_edges_total 13833
+wandb: 
+wandb: 🚀 View run 0.15849 at: https://wandb.ai/remix_school-of-rock/rerun_start/runs/5drzez3q
+wandb: Synced 6 W&B file(s), 43 media file(s), 1 artifact file(s) and 0 other file(s)
+wandb: Find logs at: /tmp/wandb/wandb/run-20231004_174546-5drzez3q/logs
+Using pad_token, but it is not set yet.
+Using pad_token, but it is not set yet.
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+wandb: Currently logged in as: arthurconmy (remix_school-of-rock). Use `wandb login --relogin` to force relogin
+wandb: wandb version 0.15.12 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.13.11
+wandb: Run data is saved locally in /tmp/wandb/wandb/run-20231004_175441-vhiiog7q
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run 0.0631
+wandb: ⭐️ View project at https://wandb.ai/remix_school-of-rock/rerun_start
+wandb: 🚀 View run at https://wandb.ai/remix_school-of-rock/rerun_start/runs/vhiiog7q
+/root/Automatic-Circuit-Discovery/acdc/TLACDCExperiment.py:769: UserWarning:
+
+Finished iterating
+
+wandb: Waiting for W&B process to finish... (success).
+wandb: 
+wandb: Run history:
+wandb:            cur_metric ▁▂▂▂▂▂▃▃▃▃▃▄▄▄▄▄▄▅▆▆▆▆▆▇▇▇▇█████████████
+wandb: experiment.cur_metric ▁▁▂▂▂▂▂▂▃▃▃▃▃▃▃▃▄▄▄▄▄▄▄▄▅▅▆▆▆▆▆▆▆▆▇▇▇▇██
+wandb:             num_edges █████▇▇▇▇▇▆▆▆▆▅▅▅▅▅▅▅▅▅▄▄▄▄▃▃▃▃▂▂▂▁▁▁▁▁▁
+wandb:       num_edges_total ███████▇▇▇▇▇▇▇▆▆▆▆▆▆▅▅▅▅▅▅▅▅▅▅▅▅▅▅▅▄▄▄▄▁
+wandb: 
+wandb: Run summary:
+wandb:            cur_metric 1.5946
+wandb: experiment.cur_metric 1.5946
+wandb:             num_edges 17
+wandb:       num_edges_total 89
+wandb: 
+wandb: 🚀 View run 0.1 at: https://wandb.ai/remix_school-of-rock/rerun_start/runs/vydmwxja
+wandb: Synced 6 W&B file(s), 54 media file(s), 1 artifact file(s) and 0 other file(s)
+wandb: Find logs at: /tmp/wandb/wandb/run-20231004_174725-vydmwxja/logs
+Using pad_token, but it is not set yet.
+Using pad_token, but it is not set yet.
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+wandb: Currently logged in as: arthurconmy (remix_school-of-rock). Use `wandb login --relogin` to force relogin
+wandb: wandb version 0.15.12 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.13.11
+wandb: Run data is saved locally in /tmp/wandb/wandb/run-20231004_175731-910102jy
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run 0.03981
+wandb: ⭐️ View project at https://wandb.ai/remix_school-of-rock/rerun_start
+wandb: 🚀 View run at https://wandb.ai/remix_school-of-rock/rerun_start/runs/910102jy
+/root/Automatic-Circuit-Discovery/acdc/TLACDCExperiment.py:769: UserWarning:
+
+Finished iterating
+
+wandb: Waiting for W&B process to finish... (success).
+wandb: 
+wandb: Run history:
+wandb:            cur_metric ▁▁▂▂▂▂▂▃▃▃▃▄▄▄▄▄▄▅▅▆▆▆▆▆▇█████████████▇▇
+wandb: experiment.cur_metric ▁▁▂▂▂▂▂▂▃▃▃▃▃▃▄▄▄▄▄▄▄▄▄▅▅▆▆▆▆▆▆▆▇▇▇█████
+wandb:             num_edges █████▇▇▇▇▆▆▆▆▅▅▅▅▅▅▅▅▅▄▄▄▄▃▃▃▃▃▂▂▂▂▁▁▁▁▁
+wandb:       num_edges_total ███████▇▇▇▇▇▇▆▆▆▆▆▅▅▅▅▅▅▅▅▅▅▅▅▅▅▄▄▄▄▃▃▃▁
+wandb: 
+wandb: Run summary:
+wandb:            cur_metric 1.1898
+wandb: experiment.cur_metric 1.1898
+wandb:             num_edges 26
+wandb:       num_edges_total 51
+wandb: 
+wandb: 🚀 View run 0.0631 at: https://wandb.ai/remix_school-of-rock/rerun_start/runs/vhiiog7q
+wandb: Synced 6 W&B file(s), 63 media file(s), 1 artifact file(s) and 0 other file(s)
+wandb: Find logs at: /tmp/wandb/wandb/run-20231004_175441-vhiiog7q/logs
+Using pad_token, but it is not set yet.
+Using pad_token, but it is not set yet.
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+wandb: Currently logged in as: arthurconmy (remix_school-of-rock). Use `wandb login --relogin` to force relogin
+wandb: - Waiting for wandb.init()...wandb: \ Waiting for wandb.init()...wandb: wandb version 0.15.12 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.13.11
+wandb: Run data is saved locally in /tmp/wandb/wandb/run-20231004_180507-hz1rjwf4
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run 0.02512
+wandb: ⭐️ View project at https://wandb.ai/remix_school-of-rock/rerun_start
+wandb: 🚀 View run at https://wandb.ai/remix_school-of-rock/rerun_start/runs/hz1rjwf4
+/root/Automatic-Circuit-Discovery/acdc/TLACDCExperiment.py:769: UserWarning:
+
+Finished iterating
+
+wandb: Waiting for W&B process to finish... (success).
+wandb: 
+wandb: Run history:
+wandb:            cur_metric ▁▂▂▂▂▂▂▃▃▃▃▃▃▃▃▄▄▅▅▅▅▆▆▆▆▇▇▇▇▇▇▇▇█████▇▇
+wandb: experiment.cur_metric ▁▁▂▂▂▂▂▃▃▃▃▃▃▃▃▄▄▄▄▄▄▄▅▅▅▅▆▆▆▇▇▇▇▇▇▇████
+wandb:             num_edges ███████▇▇▇▇▆▆▆▅▅▅▅▅▅▅▅▄▄▄▃▃▃▃▃▂▂▂▂▁▁▁▁▁▁
+wandb:       num_edges_total ██████████▇▇▇▇▆▆▆▆▅▅▅▅▅▅▅▅▅▅▄▄▄▃▃▃▃▃▂▂▁▁
+wandb: 
+wandb: Run summary:
+wandb:            cur_metric 1.08722
+wandb: experiment.cur_metric 1.08722
+wandb:             num_edges 40
+wandb:       num_edges_total 41
+wandb: 
+wandb: 🚀 View run 0.03981 at: https://wandb.ai/remix_school-of-rock/rerun_start/runs/910102jy
+wandb: Synced 6 W&B file(s), 88 media file(s), 1 artifact file(s) and 0 other file(s)
+wandb: Find logs at: /tmp/wandb/wandb/run-20231004_175731-910102jy/logs
+Using pad_token, but it is not set yet.
+Using pad_token, but it is not set yet.
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+wandb: Currently logged in as: arthurconmy (remix_school-of-rock). Use `wandb login --relogin` to force relogin
+wandb: wandb version 0.15.12 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.13.11
+wandb: Run data is saved locally in /tmp/wandb/wandb/run-20231004_181113-4w5zndol
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run 0.01585
+wandb: ⭐️ View project at https://wandb.ai/remix_school-of-rock/rerun_start
+wandb: 🚀 View run at https://wandb.ai/remix_school-of-rock/rerun_start/runs/4w5zndol
+/root/Automatic-Circuit-Discovery/acdc/TLACDCExperiment.py:769: UserWarning:
+
+Finished iterating
+
+wandb: Waiting for W&B process to finish... (success).
+wandb: 
+wandb: Run history:
+wandb:            cur_metric ▁▁▁▂▂▂▂▂▂▂▃▃▃▃▄▄▅▅▅▅▆▆▆▆▆▆▇▆▆▇▇▇▇▇█████▆
+wandb: experiment.cur_metric ▁▁▂▂▂▂▂▂▂▂▂▂▃▃▃▃▃▄▅▅▅▅▆▆▆▆▆▆▆▆▆▇▇▇▇▇▇██▇
+wandb:             num_edges ██████▇▇▇▆▆▆▆▅▅▅▅▅▅▅▅▅▄▄▄▄▃▃▃▃▃▂▂▂▂▁▁▁▁▁
+wandb:       num_edges_total ████████▇▇▇▆▆▆▅▅▅▅▅▅▅▅▅▅▅▅▅▅▄▄▄▄▄▃▃▃▂▂▁▁
+wandb: 
+wandb: Run summary:
+wandb:            cur_metric 0.58497
+wandb: experiment.cur_metric 0.58497
+wandb:             num_edges 56
+wandb:       num_edges_total 57
+wandb: 
+wandb: 🚀 View run 0.02512 at: https://wandb.ai/remix_school-of-rock/rerun_start/runs/hz1rjwf4
+wandb: Synced 6 W&B file(s), 113 media file(s), 1 artifact file(s) and 0 other file(s)
+wandb: Find logs at: /tmp/wandb/wandb/run-20231004_180507-hz1rjwf4/logs
+Using pad_token, but it is not set yet.
+Using pad_token, but it is not set yet.
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+wandb: Currently logged in as: arthurconmy (remix_school-of-rock). Use `wandb login --relogin` to force relogin
+wandb: wandb version 0.15.12 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.13.11
+wandb: Run data is saved locally in /tmp/wandb/wandb/run-20231004_182127-kupblyyu
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run 0.01
+wandb: ⭐️ View project at https://wandb.ai/remix_school-of-rock/rerun_start
+wandb: 🚀 View run at https://wandb.ai/remix_school-of-rock/rerun_start/runs/kupblyyu
+/root/Automatic-Circuit-Discovery/acdc/TLACDCExperiment.py:769: UserWarning:
+
+Finished iterating
+
+wandb: Waiting for W&B process to finish... (success).
+wandb: 
+wandb: Run history:
+wandb:            cur_metric ▁▁▁▂▂▂▂▂▂▂▂▃▃▃▃▄▄▄▅▅▅▆▆▆▆▆▆▇▇▇▇▇▇█████▆▆
+wandb: experiment.cur_metric ▁▁▂▂▂▂▂▂▂▂▂▂▂▃▃▃▃▃▃▅▄▄▅▅▅▅▆▆▆▆▆▆▇▇▇▇▇██▆
+wandb:             num_edges ██████▇▇▇▇▆▆▆▅▅▅▅▅▅▅▅▅▄▄▃▃▃▃▃▃▃▂▂▂▁▁▁▁▁▁
+wandb:       num_edges_total ████████▇▇▇▇▆▆▆▆▅▅▅▅▅▅▅▅▅▅▅▄▄▄▃▃▃▃▃▃▂▁▁▁
+wandb: 
+wandb: Run summary:
+wandb:            cur_metric 0.41072
+wandb: experiment.cur_metric 0.41072
+wandb:             num_edges 60
+wandb:       num_edges_total 61
+wandb: 
+wandb: 🚀 View run 0.01585 at: https://wandb.ai/remix_school-of-rock/rerun_start/runs/4w5zndol
+wandb: Synced 6 W&B file(s), 104 media file(s), 1 artifact file(s) and 0 other file(s)
+wandb: Find logs at: /tmp/wandb/wandb/run-20231004_181113-4w5zndol/logs
+Using pad_token, but it is not set yet.
+Using pad_token, but it is not set yet.
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+wandb: Currently logged in as: arthurconmy (remix_school-of-rock). Use `wandb login --relogin` to force relogin
+wandb: wandb version 0.15.12 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.13.11
+wandb: Run data is saved locally in /tmp/wandb/wandb/run-20231004_182618-uf67vh1i
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run 0.00631
+wandb: ⭐️ View project at https://wandb.ai/remix_school-of-rock/rerun_start
+wandb: 🚀 View run at https://wandb.ai/remix_school-of-rock/rerun_start/runs/uf67vh1i
+/root/Automatic-Circuit-Discovery/acdc/TLACDCExperiment.py:769: UserWarning:
+
+Finished iterating
+
+wandb: Waiting for W&B process to finish... (success).
+wandb: 
+wandb: Run history:
+wandb:            cur_metric ▁▁▁▂▁▁▂▂▂▃▃▃▄▄▄▄▄▄▅▆▆▆▆▆▇▇▆▇▇▇▇▇███████▅
+wandb: experiment.cur_metric ▁▁▂▂▂▂▂▂▂▂▃▃▃▄▄▄▄▄▄▅▅▆▆▆▆▆▆▆▆▇▇▇▇▇▇████▆
+wandb:             num_edges █████▇▇▇▆▆▆▅▅▅▅▅▅▅▅▅▅▅▄▄▄▃▃▃▃▃▃▃▂▂▂▁▁▁▁▁
+wandb:       num_edges_total ███████▇▇▆▆▆▅▅▅▅▅▅▅▅▅▅▅▅▅▄▄▄▄▃▃▃▃▃▃▃▂▂▁▁
+wandb: 
+wandb: Run summary:
+wandb:            cur_metric 0.20854
+wandb: experiment.cur_metric 0.20854
+wandb:             num_edges 79
+wandb:       num_edges_total 80
+wandb: 
+wandb: 🚀 View run 0.01 at: https://wandb.ai/remix_school-of-rock/rerun_start/runs/kupblyyu
+wandb: Synced 6 W&B file(s), 139 media file(s), 1 artifact file(s) and 0 other file(s)
+wandb: Find logs at: /tmp/wandb/wandb/run-20231004_182127-kupblyyu/logs
+Using pad_token, but it is not set yet.
+Using pad_token, but it is not set yet.
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+wandb: Currently logged in as: arthurconmy (remix_school-of-rock). Use `wandb login --relogin` to force relogin
+wandb: wandb version 0.15.12 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.13.11
+wandb: Run data is saved locally in /tmp/wandb/wandb/run-20231004_184002-u0ic8dy7
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run 0.00398
+wandb: ⭐️ View project at https://wandb.ai/remix_school-of-rock/rerun_start
+wandb: 🚀 View run at https://wandb.ai/remix_school-of-rock/rerun_start/runs/u0ic8dy7
+/root/Automatic-Circuit-Discovery/acdc/TLACDCExperiment.py:769: UserWarning:
+
+Finished iterating
+
+wandb: Waiting for W&B process to finish... (success).
+wandb: 
+wandb: Run history:
+wandb:            cur_metric ▁▁▁▂▂▂▂▂▂▃▃▃▃▃▄▄▄▅▅▅▅▆▅▆▆▆▆▆▇▇▇▇▇█████▆▅
+wandb: experiment.cur_metric ▁▁▁▁▂▂▂▂▂▃▃▃▃▄▄▄▄▄▄▅▅▅▅▅▅▆▆▆▆▆▆▆▇▇▇▇████
+wandb:             num_edges █████▇▇▇▆▆▆▅▅▅▅▅▅▅▅▅▅▄▄▄▄▄▃▃▃▃▃▂▂▂▂▁▁▁▁▁
+wandb:       num_edges_total ██████▇▇▇▆▆▆▅▅▅▅▅▅▅▅▅▅▅▄▄▄▄▄▄▄▃▃▃▃▃▂▂▂▂▁
+wandb: 
+wandb: Run summary:
+wandb:            cur_metric 0.13883
+wandb: experiment.cur_metric 0.13883
+wandb:             num_edges 88
+wandb:       num_edges_total 89
+wandb: 
+wandb: 🚀 View run 0.00631 at: https://wandb.ai/remix_school-of-rock/rerun_start/runs/uf67vh1i
+wandb: Synced 6 W&B file(s), 146 media file(s), 1 artifact file(s) and 0 other file(s)
+wandb: Find logs at: /tmp/wandb/wandb/run-20231004_182618-uf67vh1i/logs
+Using pad_token, but it is not set yet.
+Using pad_token, but it is not set yet.
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+wandb: Currently logged in as: arthurconmy (remix_school-of-rock). Use `wandb login --relogin` to force relogin
+wandb: wandb version 0.15.12 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.13.11
+wandb: Run data is saved locally in /tmp/wandb/wandb/run-20231004_184709-uh9ttew5
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run 0.00251
+wandb: ⭐️ View project at https://wandb.ai/remix_school-of-rock/rerun_start
+wandb: 🚀 View run at https://wandb.ai/remix_school-of-rock/rerun_start/runs/uh9ttew5
+/root/Automatic-Circuit-Discovery/acdc/TLACDCExperiment.py:769: UserWarning:
+
+Finished iterating
+
+wandb: Waiting for W&B process to finish... (success).
+wandb: 
+wandb: Run history:
+wandb:            cur_metric ▂▁▁▂▂▂▂▂▂▂▂▃▃▃▃▄▄▄▅▅▆▆▆▆▆▆▆▇▇▇▇███████▅▅
+wandb: experiment.cur_metric ▁▁▂▂▂▂▂▃▃▂▃▃▃▃▄▄▄▄▄▄▅▅▅▆▆▆▆▆▆▇▇▇▇▇▇████▆
+wandb:             num_edges █████▇▇▇▆▆▆▅▅▅▅▅▅▅▅▅▅▄▄▄▄▃▃▃▃▃▃▂▂▂▂▁▁▁▁▁
+wandb:       num_edges_total ███████▇▇▆▆▆▅▅▅▅▅▅▅▅▅▅▅▅▅▅▄▄▄▄▃▃▃▃▃▃▂▂▁▁
+wandb: 
+wandb: Run summary:
+wandb:            cur_metric 0.09734
+wandb: experiment.cur_metric 0.09734
+wandb:             num_edges 96
+wandb:       num_edges_total 97
+wandb: 
+wandb: 🚀 View run 0.00398 at: https://wandb.ai/remix_school-of-rock/rerun_start/runs/u0ic8dy7
+wandb: Synced 6 W&B file(s), 141 media file(s), 1 artifact file(s) and 0 other file(s)
+wandb: Find logs at: /tmp/wandb/wandb/run-20231004_184002-u0ic8dy7/logs
+Using pad_token, but it is not set yet.
+Using pad_token, but it is not set yet.
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+wandb: Currently logged in as: arthurconmy (remix_school-of-rock). Use `wandb login --relogin` to force relogin
+wandb: wandb version 0.15.12 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.13.11
+wandb: Run data is saved locally in /tmp/wandb/wandb/run-20231004_185847-z75gxq2l
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run 0.00158
+wandb: ⭐️ View project at https://wandb.ai/remix_school-of-rock/rerun_start
+wandb: 🚀 View run at https://wandb.ai/remix_school-of-rock/rerun_start/runs/z75gxq2l
+/root/Automatic-Circuit-Discovery/acdc/TLACDCExperiment.py:769: UserWarning:
+
+Finished iterating
+
+wandb: Waiting for W&B process to finish... (success).
+wandb: 
+wandb: Run history:
+wandb:            cur_metric ▂▁▁▂▂▃▂▂▃▃▃▄▄▄▄▄▅▆▆▆▆▆▆▇▇▇▇▇▇█▇▇█▇███▇▆▅
+wandb: experiment.cur_metric ▁▁▂▂▂▂▃▃▃▃▄▄▄▄▄▄▅▅▅▆▆▆▆▆▆▇▇▇▇▇▇▇▇▇▇▇▇▇█▆
+wandb:             num_edges █████▇▇▆▆▆▅▅▅▅▅▅▅▅▅▅▄▄▄▄▄▃▃▃▃▃▃▃▂▂▂▁▁▁▁▁
+wandb:       num_edges_total █████▇▇▇▆▆▅▅▅▅▅▅▅▅▅▅▅▅▅▄▄▄▄▄▄▃▃▃▃▃▃▃▂▂▁▁
+wandb: 
+wandb: Run summary:
+wandb:            cur_metric 0.07084
+wandb: experiment.cur_metric 0.07084
+wandb:             num_edges 120
+wandb:       num_edges_total 121
+wandb: 
+wandb: 🚀 View run 0.00251 at: https://wandb.ai/remix_school-of-rock/rerun_start/runs/uh9ttew5
+wandb: Synced 6 W&B file(s), 174 media file(s), 1 artifact file(s) and 0 other file(s)
+wandb: Find logs at: /tmp/wandb/wandb/run-20231004_184709-uh9ttew5/logs
+Using pad_token, but it is not set yet.
+Using pad_token, but it is not set yet.
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+wandb: Currently logged in as: arthurconmy (remix_school-of-rock). Use `wandb login --relogin` to force relogin
+wandb: wandb version 0.15.12 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.13.11
+wandb: Run data is saved locally in /tmp/wandb/wandb/run-20231004_190945-ayj6ruek
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run 0.001
+wandb: ⭐️ View project at https://wandb.ai/remix_school-of-rock/rerun_start
+wandb: 🚀 View run at https://wandb.ai/remix_school-of-rock/rerun_start/runs/ayj6ruek
+/root/Automatic-Circuit-Discovery/acdc/TLACDCExperiment.py:769: UserWarning:
+
+Finished iterating
+
+wandb: Waiting for W&B process to finish... (success).
+wandb: 
+wandb: Run history:
+wandb:            cur_metric ▁▁▂▂▂▂▂▃▃▃▃▃▃▄▄▄▄▄▅▅▅▅▆▆▆▆▆▆▇▇█▇███████▇
+wandb: experiment.cur_metric ▁▂▂▂▂▃▃▃▃▃▃▃▃▃▄▄▄▄▄▅▅▅▅▅▆▆▆▆▆▆▇▇▇▇▇████▇
+wandb:             num_edges ████▇▇▇▇▇▆▆▆▆▅▅▅▅▅▅▅▅▅▄▄▄▄▄▃▃▃▃▃▃▂▂▂▁▁▁▁
+wandb:       num_edges_total ████▇▇▇▇▇▇▆▆▆▆▅▅▅▅▅▅▅▅▅▅▅▄▄▄▄▄▄▃▃▃▃▃▂▂▁▁
+wandb: 
+wandb: Run summary:
+wandb:            cur_metric 0.06379
+wandb: experiment.cur_metric 0.06379
+wandb:             num_edges 147
+wandb:       num_edges_total 148
+wandb: 
+wandb: 🚀 View run 0.00158 at: https://wandb.ai/remix_school-of-rock/rerun_start/runs/z75gxq2l
+wandb: Synced 6 W&B file(s), 200 media file(s), 1 artifact file(s) and 0 other file(s)
+wandb: Find logs at: /tmp/wandb/wandb/run-20231004_185847-z75gxq2l/logs
+Using pad_token, but it is not set yet.
+Using pad_token, but it is not set yet.
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+wandb: Currently logged in as: arthurconmy (remix_school-of-rock). Use `wandb login --relogin` to force relogin
+wandb: wandb version 0.15.12 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.13.11
+wandb: Run data is saved locally in /tmp/wandb/wandb/run-20231004_192448-1cwoyhne
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run 0.00063
+wandb: ⭐️ View project at https://wandb.ai/remix_school-of-rock/rerun_start
+wandb: 🚀 View run at https://wandb.ai/remix_school-of-rock/rerun_start/runs/1cwoyhne
+/root/Automatic-Circuit-Discovery/acdc/TLACDCExperiment.py:769: UserWarning:
+
+Finished iterating
+
+wandb: Waiting for W&B process to finish... (success).
+wandb: 
+wandb: Run history:
+wandb:            cur_metric ▁▁▂▂▂▂▂▃▃▃▃▃▄▄▄▄▄▄▅▅▅▅▅▅▅▆▆▆▆▇▇▇▇▇▇████▇
+wandb: experiment.cur_metric ▁▁▁▂▂▂▂▂▃▃▃▄▄▄▄▄▄▄▅▅▅▅▆▆▆▆▆▅▆▆▆▇▇▇▇▇▇▇█▇
+wandb:             num_edges ████▇▇▇▇▇▆▆▆▅▅▅▅▅▅▅▅▅▅▄▄▄▄▄▃▃▃▃▃▃▃▂▂▂▁▁▁
+wandb:       num_edges_total ████▇▇▇▇▇▆▆▆▆▅▅▅▅▅▅▅▅▅▅▅▄▄▄▄▄▄▄▃▃▃▃▃▃▂▁▁
+wandb: 
+wandb: Run summary:
+wandb:            cur_metric 0.0484
+wandb: experiment.cur_metric 0.0484
+wandb:             num_edges 171
+wandb:       num_edges_total 172
+wandb: 
+wandb: 🚀 View run 0.001 at: https://wandb.ai/remix_school-of-rock/rerun_start/runs/ayj6ruek
+wandb: Synced 6 W&B file(s), 217 media file(s), 1 artifact file(s) and 0 other file(s)
+wandb: Find logs at: /tmp/wandb/wandb/run-20231004_190945-ayj6ruek/logs
+Using pad_token, but it is not set yet.
+Using pad_token, but it is not set yet.
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+WARNING:root:cache_all is deprecated and will eventually be removed, use add_caching_hooks or run_with_cache
+wandb: Currently logged in as: arthurconmy (remix_school-of-rock). Use `wandb login --relogin` to force relogin
+wandb: wandb version 0.15.12 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.13.11
+wandb: Run data is saved locally in /tmp/wandb/wandb/run-20231004_193819-htkvn4uu
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run 0.0004
+wandb: ⭐️ View project at https://wandb.ai/remix_school-of-rock/rerun_start
+wandb: 🚀 View run at https://wandb.ai/remix_school-of-rock/rerun_start/runs/htkvn4uu
+Traceback (most recent call last):
+  File "/root/Automatic-Circuit-Discovery/acdc/script.py", line 64, in <module>
+    job.get()
+  File "/root/miniconda3/envs/arthurenv/lib/python3.11/multiprocessing/pool.py", line 768, in get
+Traceback (most recent call last):
+    self.wait(timeout)
+  File "/root/miniconda3/envs/arthurenv/lib/python3.11/multiprocessing/pool.py", line 765, in wait
+  File "/root/Automatic-Circuit-Discovery/acdc/main.py", line 348, in <module>
+    exp.step(testing=False)
+  File "/root/Automatic-Circuit-Discovery/acdc/TLACDCExperiment.py", line 582, in step
+    added_sender_hook = self.add_sender_hook(
+                        ^^^^^^^^^^^^^^^^^^^^^
+    self._event.wait(timeout)
+  File "/root/Automatic-Circuit-Discovery/acdc/TLACDCExperiment.py", line 495, in add_sender_hook
+    assert all([resolved_hooks_dict == resolved_hooks_dicts[0] for resolved_hooks_dict in resolved_hooks_dicts]), f"{resolved_hooks_dicts}\nUnexpected behavior: different hook dict for different hooks on the same HookPoint?! https://github.com/neelnanda-io/TransformerLens/issues/297"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/miniconda3/envs/arthurenv/lib/python3.11/threading.py", line 622, in wait
+  File "/root/Automatic-Circuit-Discovery/acdc/TLACDCExperiment.py", line 495, in <listcomp>
+    assert all([resolved_hooks_dict == resolved_hooks_dicts[0] for resolved_hooks_dict in resolved_hooks_dicts]), f"{resolved_hooks_dicts}\nUnexpected behavior: different hook dict for different hooks on the same HookPoint?! https://github.com/neelnanda-io/TransformerLens/issues/297"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+    signaled = self._cond.wait(timeout)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/miniconda3/envs/arthurenv/lib/python3.11/threading.py", line 320, in wait
+    waiter.acquire()
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/root/Automatic-Circuit-Discovery/acdc/main.py", line 348, in <module>
+    exp.step(testing=False)
+  File "/root/Automatic-Circuit-Discovery/acdc/TLACDCExperiment.py", line 669, in step
+    self.increment_current_node()
+  File "/root/Automatic-Circuit-Discovery/acdc/TLACDCExperiment.py", line 777, in increment_current_node
+    if self.current_node is None or self.current_node_connected() or self.current_node.name in ["blocks.0.hook_resid_pre", "hook_pos_embed", "hook_embed"]:
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/Automatic-Circuit-Discovery/acdc/TLACDCExperiment.py", line 754, in current_node_connected
+    self.update_cur_metric(recalc_edges=True)
+  File "/root/Automatic-Circuit-Discovery/acdc/TLACDCExperiment.py", line 206, in update_cur_metric
+    self.cur_edges = self.count_no_edges()
+                     ^^^^^^^^^^^^^^^^^^^^^
+  File "/root/Automatic-Circuit-Discovery/acdc/TLACDCExperiment.py", line 783, in count_no_edges
+    cnt = self.corr.count_no_edges(verbose=verbose)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/Automatic-Circuit-Discovery/acdc/TLACDCCorrespondence.py", line 239, in count_no_edges
+    if edge.present and edge.edge_type != EdgeType.PLACEHOLDER:
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/Automatic-Circuit-Discovery/acdc/TLACDCEdge.py", line 37, in __eq__
+    return self.value == other.value
+                         ^^^^^^^^^^^
+  File "/root/miniconda3/envs/arthurenv/lib/python3.11/enum.py", line 211, in __get__
+    return self.fget(instance)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/root/miniconda3/envs/arthurenv/lib/python3.11/enum.py", line 1249, in value
+    @property
+    
+KeyboardInterrupt
+wandb: Waiting for W&B process to finish... (failed 255). Press Control-C to abort syncing.
+wandb: Waiting for W&B process to finish... (failed 255). Press Control-C to abort syncing.
+wandb: 
+wandb: Run history:
+wandb:            cur_metric █▁▁▁▂▂▂▂▄▃▃▃▃▃▃▃▃▃▃▃▃▃▃▄▃▃▄▄▄▄▄▄▄▅▄▄▄▄▄▄
+wandb: experiment.cur_metric ▁▂▂▂▃▃▃▄▅▅▅▅▅▅▅▅▅▅▆▆▆▆▆▇▆▆▇▇▇▇▇▇████████
+wandb:             num_edges ███████▅▅▅▅▅▅▅▅▅▄▄▄▄▃▃▃▃▃▃▃▃▃▃▃▂▂▂▂▂▂▂▁▁
+wandb:       num_edges_total ███████▅▅▅▅▅▅▅▅▄▄▄▄▃▃▃▃▃▃▃▃▃▃▃▃▂▂▂▂▂▂▂▁▁
+wandb: 
+wandb: Run summary:
+wandb:            cur_metric 0.01439
+wandb: experiment.cur_metric 0.01439
+wandb:             num_edges 18327
+wandb:       num_edges_total 18325
+wandb: 
+wandb: 🚀 View run 0.0004 at: https://wandb.ai/remix_school-of-rock/rerun_start/runs/htkvn4uu
+wandb: Synced 6 W&B file(s), 120 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: /tmp/wandb/wandb/run-20231004_193819-htkvn4uu/logs
+wandb: 
+wandb: Run history:
+wandb:            cur_metric ▁▁▂▂▂▃▃▃▃▃▃▃▃▃▄▄▄▄▄▄▄▅█▅▅▆▆▆▆▆▆▆▆▆▆▆▆▇▇▆
+wandb: experiment.cur_metric ▁▂▂▂▃▃▃▃▃▄▄▄▄▄▅▅▅▅▅▅▅▆▆▆▇▇▇▇▇▇▇▇▇▇▇▇███▇
+wandb:             num_edges ████▆▆▆▆▆▅▅▅▅▅▅▅▄▄▄▄▃▃▃▃▃▃▃▃▃▃▃▂▂▂▂▂▂▂▁▁
+wandb:       num_edges_total ████▆▆▆▆▆▅▅▅▅▅▅▄▄▄▄▃▃▃▃▃▃▃▃▃▃▃▃▂▂▂▂▂▂▂▁▁
+wandb: 
+wandb: Run summary:
+wandb:            cur_metric 0.02766
+wandb: experiment.cur_metric 0.02766
+wandb:             num_edges 10758
+wandb:       num_edges_total 10759
+wandb: 
+wandb: 🚀 View run 0.00063 at: https://wandb.ai/remix_school-of-rock/rerun_start/runs/1cwoyhne
+wandb: Synced 6 W&B file(s), 216 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: /tmp/wandb/wandb/run-20231004_192448-1cwoyhne/logs

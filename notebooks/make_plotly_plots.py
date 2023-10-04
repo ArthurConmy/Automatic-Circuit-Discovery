@@ -66,11 +66,11 @@ GRIDCOLOR = "rgba(220,220,220,1)"
 ZEROLINECOLOR = "rgba(180,180,180,1)"
 THRESHOLD_ANNOTATION = r"$\tau,\lambda,\%$"
 
-if IS_ADRIA or ipython is None:
-    DATA_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / "plots_data"
+# if IS_ADRIA
+DATA_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / "plots_data"
 
-else:
-    DATA_DIR = Path(__file__).resolve().parent.parent.parent / "experiments" / "results" / "plots_data"
+# else:
+#     DATA_DIR = Path(__file__).resolve().parent.parent.parent / "experiments" / "results" / "plots_data"
 
 X_TICKVALS = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]
 all_data = {}
@@ -808,8 +808,8 @@ first = True
 all_dfs = []
 for metric_idx in [0, 1]:
     for ablation_type in ["random_ablation", "zero_ablation"]:
-        for weights_type in ["reset", "trained"]:  # Didn't scramble the weights enough it seems
-            for plot_type in ["metric_edges_induction", "kl_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "roc_edges", "metric_edges"]:
+        for weights_type in ["trained", "reset"]:  # Didn't scramble the weights enough it seems
+            for plot_type in ["roc_edges", "metric_edges_induction", "kl_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "metric_edges"]:
                 x_key, y_key = plot_type_keys[plot_type]
                 fig, df = make_fig(metric_idx=metric_idx, weights_types=["trained"] if weights_type == "trained" else ["trained", weights_type], ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type)
                 if len(df):
@@ -826,6 +826,7 @@ for metric_idx in [0, 1]:
                 if first:
                     fig.show()
                     first = False
+                    assert False
 
 pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
 

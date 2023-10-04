@@ -22,6 +22,10 @@
 # SIXTEEN_HEADS_PROJECT_NAME
 # SIXTEEN_HEADS_RUN
 
+import os
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
 import collections
 import IPython
 
@@ -165,8 +169,8 @@ parser.add_argument("--only-save-canonical", action="store_true", help="Only sav
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task=ioi --metric=kl_div --alg=sp".split())
-    if "arthur" not in __file__:
+    args = parser.parse_args("--task=greaterthan --metric=greaterthan --alg=acdc".split())
+    if "arthur" not in __file__ and not __file__.startswith("/root"):
         __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
 else:
     args = parser.parse_args()
@@ -174,11 +178,9 @@ else:
 if not args.mode == "edges":
     raise NotImplementedError("Only edges mode is implemented for now")
 
-
 if args.torch_num_threads > 0:
     torch.set_num_threads(args.torch_num_threads)
 torch.manual_seed(args.seed)
-
 
 TASK = args.task
 METRIC = args.metric
@@ -303,25 +305,27 @@ elif TASK == "ioi":
     num_examples = 100
     things = get_all_ioi_things(num_examples=num_examples, device=DEVICE, metric_name=METRIC)
 
-    if METRIC == "kl_div" and not RESET_NETWORK:
-        if ZERO_ABLATION:
-            ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_ioi_sweep"
-            del ACDC_PRE_RUN_FILTER["config.reset_network"]
-            ACDC_PRE_RUN_FILTER["group"] = "default"
-        else:
-            ACDC_PRE_RUN_FILTER["group"] = "acdc-ioi-gt-redo2"
+    # if METRIC == "kl_div" and not RESET_NETWORK:
+    if ZERO_ABLATION:
+        ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_ioi_sweep"
+        # del ACDC_PRE_RUN_FILTER["config.reset_network"]
+        ACDC_PRE_RUN_FILTER["group"] = "default"
     else:
-        try:
-            del ACDC_PRE_RUN_FILTER["group"]
-        except KeyError:
-            pass
-        ACDC_PRE_RUN_FILTER = {
-            "$or": [
-                {"group": "reset-networks-neurips", **ACDC_PRE_RUN_FILTER},
-                {"group": "acdc-gt-ioi-redo", **ACDC_PRE_RUN_FILTER},
-                {"group": "acdc-spreadsheet2", **ACDC_PRE_RUN_FILTER},
-            ]
-        }
+        ACDC_PROJECT_NAME = "remix_school-of-rock/rerun_start"
+        # del ACDC_PRE_RUN_FILTER["group"]
+        ACDC_PRE_RUN_FILTER={"group": "ioiabstest"}
+    # else:
+    #     try:
+    #         del ACDC_PRE_RUN_FILTER["group"]
+    #     except KeyError:
+    #         pass
+    #     ACDC_PRE_RUN_FILTER = {
+    #         "$or": [
+    #             {"group": "reset-networks-neurips", **ACDC_PRE_RUN_FILTER},
+    #             {"group": "acdc-gt-ioi-redo", **ACDC_PRE_RUN_FILTER},
+    #             {"group": "acdc-spreadsheet2", **ACDC_PRE_RUN_FILTER},
+    #         ]
+    #     }
 
     get_true_edges = partial(get_ioi_true_edges, model=things.tl_model)
 
@@ -357,7 +361,9 @@ elif TASK == "greaterthan":
                 {"group": "acdc-spreadsheet2", **ACDC_PRE_RUN_FILTER},
             ]
         }
-
+    warnings.warn("remove this warning if you want to run greaterthan normally")
+    ACDC_PROJECT_NAME = "remix_school-of-rock/rerun_start"
+    ACDC_PRE_RUN_FILTER={"group": "gtgt"}
 
 elif TASK == "induction":
     num_examples=50
@@ -936,6 +942,7 @@ points = {}
 if "ACDC" in methods:
     if "ACDC" not in points: points["ACDC"] = []
     points["ACDC"].extend(get_points(acdc_corrs))
+
 #%%
 
 if "CANONICAL" in methods:
@@ -1023,4 +1030,69 @@ if OUT_FILE is not None:
     with open(OUT_FILE, "w") as f:
         json.dump(out_dict, f, indent=2)
 
+# %%
+
+import torch as t
+from transformers import AutoModelForCausalLM
+import torch
+from transformer_lens import HookedTransformer
+
+def check_similarity_with_hf_model(tl_model, hf_model, tol, prompt="Hello, world!"):
+    tokens = tl_model.to_tokens(prompt)
+    logits, cache = tl_model.run_with_cache(tokens, prepend_bos=False)
+    hf_logits = hf_model(tokens).logits
+    torch.testing.assert_allclose(t.softmax(logits, dim=-1), t.softmax(hf_logits, dim=-1), atol=tol, rtol=tol)
+
+#%%
+
+import torch
+from transformers import AutoModel, AutoTokenizer
+from transformer_lens import utils
+from collections import defaultdict
+
+#%%
+
+model_name = "EleutherAI/pythia-70m"
+tl_model = HookedTransformer.from_pretrained_no_processing(model_name)
+hf_model = AutoModelForCausalLM.from_pretrained(model_name).cuda()
+
+#%%
+
+tokens = "Hello, world!"
+logits, cache = tl_model.run_with_cache(tokens, prepend_bos=False)
+
+# %%
+
+
+class ActivationCacher:
+    def __init__(self):
+        self.activations = defaultdict(list)
+
+    def cache_activations(self, module, module_name):
+        def hook(module, input, output):
+            self.activations[module_name].append(output)
+        return hook
+
+# %%
+
+# Create an ActivationCacher instance
+activation_cacher = ActivationCacher()
+
+# Register hooks for caching activations
+for name, module in hf_model.named_modules():
+    module.register_forward_hook(activation_cacher.cache_activations(module, name))
+
+#%%
+
+hf_logits = hf_model(tokens).logits
+
+# %%
+
+for i in range(10):
+    print(i)
+    try:
+        torch.testing.assert_allclose(cache[utils.get_act_name("pattern", i)], activation_cacher.activations[f"gpt_neox.layers.{i}.attention.attention_dropout"][0], atol=1e-6, rtol=1e-6)
+    except Exception as e:
+        print(e)
+        # i = 2 fails 
 # %%
