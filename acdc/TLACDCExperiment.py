@@ -165,7 +165,7 @@ class TLACDCExperiment:
 
         self.metric = lambda x: metric(x).item()
         self.second_metric = second_metric
-        self.update_cur_metric()
+        self.update_cur_metric(recalc_metric=True, recalc_edges=True)
 
         self.threshold = threshold
         assert self.ref_ds is not None or self.zero_ablation, "If you're doing random ablation, you need a ref ds"
@@ -532,7 +532,7 @@ class TLACDCExperiment:
         start_step_time = time.time()
         self.step_idx += 1
 
-        self.update_cur_metric()
+        self.update_cur_metric(recalc_metric=True, recalc_edges=True)
         initial_metric = self.cur_metric
 
         cur_metric = initial_metric
@@ -630,7 +630,7 @@ class TLACDCExperiment:
                         print("...so keeping connection")
                     edge.present = True
 
-                self.update_cur_metric(recalc_edges=False, recalc_metric=False) # so we log current state to wandb
+                self.update_cur_metric(recalc_edges=False, recalc_metric=False) # So we log current state to wandb
 
                 if self.using_wandb:
                     log_metrics_to_wandb(
@@ -642,7 +642,7 @@ class TLACDCExperiment:
                         times = time.time(),
                     )
 
-            self.update_cur_metric()
+            self.update_cur_metric(recalc_metric=True, recalc_edges=True)
             if testing:
                 break
 
@@ -722,7 +722,7 @@ class TLACDCExperiment:
 
         # if this is NOT connected, then remove all incoming edges, too
 
-        self.update_cur_metric()
+        self.update_cur_metric(recalc_metric=True, recalc_edges=True)
         old_metric = self.cur_metric
 
         parent_names = list(self.corr.edges[self.current_node.name][self.current_node.index].keys())
@@ -859,7 +859,7 @@ class TLACDCExperiment:
         
     def remove_all_non_attention_connections(self):
         # remove all connection except the MLP connections
-        includes_attention = [ # substrings of hook names that imply they're relatred to attention
+        includes_attention = [ # substrings of hook names that imply they're related to attention
             "attn",
             "hook_q",
             "hook_k",
