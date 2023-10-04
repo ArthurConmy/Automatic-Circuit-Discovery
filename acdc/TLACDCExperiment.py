@@ -661,9 +661,12 @@ class TLACDCExperiment:
                 show_full_index=self.show_full_index,
             )
             if self.using_wandb:
-                wandb.log(
-                    {"acdc_graph": wandb.Image(fname),}
-                )
+                try:
+                    wandb.log(
+                        {"acdc_graph": wandb.Image(fname),}
+                    )
+                except OSError:
+                    pass # I think this is a race condition when running many jobs. It's fine to not log an image.
 
         # increment the current node
         self.increment_current_node()
