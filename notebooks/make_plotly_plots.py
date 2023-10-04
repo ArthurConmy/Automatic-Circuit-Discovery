@@ -66,8 +66,13 @@ GRIDCOLOR = "rgba(220,220,220,1)"
 ZEROLINECOLOR = "rgba(180,180,180,1)"
 THRESHOLD_ANNOTATION = r"$\tau,\lambda,\%$"
 
+<<<<<<< HEAD
 # if IS_ADRIA
 DATA_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / "plots_data"
+=======
+if IS_ADRIA or ipython is None or "arthur" in __file__:
+    DATA_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / "plots_data"
+>>>>>>> origin/main
 
 # else:
 #     DATA_DIR = Path(__file__).resolve().parent.parent.parent / "experiments" / "results" / "plots_data"
@@ -90,8 +95,8 @@ time.sleep(1)
 # %%
 
 alg_names = {
-    "16H": "HISP",
-    "SP": "SP",
+    # "16H": "HISP", # TODO add back
+    # "SP": "SP",
     "ACDC": "ACDC",
 }
 
@@ -314,8 +319,13 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                         ablation_type = "zero_ablation"
                     else:
                         ablation_type = "random_ablation"
-
-                scores = np.array(all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["score"])
+                try:
+                    scores = np.array(all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["score"])
+                except KeyError as e:
+                    print(
+                        f"Couldn't find {weights_type} {ablation_type} {task_idx} {metric_name} {alg_idx} {x_key} {y_key}"
+                    )
+                    raise e
 
                 if methodof == "HISP":
                     scores = np.array(all_data[weights_type][ablation_type][task_idx][metric_name][alg_idx]["n_nodes"])
@@ -348,7 +358,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
             out = (x - x_min) / (x_max - x_min) * (scale_max - scale_min)  + scale_min
         return out
 
-    HEATMAP_ALGS = ["ACDC", "SP", "HISP"]
+    HEATMAP_ALGS = ["ACDC"] # , "SP", "HISP"] # TODO 
     for i, methodof in enumerate(HEATMAP_ALGS):
         alg_min, alg_max = bounds_for_alg[methodof]
         # nums = normalize(heatmap_ys, alg_min, alg_max)
@@ -806,10 +816,14 @@ PLOT_DIR.mkdir(exist_ok=True)
 first = True
 
 all_dfs = []
-for metric_idx in [0, 1]:
+for metric_idx in [1, 0]:
     for ablation_type in ["random_ablation", "zero_ablation"]:
         for weights_type in ["trained", "reset"]:  # Didn't scramble the weights enough it seems
+<<<<<<< HEAD
             for plot_type in ["roc_edges", "metric_edges_induction", "kl_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "metric_edges"]:
+=======
+            for plot_type in ["roc_edges", "kl_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "metric_edges_induction", "roc_nodes", "metric_edges"]:
+>>>>>>> origin/main
                 x_key, y_key = plot_type_keys[plot_type]
                 fig, df = make_fig(metric_idx=metric_idx, weights_types=["trained"] if weights_type == "trained" else ["trained", weights_type], ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type)
                 if len(df):
