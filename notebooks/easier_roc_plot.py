@@ -14,7 +14,7 @@ import pandas as pd
 import argparse
 import plotly.colors as pc
 from acdc.graphics import dict_merge, pessimistic_auc
-
+from acdc.acdc_utils import discard_non_pareto_optimal
 from notebooks.emacs_plotly_render import set_plotly_renderer
 
 set_plotly_renderer("emacs")
@@ -33,18 +33,6 @@ for fname in os.listdir(DATA_DIR):
         dict_merge(all_data, data)
 
 # %%
-
-
-def discard_non_pareto_optimal(points, cmp="gt"):
-    ret = []
-    for x, y in points:
-        for x1, y1 in points:
-            if x1 < x and getattr(y1, f"__{cmp}__")(y) and (x1, y1) != (x, y):
-                break
-        else:
-            ret.append((x, y))
-    return list(sorted(ret))
-
 
 fig = make_subplots(rows=1, cols=2, subplot_titles=["ROC Curves"], column_widths=[0.95, 0.05], horizontal_spacing=0.03)
 

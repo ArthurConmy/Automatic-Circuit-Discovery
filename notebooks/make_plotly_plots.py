@@ -66,13 +66,8 @@ GRIDCOLOR = "rgba(220,220,220,1)"
 ZEROLINECOLOR = "rgba(180,180,180,1)"
 THRESHOLD_ANNOTATION = r"$\tau,\lambda,\%$"
 
-<<<<<<< HEAD
 # if IS_ADRIA
 DATA_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / "plots_data"
-=======
-if IS_ADRIA or ipython is None or "arthur" in __file__:
-    DATA_DIR = Path(__file__).resolve().parent.parent / "experiments" / "results" / "plots_data"
->>>>>>> origin/main
 
 # else:
 #     DATA_DIR = Path(__file__).resolve().parent.parent.parent / "experiments" / "results" / "plots_data"
@@ -819,11 +814,7 @@ all_dfs = []
 for metric_idx in [1, 0]:
     for ablation_type in ["random_ablation", "zero_ablation"]:
         for weights_type in ["trained", "reset"]:  # Didn't scramble the weights enough it seems
-<<<<<<< HEAD
             for plot_type in ["roc_edges", "metric_edges_induction", "kl_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "metric_edges"]:
-=======
-            for plot_type in ["roc_edges", "kl_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "metric_edges_induction", "roc_nodes", "metric_edges"]:
->>>>>>> origin/main
                 x_key, y_key = plot_type_keys[plot_type]
                 fig, df = make_fig(metric_idx=metric_idx, weights_types=["trained"] if weights_type == "trained" else ["trained", weights_type], ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type)
                 if len(df):

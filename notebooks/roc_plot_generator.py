@@ -35,7 +35,7 @@ if IPython.get_ipython() is not None:
 
 from copy import deepcopy
 from subnetwork_probing.train import iterative_correspondence_from_mask
-from acdc.acdc_utils import filter_nodes, get_edge_stats, get_node_stats, get_present_nodes, reset_network
+from acdc.acdc_utils import filter_nodes, get_edge_stats, get_node_stats, get_present_nodes, reset_network, discard_non_pareto_optimal, get_simple_roc
 import pandas as pd
 import gc
 import math
@@ -139,8 +139,6 @@ from acdc.greaterthan.utils import get_all_greaterthan_things, get_greaterthan_t
 from pathlib import Path
 
 from notebooks.emacs_plotly_render import set_plotly_renderer
-set_plotly_renderer("emacs")
-
 
 def get_col(df, col): # dumb util
     non_null_entries = list(df.loc[df[col].notnull(), col])
@@ -168,10 +166,12 @@ parser.add_argument("--canonical-graph-save-dir", type=str, default="DEFAULT")
 parser.add_argument("--only-save-canonical", action="store_true", help="Only save the canonical graph")
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 
+args = parser.parse_args("--task=greaterthan --metric=greaterthan --zero-ablation --alg=acdc".split())
+
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task=greaterthan --metric=greaterthan --alg=acdc".split())
     if "arthur" not in __file__ and not __file__.startswith("/root"):
         __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
+        set_plotly_renderer("emacs")
 else:
     args = parser.parse_args()
 
@@ -363,7 +363,7 @@ elif TASK == "greaterthan":
         }
     warnings.warn("remove this warning if you want to run greaterthan normally")
     ACDC_PROJECT_NAME = "remix_school-of-rock/rerun_start"
-    ACDC_PRE_RUN_FILTER={"group": "gtgt"}
+    ACDC_PRE_RUN_FILTER={"group": "greaterthan"}
 
 elif TASK == "induction":
     num_examples=50
@@ -1030,7 +1030,74 @@ if OUT_FILE is not None:
     with open(OUT_FILE, "w") as f:
         json.dump(out_dict, f, indent=2)
 
+#%%
+
+get_simple_roc(
+    points=list(zip(
+        [
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  3.136566087447463e-05,
+  0.00021955962612132238,
+  0.00021955962612132238,
+  0.0005332162348660686,
+  0.0009409698262342387,
+  0.0009409698262342387,
+  0.0018819396524684775,
+  0.0018819396524684775,
+  0.010821153001693746,
+  0.4954206135123267,
+  0.514867323254501,
+  0.5825857850824917,
+  0.7439307446207891,
+  0.8636534721786588,
+  0.7900069004453923,
+  0.8497584844112666,
+  0.9018568471237689,
+  0.9221190640486795,
+  0.9572799698889656,
+  0.999466783765134,
+  0.9511323003575686,
+  0.9918449281726366,
+  1.0
+], [
+  0.0,
+  0.007684918347742555,
+  0.020172910662824207,
+  0.024015369836695485,
+  0.024015369836695485,
+  0.03842459173871278,
+  0.049951969260326606,
+  0.049951969260326606,
+  0.09221902017291066,
+  0.15369836695485112,
+  0.15369836695485112,
+  0.1930835734870317,
+  0.1930835734870317,
+  0.3900096061479347,
+  0.6666666666666666,
+  0.7713736791546589,
+  0.8309317963496637,
+  0.8904899135446686,
+  0.9798270893371758,
+  0.9644572526416907,
+  0.9807877041306436,
+  0.9817483189241114,
+  0.9875120076849183,
+  0.9903938520653218,
+  0.9961575408261287,
+  0.9932756964457252,
+  0.9971181556195965,
+  1.0
+], strict=True)),
+)
+
 # %%
+
+# Totally extra stuff, where we looked at Joseph miller's error
 
 import torch as t
 from transformers import AutoModelForCausalLM

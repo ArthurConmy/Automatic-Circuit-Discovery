@@ -1,5 +1,8 @@
 import ast
 from collections import OrderedDict
+import plotly.graph_objects as go
+import plotly.colors as pc
+import plotly.express as px
 import re
 import sys
 import time
@@ -500,6 +503,86 @@ def process_nan(tens, reverse=False):
                 tens[i] = tens[i-1]
 
     return tens
+
+def discard_non_pareto_optimal(points, cmp="gt"):
+    ret = []
+    for x, y in points:
+        for x1, y1 in points:
+            if x1 < x and getattr(y1, f"__{cmp}__")(y) and (x1, y1) != (x, y):
+                break
+        else:
+            ret.append((x, y))
+    return list(sorted(ret))
+
+def get_simple_roc(points, show=True):
+    x_data = [i[0] for i in points]
+    y_data = [i[1] for i in points]
+
+    # log_scores = np.log10(scores)
+    # log_scores = np.nan_to_num(log_scores, nan=0.0, neginf=0.0, posinf=0.0)
+    # min_score = np.min(log_scores)
+    # max_score = np.max(log_scores)
+    # normalized_scores = (log_scores - min_score) / (max_score - min_score)
+    # normalized_scores[~np.isfinite(normalized_scores)] = 0.0
+
+    points = list(zip(x_data, y_data))
+    pareto_optimal = discard_non_pareto_optimal(points)
+
+
+    fig = go.Figure()    
+    pareto_x_data, pareto_y_data = zip(*pareto_optimal)
+    fig.add_trace(
+        go.Scatter(
+            x=pareto_x_data,
+            y=pareto_y_data,
+            # name=methodof,
+            mode="lines",
+            line=dict(
+                shape="hv",
+                color=pc.sample_colorscale(pc.get_colorscale("Blues"), 0.7)[0],
+            ),
+            showlegend=False,
+            # hovertext=log_scores,
+        ),
+        # row=1,
+        # col=1,
+    )
+
+    # N_TICKS = 5
+    # tickvals = np.linspace(0, 1, N_TICKS)
+    # ticktext = 10 ** np.linspace(min_score, max_score, N_TICKS)
+
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=x_data,
+    #         y=y_data,
+    #         name=methodof,
+    #         mode="markers",
+    #         showlegend=False,
+    #         marker=dict(
+    #             size=7,
+    #             color=normalized_scores,
+    #             colorscale=colorscales[alg],
+    #             symbol="circle",
+    #             # colorbar=dict(
+    #             #     title="Log scores",
+    #             #     tickvals=tickvals,  # positions for ticks
+    #             #     ticktext=["%.2e" % i for i in ticktext],  # tick labels, formatted as strings
+    #             #     thickness=5,
+    #             #     # y=0.25,
+    #             #     # len=0.5,
+    #             #     x=1 + i * 0.1,
+    #             # ),
+    #             showscale=False,
+    #         ),
+    #     ),
+    #     row=1,
+    #     col=1,
+    # )
+
+    if show: 
+        fig.show()
+    return fig
 
 if __name__ == "__main__":
     # some quick test
