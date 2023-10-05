@@ -665,7 +665,7 @@ class TLACDCExperiment:
                     wandb.log(
                         {"acdc_graph": wandb.Image(fname),}
                     )
-                except OSError:
+                except Exception as e:
                     pass # I think this is a race condition when running many jobs. It's fine to not log an image.
 
         # increment the current node
