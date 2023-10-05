@@ -166,7 +166,7 @@ parser.add_argument("--canonical-graph-save-dir", type=str, default="DEFAULT")
 parser.add_argument("--only-save-canonical", action="store_true", help="Only save the canonical graph")
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 
-args = parser.parse_args("--task=greaterthan --metric=greaterthan --zero-ablation --alg=acdc".split())
+args = parser.parse_args("--task=greaterthan --metric=kl_div --alg=acdc".split())
 
 if IPython.get_ipython() is not None:
     if "arthur" not in __file__ and not __file__.startswith("/root"):
@@ -364,6 +364,8 @@ elif TASK == "greaterthan":
                 {"group": "acdc-spreadsheet2", **ACDC_PRE_RUN_FILTER},
             ]
         }
+    print(ACDC_PROJECT_NAME)
+    print("filter", ACDC_PRE_RUN_FILTER)
 
     # warnings.warn("remove this warning if you want to run greaterthan normally")
     # ACDC_PROJECT_NAME = "remix_school-of-rock/rerun_start"
@@ -1014,9 +1016,6 @@ if OUT_FILE is not None:
 
     os.makedirs(OUT_FILE.parent, exist_ok=True)
 
-    ablation = "zero_ablation" if ZERO_ABLATION else "random_ablation"
-    weights = "reset" if RESET_NETWORK else "trained"
-
     assert len(points[ALG]) > 3
 
     out_dict = {
@@ -1034,10 +1033,21 @@ if OUT_FILE is not None:
     with open(OUT_FILE, "w") as f:
         json.dump(out_dict, f, indent=2)
 
-# #%%
+#%%
 
-# inner_dict = out_dict[weights][ablation][args.task][args.metric][ALG]
+if IPython.get_ipython() is not None:
 
-# get_simple_roc(
-#     points=list(zip(inner_dict["edge_fpr"], inner_dict["edge_tpr"], strict=True)),
-# )
+    with open(os.path.expanduser("/root/Automatic-Circuit-Discovery/experiments/results/plots_data/acdc-greaterthan-kl_div-False-0.json")) as f:
+        out_dict = json.load(f)
+
+    ablation = "zero_ablation" if ZERO_ABLATION else "random_ablation"
+    weights = "reset" if RESET_NETWORK else "trained"
+    ALG = "ACDC"
+
+    inner_dict = out_dict[weights][ablation][args.task][args.metric][ALG]
+
+    get_simple_roc(
+        points=list(zip(inner_dict["edge_fpr"], inner_dict["edge_tpr"], strict=True)),
+    )
+
+# %%
