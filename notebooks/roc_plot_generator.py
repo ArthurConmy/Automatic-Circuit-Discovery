@@ -349,6 +349,7 @@ elif TASK == "greaterthan":
         ACDC_PRE_RUN_FILTER = {}
     elif METRIC == "greaterthan" and not RESET_NETWORK and ZERO_ABLATION:
         ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_gt_zero_gt"
+        ACDC_PRE_RUN_FILTER = {"group": "greaterthan"}
     elif METRIC == "greaterthan":
         ACDC_PRE_RUN_FILTER["group"] = "gt-fix-metric"
     elif RESET_NETWORK:
@@ -1033,79 +1034,10 @@ if OUT_FILE is not None:
     with open(OUT_FILE, "w") as f:
         json.dump(out_dict, f, indent=2)
 
-#%%
+# #%%
 
-inner_dict = out_dict[weights][ablation][args.task][args.metric][ALG]
+# inner_dict = out_dict[weights][ablation][args.task][args.metric][ALG]
 
-get_simple_roc(
-    points=list(zip(inner_dict["edge_fpr"], inner_dict["edge_tpr"], strict=True)),
-)
-
-# %%
-
-# Totally extra stuff, where we looked at Joseph miller's error
-
-import torch as t
-from transformers import AutoModelForCausalLM
-import torch
-from transformer_lens import HookedTransformer
-
-def check_similarity_with_hf_model(tl_model, hf_model, tol, prompt="Hello, world!"):
-    tokens = tl_model.to_tokens(prompt)
-    logits, cache = tl_model.run_with_cache(tokens, prepend_bos=False)
-    hf_logits = hf_model(tokens).logits
-    torch.testing.assert_allclose(t.softmax(logits, dim=-1), t.softmax(hf_logits, dim=-1), atol=tol, rtol=tol)
-
-#%%
-
-import torch
-from transformers import AutoModel, AutoTokenizer
-from transformer_lens import utils
-from collections import defaultdict
-
-#%%
-
-model_name = "EleutherAI/pythia-70m"
-tl_model = HookedTransformer.from_pretrained_no_processing(model_name)
-hf_model = AutoModelForCausalLM.from_pretrained(model_name).cuda()
-
-#%%
-
-tokens = "Hello, world!"
-logits, cache = tl_model.run_with_cache(tokens, prepend_bos=False)
-
-# %%
-
-
-class ActivationCacher:
-    def __init__(self):
-        self.activations = defaultdict(list)
-
-    def cache_activations(self, module, module_name):
-        def hook(module, input, output):
-            self.activations[module_name].append(output)
-        return hook
-
-# %%
-
-# Create an ActivationCacher instance
-activation_cacher = ActivationCacher()
-
-# Register hooks for caching activations
-for name, module in hf_model.named_modules():
-    module.register_forward_hook(activation_cacher.cache_activations(module, name))
-
-#%%
-
-hf_logits = hf_model(tokens).logits
-
-# %%
-
-for i in range(10):
-    print(i)
-    try:
-        torch.testing.assert_allclose(cache[utils.get_act_name("pattern", i)], activation_cacher.activations[f"gpt_neox.layers.{i}.attention.attention_dropout"][0], atol=1e-6, rtol=1e-6)
-    except Exception as e:
-        print(e)
-        # i = 2 fails 
-# %%
+# get_simple_roc(
+#     points=list(zip(inner_dict["edge_fpr"], inner_dict["edge_tpr"], strict=True)),
+# )
