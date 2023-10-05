@@ -1015,8 +1015,10 @@ if OUT_FILE is not None:
     ALG = args.alg.upper()
 
     os.makedirs(OUT_FILE.parent, exist_ok=True)
-
     assert len(points[ALG]) > 3
+
+    ablation = "zero_ablation" if ZERO_ABLATION else "random_ablation"
+    weights = "reset" if RESET_NETWORK else "trained"
 
     out_dict = {
         weights: {
