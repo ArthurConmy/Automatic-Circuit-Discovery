@@ -90,8 +90,8 @@ time.sleep(1)
 # %%
 
 alg_names = {
-    # "16H": "HISP", # TODO add back
-    # "SP": "SP",
+    "16H": "HISP",
+    "SP": "SP",
     "ACDC": "ACDC",
 }
 
@@ -353,7 +353,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
             out = (x - x_min) / (x_max - x_min) * (scale_max - scale_min)  + scale_min
         return out
 
-    HEATMAP_ALGS = ["ACDC"] # , "SP", "HISP"] # TODO 
+    HEATMAP_ALGS = ["ACDC", "SP", "HISP"]
     for i, methodof in enumerate(HEATMAP_ALGS):
         alg_min, alg_max = bounds_for_alg[methodof]
         # nums = normalize(heatmap_ys, alg_min, alg_max)
@@ -462,8 +462,6 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                             auc = pessimistic_auc(x_data, y_data)
                         except Exception as e:
                             print(task_idx, metric_name, alg_idx, x_key)
-                            assert False
-                            print(e)
                             auc=-420.0
 
                     fig.add_trace(
@@ -811,10 +809,10 @@ PLOT_DIR.mkdir(exist_ok=True)
 first = True
 
 all_dfs = []
-for metric_idx in [1, 0]:
-    for ablation_type in ["random_ablation", "zero_ablation"]:
-        for weights_type in ["trained", "reset"]:  # Didn't scramble the weights enough it seems
-            for plot_type in ["roc_edges", "metric_edges_induction", "kl_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "metric_edges"]:
+for plot_type in ["roc_edges", "metric_edges_induction", "kl_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "metric_edges"]:
+    for weights_type in ["trained", "reset"]:  # Didn't scramble the weights enough it seems
+        for ablation_type in ["random_ablation", "zero_ablation"]:
+            for metric_idx in [1, 0]:
                 x_key, y_key = plot_type_keys[plot_type]
                 fig, df = make_fig(metric_idx=metric_idx, weights_types=["trained"] if weights_type == "trained" else ["trained", weights_type], ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type)
                 if len(df):
@@ -831,7 +829,6 @@ for metric_idx in [1, 0]:
                 if first:
                     fig.show()
                     first = False
-                    assert False
 
 pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
 
@@ -848,3 +845,5 @@ pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
 # x_key, y_key = plot_type_keys["kl_edges"]
 # fig, _ = make_fig(metric_idx=0, weights_type="reset", ablation_type="zero_ablation", plot_type="kl_edges")
 # fig.show()
+
+# %%

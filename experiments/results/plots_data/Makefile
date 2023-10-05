@@ -454,7 +454,7 @@ docstring: 16h-docstring-docstring_metric-False-0.json 16h-docstring-docstring_m
 
 greaterthan: acdc-greaterthan-greaterthan-True-0.json acdc-greaterthan-kl_div-False-0.json  acdc-greaterthan-kl_div-True-0.json
 
-tracr-reverse: 16h-tracr-reverse-l2-False-0.json 16h-tracr-reverse-l2-False-1.json 16h-tracr-reverse-l2-True-0.json 16h-tracr-reverse-l2-True-1.json acdc-tracr-reverse-l2-False-0.json acdc-tracr-reverse-l2-False-1.json acdc-tracr-reverse-l2-True-0.json acdc-tracr-reverse-l2-True-1.json canonical-tracr-reverse-l2-False-0.json canonical-tracr-reverse-l2-False-1.json canonical-tracr-reverse-l2-True-0.json canonical-tracr-reverse-l2-True-1.json sp-tracr-reverse-l2-False-0.json sp-tracr-reverse-l2-False-1.json sp-tracr-reverse-l2-True-0.json sp-tracr-reverse-l2-True-1.json
+tracr-reverse: acdc-tracr-reverse-l2-False-0.json acdc-tracr-reverse-l2-True-0.json
 
 tracr-proportion: 16h-tracr-proportion-l2-False-0.json 16h-tracr-proportion-l2-False-1.json 16h-tracr-proportion-l2-True-0.json 16h-tracr-proportion-l2-True-1.json acdc-tracr-proportion-l2-False-0.json acdc-tracr-proportion-l2-False-1.json acdc-tracr-proportion-l2-True-0.json acdc-tracr-proportion-l2-True-1.json canonical-tracr-proportion-l2-False-0.json canonical-tracr-proportion-l2-False-1.json canonical-tracr-proportion-l2-True-0.json canonical-tracr-proportion-l2-True-1.json sp-tracr-proportion-l2-False-0.json sp-tracr-proportion-l2-False-1.json sp-tracr-proportion-l2-True-0.json sp-tracr-proportion-l2-True-1.json
 
