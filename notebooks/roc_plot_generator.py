@@ -1039,7 +1039,7 @@ if OUT_FILE is not None:
 
 if IPython.get_ipython() is not None:
 
-    with open(os.path.expanduser("/root/Automatic-Circuit-Discovery/experiments/results/plots_data/acdc-greaterthan-kl_div-False-0.json")) as f:
+    with open(os.path.expanduser("/root/Automatic-Circuit-Discovery/experiments/results/plots_data/acdc-greaterthan-kl_div-True-0.json")) as f:
         out_dict = json.load(f)
 
     ablation = "zero_ablation" if ZERO_ABLATION else "random_ablation"
