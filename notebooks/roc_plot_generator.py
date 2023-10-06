@@ -167,12 +167,13 @@ parser.add_argument("--only-save-canonical", action="store_true", help="Only sav
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 parser.add_argument("--abs-value-threshold", action="store_true", help="abs-value-threshold")
 
-args = parser.parse_args("--task=greaterthan --metric=kl_div --zero-ablation --alg=acdc".split())
+args = parser.parse_args("--task=ioi --metric=logit_diff --zero-ablation --device=cuda:0 --alg=acdc".split())
 
 if IPython.get_ipython() is not None:
-    if "arthur" not in __file__ and not __file__.startswith("/root"):
-        __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
-        set_plotly_renderer("emacs")
+    # if "arthur" not in __file__ and not __file__.startswith("/root"):
+    pass
+        # __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
+        # set_plotly_renderer("emacs")
 else:
     args = parser.parse_args()
 
@@ -308,9 +309,11 @@ elif TASK == "ioi":
 
     # if METRIC == "kl_div" and not RESET_NETWORK:
     if ZERO_ABLATION:
-        ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_ioi_sweep"
+        # ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_ioi_sweep" # Pretty sure this one is outdated
         # del ACDC_PRE_RUN_FILTER["config.reset_network"]
-        ACDC_PRE_RUN_FILTER["group"] = "default"
+        assert METRIC == "logit_diff" # TODO implement the other
+        ACDC_PROJECT_NAME = "remix_school-of-rock/rerun_start"
+        ACDC_PRE_RUN_FILTER["group"] = "ioizero"
     else:
         if args.abs_value_threshold:
             ACDC_PROJECT_NAME = "remix_school-of-rock/rerun_start"
@@ -1040,7 +1043,8 @@ if OUT_FILE is not None:
 
 if IPython.get_ipython() is not None:
 
-    with open(os.path.expanduser("/root/Automatic-Circuit-Discovery/experiments/results/plots_data/acdc-ioi-logit_diff-False-0-abs.json")) as f:
+    # Open the __file__ as a JSON file but with a permissive method
+    with open(__file__, "r") as f:
         out_dict = json.load(f)
 
     ablation = "zero_ablation" if ZERO_ABLATION else "random_ablation"
