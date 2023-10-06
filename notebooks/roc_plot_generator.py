@@ -167,7 +167,7 @@ parser.add_argument("--only-save-canonical", action="store_true", help="Only sav
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 parser.add_argument("--abs-value-threshold", action="store_true", help="abs-value-threshold")
 
-args = parser.parse_args("--task=ioi --metric=logit_diff --alg=acdc --abs-value-threshold".split())
+args = parser.parse_args("--task=greaterthan --metric=kl_div --zero-ablation --alg=acdc".split())
 
 if IPython.get_ipython() is not None:
     if "arthur" not in __file__ and not __file__.startswith("/root"):
@@ -341,8 +341,8 @@ elif TASK == "greaterthan":
 
     if METRIC == "kl_div" and not RESET_NETWORK:
         if ZERO_ABLATION:
-            ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_greaterthan_zero_sweep"
-            ACDC_PRE_RUN_FILTER = {}
+            ACDC_PROJECT_NAME = "remix_school-of-rock/rerun_start"
+            ACDC_PRE_RUN_FILTER = {"group": "gtzero"}
         else:
             del ACDC_PRE_RUN_FILTER["group"]
 
@@ -368,7 +368,6 @@ elif TASK == "greaterthan":
         }
     print(ACDC_PROJECT_NAME)
     print("filter", ACDC_PRE_RUN_FILTER)
-
     # warnings.warn("remove this warning if you want to run greaterthan normally")
     # ACDC_PROJECT_NAME = "remix_school-of-rock/rerun_start"
     # ACDC_PRE_RUN_FILTER={"group": "greaterthan"}
