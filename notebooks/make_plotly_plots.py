@@ -12,7 +12,8 @@ from IPython import get_ipython
 from pathlib import Path
 from notebooks.emacs_plotly_render import set_plotly_renderer
 
-IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root") and not "aconmy" in __file__
+# IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root") and not "aconmy" in __file__
+IS_ADRIA = False
 
 ipython = get_ipython()
 if ipython is not None:
@@ -847,3 +848,4 @@ pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
 # fig.show()
 
 # %%
+
