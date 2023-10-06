@@ -827,9 +827,9 @@ for plot_type in ["roc_edges", "metric_edges_induction", "kl_edges_induction", "
                 if WRITE_JSON:
                     fig.write_json(PLOT_DIR / (fname + ".json"))
 
-                if first:
-                    fig.show()
-                    first = False
+                # if first:
+                fig.show()
+                    # first = False
 
 pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
 

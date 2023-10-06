@@ -1044,7 +1044,7 @@ if OUT_FILE is not None:
 if IPython.get_ipython() is not None:
 
     # Open the __file__ as a JSON file but with a permissive method
-    with open(__file__, "r") as f:
+    with open(OUT_FILE, "r") as f:
         out_dict = json.load(f)
 
     ablation = "zero_ablation" if ZERO_ABLATION else "random_ablation"
