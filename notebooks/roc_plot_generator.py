@@ -165,8 +165,9 @@ parser.add_argument('--seed', type=int, default=42, help="Random seed")
 parser.add_argument("--canonical-graph-save-dir", type=str, default="DEFAULT")
 parser.add_argument("--only-save-canonical", action="store_true", help="Only save the canonical graph")
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
+parser.add_argument("--abs-value-threshold", action="store_true", help="abs-value-threshold")
 
-args = parser.parse_args("--task=greaterthan --metric=kl_div --alg=acdc".split())
+args = parser.parse_args("--task=ioi --metric=logit_diff --alg=acdc --abs-value-threshold".split())
 
 if IPython.get_ipython() is not None:
     if "arthur" not in __file__ and not __file__.startswith("/root"):
@@ -207,7 +208,7 @@ if args.alg != "none":
     SKIP_SP = False if args.alg == "sp" else True
     SKIP_SIXTEEN_HEADS = False if args.alg == "16h" else True
     SKIP_CANONICAL = False if args.alg == "canonical" else True
-    OUT_FILE = OUT_DIR / f"{args.alg}-{args.task}-{args.metric}-{args.zero_ablation}-{args.reset_network}.json"
+    OUT_FILE = OUT_DIR / f"{args.alg}-{args.task}-{args.metric}-{args.zero_ablation}-{args.reset_network}{'-abs' if args.abs_value_threshold else ''}.json"
 
     if OUT_FILE.exists():
         print("File already exists, skipping")
@@ -311,21 +312,22 @@ elif TASK == "ioi":
         # del ACDC_PRE_RUN_FILTER["config.reset_network"]
         ACDC_PRE_RUN_FILTER["group"] = "default"
     else:
-        ACDC_PROJECT_NAME = "remix_school-of-rock/rerun_start"
-        # del ACDC_PRE_RUN_FILTER["group"]
-        ACDC_PRE_RUN_FILTER={"group": "ioiabstest"}
-    # else:
-    #     try:
-    #         del ACDC_PRE_RUN_FILTER["group"]
-    #     except KeyError:
-    #         pass
-    #     ACDC_PRE_RUN_FILTER = {
-    #         "$or": [
-    #             {"group": "reset-networks-neurips", **ACDC_PRE_RUN_FILTER},
-    #             {"group": "acdc-gt-ioi-redo", **ACDC_PRE_RUN_FILTER},
-    #             {"group": "acdc-spreadsheet2", **ACDC_PRE_RUN_FILTER},
-    #         ]
-    #     }
+        if args.abs_value_threshold:
+            ACDC_PROJECT_NAME = "remix_school-of-rock/rerun_start"
+            # del ACDC_PRE_RUN_FILTER["group"]
+            ACDC_PRE_RUN_FILTER={"group": "ioiabstest"}
+        else:
+            try:
+                del ACDC_PRE_RUN_FILTER["group"]
+            except KeyError:
+                pass
+            ACDC_PRE_RUN_FILTER = {
+                "$or": [
+                    {"group": "reset-networks-neurips", **ACDC_PRE_RUN_FILTER},
+                    {"group": "acdc-gt-ioi-redo", **ACDC_PRE_RUN_FILTER},
+                    {"group": "acdc-spreadsheet2", **ACDC_PRE_RUN_FILTER},
+                ]
+            }
 
     get_true_edges = partial(get_ioi_true_edges, model=things.tl_model)
 
