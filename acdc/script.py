@@ -9,7 +9,7 @@ used = []
 def run_script(threshold, gpu_id, zero_ablation=False, metric="greaterthan", absthreshold=False):
     env = os.environ.copy()
     env["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
-    cli_args = ["python", "main.py", "--task", "docstring", "--wandb-group-name", "docstringlast", "--wandb-run-name", str(threshold), "--wandb-project-name", "rerun_start", "--using-wandb", "--threshold", str(threshold), "--indices-mode", "reverse", "--first-cache-cpu", "False", "--second-cache-cpu", "False", "--metric", metric]
+    cli_args = ["python", "main.py", "--task", "docstring", "--wandb-group-name", "docstringlastnonzero", "--wandb-run-name", str(threshold), "--wandb-project-name", "rerun_start", "--using-wandb", "--threshold", str(threshold), "--indices-mode", "reverse", "--first-cache-cpu", "False", "--second-cache-cpu", "False", "--metric", metric]
     if zero_ablation: cli_args.append("--zero-ablation")
     if absthreshold: cli_args.append("--abs-value-threshold")
     subprocess.run(cli_args, env=env)
@@ -26,30 +26,37 @@ if __name__ == '__main__':
 
     for it in range(3, int(1e6)):        
         curspace = [
+            3.16228,
+            2.37137,
+            1.77828,
+            1.33352,
             1,
-            0.6309573444801936,
-            0.3981071705534973,
-            0.25118864315095824,
-            0.1584893192461114,
+            0.74989,
+            0.56234,
+            0.4217,
+            0.31623,
+            0.23714,
+            0.13335,
             0.1,
-            0.06309573444801936,
-            0.039810717055349734,
-            0.025118864315095826,
-            0.01584893192461114,
+            0.05623,
+            0.03162,
+            0.02371,
+            0.01778,
+            0.01334,
             0.01,
-            0.006309573444801929,
+            0.00630957344480193,
             0.003981071705534973,
             0.002511886431509582,
             0.001584893192461114,
             0.001,
             0.000630957344480193,
-            0.0003981071705534973,
+            0.00039810717055349735,
             0.00025118864315095795,
             0.00015848931924611142,
             0.0001,
         ]
         real_curspace = []
-        for zero_ablation in [True]:
+        for zero_ablation in [False]:
             for metric in ["kl_div"]:
                 for absthreshold in [False]:
                     for threshold in curspace:
