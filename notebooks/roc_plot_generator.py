@@ -167,7 +167,7 @@ parser.add_argument("--only-save-canonical", action="store_true", help="Only sav
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 parser.add_argument("--abs-value-threshold", action="store_true", help="abs-value-threshold")
 
-args = parser.parse_args("--task=docstring --metric=kl_div --zero-ablation --device=cuda:0 --alg=acdc".split())
+args = parser.parse_args("--task=docstring --metric=kl_div --device=cuda:0 --alg=acdc".split())
 
 if IPython.get_ipython() is not None:
     # if "arthur" not in __file__ and not __file__.startswith("/root"):
@@ -271,13 +271,11 @@ if TASK == "docstring":
     SP_PRE_RUN_FILTER["group"] = "docstring3"
 
     if METRIC == "kl_div":
+        ACDC_PROJECT_NAME = "remix_school-of-rock/rerun_start"
         if ZERO_ABLATION:
-            ACDC_PROJECT_NAME = "remix_school-of-rock/rerun_start"
             ACDC_PRE_RUN_FILTER = {"group": "docstringlast"}
-        else:
-            # TODO probably remove...
-            ACDC_PRE_RUN_FILTER["group"] = "adria-docstring3"
-
+        else:    
+            ACDC_PRE_RUN_FILTER = {"group": "docstringlastnonzero"}            
 
     if RESET_NETWORK:
         ACDC_PRE_RUN_FILTER["group"] = "reset-networks-neurips"
