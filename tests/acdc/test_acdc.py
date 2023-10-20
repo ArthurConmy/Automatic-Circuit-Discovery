@@ -142,13 +142,19 @@ def test_induction_several_steps():
         assert abs(edge.effect_size - EDGE_EFFECTS[edge_tuple]) < 1e-5, (edge_tuple, edge.effect_size, EDGE_EFFECTS[edge_tuple])
 
 @pytest.mark.slow
-def test_main_script():
+@pytest.mark.parametrize("task, metric", [
+    ("tracr-proportion", "l2"),
+    ("tracr-reverse", "l2"),
+    ("docstring", "kl_div"),
+    ("induction", "kl_div"),
+    ("ioi", "kl_div"),
+    ("greaterthan", "kl_div"),
+])
+def test_main_script(task, metric):
     import subprocess
 
     main_path = Path(__file__).resolve().parent.parent.parent / "acdc" / "main.py"
-
-    for task in ["induction", "ioi", "tracr", "docstring"]:
-        subprocess.check_call(["python", str(main_path), f"--task={task}", "--threshold=1234", "--single-step", "--device=cpu"])
+    subprocess.check_call(["python", str(main_path), f"--task={task}", "--threshold=1234", "--single-step", "--device=cpu", f"--metric={metric}"])
 
 def test_editing_edges_notebook():
     import notebooks.editing_edges
