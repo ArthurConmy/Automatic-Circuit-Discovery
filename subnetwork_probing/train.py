@@ -1,7 +1,9 @@
+import warnings
 import argparse
 from typing import List, Optional
 import random
 from copy import deepcopy
+from inspect import signature
 from functools import partial
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -489,17 +491,26 @@ if __name__ == "__main__":
         raise ValueError(f"Unknown task {args.task}")
 
     kwargs = dict(**all_task_things.tl_model.cfg.__dict__)
-    for kwarg_string in [
-        "use_split_qkv_input",
-        "n_devices",
-        "gated_mlp",
-        "use_attn_in",
-        "use_hook_mlp_in",
-    ]:
-        if kwarg_string in kwargs:
-            del kwargs[kwarg_string]
 
-    cfg = HookedTransformerConfig(**kwargs)
+    # Get the signature of the HookedTransformerConfig constructor
+    sig = signature(HookedTransformerConfig.__init__)
+
+    # Extract parameter names
+    valid_params = set(sig.parameters.keys())
+
+    # Remove 'self' if present
+    valid_params.discard('self')
+
+    # Filter kwargs
+    filtered_kwargs = {k: v for k, v in kwargs.items() if k in valid_params}
+
+    # Check for and warn about extra parameters
+    extra_params = set(kwargs.keys()) - valid_params
+    if extra_params:
+        warnings.warn(f"Extra parameters {extra_params=} found. These will be ignored (most are likely due to SP using older TransformerLens code than the rest of the codebase here).")
+
+    # Create the HookedTransformerConfig object
+    cfg = HookedTransformerConfig(**filtered_kwargs)
     model = HookedTransformer(cfg, is_masked=True)
 
     _acdc_model = all_task_things.tl_model
