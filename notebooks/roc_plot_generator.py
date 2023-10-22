@@ -812,7 +812,6 @@ def get_sixteen_heads_corrs(
 
     nodes_names_indices = run.summary["nodes_names_indices"]
 
-    nodes_to_mask = []
     cum_score = 0.0
     test_keys = [k for k in run.summary.keys() if k.startswith("test")]
     score_d_list = list(run.scan_history(keys=test_keys, page_size=100000))
@@ -826,7 +825,7 @@ def get_sixteen_heads_corrs(
         if things is None:
             corr = None
         else:
-            nodes_to_mask += list(map(parse_interpnode, nodes))
+            nodes_to_mask = list(map(parse_interpnode, nodes))
             corr, head_parents = iterative_correspondence_from_mask(model=model, nodes_to_mask=nodes_to_mask, use_pos_embed=exp.use_pos_embed, corr=corr, head_parents=head_parents)
         cum_score += score
         score_d = {"score": cum_score, **score_d}

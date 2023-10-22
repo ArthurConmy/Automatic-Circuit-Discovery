@@ -7,6 +7,7 @@ from acdc.TLACDCEdge import (
 )
 from acdc.acdc_utils import filter_nodes, get_present_nodes
 from acdc.TLACDCInterpNode import TLACDCInterpNode
+from subnetwork_probing.train import iterative_correspondence_from_mask
 import warnings
 from functools import partial
 from copy import deepcopy
@@ -220,7 +221,6 @@ def get_ioi_true_edges(model):
                     )
 
 
-    from subnetwork_probing.train import iterative_correspondence_from_mask
     corr, _ = iterative_correspondence_from_mask(
         nodes_to_mask = nodes_to_mask,
         model = model,
