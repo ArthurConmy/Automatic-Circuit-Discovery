@@ -294,12 +294,12 @@ def test_metrics(logits, score):
     return d
 
 # Log metrics without ablating anything
-# logits = do_random_resample_caching(model, things.test_data)
-# wandb.log(test_metrics(logits, math.inf))
+logits = do_random_resample_caching(model, things.test_data)
+wandb.log(test_metrics(logits, math.inf))
 
 # %%
 
-# do_random_resample_caching(model, things.test_patch_data)
+do_random_resample_caching(model, things.test_patch_data)
 if args.zero_ablation:
     do_zero_caching(model)
 
@@ -326,16 +326,7 @@ for nodes, hook_name, idx in tqdm.tqdm(nodes_names_indices):
             done = True
     assert done, f"Could not find {hook_name}[{idx}]"
 
-    path = "im.png"
-    os.makedirs(path, exist_ok=True)
-    show(
-        corr,
-        path + '.png',
-        show_full_index = False,
-    )
-    display(Image(path + '.png'))
-
-    # to_log_dict = test_metrics(model(things.test_data), score)
+    to_log_dict = test_metrics(model(things.test_data), score)
     to_log_dict = test_metrics(model(things.validation_data), score)
     to_log_dict["number_of_edges"] = corr.count_no_edges()
 
@@ -345,16 +336,3 @@ for nodes, hook_name, idx in tqdm.tqdm(nodes_names_indices):
 # %%
 
 wandb.finish()
-
-#%%
-from acdc.acdc_graphics import (
-    build_colorscheme,
-    show,
-)
-
-import datetime
-import os
-exp_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-path = os.path.join('/home/aengusl/Desktop/Projects/OOD_workshop/Automatic-Circuit-Discovery/ims', f'HISP_img_{exp_time}')
-
-# %%

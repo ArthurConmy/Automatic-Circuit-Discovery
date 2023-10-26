@@ -592,23 +592,7 @@ if __name__ == "__main__":
     )
 
     corr, _ = iterative_correspondence_from_mask(model, to_log_dict["nodes_to_mask"])
-    from acdc.acdc_graphics import (
-        build_colorscheme,
-        show,
-    )
-
-    import datetime
-    import os
-    exp_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    path = os.path.join('/home/aengusl/Desktop/Projects/OOD_workshop/Automatic-Circuit-Discovery/ims', f'SubPro_repeats_{exp_time}')
-    os.makedirs(path, exist_ok=True)
-    show(
-        corr,
-        path + '.png',
-
-    )
     mask_val_dict = get_nodes_mask_dict(model)
-    nodes_to_mask = to_log_dict["nodes_to_mask"]
     
     percentage_binary = log_percentage_binary(mask_val_dict)
 
@@ -620,6 +604,3 @@ if __name__ == "__main__":
     wandb.log(to_log_dict)
     # sanity_check_with_transformer_lens(mask_val_dict)
     wandb.finish()
-
-
-
