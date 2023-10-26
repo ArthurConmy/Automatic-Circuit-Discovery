@@ -343,18 +343,15 @@ def train_induction(
                 test_specific_metric_term += fn(induction_model(all_task_things.test_data)).item()
             test_specific_metrics[f"test_{k}"] = test_specific_metric_term
 
-            print(f"Final test metric: {test_specific_metrics}")
-            number_of_nodes, nodes_to_mask = visualize_mask(induction_model)
-            to_log_dict = dict(
-                number_of_nodes=number_of_nodes,
-                specific_metric=specific_metric_term,
-                nodes_to_mask=nodes_to_mask,
-                **test_specific_metrics,
-            )
-            print('type(test_metric_fns)', type(test_metric_fns))
-        except Exception as e:
-            print(e)
-            breakpoint()
+        print(f"Final test metric: {test_specific_metrics}")
+
+        to_log_dict = dict(
+            number_of_nodes=number_of_nodes,
+            specific_metric=specific_metric_term,
+            nodes_to_mask=nodes_to_mask,
+            **test_specific_metrics,
+        )
+
     return induction_model, to_log_dict
 
 
