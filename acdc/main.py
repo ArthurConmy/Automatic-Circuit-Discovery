@@ -27,12 +27,12 @@ try:
 
     ipython.run_line_magic( # install ACDC
         "pip",
-        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@9d5844a",
+        "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@d89f7fa9cbd095202f3940c889cb7c6bf5a9b516",
     )
 
 except Exception as e:
     IN_COLAB = False
-    print("Running as a outside of colab")
+    print("Running outside of colab")
 
     import numpy # crucial to not get cursed error
     import plotly
@@ -170,7 +170,7 @@ parser.add_argument('--single-step', action='store_true', help='Use single step,
 parser.add_argument("--abs-value-threshold", action='store_true', help='Use the absolute value of the result to check threshold')
 
 if ipython is not None:
-    # we are in a notebook
+    # We are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
         [line.strip() for line in r"""
@@ -189,7 +189,7 @@ else:
     # read from command line
     args = parser.parse_args()
 
-# process args
+# Process args
 
 if args.torch_num_threads > 0:
     torch.set_num_threads(args.torch_num_threads)
@@ -229,6 +229,7 @@ SINGLE_STEP = True if args.single_step else False
 # <h2>Setup Task</h2>
 
 #%%
+
 second_metric = None  # some tasks only have one metric
 use_pos_embed = TASK.startswith("tracr")
 
@@ -309,8 +310,8 @@ if RESET_NETWORK:
 try:
     with open(__file__, "r") as f:
         notes = f.read()
-except:
-    notes = "No notes generated, expected when running in an .ipynb file"
+except Exception as e:
+    notes = "No notes generated, expected when running in an .ipynb file. Error is " + str(e)
 
 tl_model.reset_hooks()
 
@@ -371,7 +372,7 @@ for i in range(args.max_num_epochs):
     show(
         exp.corr,
         f"ims/img_new_{i+1}.png",
-        show_full_index=use_pos_embed,
+        show_full_index=False,
     )
 
     if IN_COLAB or ipython is not None:
@@ -412,6 +413,5 @@ if USING_WANDB:
 #%%
 exp.save_subgraph(
     return_it=True,
-) 
-
+)
 # %%

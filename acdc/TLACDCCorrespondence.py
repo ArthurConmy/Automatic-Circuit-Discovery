@@ -109,7 +109,6 @@ class TLACDCCorrespondence:
         )
         correspondence.add_node(logits_node) 
         downstream_residual_nodes.append(logits_node)
-        new_downstream_residual_nodes: List[TLACDCInterpNode] = []
 
         for layer_idx in range(model.cfg.n_layers - 1, -1, -1):
             # connect MLPs
@@ -147,6 +146,8 @@ class TLACDCCorrespondence:
                 )
 
                 downstream_residual_nodes.append(cur_mlp_input)
+
+            new_downstream_residual_nodes: List[TLACDCInterpNode] = []
 
             # connect attention heads
             for head_idx in range(model.cfg.n_heads - 1, -1, -1):

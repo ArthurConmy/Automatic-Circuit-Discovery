@@ -165,14 +165,9 @@ parser.add_argument("--only-save-canonical", action="store_true", help="Only sav
 parser.add_argument("--ignore-missing-score", action="store_true", help="Ignore runs that are missing score")
 
 if IPython.get_ipython() is not None:
-    args = parser.parse_args("--task=tracr-reverse --metric=l2 --alg=16h".split())
-    
-    # Check whether this is Adria using machine
-    IS_ADRIA = not str(os.environ.get("CONDA_DEFAULT_ENV")).lower().startswith("arthur")
-    
-    if IS_ADRIA and os.path.exists("/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"):
-        __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py" # iirc, __file__ undefined in some Hofvarpnir docker containers
- 
+    args = parser.parse_args("--task=ioi --metric=kl_div --alg=sp".split())
+    if "arthur" not in __file__:
+        __file__ = "/Users/adria/Documents/2023/ACDC/Automatic-Circuit-Discovery/notebooks/roc_plot_generator.py"
 else:
     args = parser.parse_args()
 
@@ -552,6 +547,53 @@ if not SKIP_CANONICAL:
     canonical_corrs = get_canonical_corrs(exp)
 
 #%%
+
+# Do SP stuff
+def get_sp_corrs(
+    model= None if things is None else things.tl_model,
+    project_name: str = SP_PROJECT_NAME,
+    pre_run_filter: dict = SP_PRE_RUN_FILTER,
+    run_filter: Optional[Callable[[Any], bool]] = SP_RUN_FILTER,
+    clip: Optional[int] = None,
+):
+    if clip is None:
+        clip = 100_000 # so we don't clip anything
+
+    api = wandb.Api()
+    runs = api.runs(project_name, filters=pre_run_filter)
+    if run_filter is None:
+        filtered_runs = runs[:clip]
+    else:
+        filtered_runs = list(filter(run_filter, tqdm(runs[:clip])))
+    print(f"loading {len(filtered_runs)} runs")
+
+    if things is None:
+        return [
+            (None, {"score": run.config["lambda_reg"], **{k: v for k, v in run.summary.items() if k.startswith("test")}})
+            for run in runs
+        ]
+
+    corrs = []
+    corr, head_parents = None, None
+    for run in filtered_runs:
+        try:
+            nodes_to_mask_strings = run.summary["nodes_to_mask"]
+        except KeyError:
+            continue
+        nodes_to_mask = [parse_interpnode(s) for s in nodes_to_mask_strings]
+        corr, head_parents = iterative_correspondence_from_mask(
+            model = model,
+            nodes_to_mask=nodes_to_mask,
+            use_pos_embed = USE_POS_EMBED,
+            corr=None,
+            head_parents=None
+        )
+        score_d = {k: v for k, v in run.summary.items() if k.startswith("test")}
+        score_d["steps"] = run.summary["_step"]
+        score_d["score"] = run.config["lambda_reg"]
+        corrs.append((deepcopy(corr), score_d))
+
+    return corrs
 
 if not SKIP_SP: # this is slow, so run once
     sp_corrs = get_sp_corrs(

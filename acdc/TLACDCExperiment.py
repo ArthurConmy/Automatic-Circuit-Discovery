@@ -37,7 +37,9 @@ T = TypeVar("T")
 class TLACDCExperiment:
     """Manages an ACDC experiment, including the computational graph, the model, the data etc.
 
-    The *key method* is the .step() method which processes one node (and all the connections into that node)
+    Note: we always minimize a metric! Pass the negative version of your metric if you wish to maximize a metric.
+
+    The *important method* is the .step() method which processes one node (and all the connections into that node)
     It's also helpful to understand what's going on in the def sender_hook(...) and def receiver_hook(...) methods - these are attached to the model to do path patching
     (see https://github.com/redwoodresearch/Easy-Transformer for a gentler introduction to path patching)
 
@@ -59,9 +61,6 @@ class TLACDCExperiment:
         hook_verbose: bool = False,
         parallel_hypotheses: int = 1, # lol
         remove_redundant: bool = False, 
-        monotone_metric: Literal[
-            "off", "maximize", "minimize"
-        ] = "minimize",  # if this is set to "maximize" or "minimize", then the metric will be maximized or minimized, respectively instead of us trying to keep the metric roughly the same. We do KL divergence by default
         online_cache_cpu: bool = True,
         corrupted_cache_cpu: bool = True,
         zero_ablation: bool = False, # use zero rather than
@@ -83,11 +82,15 @@ class TLACDCExperiment:
         names_mode: Literal["normal", "reverse", "shuffle"] = "normal",
         wandb_config: Optional[Namespace] = None,
         early_exit: bool = False,
+        positions: Optional[List[int]] = None, # if None, do not split by position. TODO change the syntax here...
     ):
         """Initialize the ACDC experiment"""
 
         if zero_ablation and remove_redundant:
-            raise ValueError("It's not possible to do zero ablation with remove redundant, talk to Arthur about this bizarre special case if curious!")
+            raise ValueError("It's not possible to do zero ablation and remove redundant paths.\
+            remove_redundant removes `dead` paths that don't go all the way back to the input.\
+            When we do corrupted ablation, removing the dead paths has no effect on forward passes.\
+            However, a dead edge in the zero ablation cases outputs a non-zero output! (That is usually computed from zero inputs)")
 
         model.reset_hooks()
 
@@ -96,6 +99,10 @@ class TLACDCExperiment:
         self.names_mode = names_mode
         self.use_pos_embed = use_pos_embed
         self.show_full_index = show_full_index
+        
+        self.positions = positions if positions is not None else [None]
+        if self.positions != [None]:
+            raise NotImplementedError("Splitting by position not implemented yet")
 
         self.model = model
         self.verify_model_setup()
@@ -158,7 +165,7 @@ class TLACDCExperiment:
 
         self.metric = lambda x: metric(x).item()
         self.second_metric = second_metric
-        self.update_cur_metric()
+        self.update_cur_metric(recalc_metric=True, recalc_edges=True)
 
         self.threshold = threshold
         assert self.ref_ds is not None or self.zero_ablation, "If you're doing random ablation, you need a ref ds"
@@ -218,7 +225,7 @@ class TLACDCExperiment:
         new_graph = OrderedDict()
         cache=OrderedDict()
         self.model.cache_all(cache)
-        self.model(torch.arange(min(10, self.model.cfg.d_vocab)).unsqueeze(0)) # some random forward pass so that we can see all the hook names
+        self.model(torch.arange(min(10, self.model.cfg.d_vocab)).unsqueeze(0)) # Some random forward pass so that we can see all the hook names
         self.model.reset_hooks()
 
         if self.verbose:
@@ -243,7 +250,7 @@ class TLACDCExperiment:
         if device == "cpu":
             tens = z.cpu()
         else:
-            tens = z.clone()
+            tens = z
             if device is not None:
                 tens = tens.to(device)
 
@@ -274,7 +281,7 @@ class TLACDCExperiment:
         if EdgeType.DIRECT_COMPUTATION in incoming_edge_types:
 
             old_z = hook_point_input.clone()
-            hook_point_input[:] = self.global_cache.corrupted_cache[hook.name].to(hook_point_input.device)
+            hook_point_input[:] = self.global_cache.corrupted_cache[hook.name].to(hook_point_input.device) # It is crucial to use [:] to not use same tensor
 
             if verbose:
                 print("Overwrote to sec cache")
@@ -308,7 +315,7 @@ class TLACDCExperiment:
 
         # corrupted_cache (and thus z) contains the residual stream for the corrupted data
         # That is, the sum of all heads and MLPs and biases from previous layers
-        hook_point_input[:] = self.global_cache.corrupted_cache[hook.name].to(hook_point_input.device)
+        hook_point_input[:] = self.global_cache.corrupted_cache[hook.name].to(hook_point_input.device) # It is crucial to use [:] to not use same tensor
 
         # We will now edit the input activations to this component 
         # This is one of the key reasons ACDC is slow, so the implementation is for performance
@@ -415,9 +422,11 @@ class TLACDCExperiment:
             # we need zero out all the outputs into the residual stream
 
             # all hooknames that output into the residual stream
-            hook_name_substrings = ["hook_result", "mlp_out", "hook_embed"]
+            hook_name_substrings = ["hook_result", "mlp_out"]
             if self.use_pos_embed:
-                hook_name_substrings.append("hook_pos_embed")
+                hook_name_substrings.extend(["hook_pos_embed", "hook_embed"])
+            else:
+                hook_name_substrings.append("blocks.0.hook_resid_pre")
 
             # add hooks to zero out all these hook points
             hook_name_bool_function = lambda hook_name: any([hook_name_substring in hook_name for hook_name_substring in hook_name_substrings])
@@ -429,7 +438,7 @@ class TLACDCExperiment:
 
         if self.use_pos_embed and not self.zero_ablation:    
             def scramble_positions(z, hook):
-                return shuffle_tensor(z, seed=49)
+                z[:] = shuffle_tensor(z[0], seed=49)
             self.model.add_hook(
                 "hook_pos_embed",
                 scramble_positions,
@@ -523,7 +532,7 @@ class TLACDCExperiment:
         start_step_time = time.time()
         self.step_idx += 1
 
-        self.update_cur_metric()
+        self.update_cur_metric(recalc_metric=True, recalc_edges=True)
         initial_metric = self.cur_metric
 
         cur_metric = initial_metric
@@ -621,7 +630,7 @@ class TLACDCExperiment:
                         print("...so keeping connection")
                     edge.present = True
 
-                self.update_cur_metric(recalc_edges=False, recalc_metric=False) # so we log current state to wandb
+                self.update_cur_metric(recalc_edges=False, recalc_metric=False) # So we log current state to wandb
 
                 if self.using_wandb:
                     log_metrics_to_wandb(
@@ -633,7 +642,7 @@ class TLACDCExperiment:
                         times = time.time(),
                     )
 
-            self.update_cur_metric()
+            self.update_cur_metric(recalc_metric=True, recalc_edges=True)
             if testing:
                 break
 
@@ -652,9 +661,12 @@ class TLACDCExperiment:
                 show_full_index=self.show_full_index,
             )
             if self.using_wandb:
-                wandb.log(
-                    {"acdc_graph": wandb.Image(fname),}
-                )
+                try:
+                    wandb.log(
+                        {"acdc_graph": wandb.Image(fname),}
+                    )
+                except Exception as e:
+                    pass # Usually a race condition when running many jobs. It's fine to not log an image.
 
         # increment the current node
         self.increment_current_node()
@@ -705,7 +717,7 @@ class TLACDCExperiment:
                     bfs.append(child_node)
 
     def current_node_connected(self):
-        for child_name, rest1 in self.corr.edges.items(): # rest1 just meaning "rest of dictionary.. I'm tired"
+        for child_name, rest1 in self.corr.edges.items(): # TODO: use parent and children abstractions
             for child_index, rest2 in rest1.items():
                 if self.current_node.name in rest2 and self.current_node.index in rest2[self.current_node.name]:
                     if rest2[self.current_node.name][self.current_node.index].present:
@@ -713,7 +725,7 @@ class TLACDCExperiment:
 
         # if this is NOT connected, then remove all incoming edges, too
 
-        self.update_cur_metric()
+        self.update_cur_metric(recalc_metric=True, recalc_edges=True)
         old_metric = self.cur_metric
 
         parent_names = list(self.corr.edges[self.current_node.name][self.current_node.index].keys())
@@ -850,7 +862,7 @@ class TLACDCExperiment:
         
     def remove_all_non_attention_connections(self):
         # remove all connection except the MLP connections
-        includes_attention = [ # substrings of hook names that imply they're relatred to attention
+        includes_attention = [ # substrings of hook names that imply they're related to attention
             "attn",
             "hook_q",
             "hook_k",

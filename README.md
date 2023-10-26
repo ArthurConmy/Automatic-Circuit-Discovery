@@ -8,7 +8,7 @@ This is the accompanying code to the paper ["Towards Automated Circuit Discovery
 
 * :zap: To run ACDC, see `acdc/main.py`, or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Main_Demo.ipynb">this Colab notebook</a>
 * :wrench: To see how edit edges in computational graphs in models, see `notebooks/editing_edges.py` or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Editing_Edges_Demo.ipynb">this Colab notebook</a>
-* :sparkle: To understand the low-level implementation of completely editable computational graphs, see <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Editing_Edges_Demo.ipynb">this Colab notebook</a> or `notebooks/implementation_demo.py`
+* :sparkle: To understand the low-level implementation of completely editable computational graphs, see <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Implementation_Demo.ipynb">this Colab notebook</a> or `notebooks/implementation_demo.py`
 
 This library builds upon the abstractions (`HookPoint`s and standardised `HookedTransformer`s) from [TransformerLens](https://github.com/neelnanda-io/TransformerLens) :mag_right:
 
@@ -21,11 +21,10 @@ Then, you need Python 3.8+ and [Poetry](https://python-poetry.org/docs/) to inst
 ```bash
 git clone git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git
 cd Automatic-Circuit-Discovery
-poetry env use 3.10 # Python 3.10 is recommended but use any Python version >= 3.8
+poetry env use 3.10      # Or be inside a conda or venv environment
+                         # Python 3.10 is recommended but use any Python version >= 3.8
 poetry install
 ```
-
-On vast.ai machines (and perhaps other machines using Docker containers) you can get setup fast by running `poetry config virtualenvs.create false` instead of the `poetry env use 3.10` line.
 
 ### System Dependencies
 
@@ -72,12 +71,12 @@ pytest -s -m slow
 
 We welcome issues where the code is unclear!
 
-If you make a PR, make sure you run 
+If your PR affects the main demo, rerun 
 ```bash
 chmod +x experiments/make_notebooks.sh
 ./experiments/make_notebooks.sh
 ```
-And check that no errors arise. It is essential that the notebooks converted here consist only of `#%% [markdown]` markdown-only cells, and `#%%` cells with code.
+to automatically turn the `main.py` into a working demo and check that no errors arise. It is essential that the notebooks converted here consist only of `#%% [markdown]` markdown-only cells, and `#%%` cells with code.
 
 ## Citing ACDC
 

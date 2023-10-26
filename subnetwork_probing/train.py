@@ -1,4 +1,5 @@
 import argparse
+from typing import List, Optional
 import random
 from copy import deepcopy
 from functools import partial
@@ -32,55 +33,20 @@ from tqdm import tqdm
 from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformer import HookedTransformer
 from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformerConfig import HookedTransformerConfig
 from subnetwork_probing.transformer_lens.transformer_lens.ioi_dataset import IOIDataset
-
 import wandb
 
 
-def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACDCInterpNode], use_pos_embed: bool = False) -> TLACDCCorrespondence:
-    corr = TLACDCCorrespondence.setup_from_model(model, use_pos_embed=use_pos_embed)
+def iterative_correspondence_from_mask(
+    model: HookedTransformer,
+    nodes_to_mask: List[TLACDCInterpNode], # Can be empty
+    use_pos_embed: bool = False,
+    corr: Optional[TLACDCCorrespondence] = None,
+    head_parents: Optional[List] = None,
+) -> Tuple[TLACDCCorrespondence, List]:
+    """Given corr has some nodes masked, also mask the nodes_to_mask"""
 
-    additional_nodes_to_mask = []
+    assert (corr is None) == (head_parents is None), "Ensure we're either masking from scratch or we provide details on `head_parents`"
 
-    # If all of {qkv} is masked, also add its head child
-    # to the list of nodes to mask
-    head_parents = collections.defaultdict(lambda: 0)
-    for node in nodes_to_mask:
-        additional_nodes_to_mask.append(TLACDCInterpNode(node.name.replace(".attn.", ".") + "_input", node.index, EdgeType.ADDITION))
-
-        if node.name.endswith("_q") or node.name.endswith("_k") or node.name.endswith("_v"):
-            child_name = node.name.replace("_q", "_result").replace("_k", "_result").replace("_v", "_result")
-            head_parents[(child_name, node.index)] += 1
-
-            if head_parents[(child_name, node.index)] == 3:
-                additional_nodes_to_mask.append(TLACDCInterpNode(child_name, node.index, EdgeType.PLACEHOLDER))
-                print(child_name, node.index)
-
-            # Forgot to add these in earlier versions of Subnetwork Probing, and so the edge counts were inflated
-            additional_nodes_to_mask.append(TLACDCInterpNode(child_name + "_input", node.index, EdgeType.ADDITION))
-        
-        if node.name.endswith(("mlp_in", "resid_mid")): # TODO test
-            additional_nodes_to_mask.append(TLACDCInterpNode(node.name.replace("resid_mid", "mlp_out").replace("mlp_in", "mlp_out"), node.index, EdgeType.DIRECT_COMPUTATION))
-
-    assert all([v <= 3 for v in head_parents.values()])
-
-    for node in nodes_to_mask + additional_nodes_to_mask:
-        # Mark edges where this is child as not present
-        rest2 = corr.edges[node.name][node.index]
-        for rest3 in rest2.values():
-            for edge in rest3.values():
-                edge.present = False
-
-        # Mark edges where this is parent as not present
-        for rest1 in corr.edges.values():
-            for rest2 in rest1.values():
-                if node.name in rest2 and node.index in rest2[node.name]:
-                    rest2[node.name][node.index].present = False
-
-    return corr
-
-def iterative_correspondence_from_mask(model: HookedTransformer, nodes_to_mask: List[TLACDCInterpNode],
-                                       use_pos_embed: bool = False, corr: Optional[TLACDCCorrespondence] = None,
-                                       head_parents: Optional[List] = None) -> Tuple[TLACDCCorrespondence, List]:
     if corr is None:
         corr = TLACDCCorrespondence.setup_from_model(model, use_pos_embed=use_pos_embed)
     if head_parents is None:
@@ -89,17 +55,30 @@ def iterative_correspondence_from_mask(model: HookedTransformer, nodes_to_mask: 
     additional_nodes_to_mask = []
 
     for node in nodes_to_mask:
-        additional_nodes_to_mask.append(TLACDCInterpNode(node.name.replace(".attn.", ".") + "_input", node.index, EdgeType.ADDITION))
+        additional_nodes_to_mask.append(
+            TLACDCInterpNode(node.name.replace(".attn.", ".") + "_input", node.index, EdgeType.ADDITION)
+        )
 
         if node.name.endswith("_q") or node.name.endswith("_k") or node.name.endswith("_v"):
             child_name = node.name.replace("_q", "_result").replace("_k", "_result").replace("_v", "_result")
             head_parents[(child_name, node.index)] += 1
 
+            if head_parents[(child_name, node.index)] == 3:
+                additional_nodes_to_mask.append(TLACDCInterpNode(child_name, node.index, EdgeType.PLACEHOLDER))
+
             # Forgot to add these in earlier versions of Subnetwork Probing, and so the edge counts were inflated
             additional_nodes_to_mask.append(TLACDCInterpNode(child_name + "_input", node.index, EdgeType.ADDITION))
 
-            if head_parents[child_name, node.index] == 3:
-                additional_nodes_to_mask.append(TLACDCInterpNode(child_name, node.index, EdgeType.ADDITION))
+        if node.name.endswith(("mlp_in", "resid_mid")):
+            additional_nodes_to_mask.append(
+                TLACDCInterpNode(
+                    node.name.replace("resid_mid", "mlp_out").replace("mlp_in", "mlp_out"),
+                    node.index,
+                    EdgeType.DIRECT_COMPUTATION,
+                )
+            )
+
+    assert all([v <= 3 for v in head_parents.values()]), "We should have at most three parents (Q, K and V, connected via placeholders)"
 
         if node.name.endswith(("mlp_in", "resid_mid")):
             additional_nodes_to_mask.append(TLACDCInterpNode(node.name.replace("resid_mid", "mlp_out").replace("mlp_in", "mlp_out"), node.index, EdgeType.DIRECT_COMPUTATION))
@@ -114,10 +93,9 @@ def iterative_correspondence_from_mask(model: HookedTransformer, nodes_to_mask: 
         # Mark edges where this is parent as not present
         for rest1 in corr.edges.values():
             for rest2 in rest1.values():
-                try:
+                if node.name in rest2 and node.index in rest2[node.name]:
                     rest2[node.name][node.index].present = False
-                except KeyError:
-                    pass
+
     return corr, head_parents
 
 def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACDCInterpNode], use_pos_embed: bool = False) -> TLACDCCorrespondence:
@@ -184,32 +162,27 @@ def visualize_mask(model: HookedTransformer) -> tuple[int, list[TLACDCInterpNode
             for q_k_v in ["q", "k", "v"]:
                 total_nodes += 1
                 if q_k_v == "q":
-                    mask_sample = (
-                        layer.attn.hook_q.sample_mask()[head_index].cpu().item()
-                    )
+                    mask_sample = layer.attn.hook_q.sample_mask()[head_index].cpu().item()
                 elif q_k_v == "k":
-                    mask_sample = (
-                        layer.attn.hook_k.sample_mask()[head_index].cpu().item()
-                    )
+                    mask_sample = layer.attn.hook_k.sample_mask()[head_index].cpu().item()
                 elif q_k_v == "v":
-                    mask_sample = (
-                        layer.attn.hook_v.sample_mask()[head_index].cpu().item()
-                    )
+                    mask_sample = layer.attn.hook_v.sample_mask()[head_index].cpu().item()
                 else:
                     raise ValueError(f"{q_k_v=} must be q, k, or v")
 
                 node_name = f"blocks.{layer_index}.attn.hook_{q_k_v}"
                 node_name_with_index = f"{node_name}[{head_index}]"
                 node_name_list.append(node_name_with_index)
-                node = TLACDCInterpNode(node_name, TorchIndex((None, None, head_index)),
-                                        incoming_edge_type=EdgeType.ADDITION)
+                node = TLACDCInterpNode(
+                    node_name, TorchIndex((None, None, head_index)), incoming_edge_type=EdgeType.ADDITION
+                )
 
                 mask_scores_for_names.append(mask_sample)
                 if mask_sample < 0.5:
                     nodes_to_mask.append(node)
 
         # MLPs
-        # This is actually fairly wrong for getting the exact nodes and edges we keep in the circuit but in the `filter_nodes` function 
+        # This is actually fairly wrong for getting the exact nodes and edges we keep in the circuit but in the `filter_nodes` function
         # used in post-processing (in roc_plot_generator.py we process hook_resid_mid/mlp_in and mlp_out hooks together properly) we iron
         # these errors so that plots are correct
         for node_name, edge_type in [
@@ -243,17 +216,11 @@ def regularizer(
     def regularization_term(mask: torch.nn.Parameter) -> torch.Tensor:
         return torch.sigmoid(mask - beta * np.log(-gamma / zeta)).mean()
 
-    mask_scores = [
-        regularization_term(p)
-        for (n, p) in model.named_parameters()
-        if "mask_scores" in n
-    ]
+    mask_scores = [regularization_term(p) for (n, p) in model.named_parameters() if "mask_scores" in n]
     return torch.mean(torch.stack(mask_scores))
 
 
-def do_random_resample_caching(
-    model: HookedTransformer, train_data: torch.Tensor
-) -> torch.Tensor:
+def do_random_resample_caching(model: HookedTransformer, train_data: torch.Tensor) -> torch.Tensor:
     for layer in model.blocks:
         layer.attn.hook_q.is_caching = True
         layer.attn.hook_k.is_caching = True
@@ -271,6 +238,7 @@ def do_random_resample_caching(
 
     return outs
 
+
 def do_zero_caching(model: HookedTransformer) -> None:
     for layer in model.blocks:
         layer.attn.hook_q.cache = None
@@ -280,7 +248,9 @@ def do_zero_caching(model: HookedTransformer) -> None:
 
 
 def train_induction(
-    args, induction_model: HookedTransformer, all_task_things: AllDataThings,
+    args,
+    induction_model: HookedTransformer,
+    all_task_things: AllDataThings,
 ):
     epochs = args.epochs
     lambda_reg = args.lambda_reg
@@ -314,17 +284,9 @@ def train_induction(
         print("Reset test metric: ", {k: v(reset_logits).item() for k, v in all_task_things.test_metrics.items()})
 
     # one parameter per thing that is masked
-    mask_params = [
-        p
-        for n, p in induction_model.named_parameters()
-        if "mask_scores" in n and p.requires_grad
-    ]
+    mask_params = [p for n, p in induction_model.named_parameters() if "mask_scores" in n and p.requires_grad]
     # parameters for the probe (we don't use a probe)
-    model_params = [
-        p
-        for n, p in induction_model.named_parameters()
-        if "mask_scores" not in n and p.requires_grad
-    ]
+    model_params = [p for n, p in induction_model.named_parameters() if "mask_scores" not in n and p.requires_grad]
     assert len(model_params) == 0, ("MODEL should be empty", model_params)
     trainer = torch.optim.Adam(mask_params, lr=args.lr)
 
@@ -352,7 +314,6 @@ def train_induction(
         }
     )
 
-
     with torch.no_grad():
         # The loss has a lot of variance so let's just average over a few runs with the same seed
         rng_state = torch.random.get_rng_state()
@@ -370,20 +331,17 @@ def train_induction(
         print(f"Final train/validation metric: {specific_metric_term:.4f}")
 
         test_specific_metrics = {}
-        try:
-            for k, fn in test_metric_fns.items():
-                torch.random.set_rng_state(rng_state)
-                test_specific_metric_term = 0.0
-                # Test loss
-                for _ in range(args.n_loss_average_runs):
-                    if args.zero_ablation:
-                        do_zero_caching(induction_model)
-                    else:
-                        do_random_resample_caching(induction_model, all_task_things.test_patch_data)
-                    test_specific_metric_term += fn(
-                        induction_model(all_task_things.test_data)
-                    ).item()
-                test_specific_metrics[f"test_{k}"] = test_specific_metric_term
+        for k, fn in test_metric_fns.items():
+            torch.random.set_rng_state(rng_state)
+            test_specific_metric_term = 0.0
+            # Test loss
+            for _ in range(args.n_loss_average_runs):
+                if args.zero_ablation:
+                    do_zero_caching(induction_model)
+                else:
+                    do_random_resample_caching(induction_model, all_task_things.test_patch_data)
+                test_specific_metric_term += fn(induction_model(all_task_things.test_data)).item()
+            test_specific_metrics[f"test_{k}"] = test_specific_metric_term
 
             print(f"Final test metric: {test_specific_metrics}")
             number_of_nodes, nodes_to_mask = visualize_mask(induction_model)
@@ -425,9 +383,7 @@ def make_forward_hooks(mask_dict):
             for qkv in ["q", "k", "v"]:
                 mask_value = mask_dict[f"{layer}.{head}.{qkv}"]
 
-                def head_ablation_hook(
-                    value, hook, head_idx, layer_idx, qkv_val, mask_value
-                ):
+                def head_ablation_hook(value, hook, head_idx, layer_idx, qkv_val, mask_value):
                     value[:, :, head_idx, :] *= mask_value
                     return value
 
@@ -464,17 +420,11 @@ def get_nodes_mask_dict(model: HookedTransformer):
             for q_k_v in ["q", "k", "v"]:
                 # total_nodes += 1
                 if q_k_v == "q":
-                    mask_value = (
-                        layer.attn.hook_q.sample_mask()[head_index].cpu().item()
-                    )
+                    mask_value = layer.attn.hook_q.sample_mask()[head_index].cpu().item()
                 if q_k_v == "k":
-                    mask_value = (
-                        layer.attn.hook_k.sample_mask()[head_index].cpu().item()
-                    )
+                    mask_value = layer.attn.hook_k.sample_mask()[head_index].cpu().item()
                 if q_k_v == "v":
-                    mask_value = (
-                        layer.attn.hook_v.sample_mask()[head_index].cpu().item()
-                    )
+                    mask_value = layer.attn.hook_v.sample_mask()[head_index].cpu().item()
                 mask_value_dict[f"{layer_index}.{head_index}.{q_k_v}"] = mask_value
     return mask_value_dict
 
@@ -494,12 +444,13 @@ parser.add_argument("--verbose", type=int, default=1)
 parser.add_argument("--lambda_reg", type=float, default=50)
 parser.add_argument("--zero-ablation", type=int, default=True)
 parser.add_argument("--reset-subject", type=int, default=0)
-parser.add_argument("--seed", type=int, default=random.randint(0, 2 ** 31 - 1), help="Random seed (default: random)")
+parser.add_argument("--seed", type=int, default=random.randint(0, 2**31 - 1), help="Random seed (default: random)")
 parser.add_argument("--num-examples", type=int, default=50)
 parser.add_argument("--seq-len", type=int, default=300)
 parser.add_argument("--n-loss-average-runs", type=int, default=20)
-parser.add_argument("--task", type=str, default='or_gate')
-parser.add_argument('--torch-num-threads', type=int, default=0, help="How many threads to use for torch (0=all)")
+parser.add_argument("--task", type=str, required=True)
+parser.add_argument("--torch-num-threads", type=int, default=0, help="How many threads to use for torch (0=all)")
+
 
 def get_transformer_config():
     cfg = HookedTransformerConfig(
@@ -543,6 +494,7 @@ def get_transformer_config():
     )
     return cfg
 
+
 if __name__ == "__main__":
     args = parser.parse_args()
 
@@ -569,7 +521,10 @@ if __name__ == "__main__":
         )
     elif args.task == "tracr-proportion":
         all_task_things = get_all_tracr_things(
-            task="proportion", metric_name=args.loss_type, num_examples=args.num_examples, device=torch.device(args.device)
+            task="proportion",
+            metric_name=args.loss_type,
+            num_examples=args.num_examples,
+            device=torch.device(args.device),
         )
     elif args.task == "docstring":
         all_task_things = get_all_docstring_things(
@@ -605,6 +560,9 @@ if __name__ == "__main__":
         "gated_mlp",
         "use_attn_in",
         "use_hook_mlp_in",
+        "default_prepend_bos",
+        "dtype",
+        "add_special_tokens",
     ]:
         if kwarg_string in kwargs:
             del kwargs[kwarg_string]
