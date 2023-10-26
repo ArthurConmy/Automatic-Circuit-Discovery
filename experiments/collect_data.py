@@ -6,7 +6,7 @@ from experiments.launcher import KubernetesJob, WandbIdentifier, launch
 import shlex
 import random
 
-IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root")
+IS_ADRIA = not str(os.environ.get("CONDA_DEFAULT_ENV")).lower().startswith("arthur")
 if IS_ADRIA:
     print("WARNING: IS_ADRIA=True, using Adria's Docker container")
 

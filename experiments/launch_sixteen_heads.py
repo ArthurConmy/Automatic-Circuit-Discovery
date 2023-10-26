@@ -3,6 +3,7 @@
 """Currently a notebook so that I can develop the 16 Heads tests fast"""
 
 import math
+from IPython.display import display, Image
 from IPython import get_ipython
 
 if get_ipython() is not None:
@@ -37,6 +38,7 @@ from acdc.TLACDCEdge import (
 from acdc.acdc_utils import reset_network
 from acdc.docstring.utils import get_all_docstring_things
 from acdc.greaterthan.utils import get_all_greaterthan_things
+from acdc.logic_gates.utils import get_all_logic_gate_things
 from acdc.induction.utils import (
     get_all_induction_things,
     get_good_induction_candidates,
@@ -60,7 +62,7 @@ set_plotly_renderer("emacs")
 #%%
 
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
-parser.add_argument('--task', type=str, required=True, choices=['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan'], help='Choose a task from the available options: ioi, docstring, induction, tracr-reverse, tracr-proportion, greaterthan')
+parser.add_argument('--task', type=str, choices=['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan', 'or_gate'], help='Choose a task from the available options: ioi, docstring, induction, tracr-reverse, tracr-proportion, greaterthan', default='or_gate')
 parser.add_argument('--zero-ablation', action='store_true', help='Use zero ablation')
 parser.add_argument('--wandb-entity', type=str, required=False, default="remix_school-of-rock", help='Value for WANDB_ENTITY_NAME')
 parser.add_argument('--wandb-group', type=str, required=False, default="default", help='Value for WANDB_GROUP_NAME')
@@ -68,7 +70,7 @@ parser.add_argument('--wandb-project', type=str, required=False, default="acdc",
 parser.add_argument('--wandb-run-name', type=str, required=False, default=None, help='Value for WANDB_RUN_NAME')
 parser.add_argument("--wandb-dir", type=str, default="/tmp/wandb")
 parser.add_argument("--wandb-mode", type=str, default="online")
-parser.add_argument('--device', type=str, default="cuda")
+parser.add_argument('--device', type=str, default="cpu")
 parser.add_argument('--reset-network', type=int, default=0, help="Whether to reset the network we're operating on before running interp on it")
 parser.add_argument('--metric', type=str, default="kl_div", help="Which metric to use for the experiment")
 parser.add_argument('--seed', type=int, default=1234)
@@ -76,7 +78,7 @@ parser.add_argument('--torch-num-threads', type=int, default=0, help="How many t
 
 # for now, force the args to be the same as the ones in the notebook, later make this a CLI tool
 if get_ipython() is not None: # heheh get around this failing in notebooks
-    args = parser.parse_args([line.strip() for line in r"""--task=tracr-proportion \
+    args = parser.parse_args([line.strip() for line in r"""--task=or_gate \
 --wandb-mode=offline \
 --wandb-dir=/tmp/wandb \
 --wandb-entity=remix_school-of-rock \
@@ -107,6 +109,7 @@ wandb.init(
 )
 
 #%%
+
 if args.task == "ioi":
     num_examples = 100
     things = get_all_ioi_things(num_examples=num_examples, device=args.device, metric_name=args.metric)
@@ -129,6 +132,16 @@ elif args.task == "docstring":
 elif args.task == "greaterthan":
     num_examples = 100
     things = get_all_greaterthan_things(num_examples=num_examples, metric_name=args.metric, device=args.device)
+elif args.task == "or_gate":
+    num_examples = 1
+    seq_len = 1
+
+    things = get_all_logic_gate_things(
+        mode="OR",
+        num_examples=num_examples,
+        seq_len=seq_len,
+        device=args.device,
+    )
 else:
     raise ValueError(f"Unknown task {args.task}")
 
@@ -216,8 +229,10 @@ if model.cfg.d_mlp == -1:
     for k in list(prune_scores.keys()):
         if "mlp" in k:
             del prune_scores[k]
-
-per_example_metric = things.validation_metric(model(things.validation_data), return_one_element=False)
+if args.task != 'or_gate':
+    per_example_metric = things.validation_metric(model(things.validation_data), return_one_element=False)
+else:
+    per_example_metric = things.validation_metric(model(things.validation_data))
 assert per_example_metric.ndim == 1
 
 for i in tqdm.trange(len(per_example_metric)):
@@ -267,6 +282,7 @@ for layer_i in range(model.cfg.n_layers):
 nodes_names_indices.sort(key=lambda x: prune_scores[x[1]][x[2]].item(), reverse=False)
 
 # %%
+
 serializable_nodes_names_indices = [(list(map(str, nodes)), name, repr(idx), prune_scores[name][idx].item()) for nodes, name, idx in nodes_names_indices]
 wandb.log({"nodes_names_indices": serializable_nodes_names_indices})
 
@@ -288,15 +304,18 @@ if args.zero_ablation:
     do_zero_caching(model)
 
 nodes_to_mask = []
+count = 0
 corr, head_parents = None, None
 for nodes, hook_name, idx in tqdm.tqdm(nodes_names_indices):
+    count += 1
     nodes_to_mask += nodes
     corr, head_parents = iterative_correspondence_from_mask(model, nodes_to_mask, use_pos_embed=False, newv=False, corr=corr, head_parents=head_parents)
     for e in corr.all_edges().values():
         e.effect_size = 1.0
-
     score = prune_scores[hook_name][idx].item()
 
+    # if count > 3:
+    #     break
     # Delete this module
     done = False
     for n, c in model.named_modules():
@@ -308,6 +327,7 @@ for nodes, hook_name, idx in tqdm.tqdm(nodes_names_indices):
     assert done, f"Could not find {hook_name}[{idx}]"
 
     to_log_dict = test_metrics(model(things.test_data), score)
+    to_log_dict = test_metrics(model(things.validation_data), score)
     to_log_dict["number_of_edges"] = corr.count_no_edges()
 
     print(to_log_dict)
@@ -316,6 +336,3 @@ for nodes, hook_name, idx in tqdm.tqdm(nodes_names_indices):
 # %%
 
 wandb.finish()
-
-#%%
-

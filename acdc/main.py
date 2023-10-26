@@ -75,6 +75,7 @@ import numpy as np
 import einops
 from tqdm import tqdm
 import yaml
+import pandas
 from transformers import AutoModelForCausalLM, AutoConfig, AutoTokenizer
 
 import matplotlib.pyplot as plt
@@ -95,6 +96,7 @@ try:
 except Exception as e:
     print(f"Could not import `tracr` because {e}; the rest of the file should work but you cannot use the tracr tasks")
 from acdc.docstring.utils import get_all_docstring_things
+from acdc.logic_gates.utils import get_all_logic_gate_things
 from acdc.acdc_utils import (
     make_nd_dict,
     reset_network,
@@ -124,9 +126,10 @@ from acdc.induction.utils import (
     get_mask_repeat_candidates,
 )
 from acdc.greaterthan.utils import get_all_greaterthan_things
+
 from acdc.acdc_graphics import (
     build_colorscheme,
-    show,
+    show
 )
 import argparse
 
@@ -141,7 +144,8 @@ torch.autograd.set_grad_enabled(False)
 #%%
 parser = argparse.ArgumentParser(description="Used to launch ACDC runs. Only task and threshold are required")
 
-task_choices = ['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan']
+
+task_choices = ['ioi', 'docstring', 'induction', 'tracr-reverse', 'tracr-proportion', 'greaterthan', 'or_gate']
 parser.add_argument('--task', type=str, required=True, choices=task_choices, help=f'Choose a task from the available options: {task_choices}')
 parser.add_argument('--threshold', type=float, required=True, help='Value for THRESHOLD')
 parser.add_argument('--first-cache-cpu', type=str, required=False, default="True", help='Value for FIRST_CACHE_CPU (the old name for the `online_cache`)')
@@ -229,6 +233,16 @@ if TASK == "ioi":
     num_examples = 100
     things = get_all_ioi_things(
         num_examples=num_examples, device=DEVICE, metric_name=args.metric
+    )
+elif TASK == "or_gate":
+    num_examples = 1
+    seq_len = 1
+
+    things = get_all_logic_gate_things(
+        mode="OR",
+        num_examples=num_examples,
+        seq_len=seq_len,
+        device=DEVICE,
     )
 elif TASK == "tracr-reverse":
     num_examples = 6
@@ -344,6 +358,10 @@ exp = TLACDCExperiment(
 # <p>WARNING! This will take a few minutes to run, but there should be rolling nice pictures too : )</p>
 
 #%%
+
+import datetime
+exp_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
 for i in range(args.max_num_epochs):
     exp.step(testing=False)
 
@@ -364,6 +382,11 @@ for i in range(args.max_num_epochs):
         exp.save_edges("edges.pkl")
 
     if exp.current_node is None or SINGLE_STEP:
+        show(
+            exp.corr,
+            f"ims/ACDC_img_{exp_time}.png",
+
+        )
         break
 
 exp.save_edges("another_final_edges.pkl")

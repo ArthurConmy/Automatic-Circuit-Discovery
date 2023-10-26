@@ -4,7 +4,7 @@ import random
 from copy import deepcopy
 from functools import partial
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 import collections
 from acdc.greaterthan.utils import get_all_greaterthan_things
 from acdc.ioi.utils import get_all_ioi_things
@@ -14,6 +14,7 @@ import gc
 import networkx as nx
 import numpy as np
 from acdc.docstring.utils import AllDataThings, get_all_docstring_things
+from acdc.logic_gates.utils import get_all_logic_gate_things
 import pandas as pd
 import torch
 import torch.nn.functional as F
@@ -79,6 +80,9 @@ def iterative_correspondence_from_mask(
 
     assert all([v <= 3 for v in head_parents.values()]), "We should have at most three parents (Q, K and V, connected via placeholders)"
 
+        if node.name.endswith(("mlp_in", "resid_mid")):
+            additional_nodes_to_mask.append(TLACDCInterpNode(node.name.replace("resid_mid", "mlp_out").replace("mlp_in", "mlp_out"), node.index, EdgeType.DIRECT_COMPUTATION))
+
     for node in nodes_to_mask + additional_nodes_to_mask:
         # Mark edges where this is child as not present
         rest2 = corr.edges[node.name][node.index]
@@ -93,6 +97,50 @@ def iterative_correspondence_from_mask(
                     rest2[node.name][node.index].present = False
 
     return corr, head_parents
+
+def correspondence_from_mask(model: HookedTransformer, nodes_to_mask: list[TLACDCInterpNode], use_pos_embed: bool = False) -> TLACDCCorrespondence:
+    corr = TLACDCCorrespondence.setup_from_model(model, use_pos_embed=use_pos_embed)
+
+    additional_nodes_to_mask = []
+
+    # If all of {qkv} is masked, also add its head child
+    # to the list of nodes to mask
+    head_parents = collections.defaultdict(lambda: 0)
+    for node in nodes_to_mask:
+        additional_nodes_to_mask.append(TLACDCInterpNode(node.name.replace(".attn.", ".") + "_input", node.index, EdgeType.ADDITION))
+
+        if node.name.endswith("_q") or node.name.endswith("_k") or node.name.endswith("_v"):
+            child_name = node.name.replace("_q", "_result").replace("_k", "_result").replace("_v", "_result")
+            head_parents[(child_name, node.index)] += 1
+
+            # Forgot to add these in earlier versions of Subnetwork Probing, and so the edge counts were inflated
+            additional_nodes_to_mask.append(TLACDCInterpNode(child_name + "_input", node.index, EdgeType.ADDITION))
+        
+        if node.name.endswith(("mlp_in", "resid_mid")):
+            additional_nodes_to_mask.append(TLACDCInterpNode(node.name.replace("resid_mid", "mlp_out").replace("mlp_in", "mlp_out"), node.index, EdgeType.DIRECT_COMPUTATION))
+
+    # assert all([v <= 3 for v in head_parents.values()])
+
+    for (child_name, child_index), count in head_parents.items():
+        if count == 3:
+            nodes_to_mask.append(TLACDCInterpNode(child_name, child_index, EdgeType.ADDITION))
+
+    for node in nodes_to_mask + additional_nodes_to_mask:
+        # Mark edges where this is child as not present
+        rest2 = corr.edges[node.name][node.index]
+        for rest3 in rest2.values():
+            for edge in rest3.values():
+                edge.present = False
+
+        # Mark edges where this is parent as not present
+        for rest1 in corr.edges.values():
+            for rest2 in rest1.values():
+                try:
+                    rest2[node.name][node.index].present = False
+                except KeyError as e:
+                    print("Warning: key error in correspondence_from_mask", e)
+                    pass
+    return corr
 
 
 def log_plotly_bar_chart(x: List[str], y: List[float]) -> None:
@@ -207,6 +255,9 @@ def train_induction(
     epochs = args.epochs
     lambda_reg = args.lambda_reg
 
+
+    print('lambda reg', lambda_reg)
+
     torch.manual_seed(args.seed)
 
     wandb.init(
@@ -300,6 +351,7 @@ def train_induction(
             nodes_to_mask=nodes_to_mask,
             **test_specific_metrics,
         )
+
     return induction_model, to_log_dict
 
 
@@ -375,19 +427,19 @@ def get_nodes_mask_dict(model: HookedTransformer):
 
 
 parser = argparse.ArgumentParser("train_induction")
-parser.add_argument("--wandb-name", type=str, required=True)
+parser.add_argument("--wandb-name", type=str, default="subnetwork-probing")
 parser.add_argument("--wandb-project", type=str, default="subnetwork-probing")
-parser.add_argument("--wandb-entity", type=str, required=True)
-parser.add_argument("--wandb-group", type=str, required=True)
+parser.add_argument("--wandb-entity", type=str,  default="remix_school-of-rock")
+parser.add_argument("--wandb-group", type=str,  default="subnetwork-probing")
 parser.add_argument("--wandb-dir", type=str, default="/tmp/wandb")
 parser.add_argument("--wandb-mode", type=str, default="online")
-parser.add_argument("--device", type=str, default="cuda")
+parser.add_argument("--device", type=str, default="cpu")
 parser.add_argument("--lr", type=float, default=0.001)
-parser.add_argument("--loss-type", type=str, required=True)
+parser.add_argument("--loss-type", type=str,  default='kl_div')
 parser.add_argument("--epochs", type=int, default=3000)
 parser.add_argument("--verbose", type=int, default=1)
-parser.add_argument("--lambda-reg", type=float, default=100)
-parser.add_argument("--zero-ablation", type=int, required=True)
+parser.add_argument("--lambda_reg", type=float, default=50)
+parser.add_argument("--zero-ablation", type=int, default=True)
 parser.add_argument("--reset-subject", type=int, default=0)
 parser.add_argument("--seed", type=int, default=random.randint(0, 2**31 - 1), help="Random seed (default: random)")
 parser.add_argument("--num-examples", type=int, default=50)
@@ -485,6 +537,16 @@ if __name__ == "__main__":
             metric_name=args.loss_type,
             device=args.device,
         )
+    elif args.task == "or_gate":
+        num_examples = 1
+        seq_len = 1
+
+        all_task_things = get_all_logic_gate_things(
+            mode="OR",
+            num_examples=num_examples,
+            seq_len=seq_len,
+            device=args.device,
+        )
     else:
         raise ValueError(f"Unknown task {args.task}")
 
@@ -528,6 +590,7 @@ if __name__ == "__main__":
 
     corr, _ = iterative_correspondence_from_mask(model, to_log_dict["nodes_to_mask"])
     mask_val_dict = get_nodes_mask_dict(model)
+    
     percentage_binary = log_percentage_binary(mask_val_dict)
 
     # Update dict with some different things
