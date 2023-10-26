@@ -30,9 +30,6 @@ class EdgeType(Enum):
     DIRECT_COMPUTATION = 1
     PLACEHOLDER = 2
     
-    def __repr__(self):
-        return self.name
-
     def __eq__(self, other):
         """Necessary because of extremely frustrating error that arises with load_ext autoreload (because this uses importlib under the hood: https://stackoverflow.com/questions/66458864/enum-comparison-become-false-after-reloading-module)"""
 
