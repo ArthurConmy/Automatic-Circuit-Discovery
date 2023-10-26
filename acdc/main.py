@@ -160,7 +160,7 @@ parser.add_argument("--wandb-dir", type=str, default="/tmp/wandb")
 parser.add_argument("--wandb-mode", type=str, default="online")
 parser.add_argument('--indices-mode', type=str, default="normal")
 parser.add_argument('--names-mode', type=str, default="normal")
-parser.add_argument('--device', type=str, default="cpu")
+parser.add_argument('--device', type=str, default="cuda")
 parser.add_argument('--reset-network', type=int, default=0, help="Whether to reset the network we're operating on before running interp on it")
 parser.add_argument('--metric', type=str, default="kl_div", help="Which metric to use for the experiment")
 parser.add_argument('--torch-num-threads', type=int, default=0, help="How many threads to use for torch (0=all)")
@@ -173,17 +173,13 @@ if ipython is not None:
     # We are in a notebook
     # you can put the command you would like to run as the ... in r"""..."""
     args = parser.parse_args(
-        [line.strip() for line in r"""
-            --task=or_gate\
-            --threshold=0.000001\
-            --indices-mode=reverse\
-            --zero-ablation\
-            --first-cache-cpu=False\
-            --second-cache-cpu=False\
-            --device=cpu\
-            --seed=4\
-            --max-num-epochs=100000
-         """.split("\\\n")]
+        [line.strip() for line in r"""--task=induction\
+--zero-ablation\
+--threshold=0.71\
+--indices-mode=reverse\
+--first-cache-cpu=False\
+--second-cache-cpu=False\
+--max-num-epochs=100000""".split("\\\n")]
     )
 else:
     # read from command line
@@ -338,7 +334,7 @@ exp = TLACDCExperiment(
     wandb_dir=args.wandb_dir,
     wandb_mode=args.wandb_mode,
     wandb_config=args,
-    zero_ablation=True,
+    zero_ablation=ZERO_ABLATION,
     abs_value_threshold=args.abs_value_threshold,
     ds=toks_int_values,
     ref_ds=toks_int_values_other,
