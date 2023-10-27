@@ -277,6 +277,16 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         column_widths = [0.27, 0.27, 0.27, 0.19]
         subplot_titles = ("ioi", "docstring", "greaterthan", THRESHOLD_ANNOTATION)
         subplot_titles = [TASK_NAMES.get(task_idx, task_idx) for task_idx in subplot_titles]
+    elif plot_type in ["abs_check"]:
+        rows_cols_task_idx = [
+            ((1, 1), "ACDC (Abs Logit Diff)"),
+            # ((1, 2), "ACDC (KL)"),
+            # ((1, 3), "ACDC (Abs Logit Diff)"),
+        ]
+        # t: top padding
+        specs = [[{}, {}]]
+        column_widths = [0.7, 0.3]#[0.33, 0.33, 0.33]
+        subplot_titles = ["Abs Logit DIff"]
     else:
         rows_cols_task_idx = [
             ((1, 1), "ioi"),
@@ -318,7 +328,18 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
 
         for weights_type in weights_types:
             for (row, col), task_idx in rows_cols_task_idx:
-                metric_name = METRICS_FOR_TASK[task_idx][metric_idx]
+
+                if "ACDC (" in task_idx: 
+                    if alg_idx != "ACDC": continue
+                    if task_idx.startswith("ACDC (KL"): alg_idx="SP"
+                    elif task_idx.startswith("ACDC (Logit Diff"): alg_idx="16H"
+                    else: assert task_idx.startswith("ACDC (Abs Logit Diff")
+                    task_idx="ioi"
+                    metric_name = "logit_diff"
+
+                else:
+                    metric_name = METRICS_FOR_TASK[task_idx][metric_idx]
+
                 if plot_type in ["metric_edges_4", "kl_edges_4"]:
                     if col >= 3:
                         ablation_type = "zero_ablation"
@@ -393,10 +414,14 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
             col=len(specs[0]),
         )
     fig.update_xaxes(showline=False, zeroline=False, showgrid=False, row=1, col=len(specs[0]), showticklabels=False, ticks="")
-    tickvals = list(range(int(np.floor(all_algs_min)), int(np.ceil(all_algs_max))))
-    ticktext = [f"$10^{{{v}}}$" for v in tickvals]
-    fig.update_yaxes(showline=False, zeroline=False, showgrid=True, row=1, col=len(specs[0]), side="right",
-                     range=[all_algs_min, all_algs_max], tickvals=tickvals, ticktext=ticktext)
+
+    try:
+        tickvals = list(range(int(np.floor(all_algs_min)), int(np.ceil(all_algs_max))))
+        ticktext = [f"$10^{{{v}}}$" for v in tickvals]
+        fig.update_yaxes(showline=False, zeroline=False, showgrid=True, row=1, col=len(specs[0]), side="right",
+                        range=[all_algs_min, all_algs_max], tickvals=tickvals, ticktext=ticktext)
+    except Exception as e:
+        print("couldn't add tickvals as " + str(e))
 
     if not args.hisp_yellow:
         fig.update_xaxes(gridcolor=GRIDCOLOR, zerolinecolor=ZEROLINECOLOR, zerolinewidth=1)
@@ -407,15 +432,21 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         min_log_score, max_log_score = bounds_for_alg[methodof]
         for weights_type in weights_types:
             for enum_idx, ((row, col), task_idx) in enumerate(rows_cols_task_idx):
-                
-                if enum_idx == 0:
+                if "ACDC (" in task_idx: 
+                    if alg_idx != "ACDC": continue
+                    if task_idx.startswith("ACDC (KL"): alg_idx="SP"
+                    elif task_idx.startswith("ACDC (Logit Diff"): alg_idx="16H"
+                    else: assert task_idx.startswith("ACDC (Abs Logit Diff")
+                    task_idx="ioi"
+                    metric_name = "logit_diff"
+                if enum_idx == 0 and plot_type != "abs_check":
                     fig.add_trace(
                         go.Scatter(
                             x=[None],
                             y=[None],
                             name=f"{methodof} (reset)" if weights_type == "reset" else methodof,
                             mode="markers",
-                            showlegend=True,
+                            showlegend=(plot_type!="abs_check"),
                             marker=dict(
                                 size=7,
                                 color=colors[methodof],
@@ -426,7 +457,11 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                         col=col,
                     )
                 
-                metric_name = METRICS_FOR_TASK[task_idx][metric_idx]
+                if plot_type=="abs_check":
+                    metric_name = "logit_diff"
+                else:
+                    metric_name = METRICS_FOR_TASK[task_idx][metric_idx]
+
                 if plot_type in ["metric_edges_4", "kl_edges_4"]:
                     if col >= 3:
                         ablation_type = "zero_ablation"
@@ -446,7 +481,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     x_data = np.array(this_data[task_idx][metric_name][alg_idx][x_key])
                     y_data = np.array(this_data[task_idx][metric_name][alg_idx][y_key])
                 except Exception as e:
-                    print("Failed as" + str(e))
+                    print("Failed as" + str(e) + str((task_idx, metric_name, alg_idx, x_key, y_key)))
                     continue
 
                 scores = np.array(this_data[task_idx][metric_name][alg_idx]["score"])
@@ -493,11 +528,13 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     pareto_optimal_aux = discard_non_pareto_optimal(points, zip(log_scores, scores))
                     pareto_optimal, aux = zip(*pareto_optimal_aux)
                     pareto_log_scores, pareto_scores = zip(*aux)
+                    print("hello")
 
                 auc = None
                 if len(pareto_optimal):
+                    print("Hello")
                     x_data, y_data = zip(*pareto_optimal)
-                    if plot_type in ["roc_nodes", "roc_edges"]:
+                    if plot_type in ["abs_check", "roc_nodes", "roc_edges"]:
                         try:
                             auc = pessimistic_auc(x_data, y_data)
                         except Exception as e:
@@ -517,8 +554,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                         row=row,
                         col=col,
                     )
-                # else:
-                #     print(f"We failed as pareto optimal zero for {task_idx} {metric_name} {alg_idx} {x_key} {y_key}")
+
 
                 test_kl_div = this_data[task_idx][metric_name][alg_idx]["test_kl_div"][1:-1]
                 test_loss = this_data[task_idx][metric_name][alg_idx]["test_" + metric_name][1:-1]
@@ -526,7 +562,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     test_kl_div = [x / 20 for x in test_kl_div]
                     test_loss = [x / 20 for x in test_loss]
 
-                if plot_type in ["roc_nodes", "roc_edges"]:
+                if plot_type in ["roc_nodes", "roc_edges", "abs_check"]:
                     all_series.append(pd.Series({
                         "task": task_idx,
                         "method": methodof,
@@ -616,7 +652,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                 )
 
                 if (row, col) == rows_and_cols[0]:
-                    if plot_type in ["roc_nodes", "roc_edges"] and args.arrows:
+                    if plot_type in ["roc_nodes", "roc_edges", "abs_check"] and args.arrows:
                         fig.add_annotation(
                             xref="x domain",
                             yref="y",
@@ -768,19 +804,20 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     )
 
 
-    # move legend to left
-    fig.update_layout(
-        legend=dict(
-            orientation="v",
-            yanchor="top",
-            y=1.0,
-            xanchor="left",
-            x=0.92,
-            font=dict(size=8),
-            bgcolor="rgba(0,0,0,0)",  # Set the background color to transparent
-        ),
-        title_font=dict(size=4),
-    )
+    if plot_type != "abs_check":
+        # move legend to left
+        fig.update_layout(
+            legend=dict(
+                orientation="v",
+                yanchor="top",
+                y=1.0,
+                xanchor="left",
+                x=0.92,
+                font=dict(size=8),
+                bgcolor="rgba(0,0,0,0)",  # Set the background color to transparent
+            ),
+            title_font=dict(size=4),
+        )
 
     scale = 1.2
 
@@ -795,7 +832,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         width = 550
     else:
         height = 250
-        width = 500
+        width = 1000
 
     # No title,
     fig.update_layout(height=height*scale, width=width*scale*scale, margin=dict(l=55, r=70, t=20, b=50))
@@ -811,6 +848,7 @@ plot_type_keys = {
     "precision_recall": ("edge_tpr", "edge_precision"),
     "roc_nodes": ("node_fpr", "node_tpr"),
     "roc_edges": ("edge_fpr", "edge_tpr"),
+    "abs_check": ("edge_fpr", "edge_tpr"),
     "kl_edges": ("n_edges", "test_kl_div"),
     "kl_edges_small": ("n_edges", "test_kl_div"),
     "metric_edges": ("n_edges", "test_loss"),
@@ -829,7 +867,7 @@ first = True
 
 all_dfs = []
 # for plot_type in ["roc_edges", "metric_edges_induction", "kl_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "metric_edges"]:
-for plot_type in ["metric_edges_small", "kl_edges_small"]:
+for plot_type in ["abs_check"]: # , "metric_edges_small", "kl_edges_small"]:
     for weights_type in ["trained", "reset"]:  # Didn't scramble the weights enough it seems
         for ablation_type in ["random_ablation", "zero_ablation"]:
             for metric_idx in [0, 1]:
@@ -841,14 +879,16 @@ for plot_type in ["metric_edges_small", "kl_edges_small"]:
                 metric = "kl" if metric_idx == 0 else "other"
                 fname = "--".join([metric, weights_type, ablation_type, plot_type])
 
-                fig.write_image(PLOT_DIR / (fname + ".pdf"))
+                fig.write_image(PLOT_DIR / (fname + "_abs.pdf"))
+                fig.write_image(PLOT_DIR / (fname + ".png"))
 
                 if WRITE_JSON:
                     fig.write_json(PLOT_DIR / (fname + ".json"))
 
+
                 # if first:
                 fig.show()
-                    # assert False
+                assert False
                     
 pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
 
