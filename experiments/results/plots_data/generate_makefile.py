@@ -119,7 +119,7 @@ def main():
     cnt = 0
     print(f"Missing {len(missing_files)} files:")
     for missing_file in missing_files:
-        if missing_file.startswith("acdc"):
+        if missing_file.startswith("sp"):
             cnt += 1
             print("make", missing_file, end="")
             if cnt%4==3:

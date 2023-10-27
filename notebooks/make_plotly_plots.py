@@ -263,6 +263,20 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         specs = [[{}, {}, {"t": 0.0, "l": -0.04, "r": RIGHT_MARGIN + 0.16}]]
         column_widths = [0.40, 0.40, 0.20]
         subplot_titles = (TASK_NAMES["induction"] + " (corrupted)", TASK_NAMES["induction"] + " (zero)", THRESHOLD_ANNOTATION)
+    elif plot_type in ["kl_edges_small", "metric_edges_small"]:
+        rows_cols_task_idx = [
+            ((1, 1), "ioi"),
+            # ((1, 2), "tracr-reverse"),
+            # ((1, 3), "tracr-proportion"),
+            # ((2, 1), "induction"),
+            ((1, 2), "docstring"),
+            ((1, 3), "greaterthan"),
+        ]
+        # t: top padding
+        specs = [[{}, {}, {}, {"t": 0.0, "l": -0.04, "r": RIGHT_MARGIN + 0.16}]]
+        column_widths = [0.27, 0.27, 0.27, 0.19]
+        subplot_titles = ("ioi", "docstring", "greaterthan", THRESHOLD_ANNOTATION)
+        subplot_titles = [TASK_NAMES.get(task_idx, task_idx) for task_idx in subplot_titles]
     else:
         rows_cols_task_idx = [
             ((1, 1), "ioi"),
@@ -275,7 +289,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         # t: top padding
         specs = [[{}, {}, {}, {"rowspan": 2, "colspan": 1, "t": TOP_MARGIN, "l": LEFT_MARGIN, "r": RIGHT_MARGIN}], [{}, {}, {}, None]]
         column_widths = [0.32, 0.32, 0.32, 0.04]
-        subplot_titles = ("ioi", "tracr-reverse", "tracr-proportion", THRESHOLD_ANNOTATION, "induction", "docstring", "greaterthan")
+        subplot_titles = ("ioi", "docstring", "greaterthan", THRESHOLD_ANNOTATION, "tracr-reverse", "tracr-proportion")
         subplot_titles = [TASK_NAMES.get(task_idx, task_idx) for task_idx in subplot_titles]
 
     rows_and_cols, task_idxs = list(zip(*rows_cols_task_idx))
@@ -392,7 +406,26 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
     for alg_idx, methodof in alg_names.items():
         min_log_score, max_log_score = bounds_for_alg[methodof]
         for weights_type in weights_types:
-            for (row, col), task_idx in rows_cols_task_idx:
+            for enum_idx, ((row, col), task_idx) in enumerate(rows_cols_task_idx):
+                
+                if enum_idx == 0:
+                    fig.add_trace(
+                        go.Scatter(
+                            x=[None],
+                            y=[None],
+                            name=f"{methodof} (reset)" if weights_type == "reset" else methodof,
+                            mode="markers",
+                            showlegend=True,
+                            marker=dict(
+                                size=7,
+                                color=colors[methodof],
+                                symbol=weights_type_symbols[weights_type][methodof],
+                            ),
+                        ),
+                        row=row,
+                        col=col,
+                    )
+                
                 metric_name = METRICS_FOR_TASK[task_idx][metric_idx]
                 if plot_type in ["metric_edges_4", "kl_edges_4"]:
                     if col >= 3:
@@ -484,6 +517,8 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                         row=row,
                         col=col,
                     )
+                # else:
+                #     print(f"We failed as pareto optimal zero for {task_idx} {metric_name} {alg_idx} {x_key} {y_key}")
 
                 test_kl_div = this_data[task_idx][metric_name][alg_idx]["test_kl_div"][1:-1]
                 test_loss = this_data[task_idx][metric_name][alg_idx]["test_" + metric_name][1:-1]
@@ -556,7 +591,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
 
                     color = colors[methodof]
 
-                # print(task_idx, alg_idx, metric_name, len(x_data), len(y_data), plot_type)
+                print(task_idx, alg_idx, metric_name, len(x_data), len(y_data), plot_type, "...adding")
 
                 fig.add_trace(
                     go.Scatter(
@@ -579,34 +614,6 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     row=row,
                     col=col,
                 )
-                # for l in log_scores:
-                #     if np.allclose(l, -2):
-                #         import pdb; pdb.set_trace()
-
-
-                # Just add the legend
-                if (row, col) == (1, len(specs[0])-1):
-                    fig.add_trace(
-                        go.Scatter(
-                            x=[None],
-                            y=[None],
-                            name=f"{methodof} (reset)" if weights_type == "reset" else methodof,
-                            mode="markers",
-                            showlegend=True,
-                            marker=dict(
-                                size=7,
-                                color=colors[methodof],
-                                symbol=weights_type_symbols[weights_type][methodof],
-                            ),
-                        ),
-                        row=row,
-                        col=col,
-                    )
-
-                # fig.update_layout(
-                #     title_font=dict(size=20),
-                #     title=plot_type,
-                # )
 
                 if (row, col) == rows_and_cols[0]:
                     if plot_type in ["roc_nodes", "roc_edges"] and args.arrows:
@@ -805,7 +812,9 @@ plot_type_keys = {
     "roc_nodes": ("node_fpr", "node_tpr"),
     "roc_edges": ("edge_fpr", "edge_tpr"),
     "kl_edges": ("n_edges", "test_kl_div"),
+    "kl_edges_small": ("n_edges", "test_kl_div"),
     "metric_edges": ("n_edges", "test_loss"),
+    "metric_edges_small": ("n_edges", "test_loss"),
     "kl_edges_4": ("n_edges", "test_kl_div"),
     "metric_edges_4": ("n_edges", "test_loss"),
     "kl_edges_induction": ("n_edges", "test_kl_div"),
@@ -820,7 +829,7 @@ first = True
 
 all_dfs = []
 # for plot_type in ["roc_edges", "metric_edges_induction", "kl_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "metric_edges"]:
-for plot_type in ["kl_edges"]:
+for plot_type in ["metric_edges_small", "kl_edges_small"]:
     for weights_type in ["trained", "reset"]:  # Didn't scramble the weights enough it seems
         for ablation_type in ["random_ablation", "zero_ablation"]:
             for metric_idx in [0, 1]:
@@ -839,8 +848,8 @@ for plot_type in ["kl_edges"]:
 
                 # if first:
                 fig.show()
-                    # first = False
-
+                    # assert False
+                    
 pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
 
 # %%
