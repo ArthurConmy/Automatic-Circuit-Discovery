@@ -813,7 +813,7 @@ all_dfs = []
 for plot_type in ["roc_edges", "metric_edges_induction", "kl_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "metric_edges"]:
     for weights_type in ["trained", "reset"]:  # Didn't scramble the weights enough it seems
         for ablation_type in ["random_ablation", "zero_ablation"]:
-            for metric_idx in [1, 0]:
+            for metric_idx in [0, 1]:
                 x_key, y_key = plot_type_keys[plot_type]
                 fig, df = make_fig(metric_idx=metric_idx, weights_types=["trained"] if weights_type == "trained" else ["trained", weights_type], ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type)
                 if len(df):

@@ -278,7 +278,9 @@ if TASK == "docstring":
             ACDC_PRE_RUN_FILTER = {"group": "docstringlastnonzero"}            
 
     if RESET_NETWORK:
-        ACDC_PRE_RUN_FILTER["group"] = "reset-networks-neurips"
+        ACDC_PRE_RUN_FILTER = {"$or":
+            [{"group": "cameraready-reset-zero", **ACDC_PRE_RUN_FILTER}, {"group": "cameraready-reset-zero-2", **ACDC_PRE_RUN_FILTER}] # {"group": "reset-networks-neurips"}, 
+        }
 
 elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     USE_POS_EMBED = True
@@ -301,6 +303,8 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
         ACDC_PRE_RUN_FILTER.pop("group")
         ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_tracr_fix"
 
+    if RESET_NETWORK:
+        ACDC_PRE_RUN_FILTER = {"$or": [{"group": "cameraready-reset-zero-2", **ACDC_PRE_RUN_FILTER}, {"group": "cameraready-reset-zero-2", **ACDC_PRE_RUN_FILTER}]}
     things = get_all_tracr_things(task=tracr_task, metric_name=METRIC, num_examples=num_examples, device=DEVICE)
 
     # # for propotion, 
@@ -336,6 +340,9 @@ elif TASK == "ioi":
                 ]
             }
 
+    if RESET_NETWORK:
+        ACDC_PRE_RUN_FILTER = {"$or": [{"group": "cameraready-reset-zero-2", **ACDC_PRE_RUN_FILTER}, {"group": "cameraready-reset-zero", **ACDC_PRE_RUN_FILTER}]}
+
     get_true_edges = partial(get_ioi_true_edges, model=things.tl_model)
 
 elif TASK == "greaterthan":
@@ -359,13 +366,9 @@ elif TASK == "greaterthan":
     elif METRIC == "greaterthan" and not RESET_NETWORK and ZERO_ABLATION:
         ACDC_PROJECT_NAME = "remix_school-of-rock/arthur_gt_zero_gt"
         ACDC_PRE_RUN_FILTER = {"group": "greaterthan"}
-    elif METRIC == "greaterthan":
+    elif METRIC == "greaterthan" and RESET_NETWORK:
         ACDC_PRE_RUN_FILTER["group"] = "gt-fix-metric"
     elif RESET_NETWORK:
-        try:
-            del ACDC_PRE_RUN_FILTER["group"]
-        except KeyError:
-            pass
         ACDC_PRE_RUN_FILTER = {
             "$or": [
                 {"group": "reset-networks-neurips", **ACDC_PRE_RUN_FILTER},
@@ -384,9 +387,8 @@ elif TASK == "induction":
     things = get_all_induction_things(num_examples=num_examples, seq_len=300, device=DEVICE, metric=METRIC)
 
     if RESET_NETWORK:
-        ACDC_PRE_RUN_FILTER["group"] = "reset-networks-neurips"
+        ACDC_PRE_RUN_FILTER = {"$or": [{"group": "cameraready-reset-zero-2", **ACDC_PRE_RUN_FILTER}, {"group": "cameraready-reset-zero-2", **ACDC_PRE_RUN_FILTER}]}
     else:
-        # ACDC_PRE_RUN_FILTER["group"] = "adria-induction-2"
         ACDC_PRE_RUN_FILTER["group"] = "adria-induction-3"
 else:
     raise NotImplementedError("TODO " + TASK)
