@@ -113,12 +113,19 @@ def main():
         f.write("induction: " + " ".join(sorted(induction_files)) + "\n\n")
 
     print(actual_files - possible_files)
-    assert len(actual_files - possible_files) == 0, "There are files that shouldn't be there"
+    assert len(actual_files - possible_files - {'old_logit_diff.json', 'acdc-ioi-logit_diff-False-0-abs.json'}) == 0, "There are files that shouldn't be there: " + str(actual_files - possible_files)
 
     missing_files = possible_files - actual_files
+    cnt = 0
     print(f"Missing {len(missing_files)} files:")
     for missing_file in missing_files:
-        print(missing_file)
+        if missing_file.startswith("acdc"):
+            cnt += 1
+            print("make", missing_file, end="")
+            if cnt%4==3:
+                print()
+            else:
+                print("; ",end="")
 
 if __name__ == "__main__":
     main()

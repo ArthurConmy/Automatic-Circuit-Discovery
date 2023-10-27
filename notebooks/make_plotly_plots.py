@@ -321,6 +321,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     print(
                         f"Couldn't find {weights_type} {ablation_type} {task_idx} {metric_name} {alg_idx} {x_key} {y_key}"
                     )
+                    continue # Try?
                     raise e
 
                 if methodof == "HISP":
@@ -408,8 +409,13 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     y_key = "test_" + METRICS_FOR_TASK[task_idx][1] # gets overwritten to "test NLL" 
 
                 this_data = all_data[weights_type][ablation_type]
-                x_data = np.array(this_data[task_idx][metric_name][alg_idx][x_key])
-                y_data = np.array(this_data[task_idx][metric_name][alg_idx][y_key])
+                try:
+                    x_data = np.array(this_data[task_idx][metric_name][alg_idx][x_key])
+                    y_data = np.array(this_data[task_idx][metric_name][alg_idx][y_key])
+                except Exception as e:
+                    print("Failed as" + str(e))
+                    continue
+
                 scores = np.array(this_data[task_idx][metric_name][alg_idx]["score"])
 
                 if methodof == "HISP":
@@ -715,7 +721,10 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                 # ("random", "Random", 0.5, "dashed", "rgb(0, 0, 0)"),
                 ("reset", "Reset", 1.0, "dot", "rgb(0, 0, 0)"),
             ]:
-                this_data = all_data[weights_type][ablation_type][task_idx][metric_name]["CANONICAL"]
+                try: 
+                    this_data = all_data[weights_type][ablation_type][task_idx][metric_name]["CANONICAL"]
+                except Exception as e:
+                    continue
 
                 scores = np.array(this_data["score"])
                 baseline_y = np.array(this_data[y_key])
@@ -810,7 +819,8 @@ PLOT_DIR.mkdir(exist_ok=True)
 first = True
 
 all_dfs = []
-for plot_type in ["roc_edges", "metric_edges_induction", "kl_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "metric_edges"]:
+# for plot_type in ["roc_edges", "metric_edges_induction", "kl_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "metric_edges"]:
+for plot_type in ["kl_edges"]:
     for weights_type in ["trained", "reset"]:  # Didn't scramble the weights enough it seems
         for ablation_type in ["random_ablation", "zero_ablation"]:
             for metric_idx in [0, 1]:

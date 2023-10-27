@@ -281,6 +281,7 @@ if TASK == "docstring":
         ACDC_PRE_RUN_FILTER = {"$or":
             [{"group": "cameraready-reset-zero", **ACDC_PRE_RUN_FILTER}, {"group": "cameraready-reset-zero-2", **ACDC_PRE_RUN_FILTER}] # {"group": "reset-networks-neurips"}, 
         }
+        SP_PRE_RUN_FILTER = {"group": "camera-ready-reset-zero"}
 
 elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
     USE_POS_EMBED = True
@@ -305,6 +306,7 @@ elif TASK in ["tracr-reverse", "tracr-proportion"]: # do tracr
 
     if RESET_NETWORK:
         ACDC_PRE_RUN_FILTER = {"$or": [{"group": "cameraready-reset-zero-2", **ACDC_PRE_RUN_FILTER}, {"group": "cameraready-reset-zero-2", **ACDC_PRE_RUN_FILTER}]}
+        SP_PRE_RUN_FILTER = {"group": "camera-ready-reset-zero"}
     things = get_all_tracr_things(task=tracr_task, metric_name=METRIC, num_examples=num_examples, device=DEVICE)
 
     # # for propotion, 
@@ -342,6 +344,7 @@ elif TASK == "ioi":
 
     if RESET_NETWORK:
         ACDC_PRE_RUN_FILTER = {"$or": [{"group": "cameraready-reset-zero-2", **ACDC_PRE_RUN_FILTER}, {"group": "cameraready-reset-zero", **ACDC_PRE_RUN_FILTER}]}
+        SP_PRE_RUN_FILTER = {"group": "camera-ready-reset-zero"}
 
     get_true_edges = partial(get_ioi_true_edges, model=things.tl_model)
 
@@ -376,6 +379,7 @@ elif TASK == "greaterthan":
                 {"group": "acdc-spreadsheet2", **ACDC_PRE_RUN_FILTER},
             ]
         }
+        SP_PRE_RUN_FILTER = {"group": "camera-ready-reset-zero"}
     print(ACDC_PROJECT_NAME)
     print("filter", ACDC_PRE_RUN_FILTER)
     # warnings.warn("remove this warning if you want to run greaterthan normally")
@@ -388,13 +392,16 @@ elif TASK == "induction":
 
     if RESET_NETWORK:
         ACDC_PRE_RUN_FILTER = {"$or": [{"group": "cameraready-reset-zero-2", **ACDC_PRE_RUN_FILTER}, {"group": "cameraready-reset-zero-2", **ACDC_PRE_RUN_FILTER}]}
+        SP_PRE_RUN_FILTER = {"group": "camera-ready-reset-zero"}
+
     else:
         ACDC_PRE_RUN_FILTER["group"] = "adria-induction-3"
 else:
     raise NotImplementedError("TODO " + TASK)
 
-if RESET_NETWORK and TASK != "greaterthan" and not TASK.startswith("tracr"):
-    SP_PRE_RUN_FILTER["group"] = "tracr-shuffled-redo"
+# # Think, obsoleted
+# if RESET_NETWORK and TASK != "greaterthan" and not TASK.startswith("tracr"):
+# SP_PRE_RUN_FILTER["group"] = "tracr-shuffled-redo"
 
 if RESET_NETWORK:
     reset_network(TASK, DEVICE, things.tl_model)
