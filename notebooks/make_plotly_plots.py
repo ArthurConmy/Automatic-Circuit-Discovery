@@ -611,7 +611,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     }))
 
 
-                others = [(*p, *aux) for (p, *aux) in sorted(zip(points, log_scores, normalized_log_scores, scores), key=lambda x: -x[-1]) if (p[0]<9000 or task_idx.lower()!="greaterthan") and (not p[0]<=1)] #  if p not in pareto_optimal]
+                others = [(*p, *aux) for (p, *aux) in sorted(zip(points, log_scores, normalized_log_scores, scores), key=lambda x: -x[-1])] #  if (p[0]<9000 or task_idx.lower()!="greaterthan") and (not p[0]<=1)] #  if p not in pareto_optimal] # This was to remove some sus points from broken runs
 
                 if others:
                     x_data, y_data, log_scores, normalized_log_scores, scores = zip(*others)
@@ -889,9 +889,11 @@ for plot_type in ["roc_edges", "metric_edges_induction", "kl_edges_induction", "
             for metric_idx in [0,1]:
                 x_key, y_key = plot_type_keys[plot_type]
                 fig, df = make_fig(metric_idx=metric_idx, weights_types=["trained"] if weights_type == "trained" else ["trained", weights_type], ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type)
+
                 if len(df):
                     all_dfs.append(df.T)
                     print(all_dfs[-1])
+
                 metric = "kl" if metric_idx == 0 else "other"
                 fname = "--".join([metric, weights_type, ablation_type, plot_type])
 
@@ -904,7 +906,7 @@ for plot_type in ["roc_edges", "metric_edges_induction", "kl_edges_induction", "
                 # if first:
                 # fig.show()
                 # assert False
-                    
+
 pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
 
 # %%
