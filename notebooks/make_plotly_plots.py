@@ -15,7 +15,7 @@ from notebooks.emacs_plotly_render import set_plotly_renderer
 # IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root") and not "aconmy" in __file__
 IS_ADRIA = False
 
-ipython = get_ipython()
+ipython = get_ipython() 
 if ipython is not None:
     ipython.magic('load_ext autoreload')
     ipython.magic('autoreload 2')
@@ -287,6 +287,15 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         specs = [[{}, {}]]
         column_widths = [0.7, 0.3]#[0.33, 0.33, 0.33]
         subplot_titles = ["Abs Logit DIff"]
+    elif plot_type in ["roc3", "roc4"]:
+        rows_cols_task_idx = [
+            ((1, 1), "ioi"),
+            ((1, 2), "greaterthan"),
+            ((1, 3), "docstring"),
+        ]
+        specs = [[{}, {}, {}, {"t": TOP_MARGIN, "l": LEFT_MARGIN, "r": RIGHT_MARGIN}]]
+        column_widths = [0.32, 0.32, 0.32, 0.04] 
+        subplot_titles = ("ioi", "greaterthan", "docstring", THRESHOLD_ANNOTATION)
     else:
         rows_cols_task_idx = [
             ((1, 1), "ioi"),
@@ -428,10 +437,12 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         fig.update_yaxes(gridcolor=GRIDCOLOR, zerolinecolor=ZEROLINECOLOR, zerolinewidth=1)
 
 
+    print(rows_cols_task_idx)
     for alg_idx, methodof in alg_names.items():
         min_log_score, max_log_score = bounds_for_alg[methodof]
         for weights_type in weights_types:
             for enum_idx, ((row, col), task_idx) in enumerate(rows_cols_task_idx):
+                
                 if "ACDC (" in task_idx: 
                     if alg_idx != "ACDC": continue
                     if task_idx.startswith("ACDC (KL"): alg_idx="SP"
@@ -534,7 +545,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                 if len(pareto_optimal):
                     print("Hello")
                     x_data, y_data = zip(*pareto_optimal)
-                    if plot_type in ["abs_check", "roc_nodes", "roc_edges"]:
+                    if plot_type in ["abs_check", "roc_nodes", "roc_edges", "roc3", "roc4"]:
                         try:
                             auc = pessimistic_auc(x_data, y_data)
                         except Exception as e:
@@ -562,7 +573,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     test_kl_div = [x / 20 for x in test_kl_div]
                     test_loss = [x / 20 for x in test_loss]
 
-                if plot_type in ["roc_nodes", "roc_edges", "abs_check"]:
+                if plot_type in ["roc_nodes", "roc_edges", "roc3", "roc4", "abs_check"]:
                     all_series.append(pd.Series({
                         "task": task_idx,
                         "method": methodof,
@@ -600,7 +611,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     }))
 
 
-                others = [(*p, *aux) for (p, *aux) in sorted(zip(points, log_scores, normalized_log_scores, scores), key=lambda x: -x[-1])] #  if p not in pareto_optimal]
+                others = [(*p, *aux) for (p, *aux) in sorted(zip(points, log_scores, normalized_log_scores, scores), key=lambda x: -x[-1]) if (p[0]<9000 or task_idx.lower()!="greaterthan") and (not p[0]<=1)] #  if p not in pareto_optimal]
 
                 if others:
                     x_data, y_data, log_scores, normalized_log_scores, scores = zip(*others)
@@ -652,7 +663,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                 )
 
                 if (row, col) == rows_and_cols[0]:
-                    if plot_type in ["roc_nodes", "roc_edges", "abs_check"] and args.arrows:
+                    if plot_type in ["roc_nodes", "roc_edges", "roc3", "roc4", "abs_check"] and args.arrows:
                         fig.add_annotation(
                             xref="x domain",
                             yref="y",
@@ -830,6 +841,9 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
     elif plot_type in ["kl_edges_4", "metric_edges_4"]:
         height = 290
         width = 550
+    elif plot_type in ["roc3", "roc4"]:
+        height = 250
+        width = 500
     else:
         height = 250
         width = 1000
@@ -857,6 +871,8 @@ plot_type_keys = {
     "metric_edges_4": ("n_edges", "test_loss"),
     "kl_edges_induction": ("n_edges", "test_kl_div"),
     "metric_edges_induction": ("n_edges", "test_loss"),
+    "roc3": ("edge_fpr", "edge_tpr"),
+    "roc4": ("node_fpr", "node_tpr"),
 }
 
 #%%
@@ -866,11 +882,11 @@ PLOT_DIR.mkdir(exist_ok=True)
 first = True
 
 all_dfs = []
-# for plot_type in ["roc_edges", "metric_edges_induction", "kl_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "metric_edges"]:
-for plot_type in ["abs_check"]: # , "metric_edges_small", "kl_edges_small"]:
+for plot_type in ["roc_edges", "metric_edges_induction", "kl_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "metric_edges"]:
+# for plot_type in ["roc4"]: # , "kl_edges_small"]:
     for weights_type in ["trained", "reset"]:  # Didn't scramble the weights enough it seems
         for ablation_type in ["random_ablation", "zero_ablation"]:
-            for metric_idx in [0, 1]:
+            for metric_idx in [0,1]:
                 x_key, y_key = plot_type_keys[plot_type]
                 fig, df = make_fig(metric_idx=metric_idx, weights_types=["trained"] if weights_type == "trained" else ["trained", weights_type], ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type)
                 if len(df):
@@ -879,16 +895,15 @@ for plot_type in ["abs_check"]: # , "metric_edges_small", "kl_edges_small"]:
                 metric = "kl" if metric_idx == 0 else "other"
                 fname = "--".join([metric, weights_type, ablation_type, plot_type])
 
-                fig.write_image(PLOT_DIR / (fname + "_abs.pdf"))
+                fig.write_image(PLOT_DIR / ("aaa" + fname + ".pdf"))
                 fig.write_image(PLOT_DIR / (fname + ".png"))
 
                 if WRITE_JSON:
                     fig.write_json(PLOT_DIR / (fname + ".json"))
 
-
                 # if first:
-                fig.show()
-                assert False
+                # fig.show()
+                # assert False
                     
 pd.concat(all_dfs).to_csv(PLOT_DIR / "data.csv")
 

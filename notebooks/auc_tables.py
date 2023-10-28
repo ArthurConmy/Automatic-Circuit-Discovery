@@ -16,8 +16,8 @@ import argparse
 parser = argparse.ArgumentParser(
     usage="Generate AUC tables from CSV files. Pass the data.csv file as an argument fname, e.g python notebooks/auc_tables.py --fname=experiments/results/plots/data.csv"
 )
-parser.add_argument('--in-fname', type=str, default="experiments/results/plots/data.csv")
-parser.add_argument('--out-fname', type=str, default="experiments/results/auc_tables.tex")
+parser.add_argument('--in-fname', type=str, default="../experiments/results/plots/data.csv")
+parser.add_argument('--out-fname', type=str, default="../experiments/results/auc_tables.tex")
     
 if ipython is None:
     args = parser.parse_args()
@@ -48,11 +48,12 @@ with io.StringIO() as buf:
             # out = out.applymap(lambda x: None if x == -1 else (texts[x] if isinstance(x, int) else x))
             out = out.dropna(axis=0)
 
-            # %% Export as latex
+            #Export as latex
             def export_table(out, name):
                 def make_bold_column(row):
                     out = pd.Series(dtype=np.float64)
                     for plot_type in ["roc_edges", "roc_nodes"]:
+                        print(key, weights_type, plot_type)
                         the_max = row.loc[plot_type].max()
                         out = pd.concat(
                             [
@@ -92,3 +93,5 @@ WARNING: you need to add some vertical and horizontal rows for this to look good
             r"""\end{document}
 """
         )
+
+# %%
