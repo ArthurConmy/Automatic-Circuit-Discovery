@@ -4,7 +4,7 @@
 
 ![](assets/acdc_finds_subgraph.png)
 
-This is the accompanying code to the paper ["Towards Automated Circuit Discovery for Mechanistic Interpretability"](https://arxiv.org/abs/2304.14997).
+This is the accompanying code to the paper ["Towards Automated Circuit Discovery for Mechanistic Interpretability"](https://arxiv.org/abs/2304.14997) (NeurIPS 2023 Spotlight).
 
 * :zap: To run ACDC, see `acdc/main.py`, or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Main_Demo.ipynb">this Colab notebook</a>
 * :wrench: To see how edit edges in computational graphs in models, see `notebooks/editing_edges.py` or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Editing_Edges_Demo.ipynb">this Colab notebook</a>
@@ -83,7 +83,7 @@ to automatically turn the `main.py` into a working demo and check that no errors
 If you use ACDC, please reach out! You can reference the work as follows:
 
 ```
-@misc{conmy2023automated,
+@inproceedings{conmy2023automated,
       title={Towards Automated Circuit Discovery for Mechanistic Interpretability}, 
       author={Arthur Conmy and Augustine N. Mavor-Parker and Aengus Lynch and Stefan Heimersheim and Adri{\`a} Garriga-Alonso},
       booktitle={Thirty-seventh Conference on Neural Information Processing Systems},
