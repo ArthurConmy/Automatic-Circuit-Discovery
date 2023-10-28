@@ -86,6 +86,7 @@ If you use ACDC, please reach out! You can reference the work as follows:
 @misc{conmy2023automated,
       title={Towards Automated Circuit Discovery for Mechanistic Interpretability}, 
       author={Arthur Conmy and Augustine N. Mavor-Parker and Aengus Lynch and Stefan Heimersheim and Adri{\`a} Garriga-Alonso},
+      booktitle={Thirty-seventh Conference on Neural Information Processing Systems},
       year={2023},
       eprint={2304.14997},
       archivePrefix={arXiv},
