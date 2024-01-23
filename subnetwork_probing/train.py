@@ -80,8 +80,8 @@ def iterative_correspondence_from_mask(
 
     assert all([v <= 3 for v in head_parents.values()]), "We should have at most three parents (Q, K and V, connected via placeholders)"
 
-        if node.name.endswith(("mlp_in", "resid_mid")):
-            additional_nodes_to_mask.append(TLACDCInterpNode(node.name.replace("resid_mid", "mlp_out").replace("mlp_in", "mlp_out"), node.index, EdgeType.DIRECT_COMPUTATION))
+    if node.name.endswith(("mlp_in", "resid_mid")):
+        additional_nodes_to_mask.append(TLACDCInterpNode(node.name.replace("resid_mid", "mlp_out").replace("mlp_in", "mlp_out"), node.index, EdgeType.DIRECT_COMPUTATION))
 
     for node in nodes_to_mask + additional_nodes_to_mask:
         # Mark edges where this is child as not present
