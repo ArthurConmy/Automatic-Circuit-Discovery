@@ -1,5 +1,6 @@
 import torch
-from acdc.greaterthan.utils import greaterthan_metric_reference, greaterthan_metric, get_year_data
+
+from acdc.greaterthan.utils import get_year_data, greaterthan_metric, greaterthan_metric_reference
 from acdc.ioi.utils import get_gpt2_small
 
 

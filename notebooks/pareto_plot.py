@@ -5,21 +5,31 @@ File for doing misc plotting
 """
 
 import IPython
-if IPython.get_ipython() is not None:
-    IPython.get_ipython().run_line_magic('load_ext', 'autoreload')
-    IPython.get_ipython().run_line_magic('autoreload', '2')
 
-import warnings
-import torch 
+if IPython.get_ipython() is not None:
+    IPython.get_ipython().run_line_magic("load_ext", "autoreload")
+    IPython.get_ipython().run_line_magic("autoreload", "2")
+
 import os
-from tqdm import tqdm
-import pandas as pd
-import wandb
-import numpy as np
-from acdc.acdc_utils import ct
+import warnings
+
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
-from acdc.acdc_utils import get_nonan, get_corresponding_element, get_first_element, get_longest_float, process_nan, get_threshold_zero
+import torch
+import wandb
+from tqdm import tqdm
+
+from acdc.acdc_utils import (
+    ct,
+    get_corresponding_element,
+    get_first_element,
+    get_longest_float,
+    get_nonan,
+    get_threshold_zero,
+    process_nan,
+)
 
 #%%
 
@@ -46,10 +56,11 @@ col_dict = {
     "off": "black",
 }
 colors = []
-_initial_losses = [] # [1.638 for _ in range(len(names))]
-_initial_edges = [] # [11663 for _ in range(len(names))]
+_initial_losses = []  # [1.638 for _ in range(len(names))]
+_initial_edges = []  # [11663 for _ in range(len(names))]
 histories = []
 min_metrics = []
+
 
 def filter(name):
     return True
@@ -58,7 +69,8 @@ def filter(name):
     # return name.endswith("_reversed") and not name.endswith("zero_reversed")
     # return name.endswith("zero_reversed") or name.endswith("zero")
 
-for pi, project_name in (enumerate(project_names)):
+
+for pi, project_name in enumerate(project_names):
     print("Finding runs...")
     runs = list(api.runs(f"remix_school-of-rock/{project_name}"))
     print("Found runs!")
@@ -67,25 +79,27 @@ for pi, project_name in (enumerate(project_names)):
         print(run.name, "state:", run.state)
         if not filter(run.name):
             continue
-        if run.state == "finished": #  or run.state == "failed":
+        if run.state == "finished":  #  or run.state == "failed":
             history = pd.DataFrame(run.scan_history())
             histories.append(history)
 
             # rename the column "experiment.cur_metric" to "metric"
-            history = history.rename(columns={"experiment.cur_metric": "metric", 'num_edges_total': 'num_edges', "self.cur_metric": "metric"})
+            history = history.rename(
+                columns={"experiment.cur_metric": "metric", "num_edges_total": "num_edges", "self.cur_metric": "metric"}
+            )
             min_edges = history["num_edges"].min().min()
             max_edges = history["num_edges"].max().max()
-            
+
             if min_edges <= 0:
                 print("ewwwwww this was no edges")
                 histories.pop()
                 continue
-            
+
             assert 1e30 > max_edges, max_edges
 
             start_metric = get_first_element(history, "metric")
             end_metric = get_first_element(history, "metric", last=True)
-            min_metric = history["metric"].min() # sigh
+            min_metric = history["metric"].min()  # sigh
 
             all_metrics = history["metric"].values
             all_edges = history["num_edges"].values
@@ -112,13 +126,14 @@ for pi, project_name in (enumerate(project_names)):
                 colors.append("black")
 
             else:
-                assert False # ???
+                assert False  # ???
 
             print(len(colors))
 
 # save list of dataframes
 with open("histories/" + ct() + ".pkl", "wb") as f:
     import pickle
+
     pickle.dump(histories, f)
 
 if torch.norm(torch.tensor(_initial_losses) - _initial_losses[0]) > 1e-5:
@@ -135,21 +150,21 @@ for name in names:
     elif "zero_ablation=" in name:
         thresholds.append(float(name.split("=")[1].split("_")[0]))
     else:
-        thresholds.append(get_threshold_zero(name, -1)) # or -3...
+        thresholds.append(get_threshold_zero(name, -1))  # or -3...
 
 #%%
 
-ACTUALLY_DO_BASELINE = False # for now, we're fucked by how somehow the cross entropy decreases??? Look into this
+ACTUALLY_DO_BASELINE = False  # for now, we're fucked by how somehow the cross entropy decreases??? Look into this
 
 if not added_final_edges and ACTUALLY_DO_BASELINE:
     final_edges.append(_initial_edges[0])
-    final_metric.append(_initial_losses[0]) # from just including the whole graph
+    final_metric.append(_initial_losses[0])  # from just including the whole graph
     names.append("The whole graph")
     colors.append("black")
     added_final_edges = True
 
 scrubbed_induction_head_value = 4.493981649709302
-REVERSE_SIGN = False # now we're doing KL divergence (/cross entropy) we should probably be minimizing a metric
+REVERSE_SIGN = False  # now we're doing KL divergence (/cross entropy) we should probably be minimizing a metric
 
 if REVERSE_SIGN:
     # now we're going to change things up so we only maximize metrics
@@ -177,17 +192,18 @@ fig.update_layout(
 #%%
 
 if False:
+
     def get_edge_sp_things():
         api = wandb.Api()
 
         project_names = ["subnetwork_probing_edges"]
         histories = []
 
-        lambdas=[]
-        edges=[]
-        kls=[]
+        lambdas = []
+        edges = []
+        kls = []
 
-        for pi, project_name in (enumerate(project_names)):
+        for pi, project_name in enumerate(project_names):
             print("Finding runs...")
             runs = list(api.runs(f"remix_school-of-rock/{project_name}"))
             print("Found runs!")
@@ -198,7 +214,7 @@ if False:
                     history = pd.DataFrame(run.scan_history())
                     histories.append(history)
                     try:
-                        cur_lambda =(float(run.name.split("_")[2]))
+                        cur_lambda = float(run.name.split("_")[2])
                     except:
                         print(run.name, "didn't have lambda shit")
                         continue
@@ -229,14 +245,16 @@ if False:
 
 if False:
     # clear out the scraped lambdas
-    final_edges = final_edges[:-len(lambdas)]
-    final_metric = final_metric[:-len(lambdas)]
-    names = names[:-len(lambdas)]
-    thresholds = thresholds[:-len(lambdas)]
+    final_edges = final_edges[: -len(lambdas)]
+    final_metric = final_metric[: -len(lambdas)]
+    names = names[: -len(lambdas)]
+    thresholds = thresholds[: -len(lambdas)]
 
 #%%
 
-assert len(final_edges) == len(final_metric) == len(names) == len(thresholds), f"{len(final_edges)=}, {len(final_metric)=}, {len(names)=}, {len(thresholds)=}"
+assert (
+    len(final_edges) == len(final_metric) == len(names) == len(thresholds)
+), f"{len(final_edges)=}, {len(final_metric)=}, {len(names)=}, {len(thresholds)=}"
 
 # scatter plot with names as labels and thresholds as colors
 fig.add_trace(
@@ -253,21 +271,22 @@ fig.add_trace(
                 title="Threshold",
                 titleside="right",
                 tickmode="array",
-                tickvals=np.arange(0, 13)/1,
-                ticktext=np.arange(0, 13)/4,
+                tickvals=np.arange(0, 13) / 1,
+                ticktext=np.arange(0, 13) / 4,
             ),
         ),
         text=names,
-        name="ACDC"
+        name="ACDC",
     )
 )
 
 #%%
 
 import plotly
+
 # fname = "media_zero_json.json"
 # fname = "better_zero.json"
-fname="media/corrupted.json"
+fname = "media/corrupted.json"
 fig2 = plotly.io.read_json(fname)
 fig2.show()
 
@@ -281,6 +300,7 @@ if False:
 #%%
 
 import plotly
+
 fname = "better_random.json"
 fig3 = plotly.io.read_json(fname)
 
@@ -291,12 +311,12 @@ old_labels = fig3.data[0]["text"]
 
 #%%
 
-indices = [i for i in range(len(old_labels)) if myx[i] >= 40] #  in old_labels]
+indices = [i for i in range(len(old_labels)) if myx[i] >= 40]  #  in old_labels]
 myx = [myx[i] for i in indices]
 myy = [myy[i] for i in indices]
 
 final_edges.extend(myx)
-final_metric.extend(myy) # [myy[i] for i in indices])
+final_metric.extend(myy)  # [myy[i] for i in indices])
 thresholds.extend([float(old_labels[i].split("_")[-1]) for i in indices])
 names.extend([old_labels[i] for i in indices])
 
@@ -313,7 +333,7 @@ fig.add_trace(
             symbol="x",
         ),
         text=labels,
-        name="SP"
+        name="SP",
     )
 )
 
@@ -336,6 +356,7 @@ path = "media/plotly/number_of_nodes_0_fa4f23a7d736607e9e9a.plotly.json"
 
 # get the data
 import plotly
+
 json_data_as_string = run.file(path).download(replace=True).read()
 subnetwork_prob_fig = plotly.io.read_json(path)
 subnetwork_prob_fig.data[0]["y"] = [i * -1 for i in subnetwork_prob_fig.data[0]["y"]]
@@ -344,13 +365,7 @@ subnetwork_prob_fig.data[0].marker["size"] = 10
 subnetwork_prob_fig.data[0].marker["color"] = "black"
 subnetwork_prob_fig.data[0]["name"] = "Subnetwork Probing"
 subnetwork_prob_fig.data[0]["showlegend"] = True
-subnetwork_prob_fig.update_layout(
-    legend=dict(
-        yanchor="top",
-        y=0.99,
-        xanchor="left",
-        x=0.01
-    ))
+subnetwork_prob_fig.update_layout(legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01))
 subnetwork_prob_fig.show()
 # %%
 from plotly.subplots import make_subplots
@@ -372,7 +387,7 @@ for y_val, text in zip([_initial_losses[0], -1 * 4.493981649709302], ["The whole
             color="Black",
             width=1,
             dash="dot",
-        )
+        ),
     )
     # add label to this
     combined_fig.add_annotation(
@@ -384,22 +399,11 @@ for y_val, text in zip([_initial_losses[0], -1 * 4.493981649709302], ["The whole
         yanchor="top",
         xshift=10,
         yshift=2,
-        font=dict(
-            family="Courier New, monospace",
-            size=16,
-            color="Black"
-        )
+        font=dict(family="Courier New, monospace", size=16, color="Black"),
     )
 
 # add legend for colors
-combined_fig.update_layout(
-    legend=dict(
-        yanchor="top",
-        y=0.3,
-        xanchor="left",
-        x=0.5
-    )
-)
+combined_fig.update_layout(legend=dict(yanchor="top", y=0.3, xanchor="left", x=0.5))
 
 # rescale
 # fig.update_xaxes(range=[0, 1500])
@@ -416,20 +420,17 @@ combined_fig.update_layout(title_text="Induction results")
 # Unrelated to the above, this is for seeing how big direct effects are on the output
 
 import plotly.graph_objects as go
-ies = exp._nodes.i_names["final.inp"].incoming_effect_sizes                
+
+ies = exp._nodes.i_names["final.inp"].incoming_effect_sizes
 fig = go.Figure()
 labels = [i.name for i in ies]
 vals = [v for v in ies.values()]
-fig.add_trace(go.Bar(
-    x=vals,
-    y=labels,
-    orientation='h',
-    marker=dict(
-        color='rgba(50, 171, 96, 0.6)',
-        line=dict(
-            color='rgba(50, 171, 96, 1.0)',
-            width=3)
+fig.add_trace(
+    go.Bar(
+        x=vals,
+        y=labels,
+        orientation="h",
+        marker=dict(color="rgba(50, 171, 96, 0.6)", line=dict(color="rgba(50, 171, 96, 1.0)", width=3)),
     )
-))
+)
 fig.show()
-

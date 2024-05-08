@@ -1,5 +1,6 @@
-from experiments.launcher import KubernetesJob, launch
 import numpy as np
+
+from experiments.launcher import KubernetesJob, launch
 
 CPU = 4
 

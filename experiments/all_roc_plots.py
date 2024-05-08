@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-from experiments.launcher import KubernetesJob, launch
-import numpy as np
 import random
 from typing import List
 
+import numpy as np
+
+from experiments.launcher import KubernetesJob, launch
 
 TASKS = ["ioi", "docstring", "greaterthan", "tracr-reverse", "tracr-proportion"]
 

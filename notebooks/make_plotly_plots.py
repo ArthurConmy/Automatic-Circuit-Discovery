@@ -5,48 +5,53 @@ This file makes several key figures in the paper and appendix, including the ROC
 """
 
 import os
+
 os.environ["ACCELERATE_DISABLE_RICH"] = "1"
 
 import warnings
-from IPython import get_ipython
 from pathlib import Path
+
+from IPython import get_ipython
+
 from notebooks.emacs_plotly_render import set_plotly_renderer
 
 IS_ADRIA = "arthur" not in __file__ and not __file__.startswith("/root") and not "aconmy" in __file__
 
 ipython = get_ipython()
 if ipython is not None:
-    ipython.magic('load_ext autoreload')
-    ipython.magic('autoreload 2')
+    ipython.magic("load_ext autoreload")
+    ipython.magic("autoreload 2")
 
-    initial_path = Path(get_ipython().run_line_magic('pwd', ''))
+    initial_path = Path(get_ipython().run_line_magic("pwd", ""))
     if str(initial_path.stem) == "notebooks":
         initial_path = initial_path.parent
     __file__ = str(initial_path / "notebooks" / "make_plotly_plots.py")
 
     if IS_ADRIA:
-          set_plotly_renderer("emacs")
+        set_plotly_renderer("emacs")
 
-import plotly
-import numpy as np
-import json
-import wandb
-from acdc.acdc_graphics import dict_merge, pessimistic_auc
-import time
-from plotly.subplots import make_subplots
-import plotly.graph_objects as go
-from pathlib import Path
-import plotly.express as px
-import pandas as pd
 import argparse
-import plotly.colors as pc
+import json
+import time
 import warnings
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import plotly
+import plotly.colors as pc
+import plotly.express as px
+import plotly.graph_objects as go
+import wandb
+from plotly.subplots import make_subplots
+
+from acdc.acdc_graphics import dict_merge, pessimistic_auc
 
 # %%
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--arrows', action='store_true', help='Include help arrows')
-parser.add_argument('--hisp-yellow', action='store_true', help='make HISP yellow')
+parser.add_argument("--arrows", action="store_true", help="Include help arrows")
+parser.add_argument("--hisp-yellow", action="store_true", help="make HISP yellow")
 # Some ACDC tracr runs have its threshold go down to 1e-9 but that doesn't change results at all, we don't want to plot
 # them.
 parser.add_argument("--min-score", type=float, default=1e-6, help="minimum score cutoff for ACDC runs")
@@ -79,7 +84,7 @@ for fname in os.listdir(DATA_DIR):
 
 # %% Prevent mathjax
 
-fig=px.scatter(x=[0, 1, 2, 3, 4], y=[0, 1, 4, 9, 16])
+fig = px.scatter(x=[0, 1, 2, 3, 4], y=[0, 1, 4, 9, 16])
 fig.write_image("/tmp/discard.pdf", format="pdf")
 time.sleep(1)
 
@@ -141,10 +146,12 @@ colorscales = {}
 for methodof, name in colorscale_names.items():
     color_list = pc.get_colorscale(name)
     # Add black to the minimum, so that we can represent -infinity
-    colorscales[methodof] = [[0.0, "rgb(0, 0, 0)"],
-                             # Make it not black as quickly as possible.
-                             [1e-16, color_list[0][1]],
-                             *color_list[1:]]
+    colorscales[methodof] = [
+        [0.0, "rgb(0, 0, 0)"],
+        # Make it not black as quickly as possible.
+        [1e-16, color_list[0][1]],
+        *color_list[1:],
+    ]
 
     if methodof == "HISP" and args.hisp_yellow:
         colorscales[methodof][1][1] = "rgb(255, 255, 0)"
@@ -157,7 +164,9 @@ custom_color_scales = {
 }
 
 # Default location to sample: 0.2
-colors = {k: pc.sample_colorscale(v, custom_color_scales.get((k, args.hisp_yellow), 0.2))[0] for k, v in colorscales.items()}
+colors = {
+    k: pc.sample_colorscale(v, custom_color_scales.get((k, args.hisp_yellow), 0.2))[0] for k, v in colorscales.items()
+}
 
 symbol = {
     "ACDC": "circle",
@@ -167,7 +176,7 @@ symbol = {
 
 weights_type_symbols = {
     "trained": symbol,
-    "reset":  {
+    "reset": {
         "ACDC": "circle-open-dot",
         "SP": "x-open-dot",
         "HISP": "diamond-open-dot",
@@ -194,6 +203,7 @@ x_names = {
     "test_loss": "Task-specific test metric",
 }
 
+
 def discard_non_pareto_optimal(points, auxiliary, cmp="gt"):
     ret = []
     for (x, y), aux in zip(points, auxiliary):
@@ -204,9 +214,19 @@ def discard_non_pareto_optimal(points, auxiliary, cmp="gt"):
             ret.append(((x, y), aux))
     return list(sorted(ret))
 
+
 #%%
 
-def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("trained",), ablation_type="random_ablation", plot_type="roc_nodes", scale_max=1.0):
+
+def make_fig(
+    metric_idx=0,
+    x_key="edge_fpr",
+    y_key="edge_tpr",
+    weights_types=("trained",),
+    ablation_type="random_ablation",
+    plot_type="roc_nodes",
+    scale_max=1.0,
+):
     scale_min = 0.01 if args.hisp_yellow else 0.2
     TOP_MARGIN = (
         0.09
@@ -223,7 +243,16 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
             ((2, 3), "docstring"),
             ((2, 4), "greaterthan"),
         ]
-        specs=[[{"rowspan": 2, "colspan": 2}, None, {}, {}, {"rowspan": 2, "colspan": 1, "t": TOP_MARGIN, "l": LEFT_MARGIN, "r": RIGHT_MARGIN}], [None, None, {}, {}, None]]
+        specs = [
+            [
+                {"rowspan": 2, "colspan": 2},
+                None,
+                {},
+                {},
+                {"rowspan": 2, "colspan": 1, "t": TOP_MARGIN, "l": LEFT_MARGIN, "r": RIGHT_MARGIN},
+            ],
+            [None, None, {}, {}, None],
+        ]
         column_widths = [0.24, 0.24, 0.24, 0.24, 0.04]
         subplot_titles = ("ioi", "tracr-reverse", "tracr-proportion", THRESHOLD_ANNOTATION, "docstring", "greaterthan")
         subplot_titles = [TASK_NAMES.get(task_idx, task_idx) for task_idx in subplot_titles]
@@ -244,7 +273,17 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
             [{}, {}, {}, {}, None],
         ]
         column_widths = [0.24, 0.24, 0.24, 0.24, 0.04]
-        subplot_titles = ("ioi", "greaterthan", "ioi", "greaterthan", THRESHOLD_ANNOTATION, "induction", "docstring", "induction", "docstring")
+        subplot_titles = (
+            "ioi",
+            "greaterthan",
+            "ioi",
+            "greaterthan",
+            THRESHOLD_ANNOTATION,
+            "induction",
+            "docstring",
+            "induction",
+            "docstring",
+        )
         subplot_titles = [TASK_NAMES.get(task_idx, task_idx) for task_idx in subplot_titles]
         for i in [0, 1, 5, 6]:
             subplot_titles[i] += " (corrupted)"
@@ -257,7 +296,11 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         ]
         specs = [[{}, {}, {"t": 0.0, "l": -0.04, "r": RIGHT_MARGIN + 0.16}]]
         column_widths = [0.40, 0.40, 0.20]
-        subplot_titles = (TASK_NAMES["induction"] + " (corrupted)", TASK_NAMES["induction"] + " (zero)", THRESHOLD_ANNOTATION)
+        subplot_titles = (
+            TASK_NAMES["induction"] + " (corrupted)",
+            TASK_NAMES["induction"] + " (zero)",
+            THRESHOLD_ANNOTATION,
+        )
     else:
         rows_cols_task_idx = [
             ((1, 1), "ioi"),
@@ -268,9 +311,20 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
             ((2, 3), "greaterthan"),
         ]
         # t: top padding
-        specs = [[{}, {}, {}, {"rowspan": 2, "colspan": 1, "t": TOP_MARGIN, "l": LEFT_MARGIN, "r": RIGHT_MARGIN}], [{}, {}, {}, None]]
+        specs = [
+            [{}, {}, {}, {"rowspan": 2, "colspan": 1, "t": TOP_MARGIN, "l": LEFT_MARGIN, "r": RIGHT_MARGIN}],
+            [{}, {}, {}, None],
+        ]
         column_widths = [0.32, 0.32, 0.32, 0.04]
-        subplot_titles = ("ioi", "tracr-reverse", "tracr-proportion", THRESHOLD_ANNOTATION, "induction", "docstring", "greaterthan")
+        subplot_titles = (
+            "ioi",
+            "tracr-reverse",
+            "tracr-proportion",
+            THRESHOLD_ANNOTATION,
+            "induction",
+            "docstring",
+            "greaterthan",
+        )
         subplot_titles = [TASK_NAMES.get(task_idx, task_idx) for task_idx in subplot_titles]
 
     rows_and_cols, task_idxs = list(zip(*rows_cols_task_idx))
@@ -278,7 +332,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
     fig = make_subplots(
         rows=len(specs),
         cols=len(specs[0]),
-        # specs parameter is really cool, this argument needs to have same dimenions as the rows and cols
+        # specs parameter is really cool, this argument needs to have same dimensions as the rows and cols
         specs=specs,
         column_widths=column_widths,
         print_grid=False,
@@ -333,15 +387,16 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                 max_log_score = max(np.max(log_scores), max_log_score)
         bounds_for_alg[methodof] = (min_log_score, max_log_score)
 
-
-    all_algs_min = min(np.log10(np.clip(v, a_min=1, a_max=None)) if k == "HISP" else v for k, (v, _) in bounds_for_alg.items())
+    all_algs_min = min(
+        np.log10(np.clip(v, a_min=1, a_max=None)) if k == "HISP" else v for k, (v, _) in bounds_for_alg.items()
+    )
     all_algs_max = max(np.log10(v) if k == "HISP" else v for k, (_, v) in bounds_for_alg.items())
 
     def normalize(x, x_min, x_max):
         if (x_max - x_min) < 1e-8:
             out = np.ones_like(x)
         else:
-            out = (x - x_min) / (x_max - x_min) * (scale_max - scale_min)  + scale_min
+            out = (x - x_min) / (x_max - x_min) * (scale_max - scale_min) + scale_min
         return out
 
     HEATMAP_ALGS = ["ACDC", "SP", "HISP"]
@@ -356,7 +411,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         nums = np.linspace(scale_min, scale_max, len(alg_ys))
         fig.add_trace(
             go.Heatmap(
-                x=[i, i+0.95],
+                x=[i, i + 0.95],
                 y=alg_ys,
                 z=nums[:, None],
                 colorscale=colorscales[methodof],
@@ -367,16 +422,26 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
             row=1,
             col=len(specs[0]),
         )
-    fig.update_xaxes(showline=False, zeroline=False, showgrid=False, row=1, col=len(specs[0]), showticklabels=False, ticks="")
+    fig.update_xaxes(
+        showline=False, zeroline=False, showgrid=False, row=1, col=len(specs[0]), showticklabels=False, ticks=""
+    )
     tickvals = list(range(int(np.floor(all_algs_min)), int(np.ceil(all_algs_max))))
     ticktext = [f"$10^{{{v}}}$" for v in tickvals]
-    fig.update_yaxes(showline=False, zeroline=False, showgrid=True, row=1, col=len(specs[0]), side="right",
-                     range=[all_algs_min, all_algs_max], tickvals=tickvals, ticktext=ticktext)
+    fig.update_yaxes(
+        showline=False,
+        zeroline=False,
+        showgrid=True,
+        row=1,
+        col=len(specs[0]),
+        side="right",
+        range=[all_algs_min, all_algs_max],
+        tickvals=tickvals,
+        ticktext=ticktext,
+    )
 
     if not args.hisp_yellow:
         fig.update_xaxes(gridcolor=GRIDCOLOR, zerolinecolor=ZEROLINECOLOR, zerolinewidth=1)
         fig.update_yaxes(gridcolor=GRIDCOLOR, zerolinecolor=ZEROLINECOLOR, zerolinewidth=1)
-
 
     for alg_idx, methodof in alg_names.items():
         min_log_score, max_log_score = bounds_for_alg[methodof]
@@ -395,7 +460,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                         ablation_type = "random_ablation"
 
                 if plot_type.startswith("metric_edges"):
-                    y_key = "test_" + METRICS_FOR_TASK[task_idx][1] # gets overwritten to "test NLL" 
+                    y_key = "test_" + METRICS_FOR_TASK[task_idx][1]  # gets overwritten to "test NLL"
 
                 this_data = all_data[weights_type][ablation_type]
                 x_data = np.array(this_data[task_idx][metric_name][alg_idx][x_key])
@@ -434,10 +499,11 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     if y_key.startswith("test_"):
                         y_data = [y / 20 for y in y_data]
 
-
                 points = list(zip(x_data, y_data))
                 if y_key not in ["node_tpr", "edge_tpr"]:
-                    pareto_optimal = [] # list(sorted(points))  # Not actually pareto optimal but we want to plot all of them
+                    pareto_optimal = (
+                        []
+                    )  # list(sorted(points))  # Not actually pareto optimal but we want to plot all of them
                     pareto_log_scores = []
                     pareto_scores = []
                 else:
@@ -455,7 +521,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                             print(task_idx, metric_name, alg_idx, x_key)
                             assert False
                             print(e)
-                            auc=-420.0
+                            auc = -420.0
 
                     fig.add_trace(
                         go.Scatter(
@@ -478,44 +544,56 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     test_loss = [x / 20 for x in test_loss]
 
                 if plot_type in ["roc_nodes", "roc_edges"]:
-                    all_series.append(pd.Series({
-                        "task": task_idx,
-                        "method": methodof,
-                        "metric": metric_name,
-                        "weights_type": weights_type,
-                        "ablation_type": ablation_type,
-                        "plot_type": plot_type,
-                        "auc": auc,
-                        "n_points": len(points),
-                        "test_kl_div": np.mean(test_kl_div),
-                        "test_kl_div_max": np.max(test_kl_div),
-                        "test_kl_div_min": np.min(test_kl_div),
-                        "test_loss": np.mean(test_loss),
-                        "test_loss_max": np.max(test_loss),
-                        "test_loss_min": np.min(test_loss),
-                    }))
+                    all_series.append(
+                        pd.Series(
+                            {
+                                "task": task_idx,
+                                "method": methodof,
+                                "metric": metric_name,
+                                "weights_type": weights_type,
+                                "ablation_type": ablation_type,
+                                "plot_type": plot_type,
+                                "auc": auc,
+                                "n_points": len(points),
+                                "test_kl_div": np.mean(test_kl_div),
+                                "test_kl_div_max": np.max(test_kl_div),
+                                "test_kl_div_min": np.min(test_kl_div),
+                                "test_loss": np.mean(test_loss),
+                                "test_loss_max": np.max(test_loss),
+                                "test_loss_min": np.min(test_loss),
+                            }
+                        )
+                    )
 
                 if task_idx == "induction" and plot_type == "kl_edges":
                     assert auc is None
-                    all_series.append(pd.Series({
-                        "task": task_idx,
-                        "method": methodof,
-                        "metric": metric_name,
-                        "weights_type": weights_type,
-                        "ablation_type": ablation_type,
-                        "plot_type": "induction_kl_edges",
-                        "auc": None,
-                        "n_points": len(points),
-                        "test_kl_div": np.mean(test_kl_div),
-                        "test_kl_div_max": np.max(test_kl_div),
-                        "test_kl_div_min": np.min(test_kl_div),
-                        "test_loss": np.mean(test_loss),
-                        "test_loss_max": np.max(test_loss),
-                        "test_loss_min": np.min(test_loss),
-                    }))
+                    all_series.append(
+                        pd.Series(
+                            {
+                                "task": task_idx,
+                                "method": methodof,
+                                "metric": metric_name,
+                                "weights_type": weights_type,
+                                "ablation_type": ablation_type,
+                                "plot_type": "induction_kl_edges",
+                                "auc": None,
+                                "n_points": len(points),
+                                "test_kl_div": np.mean(test_kl_div),
+                                "test_kl_div_max": np.max(test_kl_div),
+                                "test_kl_div_min": np.min(test_kl_div),
+                                "test_loss": np.mean(test_loss),
+                                "test_loss_max": np.max(test_loss),
+                                "test_loss_min": np.min(test_loss),
+                            }
+                        )
+                    )
 
-
-                others = [(*p, *aux) for (p, *aux) in sorted(zip(points, log_scores, normalized_log_scores, scores), key=lambda x: -x[-1])] #  if p not in pareto_optimal]
+                others = [
+                    (*p, *aux)
+                    for (p, *aux) in sorted(
+                        zip(points, log_scores, normalized_log_scores, scores), key=lambda x: -x[-1]
+                    )
+                ]  #  if p not in pareto_optimal]
 
                 if others:
                     x_data, y_data, log_scores, normalized_log_scores, scores = zip(*others)
@@ -550,7 +628,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                         y=y_data,
                         name=methodof,
                         mode="markers",
-                        showlegend = False,
+                        showlegend=False,
                         marker=dict(
                             size=[3 if p in pareto_optimal else 7 for p in points],
                             line=dict(width=[0 if p in pareto_optimal else 0.7 for p in points], color="DarkSlateGrey"),
@@ -569,9 +647,8 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                 #     if np.allclose(l, -2):
                 #         import pdb; pdb.set_trace()
 
-
                 # Just add the legend
-                if (row, col) == (1, len(specs[0])-1):
+                if (row, col) == (1, len(specs[0]) - 1):
                     fig.add_trace(
                         go.Scatter(
                             x=[None],
@@ -599,7 +676,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                         fig.add_annotation(
                             xref="x domain",
                             yref="y",
-                            x=0.35, # end of arrow
+                            x=0.35,  # end of arrow
                             y=0.65,
                             text="",
                             axref="x domain",
@@ -607,13 +684,13 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                             ax=0.55,
                             ay=0.45,
                             arrowhead=2,
-                            row = row,
-                            col = col,
+                            row=row,
+                            col=col,
                         )
                         fig.add_annotation(
                             xref="x domain",
-                        # yref="y",
-                            x=0.6, # end of arrow
+                            # yref="y",
+                            x=0.6,  # end of arrow
                             y=0.7,
                             text="",
                             axref="x domain",
@@ -621,13 +698,13 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                             ax=0.6,
                             ay=0.5,
                             arrowhead=2,
-                            row = row,
-                            col = col,
+                            row=row,
+                            col=col,
                         )
                         fig.add_annotation(
                             xref="x domain",
                             yref="y",
-                            x=0.8, # end of arrow
+                            x=0.8,  # end of arrow
                             y=0.4,
                             text="",
                             axref="x domain",
@@ -635,29 +712,55 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                             ax=0.6,
                             ay=0.4,
                             arrowhead=2,
-                            row = row,
-                            col = col,
+                            row=row,
+                            col=col,
                         )
-                        fig.add_annotation(text="More true components recovered",
-                            xref="x", yref="y",
-                            x=0.55, y=0.75, showarrow=False, font=dict(size=8), row=row, col=col)
-                        fig.add_annotation(text="Better",
-                            xref="x", yref="y",
-                            x=0.4, y=0.5, showarrow=False, font=dict(size=12), row=row, col=col)
-                        fig.add_annotation(text="More wrong components recovered",
-                            xref="x", yref="y",
-                            x=0.65, y=0.35, showarrow=False, font=dict(size=8), row=row, col=col) # TODO could add two text boxes
+                        fig.add_annotation(
+                            text="More true components recovered",
+                            xref="x",
+                            yref="y",
+                            x=0.55,
+                            y=0.75,
+                            showarrow=False,
+                            font=dict(size=8),
+                            row=row,
+                            col=col,
+                        )
+                        fig.add_annotation(
+                            text="Better",
+                            xref="x",
+                            yref="y",
+                            x=0.4,
+                            y=0.5,
+                            showarrow=False,
+                            font=dict(size=12),
+                            row=row,
+                            col=col,
+                        )
+                        fig.add_annotation(
+                            text="More wrong components recovered",
+                            xref="x",
+                            yref="y",
+                            x=0.65,
+                            y=0.35,
+                            showarrow=False,
+                            font=dict(size=8),
+                            row=row,
+                            col=col,
+                        )  # TODO could add two text boxes
 
                     if y_key in ["edge_fpr", "edge_tpr", "node_fpr", "node_tpr", "precision"]:
-                        fig.update_yaxes(visible=True, row=row, col=col, tickangle=-45, dtick=0.25, range=[-0.05, 1.05]) # ???
+                        fig.update_yaxes(
+                            visible=True, row=row, col=col, tickangle=-45, dtick=0.25, range=[-0.05, 1.05]
+                        )  # ???
                     else:
                         fig.update_yaxes(visible=True, row=row, col=col, tickangle=-45)
 
                     if x_key == "n_edges":
                         if plot_type.endswith("_induction"):
-                            fig.update_xaxes(type='log', row=row, col=col, ticktext=X_TICKVALS, tickvals=X_TICKVALS)
+                            fig.update_xaxes(type="log", row=row, col=col, ticktext=X_TICKVALS, tickvals=X_TICKVALS)
                         else:
-                            fig.update_xaxes(type='log', row=row, col=col, tickangle=0)
+                            fig.update_xaxes(type="log", row=row, col=col, tickangle=0)
                     else:
                         fig.update_xaxes(dtick=0.25, range=[-0.05, 1.05], row=row, col=col)
 
@@ -671,26 +774,45 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                 else:
                     # If the subplot is not the large plot, hide its axes
                     if y_key in ["edge_fpr", "edge_tpr", "node_tpr", "node_fpr", "precision"]:
-                        fig.update_yaxes(visible=True, row=row, col=col, tickangle=-45, dtick=0.25, tickvals=[0, 0.25, 0.5, 0.75, 1.], ticktext=["0", "", "0.5", "", "1"], range=[-0.05, 1.05]) # ???
+                        fig.update_yaxes(
+                            visible=True,
+                            row=row,
+                            col=col,
+                            tickangle=-45,
+                            dtick=0.25,
+                            tickvals=[0, 0.25, 0.5, 0.75, 1.0],
+                            ticktext=["0", "", "0.5", "", "1"],
+                            range=[-0.05, 1.05],
+                        )  # ???
                     else:
                         fig.update_yaxes(visible=True, row=row, col=col, tickangle=-45)
 
                     if x_key == "n_edges":
                         if plot_type.endswith("_induction"):
-                            fig.update_xaxes(type='log', row=row, col=col, ticktext=X_TICKVALS, tickvals=X_TICKVALS)
+                            fig.update_xaxes(type="log", row=row, col=col, ticktext=X_TICKVALS, tickvals=X_TICKVALS)
                         else:
-                            fig.update_xaxes(type='log', row=row, col=col, tickangle=0)
+                            fig.update_xaxes(type="log", row=row, col=col, tickangle=0)
                     else:
-                        fig.update_xaxes(visible=True, row=row, col=col, tickvals=[0, 0.25, 0.5, 0.75, 1.], ticktext=["0", "", "0.5", "", "1"], range=[-0.05, 1.05])
+                        fig.update_xaxes(
+                            visible=True,
+                            row=row,
+                            col=col,
+                            tickvals=[0, 0.25, 0.5, 0.75, 1.0],
+                            ticktext=["0", "", "0.5", "", "1"],
+                            range=[-0.05, 1.05],
+                        )
 
                     # smaller title font
                     fig.update_layout(title_font=dict(size=20))
 
                 if not args.hisp_yellow:
-                    fig.update_xaxes(gridcolor=GRIDCOLOR, zerolinecolor=ZEROLINECOLOR, zerolinewidth=1, row=row, col=col)
-                    fig.update_yaxes(gridcolor=GRIDCOLOR, zerolinecolor=ZEROLINECOLOR, zerolinewidth=1, row=row, col=col)
+                    fig.update_xaxes(
+                        gridcolor=GRIDCOLOR, zerolinecolor=ZEROLINECOLOR, zerolinewidth=1, row=row, col=col
+                    )
+                    fig.update_yaxes(
+                        gridcolor=GRIDCOLOR, zerolinecolor=ZEROLINECOLOR, zerolinewidth=1, row=row, col=col
+                    )
                     fig.update_layout(plot_bgcolor="rgba(0,0,0,0)")
-
 
     # Add horizontal lines with test performance on KL plots
     if plot_type.startswith("metric_edges") or plot_type.startswith("kl_edges"):
@@ -701,7 +823,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
             else:
                 y_key = "test_" + METRICS_FOR_TASK[task_idx][0]
 
-            for weights_type, name, value, line_dash, line_color in [ # three black lines
+            for weights_type, name, value, line_dash, line_color in [  # three black lines
                 ("trained", "Clean", 1.0, "solid", "rgb(0, 0, 0)"),
                 ("trained", "Canonical", 0.5, "dashdot", "rgb(0, 0, 0)"),
                 # ("random", "Random", 0.5, "dashed", "rgb(0, 0, 0)"),
@@ -730,7 +852,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                     row=row,
                     col=col,
                 )
-                if (row, col) == (1, len(specs[0])-1):
+                if (row, col) == (1, len(specs[0]) - 1):
                     fig.add_trace(
                         go.Scatter(
                             x=[None],
@@ -742,7 +864,6 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
                         row=row,
                         col=col,
                     )
-
 
     # move legend to left
     fig.update_layout(
@@ -774,7 +895,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
         width = 500
 
     # No title,
-    fig.update_layout(height=height*scale, width=width*scale*scale, margin=dict(l=55, r=70, t=20, b=50))
+    fig.update_layout(height=height * scale, width=width * scale * scale, margin=dict(l=55, r=70, t=20, b=50))
     # MEGA HACK: add space between tau and colorbar
     for i in range(len(fig.layout.annotations)):
         anno = fig.layout.annotations[i]
@@ -782,6 +903,7 @@ def make_fig(metric_idx=0, x_key="edge_fpr", y_key="edge_tpr", weights_types=("t
             anno["y"] += 0.02
     ret = (fig, pd.concat(all_series, axis=1) if all_series else pd.DataFrame())
     return ret
+
 
 plot_type_keys = {
     "precision_recall": ("edge_tpr", "edge_precision"),
@@ -805,9 +927,26 @@ all_dfs = []
 for metric_idx in [0, 1]:
     for ablation_type in ["random_ablation", "zero_ablation"]:
         for weights_type in ["reset", "trained"]:  # Didn't scramble the weights enough it seems
-            for plot_type in ["metric_edges_induction", "kl_edges_induction", "metric_edges_4", "kl_edges_4", "kl_edges", "precision_recall", "roc_nodes", "roc_edges", "metric_edges"]:
+            for plot_type in [
+                "metric_edges_induction",
+                "kl_edges_induction",
+                "metric_edges_4",
+                "kl_edges_4",
+                "kl_edges",
+                "precision_recall",
+                "roc_nodes",
+                "roc_edges",
+                "metric_edges",
+            ]:
                 x_key, y_key = plot_type_keys[plot_type]
-                fig, df = make_fig(metric_idx=metric_idx, weights_types=["trained"] if weights_type == "trained" else ["trained", weights_type], ablation_type=ablation_type, x_key=x_key, y_key=y_key, plot_type=plot_type)
+                fig, df = make_fig(
+                    metric_idx=metric_idx,
+                    weights_types=["trained"] if weights_type == "trained" else ["trained", weights_type],
+                    ablation_type=ablation_type,
+                    x_key=x_key,
+                    y_key=y_key,
+                    plot_type=plot_type,
+                )
                 if len(df):
                     all_dfs.append(df.T)
                     print(all_dfs[-1])

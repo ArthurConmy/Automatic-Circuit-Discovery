@@ -1,23 +1,21 @@
-from acdc.TLACDCInterpNode import TLACDCInterpNode
 from collections import OrderedDict
-from acdc.TLACDCEdge import (
-    TorchIndex,
-    Edge, 
-    EdgeType,
-)  # these introduce several important classes !!!
+from typing import Any, Callable, Dict, Iterable, List, MutableMapping, Optional, Set, Tuple, TypeVar, Union
+
 from acdc.acdc_utils import OrderedDefaultdict, make_nd_dict
-from typing import List, Dict, MutableMapping, Optional, Tuple, Union, Set, Callable, TypeVar, Iterable, Any
+from acdc.TLACDCEdge import Edge, EdgeType, TorchIndex  # these introduce several important classes !!!
+from acdc.TLACDCInterpNode import TLACDCInterpNode
 
 
 class TLACDCCorrespondence:
     """Stores the full computational graph, similar to ACDCCorrespondence from the rust_circuit code
-    
+
     The two attributes, self.graph and self.edges allow for efficiently looking up the nodes and edges in the graph: see `notebooks/editing_edges.py`"""
 
     graph: MutableMapping[str, MutableMapping[TorchIndex, TLACDCInterpNode]]
     edges: MutableMapping[str, MutableMapping[TorchIndex, MutableMapping[str, MutableMapping[TorchIndex, Edge]]]]
+
     def __init__(self):
-        self.graph = OrderedDefaultdict(OrderedDict) # TODO rename "nodes?"
+        self.graph = OrderedDefaultdict(OrderedDict)  # TODO rename "nodes?"
         self.edges = make_nd_dict(end_type=None, n=4)
 
     def first_node(self):
@@ -26,20 +24,26 @@ class TLACDCCorrespondence:
     def nodes(self) -> List[TLACDCInterpNode]:
         """Concatenate all nodes in the graph"""
         return [node for by_index_list in self.graph.values() for node in by_index_list.values()]
-    
+
     def all_edges(self) -> Dict[Tuple[str, TorchIndex, str, TorchIndex], Edge]:
         """Concatenate all edges in the graph"""
-        
+
         big_dict = {}
 
         for child_name, rest1 in self.edges.items():
             for child_index, rest2 in rest1.items():
                 for parent_name, rest3 in rest2.items():
                     for parent_index, edge in rest3.items():
-                        assert edge is not None, (child_name, child_index, parent_name, parent_index, "Edges have been setup WRONG somehow...")
+                        assert edge is not None, (
+                            child_name,
+                            child_index,
+                            parent_name,
+                            parent_index,
+                            "Edges have been setup WRONG somehow...",
+                        )
 
                         big_dict[(child_name, child_index, parent_name, parent_index)] = edge
-        
+
         return big_dict
 
     def add_node(self, node: TLACDCInterpNode, safe=True):
@@ -55,18 +59,18 @@ class TLACDCCorrespondence:
         safe=True,
     ):
         if safe:
-            if parent_node not in self.nodes(): # TODO could be slow ???
+            if parent_node not in self.nodes():  # TODO could be slow ???
                 self.add_node(parent_node)
             if child_node not in self.nodes():
                 self.add_node(child_node)
-        
+
         assert child_node.incoming_edge_type == edge.edge_type, (child_node.incoming_edge_type, edge.edge_type)
-        
+
         parent_node._add_child(child_node)
         child_node._add_parent(parent_node)
 
         self.edges[child_node.name][child_node.index][parent_node.name][parent_node.index] = edge
-    
+
     def remove_edge(
         self,
         child_name: str,
@@ -80,7 +84,7 @@ class TLACDCCorrespondence:
             print("Couldn't index in - are you sure this edge exists???")
             raise e
 
-        edge.present=False
+        edge.present = False
         del self.edges[child_name][child_index][parent_name][parent_index]
 
         # more efficiency things...
@@ -95,7 +99,7 @@ class TLACDCCorrespondence:
         child = self.graph[child_name][child_index]
 
         parent.children.remove(child)
-        child.parents.remove(parent)        
+        child.parents.remove(parent)
 
     @classmethod
     def setup_from_model(cls, model, use_pos_embed=False):
@@ -105,16 +109,16 @@ class TLACDCCorrespondence:
         logits_node = TLACDCInterpNode(
             name=f"blocks.{model.cfg.n_layers-1}.hook_resid_post",
             index=TorchIndex([None]),
-            incoming_edge_type = EdgeType.ADDITION,
+            incoming_edge_type=EdgeType.ADDITION,
         )
-        correspondence.add_node(logits_node) 
+        correspondence.add_node(logits_node)
         downstream_residual_nodes.append(logits_node)
         new_downstream_residual_nodes: List[TLACDCInterpNode] = []
 
         for layer_idx in range(model.cfg.n_layers - 1, -1, -1):
             # connect MLPs
-            if not model.cfg.attn_only: 
-                # this MLP writed to all future residual stream things
+            if not model.cfg.attn_only:
+                # this MLP writes to all future residual stream things
                 cur_mlp_name = f"blocks.{layer_idx}.hook_mlp_out"
                 cur_mlp_slice = TorchIndex([None])
                 cur_mlp = TLACDCInterpNode(
@@ -142,7 +146,9 @@ class TLACDCCorrespondence:
                 correspondence.add_edge(
                     parent_node=cur_mlp_input,
                     child_node=cur_mlp,
-                    edge=Edge(edge_type=EdgeType.PLACEHOLDER), # EDIT: previously, this was a DIRECT_COMPUTATION edge, but that leads to overcounting of MLP edges (I think)
+                    edge=Edge(
+                        edge_type=EdgeType.PLACEHOLDER
+                    ),  # EDIT: previously, this was a DIRECT_COMPUTATION edge, but that leads to overcounting of MLP edges (I think)
                     safe=False,
                 )
 
@@ -170,7 +176,9 @@ class TLACDCCorrespondence:
                 for letter in "qkv":
                     hook_letter_name = f"blocks.{layer_idx}.attn.hook_{letter}"
                     hook_letter_slice = TorchIndex([None, None, head_idx])
-                    hook_letter_node = TLACDCInterpNode(name=hook_letter_name, index=hook_letter_slice, incoming_edge_type=EdgeType.DIRECT_COMPUTATION)
+                    hook_letter_node = TLACDCInterpNode(
+                        name=hook_letter_name, index=hook_letter_slice, incoming_edge_type=EdgeType.DIRECT_COMPUTATION
+                    )
                     correspondence.add_node(hook_letter_node)
 
                     hook_letter_input_name = f"blocks.{layer_idx}.hook_{letter}_input"
@@ -181,10 +189,10 @@ class TLACDCCorrespondence:
                     correspondence.add_node(hook_letter_input_node)
 
                     correspondence.add_edge(
-                        parent_node = hook_letter_node,
-                        child_node = cur_head,
-                        edge = Edge(edge_type=EdgeType.PLACEHOLDER),
-                        safe = False,
+                        parent_node=hook_letter_node,
+                        child_node=cur_head,
+                        edge=Edge(edge_type=EdgeType.PLACEHOLDER),
+                        safe=False,
                     )
 
                     correspondence.add_edge(
@@ -215,7 +223,7 @@ class TLACDCCorrespondence:
             embedding_node = TLACDCInterpNode(
                 name="blocks.0.hook_resid_pre",
                 index=TorchIndex([None]),
-                incoming_edge_type=EdgeType.PLACEHOLDER, # TODO maybe add some NoneType or something???
+                incoming_edge_type=EdgeType.PLACEHOLDER,  # TODO maybe add some NoneType or something???
             )
             embed_nodes = [embedding_node]
 
@@ -228,7 +236,7 @@ class TLACDCCorrespondence:
                     edge=Edge(edge_type=EdgeType.ADDITION),
                     safe=False,
                 )
-    
+
         return correspondence
 
     def count_no_edges(self, verbose=False):

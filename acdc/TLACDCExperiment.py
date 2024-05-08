@@ -1,38 +1,37 @@
-from argparse import Namespace
+import gc
 import os
 import pickle
-import gc
-import tempfile
-from typing import Callable, Optional, Literal, List, Dict, Any, Tuple, Union, Set, Iterable, TypeVar, Type
 import random
+import tempfile
+import time
+import warnings
+from argparse import Namespace
+from collections import OrderedDict
 from dataclasses import dataclass
+from functools import partial
+from typing import Any, Callable, Dict, Iterable, List, Literal, Optional, Set, Tuple, Type, TypeVar, Union
+
 import torch
-from acdc.acdc_graphics import show
+import wandb
 from torch import nn
 from torch.nn import functional as F
-from acdc.TLACDCInterpNode import TLACDCInterpNode
-from acdc.TLACDCCorrespondence import TLACDCCorrespondence
 from transformer_lens.HookedTransformer import HookedTransformer
+
+from acdc.acdc_graphics import log_metrics_to_wandb, show
+from acdc.acdc_utils import extract_info, next_key, shuffle_tensor
 from acdc.global_cache import GlobalCache
-from acdc.acdc_graphics import log_metrics_to_wandb
-import warnings
-import wandb
-from acdc.acdc_utils import extract_info, shuffle_tensor
-from acdc.TLACDCEdge import (
-    TorchIndex,
-    Edge, 
-    EdgeType,
-)  # these introduce several important classes !!!
-from collections import OrderedDict
-from functools import partial
-import time
-from acdc.acdc_utils import next_key
+from acdc.TLACDCCorrespondence import TLACDCCorrespondence
+from acdc.TLACDCEdge import Edge, EdgeType, TorchIndex  # these introduce several important classes !!!
+from acdc.TLACDCInterpNode import TLACDCInterpNode
 
 # some types that will help
 TorchIndexHashableTuple = Tuple[Union[None, slice], ...]
-Subgraph = Dict[Tuple[str, TorchIndexHashableTuple, str, TorchIndexHashableTuple], bool] # an alias for loading and saving from WANDB (primarily)
+Subgraph = Dict[
+    Tuple[str, TorchIndexHashableTuple, str, TorchIndexHashableTuple], bool
+]  # an alias for loading and saving from WANDB (primarily)
 
 T = TypeVar("T")
+
 
 class TLACDCExperiment:
     """Manages an ACDC experiment, including the computational graph, the model, the data etc.
@@ -41,7 +40,7 @@ class TLACDCExperiment:
     It's also helpful to understand what's going on in the def sender_hook(...) and def receiver_hook(...) methods - these are attached to the model to do path patching
     (see https://github.com/redwoodresearch/Easy-Transformer for a gentler introduction to path patching)
 
-    You could also read __init__ for what's going on in this class. 
+    You could also read __init__ for what's going on in this class.
 
     A lot of the other methods are not important apart from specific evals and things.
 
@@ -57,29 +56,31 @@ class TLACDCExperiment:
         second_metric: Optional[Callable[[torch.Tensor], float]] = None,
         verbose: bool = False,
         hook_verbose: bool = False,
-        parallel_hypotheses: int = 1, # lol
-        remove_redundant: bool = False, 
+        parallel_hypotheses: int = 1,  # lol
+        remove_redundant: bool = False,
         monotone_metric: Literal[
             "off", "maximize", "minimize"
         ] = "minimize",  # if this is set to "maximize" or "minimize", then the metric will be maximized or minimized, respectively instead of us trying to keep the metric roughly the same. We do KL divergence by default
         online_cache_cpu: bool = True,
         corrupted_cache_cpu: bool = True,
-        zero_ablation: bool = False, # use zero rather than
+        zero_ablation: bool = False,  # use zero rather than
         abs_value_threshold: bool = False,
-        show_full_index = False,
+        show_full_index=False,
         using_wandb: bool = False,
         wandb_entity_name: str = "",
         wandb_project_name: str = "",
         wandb_run_name: str = "",
         wandb_group_name: str = "",
         wandb_notes: str = "",
-        wandb_dir: Optional[str]=None,
-        wandb_mode: str="online",
+        wandb_dir: Optional[str] = None,
+        wandb_mode: str = "online",
         use_pos_embed: bool = False,
-        skip_edges = "no",
+        skip_edges="no",
         add_sender_hooks: bool = True,
         add_receiver_hooks: bool = False,
-        indices_mode: Literal["normal", "reverse", "shuffle"] = "reverse", # we get best performance with reverse I think
+        indices_mode: Literal[
+            "normal", "reverse", "shuffle"
+        ] = "reverse",  # we get best performance with reverse I think
         names_mode: Literal["normal", "reverse", "shuffle"] = "normal",
         wandb_config: Optional[Namespace] = None,
         early_exit: bool = False,
@@ -87,7 +88,9 @@ class TLACDCExperiment:
         """Initialize the ACDC experiment"""
 
         if zero_ablation and remove_redundant:
-            raise ValueError("It's not possible to do zero ablation with remove redundant, talk to Arthur about this bizarre special case if curious!")
+            raise ValueError(
+                "It's not possible to do zero ablation with remove redundant, talk to Arthur about this bizarre special case if curious!"
+            )
 
         model.reset_hooks()
 
@@ -112,9 +115,9 @@ class TLACDCExperiment:
 
         self.corr = TLACDCCorrespondence.setup_from_model(self.model, use_pos_embed=use_pos_embed)
 
-        if early_exit: 
+        if early_exit:
             return
-            
+
         self.reverse_topologically_sort_corr()
         self.current_node = self.corr.first_node()
         print(f"{self.current_node=}")
@@ -216,9 +219,9 @@ class TLACDCExperiment:
             assert len(hook.fwd_hooks) == 0, "Don't load the model with hooks *then* call this"
 
         new_graph = OrderedDict()
-        cache=OrderedDict()
+        cache = OrderedDict()
         self.model.cache_all(cache)
-        self.model(torch.arange(5)) # some random forward pass so that we can see all the hook names
+        self.model(torch.arange(5))  # some random forward pass so that we can see all the hook names
         self.model.reset_hooks()
 
         if self.verbose:
@@ -228,7 +231,7 @@ class TLACDCExperiment:
         cache_keys.reverse()
 
         for hook_name in cache_keys:
-            print(hook_name)            
+            print(hook_name)
             if hook_name in self.corr.graph:
                 new_graph[hook_name] = self.corr.graph[hook_name]
 
@@ -237,7 +240,7 @@ class TLACDCExperiment:
     def sender_hook(self, z, hook, verbose=False, cache="online", device=None):
         """Hook that saves activations of a HookPoint to a cache
         Supports cache="corrupted" to save corrupted activations
-        
+
         And cache="online" to save activations 'online' throughout a forward pass"""
 
         if device == "cpu":
@@ -263,10 +266,13 @@ class TLACDCExperiment:
         """Hook that manages nodes *receiving* input from other nodes
 
         Note that we add **one receiver_hook per HookPoint**
-        So all the computation for a given HookPoint, for example all computations involving query inputs to layer 1 is managed by one receiver_hook 
+        So all the computation for a given HookPoint, for example all computations involving query inputs to layer 1 is managed by one receiver_hook
         (because all layer 1 query inputs are contained in the `blocks.1.hook_q_input` hook)"""
-        
-        incoming_edge_types = [self.corr.graph[hook.name][receiver_index].incoming_edge_type for receiver_index in list(self.corr.edges[hook.name].keys())]
+
+        incoming_edge_types = [
+            self.corr.graph[hook.name][receiver_index].incoming_edge_type
+            for receiver_index in list(self.corr.edges[hook.name].keys())
+        ]
 
         if verbose:
             print("In receiver hook", hook.name)
@@ -279,17 +285,23 @@ class TLACDCExperiment:
             if verbose:
                 print("Overwrote to sec cache")
 
-            assert incoming_edge_types == [EdgeType.DIRECT_COMPUTATION for _ in incoming_edge_types], f"All incoming edges should be the same type not {incoming_edge_types}"
+            assert incoming_edge_types == [
+                EdgeType.DIRECT_COMPUTATION for _ in incoming_edge_types
+            ], f"All incoming edges should be the same type not {incoming_edge_types}"
 
             for receiver_index in self.corr.edges[hook.name]:
                 list_of_senders = list(self.corr.edges[hook.name][receiver_index].keys())
-                assert len(list_of_senders) <= 1, "This is a direct computation, so there should only be one sender node" # TODO maybe implement expect-to-be-1 ???
+                assert (
+                    len(list_of_senders) <= 1
+                ), "This is a direct computation, so there should only be one sender node"  # TODO maybe implement expect-to-be-1 ???
                 if len(list_of_senders) == 0:
                     continue
                 sender_node = list_of_senders[0]
 
                 sender_indices = list(self.corr.edges[hook.name][receiver_index][sender_node].keys())
-                assert len(sender_indices) <= 1, "This is a direct computation, so there should only be one sender index"
+                assert (
+                    len(sender_indices) <= 1
+                ), "This is a direct computation, so there should only be one sender index"
                 if len(sender_indices) == 0:
                     continue
                 sender_index = sender_indices[0]
@@ -300,36 +312,45 @@ class TLACDCExperiment:
                     if verbose:
                         print(f"Overwrote {receiver_index} with norm {old_z[receiver_index.as_index].norm().item()}")
 
-                    hook_point_input[receiver_index.as_index] = old_z[receiver_index.as_index].to(hook_point_input.device)
-    
+                    hook_point_input[receiver_index.as_index] = old_z[receiver_index.as_index].to(
+                        hook_point_input.device
+                    )
+
             return hook_point_input
 
-        assert incoming_edge_types == [EdgeType.ADDITION for _ in incoming_edge_types], f"All incoming edges should be the same type, not {incoming_edge_types}"
+        assert incoming_edge_types == [
+            EdgeType.ADDITION for _ in incoming_edge_types
+        ], f"All incoming edges should be the same type, not {incoming_edge_types}"
 
         # corrupted_cache (and thus z) contains the residual stream for the corrupted data
         # That is, the sum of all heads and MLPs and biases from previous layers
         hook_point_input[:] = self.global_cache.corrupted_cache[hook.name].to(hook_point_input.device)
 
-        # We will now edit the input activations to this component 
+        # We will now edit the input activations to this component
         # This is one of the key reasons ACDC is slow, so the implementation is for performance
-        # 
+        #
         # In general we will be looking at very few input edges.
         # So it was a design decision to compute the inputs to model components by the two step process.
         # i) set input to corrupted activation
         # ii) add back to residual_stream_in the (hopefully small number of) clean activations, by firstly subtracting their corrupted activation, and then adding back the clean activations
-        
+
         for receiver_node_index in self.corr.edges[hook.name]:
             for sender_node_name in self.corr.edges[hook.name][receiver_node_index]:
                 for sender_node_index in self.corr.edges[hook.name][receiver_node_index][sender_node_name]:
 
-                    edge = self.corr.edges[hook.name][receiver_node_index][sender_node_name][sender_node_index] # TODO maybe less crazy nested indexes ... just make local variables each time?
+                    edge = self.corr.edges[hook.name][receiver_node_index][sender_node_name][
+                        sender_node_index
+                    ]  # TODO maybe less crazy nested indexes ... just make local variables each time?
 
                     if not edge.present:
-                        continue # don't do patching stuff, if it wastes time
+                        continue  # don't do patching stuff, if it wastes time
 
                     if verbose:
                         print(
-                            hook.name, receiver_node_index, sender_node_name, sender_node_index,
+                            hook.name,
+                            receiver_node_index,
+                            sender_node_name,
+                            sender_node_index,
                         )
                         print("-------")
                         if edge.edge_type == EdgeType.ADDITION:
@@ -337,7 +358,7 @@ class TLACDCExperiment:
                                 self.global_cache.online_cache[sender_node_name].shape,
                                 sender_node_index,
                             )
-                    
+
                     if edge.edge_type == EdgeType.ADDITION:
                         # Add the effect of the new head (from the current forward pass)
                         hook_point_input[receiver_node_index.as_index] += self.global_cache.online_cache[
@@ -348,12 +369,19 @@ class TLACDCExperiment:
                             sender_node_name
                         ][sender_node_index.as_index].to(hook_point_input.device)
 
-                    else: 
+                    else:
                         raise ValueError(f"Unknown edge type {edge.edge_type} ... {edge}")
 
         return hook_point_input
 
-    def add_all_sender_hooks(self, reset=True, cache="online", skip_direct_computation=False, add_all_hooks=False, sender_and_receiver_both_ok=False):
+    def add_all_sender_hooks(
+        self,
+        reset=True,
+        cache="online",
+        skip_direct_computation=False,
+        add_all_hooks=False,
+        sender_and_receiver_both_ok=False,
+    ):
         """We use add_sender_hook for lazily adding *some* sender hooks
 
         :param sender_and_receiver_both_ok: The sender hooks had some checks that we're not adding both adding sender
@@ -384,23 +412,35 @@ class TLACDCExperiment:
                 if add_all_hooks:
                     nodes.append(self.corr.graph[big_tuple[0]][big_tuple[1]])
             elif edge.edge_type != EdgeType.PLACEHOLDER:
-                print(edge.edge_type.value, EdgeType.ADDITION.value, edge.edge_type.value == EdgeType.ADDITION.value, type(edge.edge_type.value), type(EdgeType.ADDITION.value))
+                print(
+                    edge.edge_type.value,
+                    EdgeType.ADDITION.value,
+                    edge.edge_type.value == EdgeType.ADDITION.value,
+                    type(edge.edge_type.value),
+                    type(EdgeType.ADDITION.value),
+                )
                 raise ValueError(f"{str(big_tuple)} {str(edge)} failed")
 
             for node in nodes:
                 fwd_hooks = self.model.hook_dict[node.name].fwd_hooks
                 if len(fwd_hooks) > 0 and not sender_and_receiver_both_ok:
                     resolved_hooks_dicts = [fwd_hook.hook.hooks_dict_ref() for fwd_hook in fwd_hooks]
-                    assert all([resolved_hooks_dict == resolved_hooks_dicts[0] for resolved_hooks_dict in resolved_hooks_dicts]), f"{resolved_hooks_dicts}\nUnexpected behavior: different hook dict for different hooks on the same HookPoint?! https://github.com/neelnanda-io/TransformerLens/issues/297"
+                    assert all(
+                        [resolved_hooks_dict == resolved_hooks_dicts[0] for resolved_hooks_dict in resolved_hooks_dicts]
+                    ), f"{resolved_hooks_dicts}\nUnexpected behavior: different hook dict for different hooks on the same HookPoint?! https://github.com/neelnanda-io/TransformerLens/issues/297"
                     for fwd_hook in resolved_hooks_dicts[0].values():
                         if isinstance(fwd_hook, partial):
-                            print("Hello!") # TODO remove
-                        hook_func_name = fwd_hook.__wrapped__.__name__ if isinstance(fwd_hook, partial) else fwd_hook.__name__
-                        assert "sender_hook" in hook_func_name, f"You should only add sender hooks to {node.name}, and this: {hook_func_name} doesn't look like a sender hook"
+                            print("Hello!")  # TODO remove
+                        hook_func_name = (
+                            fwd_hook.__wrapped__.__name__ if isinstance(fwd_hook, partial) else fwd_hook.__name__
+                        )
+                        assert (
+                            "sender_hook" in hook_func_name
+                        ), f"You should only add sender hooks to {node.name}, and this: {hook_func_name} doesn't look like a sender hook"
                     continue
 
-                self.model.add_hook( # TODO is this slow part??? Speed up???
-                    name=node.name, 
+                self.model.add_hook(  # TODO is this slow part??? Speed up???
+                    name=node.name,
                     hook=partial(self.sender_hook, verbose=self.hook_verbose, cache=cache, device=device),
                 )
 
@@ -411,7 +451,7 @@ class TLACDCExperiment:
         self.model.reset_hooks()
 
         if self.zero_ablation:
-            # to calculate the inputs to each model component, 
+            # to calculate the inputs to each model component,
             # we need zero out all the outputs into the residual stream
 
             # all hooknames that output into the residual stream
@@ -420,16 +460,20 @@ class TLACDCExperiment:
                 hook_name_substrings.append("hook_pos_embed")
 
             # add hooks to zero out all these hook points
-            hook_name_bool_function = lambda hook_name: any([hook_name_substring in hook_name for hook_name_substring in hook_name_substrings])
+            hook_name_bool_function = lambda hook_name: any(
+                [hook_name_substring in hook_name for hook_name_substring in hook_name_substrings]
+            )
             self.model.add_hook(
-                name = hook_name_bool_function,
-                hook = lambda z, hook: torch.zeros_like(z),
+                name=hook_name_bool_function,
+                hook=lambda z, hook: torch.zeros_like(z),
             )
             # we now add the saving hooks AFTER we've zeroed out activations
 
-        if self.use_pos_embed and not self.zero_ablation:    
+        if self.use_pos_embed and not self.zero_ablation:
+
             def scramble_positions(z, hook):
                 return shuffle_tensor(z, seed=49)
+
             self.model.add_hook(
                 "hook_pos_embed",
                 scramble_positions,
@@ -446,25 +490,34 @@ class TLACDCExperiment:
         self.model.reset_hooks()
 
     def setup_model_hooks(
-        self, 
+        self,
         add_sender_hooks=False,
         add_receiver_hooks=False,
         doing_acdc_runs=True,
     ):
         if add_receiver_hooks:
             if doing_acdc_runs:
-                warnings.warn("Deprecating adding receiver hooks before launching into ACDC runs, this may be totally broke. Ignore this warning if you are not doing ACDC runs")
+                warnings.warn(
+                    "Deprecating adding receiver hooks before launching into ACDC runs, this may be totally broke. Ignore this warning if you are not doing ACDC runs"
+                )
 
-            receiver_node_names = list(set([node.name for node in self.corr.nodes() if node.incoming_edge_type != EdgeType.PLACEHOLDER]))
-            for receiver_name in receiver_node_names: # TODO could remove the nodes that don't have any parents...
+            receiver_node_names = list(
+                set([node.name for node in self.corr.nodes() if node.incoming_edge_type != EdgeType.PLACEHOLDER])
+            )
+            for receiver_name in receiver_node_names:  # TODO could remove the nodes that don't have any parents...
                 self.model.add_hook(
                     name=receiver_name,
                     hook=partial(self.receiver_hook, verbose=self.hook_verbose),
                 )
 
-        if add_sender_hooks: # bug fixed; crucial to add sender hooks AFTER the receivers
-            self.add_all_sender_hooks(cache="online", skip_direct_computation=False, add_all_hooks=True, reset=False, sender_and_receiver_both_ok=True)
-
+        if add_sender_hooks:  # bug fixed; crucial to add sender hooks AFTER the receivers
+            self.add_all_sender_hooks(
+                cache="online",
+                skip_direct_computation=False,
+                add_all_hooks=True,
+                reset=False,
+                sender_and_receiver_both_ok=True,
+            )
 
     def save_edges(self, fname):
         """Stefan's idea for fast saving!
@@ -474,7 +527,7 @@ class TLACDCExperiment:
         for t, e in self.corr.all_edges().items():
             if e.present and e.edge_type != EdgeType.PLACEHOLDER:
                 edges_list.append((t, e.effect_size))
-        
+
         with open(fname, "wb") as f:
             pickle.dump(edges_list, f)
 
@@ -483,29 +536,46 @@ class TLACDCExperiment:
             fwd_hooks = self.model.hook_dict[node.name].fwd_hooks
             if len(fwd_hooks) > 0:
                 resolved_hooks_dicts = [fwd_hook.hook.hooks_dict_ref() for fwd_hook in fwd_hooks]
-                assert all([resolved_hooks_dict == resolved_hooks_dicts[0] for resolved_hooks_dict in resolved_hooks_dicts]), f"{resolved_hooks_dicts}\nUnexpected behavior: different hook dict for different hooks on the same HookPoint?! https://github.com/neelnanda-io/TransformerLens/issues/297"
+                assert all(
+                    [resolved_hooks_dict == resolved_hooks_dicts[0] for resolved_hooks_dict in resolved_hooks_dicts]
+                ), f"{resolved_hooks_dicts}\nUnexpected behavior: different hook dict for different hooks on the same HookPoint?! https://github.com/neelnanda-io/TransformerLens/issues/297"
                 for fwd_hook in resolved_hooks_dicts[0].values():
-                    hook_func_name = fwd_hook.__wrapped__.__name__ if isinstance(fwd_hook, partial) else fwd_hook.__name__
-                    assert "sender_hook" in hook_func_name, f"You should only add sender hooks to {node.name}, and this: {hook_func_name} doesn't look like a sender hook"
-            return False # already added, move on
+                    hook_func_name = (
+                        fwd_hook.__wrapped__.__name__ if isinstance(fwd_hook, partial) else fwd_hook.__name__
+                    )
+                    assert (
+                        "sender_hook" in hook_func_name
+                    ), f"You should only add sender hooks to {node.name}, and this: {hook_func_name} doesn't look like a sender hook"
+            return False  # already added, move on
 
         self.model.add_hook(
-            name=node.name, 
-            hook=partial(self.sender_hook, verbose=self.hook_verbose, cache="corrupted", device="cpu" if self.online_cache_cpu else None),
+            name=node.name,
+            hook=partial(
+                self.sender_hook,
+                verbose=self.hook_verbose,
+                cache="corrupted",
+                device="cpu" if self.online_cache_cpu else None,
+            ),
         )
 
         return True
 
     def add_receiver_hook(self, node, override=False, prepend=False):
-        if not override and len(self.model.hook_dict[node.name].fwd_hooks) > 0: # repeating code from add_sender_hooks
+        if not override and len(self.model.hook_dict[node.name].fwd_hooks) > 0:  # repeating code from add_sender_hooks
             fwd_hooks = self.model.hook_dict[node.name].fwd_hooks
             if len(fwd_hooks) > 0:
                 resolved_hooks_dicts = [fwd_hook.hook.hooks_dict_ref() for fwd_hook in fwd_hooks]
-                assert all([resolved_hooks_dict == resolved_hooks_dicts[0] for resolved_hooks_dict in resolved_hooks_dicts]), f"{resolved_hooks_dicts}\nUnexpected behavior: different hook dict for different hooks on the same HookPoint?! https://github.com/neelnanda-io/TransformerLens/issues/297"
+                assert all(
+                    [resolved_hooks_dict == resolved_hooks_dicts[0] for resolved_hooks_dict in resolved_hooks_dicts]
+                ), f"{resolved_hooks_dicts}\nUnexpected behavior: different hook dict for different hooks on the same HookPoint?! https://github.com/neelnanda-io/TransformerLens/issues/297"
                 for fwd_hook in resolved_hooks_dicts[0].values():
-                    hook_func_name = fwd_hook.__wrapped__.__name__ if isinstance(fwd_hook, partial) else fwd_hook.__name__
-                    assert "receiver_hook" in hook_func_name, f"You should only add receiver hooks to {node.name}, and this: {hook_func_name} doesn't look like a receiver hook"
-            return False # already added, move on
+                    hook_func_name = (
+                        fwd_hook.__wrapped__.__name__ if isinstance(fwd_hook, partial) else fwd_hook.__name__
+                    )
+                    assert (
+                        "receiver_hook" in hook_func_name
+                    ), f"You should only add receiver hooks to {node.name}, and this: {hook_func_name} doesn't look like a receiver hook"
+            return False  # already added, move on
 
         self.model.add_hook(
             name=node.name,
@@ -514,7 +584,6 @@ class TLACDCExperiment:
         )
 
         return True
-
 
     def step(self, early_stop=False, testing=False):
         if self.current_node is None:
@@ -562,7 +631,7 @@ class TLACDCExperiment:
 
                 if edge.edge_type == EdgeType.PLACEHOLDER:
                     is_this_node_used = True
-                    continue # include by default
+                    continue  # include by default
 
                 if self.verbose:
                     print(f"\nNode: {cur_parent=} ({self.current_node=})\n")
@@ -575,15 +644,17 @@ class TLACDCExperiment:
                     )
                 else:
                     added_sender_hook = False
-                
+
                 old_metric = self.cur_metric
                 if self.second_metric is not None:
                     old_second_metric = self.cur_second_metric
 
-                self.update_cur_metric(recalc_edges=False) # warning: gives fast evaluation, though edge count is wrong
-                evaluated_metric = self.cur_metric # self.metric(self.model(self.ds)) # OK, don't calculate second metric?
+                self.update_cur_metric(recalc_edges=False)  # warning: gives fast evaluation, though edge count is wrong
+                evaluated_metric = (
+                    self.cur_metric
+                )  # self.metric(self.model(self.ds)) # OK, don't calculate second metric?
 
-                if early_stop: # for debugging the effects of one and only one forward pass WITH a corrupted edge
+                if early_stop:  # for debugging the effects of one and only one forward pass WITH a corrupted edge
                     return
 
                 if self.verbose:
@@ -608,11 +679,9 @@ class TLACDCExperiment:
                 if result < self.threshold:
                     if self.verbose:
                         print("...so removing connection")
-                    self.corr.remove_edge(
-                        self.current_node.name, self.current_node.index, sender_name, sender_index
-                    )
-                    
-                else: # include this edge in the graph
+                    self.corr.remove_edge(self.current_node.name, self.current_node.index, sender_name, sender_index)
+
+                else:  # include this edge in the graph
                     self.cur_metric = old_metric
                     if self.second_metric is not None:
                         self.cur_second_metric = old_second_metric
@@ -621,16 +690,16 @@ class TLACDCExperiment:
                         print("...so keeping connection")
                     edge.present = True
 
-                self.update_cur_metric(recalc_edges=False, recalc_metric=False) # so we log current state to wandb
+                self.update_cur_metric(recalc_edges=False, recalc_metric=False)  # so we log current state to wandb
 
                 if self.using_wandb:
                     log_metrics_to_wandb(
                         self,
-                        current_metric = self.cur_metric,
-                        parent_name = str(self.corr.graph[sender_name][sender_index]),
-                        child_name = str(self.current_node),
-                        result = result,
-                        times = time.time(),
+                        current_metric=self.cur_metric,
+                        parent_name=str(self.corr.graph[sender_name][sender_index]),
+                        child_name=str(self.current_node),
+                        result=result,
+                        times=time.time(),
                     )
 
             self.update_cur_metric()
@@ -653,23 +722,27 @@ class TLACDCExperiment:
             )
             if self.using_wandb:
                 wandb.log(
-                    {"acdc_graph": wandb.Image(fname),}
+                    {
+                        "acdc_graph": wandb.Image(fname),
+                    }
                 )
 
         # increment the current node
         self.increment_current_node()
-        self.update_cur_metric(recalc_metric=True, recalc_edges=True) # so we log the correct state...
+        self.update_cur_metric(recalc_metric=True, recalc_edges=True)  # so we log the correct state...
 
     def remove_redundant_node(self, node, safe=True, allow_fails=True):
         if safe:
             for parent_name in self.corr.edges[node.name][node.index]:
                 for parent_index in self.corr.edges[node.name][node.index][parent_name]:
                     if self.corr.edges[node.name][node.index][parent_name][parent_index].present:
-                        raise Exception(f"You should not be removing a node that is still used by another node {node} {(parent_name, parent_index)}")
+                        raise Exception(
+                            f"You should not be removing a node that is still used by another node {node} {(parent_name, parent_index)}"
+                        )
 
         bfs = [node]
         bfs_idx = 0
-        
+
         while bfs_idx < len(bfs):
             cur_node = bfs[bfs_idx]
             bfs_idx += 1
@@ -677,14 +750,15 @@ class TLACDCExperiment:
             children = self.corr.graph[cur_node.name][cur_node.index].children
 
             for child_node in children:
-                if self.corr.edges[child_node.name][child_node.index][cur_node.name][cur_node.index].edge_type.value == EdgeType.PLACEHOLDER.value:
+                if (
+                    self.corr.edges[child_node.name][child_node.index][cur_node.name][cur_node.index].edge_type.value
+                    == EdgeType.PLACEHOLDER.value
+                ):
                     # TODO be a bit more permissive, this can include all things when we have dropped an attention head...
                     continue
 
                 try:
-                    self.corr.remove_edge(
-                        child_node.name, child_node.index, cur_node.name, cur_node.index
-                    )
+                    self.corr.remove_edge(child_node.name, child_node.index, cur_node.name, cur_node.index)
                 except KeyError as e:
                     print("Got an error", e)
                     if allow_fails:
@@ -694,18 +768,22 @@ class TLACDCExperiment:
 
                 remove_this = True
                 for parent_of_child_name in self.corr.edges[child_node.name][child_node.index]:
-                    for parent_of_child_index in self.corr.edges[child_node.name][child_node.index][parent_of_child_name]:
-                        if self.corr.edges[child_node.name][child_node.index][parent_of_child_name][parent_of_child_index].present:
+                    for parent_of_child_index in self.corr.edges[child_node.name][child_node.index][
+                        parent_of_child_name
+                    ]:
+                        if self.corr.edges[child_node.name][child_node.index][parent_of_child_name][
+                            parent_of_child_index
+                        ].present:
                             remove_this = False
                             break
                     if not remove_this:
                         break
-                
+
                 if remove_this and child_node not in bfs:
                     bfs.append(child_node)
 
     def current_node_connected(self):
-        for child_name, rest1 in self.corr.edges.items(): # rest1 just meaning "rest of dictionary.. I'm tired"
+        for child_name, rest1 in self.corr.edges.items():  # rest1 just meaning "rest of dictionary.. I'm tired"
             for child_index, rest2 in rest1.items():
                 if self.current_node.name in rest2 and self.current_node.index in rest2[self.current_node.name]:
                     if rest2[self.current_node.name][self.current_node.index].present:
@@ -732,18 +810,23 @@ class TLACDCExperiment:
                     edge = self.corr.edges[self.current_node.name][self.current_node.index][parent_name][parent_index]
                 except KeyError:
                     continue
-                
+
                 edge.present = False
 
                 self.corr.remove_edge(
-                    self.current_node.name, 
-                    self.current_node.index, 
-                    parent_name, 
+                    self.current_node.name,
+                    self.current_node.index,
+                    parent_name,
                     parent_index,
                 )
 
         self.update_cur_metric(recalc_edges=True)
-        assert abs(self.cur_metric - old_metric) < 3e-3, ("Removing all incoming edges should not change the metric ... you may want to see *which* remooval in the above loop mattered, too", self.cur_metric, old_metric, self.current_node) # TODO this seems to fail quite regularly
+        assert abs(self.cur_metric - old_metric) < 3e-3, (
+            "Removing all incoming edges should not change the metric ... you may want to see *which* remooval in the above loop mattered, too",
+            self.cur_metric,
+            old_metric,
+            self.current_node,
+        )  # TODO this seems to fail quite regularly
 
         return False
 
@@ -756,7 +839,7 @@ class TLACDCExperiment:
 
         if next_name is not None:
             return list(self.corr.graph[next_name].values())[0]
-            
+
         warnings.warn("Finished iterating")
         return None
 
@@ -765,7 +848,11 @@ class TLACDCExperiment:
             self.current_node = self.find_next_node()
             print("We moved to ", self.current_node)
 
-            if self.current_node is None or self.current_node_connected() or self.current_node.name in ["blocks.0.hook_resid_pre", "hook_pos_embed", "hook_embed"]:
+            if (
+                self.current_node is None
+                or self.current_node_connected()
+                or self.current_node.name in ["blocks.0.hook_resid_pre", "hook_pos_embed", "hook_embed"]
+            ):
                 break
 
             print("But it's bad")
@@ -780,16 +867,14 @@ class TLACDCExperiment:
         old_corr = self.corr
         self.corr = TLACDCCorrespondence.setup_from_model(self.model)
 
-    def save_subgraph(self, fpath: Optional[str]=None, return_it=False) -> None:
+    def save_subgraph(self, fpath: Optional[str] = None, return_it=False) -> None:
         """Saves the subgraph as a Dictionary of all the edges, so it can be reloaded (or return that)"""
 
         ret = OrderedDict()
         for tupl, edge in self.corr.all_edges().items():
             receiver_name, receiver_torch_index, sender_name, sender_torch_index = tupl
             receiver_index, sender_index = receiver_torch_index.hashable_tuple, sender_torch_index.hashable_tuple
-            ret[
-                (receiver_name, receiver_index, sender_name, sender_index)
-            ] = edge.present
+            ret[(receiver_name, receiver_index, sender_name, sender_index)] = edge.present
 
         if fpath is not None:
             assert fpath.endswith(".pth")
@@ -806,7 +891,9 @@ class TLACDCExperiment:
             receiver_name, receiver_torch_index, sender_name, sender_torch_index = tupl
             receiver_index, sender_index = receiver_torch_index.hashable_tuple, sender_torch_index.hashable_tuple
             set_of_edges.add((receiver_name, receiver_index, sender_name, sender_index))
-        assert set(subgraph.keys()) == set_of_edges, f"Ensure that the dictionary includes exactly the correct keys... e.g missing {list( set(set_of_edges) - set(subgraph.keys()) )[:1]} and has excess stuff { list(set(subgraph.keys()) - set_of_edges)[:1] }"
+        assert (
+            set(subgraph.keys()) == set_of_edges
+        ), f"Ensure that the dictionary includes exactly the correct keys... e.g missing {list( set(set_of_edges) - set(subgraph.keys()) )[:1]} and has excess stuff { list(set(subgraph.keys()) - set_of_edges)[:1] }"
 
         print("Editing all edges...")
         for (receiver_name, receiver_index, sender_name, sender_index), is_present in subgraph.items():
@@ -837,20 +924,24 @@ class TLACDCExperiment:
 
                 found_at_least_one_readable_line = True
                 for back_index in range(6):
-                    previous_line = lines[i-back_index] # magic number because of the formatting of the log lines
+                    previous_line = lines[i - back_index]  # magic number because of the formatting of the log lines
                     if previous_line.startswith("Node: "):
                         break
                 else:
                     raise ValueError("Didn't find corresponding node line")
                 parent_name, parent_list, current_name, current_list = extract_info(previous_line)
                 parent_torch_index, current_torch_index = TorchIndex(parent_list), TorchIndex(current_list)
-                self.corr.edges[current_name][current_torch_index][parent_name][parent_torch_index].present = keeping_connection
+                self.corr.edges[current_name][current_torch_index][parent_name][
+                    parent_torch_index
+                ].present = keeping_connection
 
-        assert found_at_least_one_readable_line, f"No readable lines found in the log file. Is this formatted correctly ??? {lines=}"
-        
+        assert (
+            found_at_least_one_readable_line
+        ), f"No readable lines found in the log file. Is this formatted correctly ??? {lines=}"
+
     def remove_all_non_attention_connections(self):
         # remove all connection except the MLP connections
-        includes_attention = [ # substrings of hook names that imply they're relatred to attention
+        includes_attention = [  # substrings of hook names that imply they're relatred to attention
             "attn",
             "hook_q",
             "hook_k",
@@ -881,13 +972,23 @@ class TLACDCExperiment:
         all_edges = self.corr.all_edges()
         for (tupl, edge) in all_edges.items():
             for hook_name, hook_idx in [(tupl[0], tupl[1]), (tupl[2], tupl[3])]:
-                if hook_name.startswith(f"blocks.{layer_idx}") and len(hook_idx.hashable_tuple) >= 3 and int(hook_idx.hashable_tuple[2]) == head_idx:
-                    assert edge.present == False or edge.edge_type == EdgeType.PLACEHOLDER, (tupl, edge, hook_name, hook_idx)
+                if (
+                    hook_name.startswith(f"blocks.{layer_idx}")
+                    and len(hook_idx.hashable_tuple) >= 3
+                    and int(hook_idx.hashable_tuple[2]) == head_idx
+                ):
+                    assert edge.present == False or edge.edge_type == EdgeType.PLACEHOLDER, (
+                        tupl,
+                        edge,
+                        hook_name,
+                        hook_idx,
+                    )
                     edge.present = True
-                    break # don't double remove
+                    break  # don't double remove
 
-
-    def call_metric_with_corr(self, corr: TLACDCCorrespondence, metric_fn: Callable[[torch.Tensor], T], data: torch.Tensor) -> T:
+    def call_metric_with_corr(
+        self, corr: TLACDCCorrespondence, metric_fn: Callable[[torch.Tensor], T], data: torch.Tensor
+    ) -> T:
         """Call a function ``metric_fn`` with a new correspondence ``corr``.
 
         Remember to call ``self.setup_cache()`` with the desired ``ref_ds`` before this function.

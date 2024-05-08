@@ -1,9 +1,12 @@
-from experiments.launcher import KubernetesJob, launch
-import subprocess
 import argparse
+import subprocess
+
 import numpy as np
 
+from experiments.launcher import KubernetesJob, launch
+
 CPU = 4
+
 
 def main(
     testing: bool,
@@ -51,6 +54,7 @@ def main(
         for command in commands:
             print("Running", command)
             subprocess.run(command)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

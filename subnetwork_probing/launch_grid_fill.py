@@ -1,7 +1,9 @@
-from experiments.launcher import KubernetesJob, WandbIdentifier, launch
-import numpy as np
 import random
 from typing import List, Optional
+
+import numpy as np
+
+from experiments.launcher import KubernetesJob, WandbIdentifier, launch
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
@@ -31,8 +33,8 @@ def main(TASKS: list[str], job: Optional[KubernetesJob], name: str, testing: boo
     wandb_identifier = WandbIdentifier(
         run_name=f"{name}-res{int(reset_networks)}-{{i:05d}}",
         group_name="tracr-shuffled-redo",
-        project="induction-sp-replicate")
-
+        project="induction-sp-replicate",
+    )
 
     seed = 1507014021
     random.seed(seed)
@@ -90,7 +92,7 @@ def main(TASKS: list[str], job: Optional[KubernetesJob], name: str, testing: boo
                             raise ValueError("Unknown metric")
                     elif task == "induction":
                         seq_len = 300
-                        num_examples  = 50
+                        num_examples = 50
                         if metric == "kl_div":
                             # Typical metric value range: 0.0-16.0
                             regularization_params = expensive_base_regularization_params
@@ -143,6 +145,7 @@ def main(TASKS: list[str], job: Optional[KubernetesJob], name: str, testing: boo
         check_wandb=wandb_identifier,
         just_print_commands=False,
     )
+
 
 if __name__ == "__main__":
     for reset_networks in [False, True]:

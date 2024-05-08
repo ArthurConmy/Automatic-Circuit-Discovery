@@ -1,7 +1,9 @@
-from experiments.launcher import KubernetesJob, WandbIdentifier, launch
-import numpy as np
 import random
 from typing import List
+
+import numpy as np
+
+from experiments.launcher import KubernetesJob, WandbIdentifier, launch
 
 METRICS_FOR_TASK = {
     "ioi": ["kl_div", "logit_diff"],
@@ -15,14 +17,12 @@ METRICS_FOR_TASK = {
 
 CPU = 2
 
+
 def main(TASKS: list[str], job: KubernetesJob, name: str, group_name: str):
     seed = 1259281515
     random.seed(seed)
 
-    wandb_identifier = WandbIdentifier(
-        run_name=f"{name}-{{i:05d}}",
-        group_name=group_name,
-        project="acdc")
+    wandb_identifier = WandbIdentifier(run_name=f"{name}-{{i:05d}}", group_name=group_name, project="acdc")
 
     commands: List[List[str]] = []
     for reset_network in [0, 1]:
@@ -30,9 +30,9 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, group_name: str):
             for task in TASKS:
                 for metric in METRICS_FOR_TASK[task]:
                     if "tracr" not in task:
-                        if reset_network==0 and zero_ablation==0:
+                        if reset_network == 0 and zero_ablation == 0:
                             continue
-                        if task in ["ioi", "induction"] and reset_network==0 and zero_ablation==1:
+                        if task in ["ioi", "induction"] and reset_network == 0 and zero_ablation == 1:
                             continue
 
                     command = [
@@ -54,7 +54,6 @@ def main(TASKS: list[str], job: KubernetesJob, name: str, group_name: str):
                         command.append("--zero-ablation")
 
                     commands.append(command)
-
 
     launch(
         commands,

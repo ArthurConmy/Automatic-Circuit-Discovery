@@ -1,20 +1,21 @@
 # %%
 #
-import plotly
-import os
-import numpy as np
-import json
-import wandb
-import time
-from plotly.subplots import make_subplots
-import plotly.graph_objects as go
-from pathlib import Path
-import plotly.express as px
-import pandas as pd
 import argparse
-import plotly.colors as pc
-from acdc.graphics import dict_merge, pessimistic_auc
+import json
+import os
+import time
+from pathlib import Path
 
+import numpy as np
+import pandas as pd
+import plotly
+import plotly.colors as pc
+import plotly.express as px
+import plotly.graph_objects as go
+import wandb
+from plotly.subplots import make_subplots
+
+from acdc.graphics import dict_merge, pessimistic_auc
 from notebooks.emacs_plotly_render import set_plotly_renderer
 
 set_plotly_renderer("emacs")
@@ -127,12 +128,12 @@ for i, alg in enumerate(["ACDC", "SP"]):
     fig.add_trace(
         go.Heatmap(
             z=nums,
-            colorscale='Viridis',
+            colorscale="Viridis",
             showscale=False,
         ),
         row=1,
         col=2,
-        )
+    )
 
 fig.update_xaxes(showline=False, zeroline=False, showgrid=False, row=1, col=2, showticklabels=False, ticks="")
 fig.update_yaxes(showline=False, zeroline=False, showgrid=False, row=1, col=2, side="right")

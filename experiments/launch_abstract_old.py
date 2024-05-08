@@ -1,6 +1,9 @@
-from experiments.launcher import KubernetesJob, WandbIdentifier, launch
-import numpy as np
 import random
+
+import numpy as np
+
+from experiments.launcher import KubernetesJob, WandbIdentifier, launch
+
 
 def main(use_kubernetes: bool, testing: bool, CPU: int = 4):
     task = "docstring"

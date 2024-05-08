@@ -1,23 +1,26 @@
 #!/usr/bin/env python3
 
-import pygraphviz as pgv
-from acdc.TLACDCCorrespondence import TLACDCCorrespondence
-from acdc.TLACDCInterpNode import TLACDCInterpNode
-from acdc.TLACDCEdge import EdgeType, TorchIndex
-from acdc.acdc_graphics import show
-import tempfile
 import os
-
-from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformer import HookedTransformer
-import pytest
-from pathlib import Path
 import sys
+import tempfile
+from pathlib import Path
+
+import pygraphviz as pgv
+import pytest
+
+from acdc.acdc_graphics import show
+from acdc.TLACDCCorrespondence import TLACDCCorrespondence
+from acdc.TLACDCEdge import EdgeType, TorchIndex
+from acdc.TLACDCInterpNode import TLACDCInterpNode
+from subnetwork_probing.transformer_lens.transformer_lens.HookedTransformer import HookedTransformer
 
 sys.path.append(str(Path(__file__).parent.parent / "code"))
 
-from subnetwork_probing.train import iterative_correspondence_from_mask, get_transformer_config
 import networkx as nx
+
 from acdc.TLACDCInterpNode import parse_interpnode
+from subnetwork_probing.train import get_transformer_config, iterative_correspondence_from_mask
+
 
 def delete_nested_dict(d: dict, keys: list):
     inner_dicts = [d]
@@ -39,6 +42,7 @@ def delete_nested_dict(d: dict, keys: list):
                 return
             if len(inner_dict) > 0:
                 break
+
 
 def test_count_nodes():
     nodes_to_mask_str = [
@@ -85,10 +89,7 @@ def test_count_nodes():
     ]
     nodes_to_mask = [parse_interpnode(s) for s in nodes_to_mask_str]
     nodes_to_mask2 = [
-        TLACDCInterpNode(
-            n.name.replace(".attn", "") + "_input", n.index, EdgeType.ADDITION
-        )
-        for n in nodes_to_mask
+        TLACDCInterpNode(n.name.replace(".attn", "") + "_input", n.index, EdgeType.ADDITION) for n in nodes_to_mask
     ]
     nodes_to_mask += nodes_to_mask2
 
@@ -99,22 +100,14 @@ def test_count_nodes():
     for child_hook_name in corr.edges:
         for child_index in corr.edges[child_hook_name]:
             for parent_hook_name in corr.edges[child_hook_name][child_index]:
-                for parent_index in corr.edges[child_hook_name][child_index][
-                    parent_hook_name
-                ]:
-                    edge = corr.edges[child_hook_name][child_index][parent_hook_name][
-                        parent_index
-                    ]
+                for parent_index in corr.edges[child_hook_name][child_index][parent_hook_name]:
+                    edge = corr.edges[child_hook_name][child_index][parent_hook_name][parent_index]
 
-                    if all(
-                        (child_hook_name != n.name or child_index != n.index)
-                        for n in nodes_to_mask
-                    ) and all(
-                        (parent_hook_name != n.name or parent_index != n.index)
-                        for n in nodes_to_mask
+                    if all((child_hook_name != n.name or child_index != n.index) for n in nodes_to_mask) and all(
+                        (parent_hook_name != n.name or parent_index != n.index) for n in nodes_to_mask
                     ):
                         edge.effect_size = 1
-                        
+
     with tempfile.TemporaryDirectory() as tmpdir:
         g = show(corr, os.path.join(tmpdir, "out.png"), show_full_index=False)
         assert isinstance(g, pgv.AGraph)

@@ -9,10 +9,10 @@ That's the only crucial difference with mainstream `transformer_lens`. Most of t
 
 # Subnetwork Probing
 
-[Low-Complexity Probing via Finding Subnetworks](https://github.com/stevenxcao/subnetwork-probing)  
-Steven Cao, Victor Sanh, Alexander M. Rush  
-NAACL-HLT 2021  
+[Low-Complexity Probing via Finding Subnetworks](https://github.com/stevenxcao/subnetwork-probing)
+Steven Cao, Victor Sanh, Alexander M. Rush
+NAACL-HLT 2021
 
-# HISP 
+# HISP
 
 [Are Sixteen Heads Really Better than One?](https://arxiv.org/abs/1905.10650) Michel et al 2019

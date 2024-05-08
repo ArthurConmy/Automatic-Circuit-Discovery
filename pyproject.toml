@@ -33,6 +33,7 @@ pytest = "^7.2.0"
 pytest-cov = "^4.0.0"
 jupyterlab = "^3.5.0"
 jupyter = "^1.0.0"
+pre-commit = "^3.3.3"
 
 [build-system]
 requires = ["poetry-core"]
@@ -50,8 +51,17 @@ markers = [
 
 [tool.black]
 line-length = 120
+extend-exclude = 'subnetwork_probing\/transformer_lens\/.*\.py'
 
 [tool.isort]
 profile = "black"
 line_length = 120
 skip_gitignore = true
+skip_glob = ["subnetwork_probing/transformer_lens/*"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.codespell]
+skip = "*.lock,*.ipynb"
+ignore-words-list = "fpr,ans,mearly"

@@ -8,7 +8,7 @@
 # <h3>Setup</h2>
 #
 # <p>Janky code to do different setup when run in a Colab notebook vs VSCode (adapted from e.g <a href="https://github.com/neelnanda-io/TransformerLens/blob/5c89b7583e73ce96db5e46ef86a14b15f303dde6/demos/Activation_Patching_in_TL_Demo.ipynb">this notebook</a>)</p>
-# 
+#
 # <p>You can ignore warnings that "packages were previously imported in this runtime"</p>
 
 #%%
@@ -19,14 +19,16 @@ try:
     IN_COLAB = True
     print("Running as a Colab notebook")
 
-    import subprocess # to install graphviz dependencies
-    command = ['apt-get', 'install', 'graphviz-dev']
+    import subprocess  # to install graphviz dependencies
+
+    command = ["apt-get", "install", "graphviz-dev"]
     subprocess.run(command, check=True)
 
     from IPython import get_ipython
+
     ipython = get_ipython()
 
-    ipython.run_line_magic( # install ACDC
+    ipython.run_line_magic(  # install ACDC
         "pip",
         "install git+https://github.com/ArthurConmy/Automatic-Circuit-Discovery.git@9d5844a",
     )
@@ -35,7 +37,7 @@ except Exception as e:
     IN_COLAB = False
     print("Running outside of Colab notebook")
 
-    import numpy # crucial to not get cursed error
+    import numpy  # crucial to not get cursed error
     import plotly
 
     plotly.io.renderers.default = "colab"  # added by Arthur so running as a .py notebook with #%% generates .ipynb notebooks that display in colab
@@ -57,12 +59,14 @@ except Exception as e:
 
 #%%
 
-from transformer_lens.HookedTransformer import HookedTransformer
-from acdc.TLACDCExperiment import TLACDCExperiment
-from acdc.induction.utils import get_all_induction_things
-from acdc.acdc_utils import TorchIndex
-import torch
 import gc
+
+import torch
+from transformer_lens.HookedTransformer import HookedTransformer
+
+from acdc.acdc_utils import TorchIndex
+from acdc.induction.utils import get_all_induction_things
+from acdc.TLACDCExperiment import TLACDCExperiment
 
 # %% [markdown]
 # <h2>Load in the model and data for the induction task
@@ -111,13 +115,13 @@ print(
 #%% [markdown]
 # <p>This dataset has several examples of induction! F -> #, mon -> ads</p>
 # <p>The `mask_rep` mask is a boolean mask of shape `(num_examples, seq_len)` that indicates where induction is present in the dataset</p>
-# <p> Let's see 
+# <p> Let's see
 
 #%%
 for i in range(EXAMPLE_LENGTH):
     if mask_rep[EXAMPLE_NO, i]:
         print(f"At position {i} there is induction")
-        print(tl_model.to_str_tokens(toks_int_values[EXAMPLE_NO:EXAMPLE_NO+1, i : i + 1]))
+        print(tl_model.to_str_tokens(toks_int_values[EXAMPLE_NO : EXAMPLE_NO + 1, i : i + 1]))
 
 # %% [markdown]
 # <p>Let's get the initial loss on the induction examples</p>
@@ -135,7 +139,7 @@ def get_loss(model, data, mask):
 print(f"Loss: {get_loss(tl_model, toks_int_values, mask_rep)}")
 
 #%% [markdown]
-#<p>We will now wrap ACDC things inside an `experiment`for further experiments</p>
+# <p>We will now wrap ACDC things inside an `experiment`for further experiments</p>
 # <p>For more advanced usage of the `TLACDCExperiment` object (the main object in this codebase), see the README for links to the `main.py` and its demos</p>
 
 #%%
@@ -186,9 +190,7 @@ def change_direct_output_connections(exp, invert=False):
         ("blocks.1.attn.hook_result", TorchIndex([None, None, 6])),
     ]
 
-    inputs_to_residual_stream_end = exp.corr.edges[residual_stream_end_name][
-        residual_stream_end_index
-    ]
+    inputs_to_residual_stream_end = exp.corr.edges[residual_stream_end_name][residual_stream_end_index]
     for sender_name in inputs_to_residual_stream_end:
         for sender_index in inputs_to_residual_stream_end[sender_name]:
             edge = inputs_to_residual_stream_end[sender_name][sender_index]

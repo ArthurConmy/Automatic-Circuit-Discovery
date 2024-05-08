@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 
-import pandas as pd
-import numpy as np
-import plotly.express as px
-import wandb
-
 import hashlib
 import os
 
+import numpy as np
+import pandas as pd
+import plotly.express as px
 import plotly.io as pio
+import wandb
 
 
 class EmacsRenderer(pio.base_renderers.ColabRenderer):
@@ -34,6 +33,7 @@ pio.renderers["emacs"] = EmacsRenderer()
 def set_plotly_renderer(renderer="emacs"):
     pio.renderers.default = renderer
 
+
 set_plotly_renderer("emacs")
 
 ACDC_GROUP = "adria-induction-3"
@@ -55,12 +55,12 @@ for r in all_runs:
     try:
         d = {k: r.summary[k] for k in ["cur_metric", "test_specific_metric", "num_edges"]}
     except KeyError:
-        failed+=1
+        failed += 1
     else:
         idx = int(r.name.split("-")[-1])
         df = pd.concat([df, pd.DataFrame(d, index=[idx])])
 
-assert failed/total < 0.5
+assert failed / total < 0.5
 
 # %%
 
@@ -89,7 +89,10 @@ all_runs = api.runs(path="remix_school-of-rock/induction-sp-replicate", filters=
 for r in all_runs:
     try:
         cfg = {k: r.config[k] for k in ["reset_subject", "zero_ablation", "loss_type", "lambda_reg", "num_examples"]}
-        d = {k: r.summary[k] for k in ["number_of_edges", "specific_metric", "test_specific_metric", "specific_metric_loss"]}
+        d = {
+            k: r.summary[k]
+            for k in ["number_of_edges", "specific_metric", "test_specific_metric", "specific_metric_loss"]
+        }
     except KeyError:
         continue
     cfg["reset_network"] = cfg["reset_subject"]

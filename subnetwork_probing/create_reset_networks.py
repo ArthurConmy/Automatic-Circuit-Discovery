@@ -1,19 +1,23 @@
-import json
-import torch
-from pprint import pprint
 import gc
+import json
+from pprint import pprint
 
+import torch
+
+from acdc.docstring.utils import AllDataThings, get_all_docstring_things
 from acdc.greaterthan.utils import get_all_greaterthan_things
 from acdc.induction.utils import get_all_induction_things
 from acdc.ioi.utils import get_all_ioi_things
 from acdc.tracr_task.utils import get_all_tracr_things, get_tracr_model_input_and_tl_model
-from acdc.docstring.utils import get_all_docstring_things, AllDataThings
 
 torch.set_grad_enabled(False)
 
 DEVICE = "cuda"
 
-def scramble_sd(seed, things: AllDataThings, name, scramble_heads=True, scramble_mlps=True, scramble_head_outputs: bool=False):
+
+def scramble_sd(
+    seed, things: AllDataThings, name, scramble_heads=True, scramble_mlps=True, scramble_head_outputs: bool = False
+):
     model = things.tl_model
     old_sd = model.state_dict()
     n_heads = model.cfg.n_heads
@@ -105,7 +109,9 @@ gc.collect()
 
 # %% Docstring
 
-things = get_all_docstring_things(num_examples=50, seq_len=2, device=DEVICE, metric_name="kl_div", correct_incorrect_wandb=False)
+things = get_all_docstring_things(
+    num_examples=50, seq_len=2, device=DEVICE, metric_name="kl_div", correct_incorrect_wandb=False
+)
 scramble_sd(814220622, things, "docstring_reset_heads_neurons")
 del things
 gc.collect()

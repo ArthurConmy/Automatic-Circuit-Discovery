@@ -1,6 +1,6 @@
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue)]() [![Open Pull Requests](https://img.shields.io/github/issues-pr/ArthurConmy/Automatic-Circuit-Discovery.svg)](https://github.com/ArthurConmy/Automatic-Circuit-Discovery/pulls)
 
-# Automated Circuit DisCovery 
+# Automated Circuit DisCovery
 
 ![](assets/acdc_finds_subgraph.png)
 
@@ -53,7 +53,7 @@ To reproduce the Pareto Frontier of KL divergences against number of edges for A
 
 ## Tests
 
-From the root directory, run 
+From the root directory, run
 
 ```bash
 pytest -vvv -m "not slow"
@@ -68,11 +68,11 @@ You can run the slow tests with
 pytest -s -m slow
 ```
 
-## Contributing 
+## Contributing
 
 We welcome issues where the code is unclear!
 
-If you make a PR, make sure you run 
+If you make a PR, make sure you run
 ```bash
 chmod +x experiments/make_notebooks.sh
 ./experiments/make_notebooks.sh
@@ -85,7 +85,7 @@ If you use ACDC, please reach out! You can reference the work as follows:
 
 ```
 @misc{conmy2023automated,
-      title={Towards Automated Circuit Discovery for Mechanistic Interpretability}, 
+      title={Towards Automated Circuit Discovery for Mechanistic Interpretability},
       author={Arthur Conmy and Augustine N. Mavor-Parker and Aengus Lynch and Stefan Heimersheim and Adri{\`a} Garriga-Alonso},
       year={2023},
       eprint={2304.14997},

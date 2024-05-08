@@ -43,7 +43,7 @@ for in_path in "${!file_paths[@]}"; do
 
     # Run jupytext and papermill
     jupytext --to notebook "$in_path" -o "$middle_path"
-    
+
     if ! $skip_run; then
         papermill "$middle_path" "$final_out_path" --kernel=python
 

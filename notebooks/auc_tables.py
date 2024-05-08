@@ -1,27 +1,28 @@
 #%%
 
 from IPython import get_ipython
+
 ipython = get_ipython()
 if ipython is not None:
-    ipython.run_line_magic('load_ext', 'autoreload')
-    ipython.run_line_magic('autoreload', '2')
-import io
-import numpy as np
-
-import pandas as pd
-from pathlib import Path
-from tabulate import tabulate
+    ipython.run_line_magic("load_ext", "autoreload")
+    ipython.run_line_magic("autoreload", "2")
 import argparse
+import io
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+from tabulate import tabulate
 
 parser = argparse.ArgumentParser(
     usage="Generate AUC tables from CSV files. Pass the data.csv file as an argument fname, e.g python notebooks/auc_tables.py --fname=experiments/results/plots/data.csv"
 )
-parser.add_argument('--in-fname', type=str, default="experiments/results/plots/data.csv")
-parser.add_argument('--out-fname', type=str, default="experiments/results/auc_tables.tex")
-    
+parser.add_argument("--in-fname", type=str, default="experiments/results/plots/data.csv")
+parser.add_argument("--out-fname", type=str, default="experiments/results/auc_tables.tex")
+
 if ipython is None:
     args = parser.parse_args()
-else: # make parsing arguments work in jupyter notebook
+else:  # make parsing arguments work in jupyter notebook
     args = parser.parse_args(args=[])
 
 data = pd.read_csv(args.in_fname)

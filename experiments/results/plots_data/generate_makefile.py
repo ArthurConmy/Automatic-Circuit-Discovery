@@ -1,7 +1,8 @@
 import os
-from pathlib import Path
-from experiments.launcher import KubernetesJob, launch
 import shlex
+from pathlib import Path
+
+from experiments.launcher import KubernetesJob, launch
 
 TASKS = ["ioi", "docstring", "greaterthan", "tracr-reverse", "tracr-proportion", "induction"]
 
@@ -34,7 +35,7 @@ def main():
     tracr_proportion_files = []
     induction_files = []
 
-    with open(OUT_DIR/ "Makefile", "w") as f:
+    with open(OUT_DIR / "Makefile", "w") as f:
         possible_files = {"generate_makefile.py", "Makefile"}
 
         for alg in ["16h", "sp", "acdc", "canonical"]:
@@ -49,7 +50,6 @@ def main():
 
                             fname = f"{alg}-{task}-{metric}-{bool(zero_ablation)}-{reset_network}.json"
                             possible_files.add(fname)
-
 
                             command = [
                                 "python",
@@ -119,6 +119,7 @@ def main():
     print(f"Missing {len(missing_files)} files:")
     for missing_file in missing_files:
         print(missing_file)
+
 
 if __name__ == "__main__":
     main()

@@ -1,35 +1,34 @@
 import ast
-from collections import OrderedDict
 import re
 import sys
 import time
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 from enum import Enum
-from typing import Any, Optional, Tuple, Union, List
-from huggingface_hub import hf_hub_download
+from typing import Any, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
 import torch.nn.functional as F
 import wandb
-
+from huggingface_hub import hf_hub_download
 from transformer_lens.HookedTransformer import HookedTransformer
 
-from acdc.TLACDCEdge import (
-    TorchIndex,
-    Edge, 
-    EdgeType,
-)  # these introduce several important classes !!!
+from acdc.TLACDCEdge import Edge, EdgeType, TorchIndex  # these introduce several important classes !!!
+
 
 class OrderedDefaultdict(defaultdict):
     def __init__(self, *args, **kwargs):
         if sys.version_info < (3, 7):
-            raise Exception("You need Python >= 3.7 so dict is ordered by default. You could revert to the old unmantained implementation https://github.com/ArthurConmy/Automatic-Circuit-Discovery/commit/65301ec57c31534bd34383c243c782e3ccb7ed82")
+            raise Exception(
+                "You need Python >= 3.7 so dict is ordered by default. You could revert to the old unmantained implementation https://github.com/ArthurConmy/Automatic-Circuit-Discovery/commit/65301ec57c31534bd34383c243c782e3ccb7ed82"
+            )
         super().__init__(*args, **kwargs)
+
 
 # -------------------------
 # Some ACDC metric utils
 # -------------------------
+
 
 def kl_divergence(
     logits: torch.Tensor,
@@ -72,7 +71,7 @@ def negative_log_probs(
     mask_repeat_candidates: Optional[torch.Tensor] = None,
     baseline: Union[float, torch.Tensor] = 0.0,
     last_seq_element_only: bool = True,
-    return_one_element: bool=True,
+    return_one_element: bool = True,
 ) -> torch.Tensor:
     logprobs = F.log_softmax(logits, dim=-1)
 
@@ -140,7 +139,8 @@ class MatchNLLMetric:
             return_one_element=self.return_one_element,
         )
 
-def logit_diff_metric(logits, correct_labels, wrong_labels, return_one_element: bool=True) -> torch.Tensor:
+
+def logit_diff_metric(logits, correct_labels, wrong_labels, return_one_element: bool = True) -> torch.Tensor:
     range = torch.arange(len(logits))
     correct_logits = logits[range, -1, correct_labels]
     incorrect_logits = logits[range, -1, wrong_labels]
@@ -152,7 +152,8 @@ def logit_diff_metric(logits, correct_labels, wrong_labels, return_one_element: 
     else:
         return -(correct_logits - incorrect_logits).view(-1)
 
-def frac_correct_metric(logits, correct_labels, wrong_labels, return_one_element: bool=True) -> torch.Tensor:
+
+def frac_correct_metric(logits, correct_labels, wrong_labels, return_one_element: bool = True) -> torch.Tensor:
     range = torch.arange(len(logits))
     correct_logits = logits[range, -1, correct_labels]
     incorrect_logits = logits[range, -1, wrong_labels]
@@ -163,39 +164,47 @@ def frac_correct_metric(logits, correct_labels, wrong_labels, return_one_element
     else:
         return -(correct_logits > incorrect_logits).float().view(-1)
 
+
 # -----------
 # Utils of secondary importance
 # -----------
+
 
 def next_key(ordered_dict: OrderedDict, current_key):
     key_iterator = iter(ordered_dict)
     next((key for key in key_iterator if key == current_key), None)
     return next(key_iterator, None)
 
-def make_nd_dict(end_type, n = 3) -> Any:
+
+def make_nd_dict(end_type, n=3) -> Any:
     """Make biiig default dicts : ) : )"""
 
     if n not in [3, 4]:
         raise NotImplementedError("Only implemented for 3/4")
-        
+
     if n == 3:
         return OrderedDefaultdict(lambda: defaultdict(lambda: defaultdict(end_type)))
 
     if n == 4:
         return OrderedDefaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(end_type))))
 
+
 def cleanup():
     import gc
+
     gc.collect()
     torch.cuda.empty_cache()
+
 
 def shuffle_tensor(tens, seed=42):
     """Shuffle tensor along first dimension"""
     torch.random.manual_seed(seed)
     return tens[torch.randperm(tens.shape[0])]
 
+
 def ct():
     return time.ctime().replace(" ", "_").replace(":", "_").replace("__", "_")
+
 
 # ----------------------------------
 # Random helpers for scraping
@@ -227,11 +236,18 @@ def extract_info(string):
         current_list_items = current_list_str.split(", ")
         current_list = [ast.literal_eval(item if item != "COL" else "None") for item in current_list_items]
 
-    return parent_name.replace("hook_resid_mid", "hook_mlp_in"), parent_list, current_name.replace("hook_resid_mid", "hook_mlp_in"), current_list
+    return (
+        parent_name.replace("hook_resid_mid", "hook_mlp_in"),
+        parent_list,
+        current_name.replace("hook_resid_mid", "hook_mlp_in"),
+        current_list,
+    )
+
 
 # ----------------------------------
 # Precision and recall etc metrics
 # ----------------------------------
+
 
 def get_present_nodes(graph) -> tuple[set[tuple[str, TorchIndex]], set[tuple[str, TorchIndex]]]:
     present_nodes = set()
@@ -247,14 +263,17 @@ def get_present_nodes(graph) -> tuple[set[tuple[str, TorchIndex]], set[tuple[str
 
     return present_nodes, all_nodes
 
+
 def filter_nodes(nodes: set[tuple[str, TorchIndex]]) -> set[tuple[str, TorchIndex]]:
     all_nodes = nodes.copy()
 
     # combine MLP things
     for node in nodes:
-        if "resid_mid" in node[0] or "mlp_in" in node[0]: # new and old names
+        if "resid_mid" in node[0] or "mlp_in" in node[0]:  # new and old names
             try:
-                all_nodes.add((f"blocks.{node[0].split()[1]}.hook_mlp_out", node[1])) # assume that we're not doing any neuron or positional stuff
+                all_nodes.add(
+                    (f"blocks.{node[0].split()[1]}.hook_mlp_out", node[1])
+                )  # assume that we're not doing any neuron or positional stuff
             except:
                 a = 1
             all_nodes.remove(node)
@@ -267,7 +286,9 @@ def filter_nodes(nodes: set[tuple[str, TorchIndex]]) -> set[tuple[str, TorchInde
 
 
 def get_node_stats(ground_truth, recovered) -> dict[str, int]:
-    assert set(ground_truth.all_edges().keys()) == set(recovered.all_edges().keys()), "There is a mismatch between the keys we're cmparing here"
+    assert set(ground_truth.all_edges().keys()) == set(
+        recovered.all_edges().keys()
+    ), "There is a mismatch between the keys we're cmparing here"
 
     ground_truth_nodes, all_nodes = get_present_nodes(ground_truth)
 
@@ -303,18 +324,26 @@ def get_node_stats(ground_truth, recovered) -> dict[str, int]:
     counts["ground truth"] = len(ground_truth_nodes)
     counts["recovered"] = len(recovered_nodes)
 
-
-    assert counts["all"] == counts["true positive"] + counts["false positive"] + counts["true negative"] + counts["false negative"]
+    assert (
+        counts["all"]
+        == counts["true positive"] + counts["false positive"] + counts["true negative"] + counts["false negative"]
+    )
     assert counts["ground truth"] == counts["true positive"] + counts["false negative"]
     assert counts["recovered"] == counts["true positive"] + counts["false positive"]
 
     # Idk if this one is any constraint
-    assert counts["all"] == counts["ground truth"] + counts["recovered"] - counts["true positive"] + counts["true negative"]
+    assert (
+        counts["all"]
+        == counts["ground truth"] + counts["recovered"] - counts["true positive"] + counts["true negative"]
+    )
 
     return counts
 
-def get_edge_stats(ground_truth, recovered):    
-    assert set(ground_truth.all_edges().keys()) == set(recovered.all_edges().keys()), "There is a mismatch between the keys we're comparing here"
+
+def get_edge_stats(ground_truth, recovered):
+    assert set(ground_truth.all_edges().keys()) == set(
+        recovered.all_edges().keys()
+    ), "There is a mismatch between the keys we're comparing here"
 
     ground_truth_all_edges = ground_truth.all_edges()
     recovered_all_edges = recovered.all_edges()
@@ -339,31 +368,42 @@ def get_edge_stats(ground_truth, recovered):
                 counts["false negative"] += 1
             else:
                 counts["true negative"] += 1
-            
 
     counts["all"] = len([e for e in ground_truth_all_edges.values() if e.edge_type != EdgeType.PLACEHOLDER])
-    counts["ground truth"] = len([e for e in ground_truth_all_edges.values() if e.edge_type != EdgeType.PLACEHOLDER and e.present])
-    counts["recovered"] = len([e for e in recovered_all_edges.values() if e.edge_type != EdgeType.PLACEHOLDER and e.present])
+    counts["ground truth"] = len(
+        [e for e in ground_truth_all_edges.values() if e.edge_type != EdgeType.PLACEHOLDER and e.present]
+    )
+    counts["recovered"] = len(
+        [e for e in recovered_all_edges.values() if e.edge_type != EdgeType.PLACEHOLDER and e.present]
+    )
 
-
-    assert counts["all"] == counts["true positive"] + counts["false positive"] + counts["true negative"] + counts["false negative"]
+    assert (
+        counts["all"]
+        == counts["true positive"] + counts["false positive"] + counts["true negative"] + counts["false negative"]
+    )
     assert counts["ground truth"] == counts["true positive"] + counts["false negative"]
     assert counts["recovered"] == counts["true positive"] + counts["false positive"]
 
     # Idk if this one is any constraint
-    assert counts["all"] == counts["ground truth"] + counts["recovered"] - counts["true positive"] + counts["true negative"]
+    assert (
+        counts["all"]
+        == counts["ground truth"] + counts["recovered"] - counts["true positive"] + counts["true negative"]
+    )
 
     return counts
-            
+
 
 def false_positive_rate(ground_truth, recovered, verbose=False):
     return get_stat(ground_truth, recovered, mode="false positive", verbose=verbose)
 
+
 def false_negative_rate(ground_truth, recovered, verbose=False):
     return get_stat(ground_truth, recovered, mode="false negative", verbose=verbose)
 
+
 def true_positive_stat(ground_truth, recovered, verbose=False):
     return get_stat(ground_truth, recovered, mode="true positive", verbose=verbose)
+
 
 # ----------------------------------
 # Resetting networks; Appendix
@@ -383,43 +423,49 @@ def reset_network(task: str, device, model: torch.nn.Module) -> None:
     reset_state_dict = torch.load(random_model_file, map_location=device)
     model.load_state_dict(reset_state_dict, strict=False)
 
+
 # ----------------------------------
 # Munging utils
 # ----------------------------------
 
+
 def get_col_from_df(df, col_name):
     return df[col_name].values
+
 
 def df_to_np(df):
     return df.values
 
+
 def get_time_diff(run_name):
     """Get the difference between first log and last log of a WANBB run"""
-    api = wandb.Api()    
+    api = wandb.Api()
     run = api.run(run_name)
     df = run.history()["_timestamp"]
     arr = df_to_np(df)
     n = len(arr)
-    for i in range(n-1):
-        assert arr[i].item() < arr[i+1].item()
+    for i in range(n - 1):
+        assert arr[i].item() < arr[i + 1].item()
     print(arr[-1].item() - arr[0].item())
+
 
 def get_nonan(arr, last=True):
     """Get last non nan by default (or first if last=False)"""
-    
-    indices = list(range(len(arr)-1, -1, -1)) if last else list(range(len(arr)))
 
-    for i in indices: # range(len(arr)-1, -1, -1):
+    indices = list(range(len(arr) - 1, -1, -1)) if last else list(range(len(arr)))
+
+    for i in indices:  # range(len(arr)-1, -1, -1):
         if not np.isnan(arr[i]):
             return arr[i]
 
     return np.nan
 
+
 def get_corresponding_element(
     df,
     col1_name,
     col1_value,
-    col2_name, 
+    col2_name,
 ):
     """Get the corresponding element of col2_name for a given element of col1_name"""
     col1 = get_col_from_df(df, col1_name)
@@ -428,6 +474,7 @@ def get_corresponding_element(
         if col1[i] == col1_value and not np.isnan(col2[i]):
             return col2[i]
     assert False, "No corresponding element found"
+
 
 def get_first_element(
     df,
@@ -453,6 +500,7 @@ def get_first_element(
     assert cur_ans is not None
     return cur_ans
 
+
 def get_longest_float(s, end_cutoff=None):
     ans = None
     if end_cutoff is None:
@@ -460,7 +508,7 @@ def get_longest_float(s, end_cutoff=None):
     else:
         assert end_cutoff < 0, "Do -1 or -2 etc mate"
 
-    for i in range(len(s)-1, -1, -1):
+    for i in range(len(s) - 1, -1, -1):
         try:
             ans = float(s[i:end_cutoff])
         except:
@@ -470,8 +518,10 @@ def get_longest_float(s, end_cutoff=None):
     assert ans is not None
     return ans
 
+
 def get_threshold_zero(s, num=3, char="_"):
     return float(s.split(char)[num])
+
 
 def process_nan(tens, reverse=False):
     # turn nans into -1s
@@ -479,31 +529,34 @@ def process_nan(tens, reverse=False):
     assert len(tens.shape) == 1, tens.shape
     tens[np.isnan(tens)] = -1
     tens[0] = tens.max()
-    
+
     # turn -1s into the minimum value
     tens[np.where(tens == -1)] = 1000
 
     if reverse:
-        for i in range(len(tens)-2, -1, -1):
-            tens[i] = min(tens[i], tens[i+1])
-        
-        for i in range(1, len(tens)):
-            if tens[i] == 1000:
-                tens[i] = tens[i-1]
-
-    else:    
-        for i in range(1, len(tens)):
-            tens[i] = min(tens[i], tens[i-1])
+        for i in range(len(tens) - 2, -1, -1):
+            tens[i] = min(tens[i], tens[i + 1])
 
         for i in range(1, len(tens)):
             if tens[i] == 1000:
-                tens[i] = tens[i-1]
+                tens[i] = tens[i - 1]
+
+    else:
+        for i in range(1, len(tens)):
+            tens[i] = min(tens[i], tens[i - 1])
+
+        for i in range(1, len(tens)):
+            if tens[i] == 1000:
+                tens[i] = tens[i - 1]
 
     return tens
+
 
 if __name__ == "__main__":
     # some quick test
     string = "Node: cur_parent=TLACDCInterpNode(blocks.3.attn.hook_result, ['COL', 'COL', 1]) (self.current_node=TLACDCInterpNode(blocks.3.hook_resid_post, ['COL']))"
     parent_name, parent_list, current_name, current_list = extract_info(string)
 
-    print(f"Parent Name: {parent_name}\nParent List: {parent_list}\nCurrent Name: {current_name}\nCurrent List: {current_list}")
+    print(
+        f"Parent Name: {parent_name}\nParent List: {parent_list}\nCurrent Name: {current_name}\nCurrent List: {current_list}"
+    )
