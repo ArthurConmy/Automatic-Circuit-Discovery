@@ -6,6 +6,8 @@
 
 This is the accompanying code to the paper ["Towards Automated Circuit Discovery for Mechanistic Interpretability"](https://arxiv.org/abs/2304.14997) (NeurIPS 2023 Spotlight).
 
+⚠️ You may wish to use the repo <a href="https://github.com/UFO-101/auto-circuit">Auto Circuit</a> by @UFO-101 as this codebase has many sharp edges. Nevertheless:
+
 * :zap: To run ACDC, see `acdc/main.py`, or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Main_Demo.ipynb">this Colab notebook</a>
 * :wrench: To see how edit edges in computational graphs in models, see `notebooks/editing_edges.py` or <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Editing_Edges_Demo.ipynb">this Colab notebook</a>
 * :sparkle: To understand the low-level implementation of completely editable computational graphs, see <a href="https://colab.research.google.com/github/ArthurConmy/Automatic-Circuit-Discovery/blob/main/notebooks/colabs/ACDC_Implementation_Demo.ipynb">this Colab notebook</a> or `notebooks/implementation_demo.py`
